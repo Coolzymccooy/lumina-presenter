@@ -14,6 +14,7 @@ import { AudioLibrary } from './components/AudioLibrary';
 import { BibleBrowser } from './components/BibleBrowser';
 import { logActivity, analyzeSentimentContext } from './services/analytics';
 import { auth, isFirebaseConfigured } from './services/firebase';
+import { onAuthStateChanged } from "firebase/auth";
 import { clearMediaCache } from './services/localMedia';
 import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon } from './components/Icons';
 
@@ -99,20 +100,21 @@ const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'AUDIO' | 
   const activeSlideRef = useRef<HTMLDivElement>(null);
   const antiSleepAudioRef = useRef<HTMLAudioElement>(null);
 
-  useEffect(() => {
-    if (isFirebaseConfigured && auth) {
-      const unsubscribe = auth.onAuthStateChanged((u) => {
-        setUser(u);
-        setAuthLoading(false);
-        if (u) logActivity(u.uid, 'SESSION_START');
-      });
-      return () => unsubscribe();
-    } else {
-      const demoUser = localStorage.getItem('lumina_demo_user');
-      if (demoUser) setUser(JSON.parse(demoUser));
+useEffect(() => {
+  if (isFirebaseConfigured && auth) {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
       setAuthLoading(false);
-    }
-  }, []);
+    });
+    return () => unsub();
+  }
+
+  // demo mode fallback
+  const demoUser = localStorage.getItem("lumina_demo_user");
+  if (demoUser) setUser(JSON.parse(demoUser));
+  setAuthLoading(false);
+}, []);
+
 
   useEffect(() => {
     const cleanup = () => clearMediaCache();
@@ -533,7 +535,7 @@ const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'AUDIO' | 
             setPopupBlocked(true);
             setIsOutputLive(false);
             setOutputWin(null);
-          }}>{blackout ? (<div className="w-full h-full bg-black cursor-none"></div>) : (<SlideRenderer slide={activeSlide} item={activeItem} fitContainer={true} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={false} isProjector />)}</OutputWindow>)}
+          }}>{blackout ? (<div className="w-full h-full bg-black cursor-none"></div>) : (<SlideRenderer slide={activeSlide} item={activeItem} fitContainer={true} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={false} />)}</OutputWindow>)}
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
       <SlideEditorModal isOpen={isSlideEditorOpen} onClose={() => setIsSlideEditorOpen(false)} slide={editingSlide} onSave={(slide) => { if (!selectedItem) return; const slideExists = selectedItem.slides.find(s => s.id === slide.id); let newSlides = slideExists ? selectedItem.slides.map(s => s.id === slide.id ? slide : s) : [...selectedItem.slides, slide]; updateItem({ ...selectedItem, slides: newSlides }); setIsSlideEditorOpen(false); }} />

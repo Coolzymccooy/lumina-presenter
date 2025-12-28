@@ -1,21 +1,41 @@
-
+// services/geminiService.ts
 import { GoogleGenAI, Type } from "@google/genai";
-import { GeneratedSlideData } from "../types";
+import type { GeneratedSlideData } from "../types";
 
-// Follow Guidelines: Initialize GoogleGenAI client right before making an API call to ensure latest API key usage
-const getAi = () => new GoogleGenAI({ apiKey: process.env.API_KEY });
+/**
+ * Vite browser env var:
+ * - set this in .env.local as: VITE_GOOGLE_AI_API_KEY=xxxx
+ */
+const getApiKeyOrThrow = (): string => {
+  const apiKey = import.meta.env.VITE_GOOGLE_AI_API_KEY as string | undefined;
+  if (!apiKey || apiKey.trim().length === 0) {
+    throw new Error("Missing VITE_GOOGLE_AI_API_KEY");
+  }
+  return apiKey.trim();
+};
 
-export const generateSlidesFromText = async (text: string): Promise<GeneratedSlideData | null> => {
-  const ai = getAi();
+/**
+ * Create the client right before each call (simple + reliable in browser).
+ */
+const getAi = () => {
+  const apiKey = getApiKeyOrThrow();
+  return new GoogleGenAI({ apiKey });
+};
+
+export const generateSlidesFromText = async (
+  text: string
+): Promise<GeneratedSlideData | null> => {
   try {
+    const ai = getAi();
+
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Break the following text into presentation slides for a church service. 
-      Identify sections like 'Verse', 'Chorus', 'Bridge', or 'Point'.
-      Keep slide content concise (max 4-6 lines).
-      
-      Text to process:
-      ${text}`,
+      contents: `Break the following text into presentation slides for a church service.
+Identify sections like "Verse", "Chorus", "Bridge", or "Point".
+Keep slide content concise (max 4-6 lines).
+
+Text to process:
+${text}`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -26,78 +46,87 @@ export const generateSlidesFromText = async (text: string): Promise<GeneratedSli
               items: {
                 type: Type.OBJECT,
                 properties: {
-                  label: { type: Type.STRING, description: "Label like Verse 1, Chorus, etc." },
-                  content: { type: Type.STRING, description: "The lyrics or text content for the slide" }
+                  label: { type: Type.STRING, description: "Verse 1, Chorus, etc." },
+                  content: { type: Type.STRING, description: "Slide text (4-6 lines max)" },
                 },
-                required: ["label", "content"]
-              }
-            }
+                required: ["label", "content"],
+              },
+            },
           },
-          required: ["slides"]
-        }
-      }
+          required: ["slides"],
+        },
+      },
     });
 
-    // Follow Guidelines: Access the extracted string output via .text property and trim whitespace
     const jsonStr = response.text?.trim();
-    if (jsonStr) {
-      return JSON.parse(jsonStr) as GeneratedSlideData;
-    }
-    return null;
-  } catch (error) {
-    console.error("Error generating slides:", error);
+    return jsonStr ? (JSON.parse(jsonStr) as GeneratedSlideData) : null;
+  } catch (e) {
+    // MVP-safe: don’t crash the app
+    console.error("generateSlidesFromText failed:", e);
     return null;
   }
 };
 
 /**
- * Uses semantic reasoning to find relevant bible verses based on a topic or emotion.
+ * Used by BibleBrowser.tsx
+ * Returns a single best reference string.
  */
 export const semanticBibleSearch = async (query: string): Promise<string> => {
-  const ai = getAi();
   try {
+    const ai = getAi();
+
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `You are a biblical scholar. Given the user's input (topic, emotion, or situation), provide the single best Bible reference (Book Chapter:Verse) to address it.
-      
-      User Input: "${query}"
-      
-      Return ONLY the reference (e.g., 'Philippians 4:13' or 'Psalm 23:1-4').`,
+      contents: `You are a biblical scholar. Given the user's input (topic, emotion, or situation),
+provide the single best Bible reference (Book Chapter:Verse) to address it.
+
+User Input: "${query}"
+
+Return ONLY the reference (e.g., "Philippians 4:13" or "Psalm 23:1-4").`,
     });
-    // Follow Guidelines: Use .text property directly
+
     return response.text?.trim() || "John 3:16";
-  } catch (error) {
-    console.error("Semantic search failed", error);
-    return query; // Fallback to literal query
+  } catch (e) {
+    console.error("semanticBibleSearch failed:", e);
+    return "John 3:16";
   }
 };
 
 /**
- * Generates a cinematic, high-quality background image based on the imagery of a verse.
+ * Used by BibleBrowser.tsx
+ * Returns a data URL (base64) or null.
  */
-export const generateVisionaryBackdrop = async (verseText: string): Promise<string | null> => {
-  const ai = getAi();
+export const generateVisionaryBackdrop = async (
+  verseText: string
+): Promise<string | null> => {
   try {
-    // Step 1: Generate a detailed artistic prompt from the verse
+    const ai = getAi();
+
+    // 1) turn verse into an art prompt
     const promptResponse = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `You are a Christian Art Director. Translate the essence and visual imagery of this Bible verse into a detailed prompt for a high-quality cinematic background image. 
-      Focus on atmosphere, lighting, and symbolism. Avoid including any human faces or text in the image. Use a 16:9 cinematic aspect ratio style.
-      
-      Verse: "${verseText}"
-      
-      Return ONLY the art prompt.`,
+      contents: `You are a Christian Art Director. Translate the essence and visual imagery of this Bible verse
+into a detailed prompt for a high-quality cinematic background image.
+Focus on atmosphere, lighting, symbolism. Avoid any human faces or text in the image.
+Use a 16:9 cinematic style.
+
+Verse: "${verseText}"
+
+Return ONLY the art prompt.`,
     });
 
-    const artPrompt = promptResponse.text?.trim() || "A peaceful, atmospheric background with soft golden light and subtle clouds, cinematic 4k.";
+    const artPrompt =
+      promptResponse.text?.trim() ||
+      "A peaceful, atmospheric background with soft golden light and subtle clouds, cinematic 4k, no text.";
 
-    // Step 2: Generate the actual image using nano banana (Gemini 2.5 Flash Image)
+    // 2) generate the image
     const imageResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
+      model: "gemini-2.5-flash-image",
       contents: {
         parts: [
           {
-            text: `High resolution, cinematic church presentation background: ${artPrompt}. Atmosphere is reverent and awe-inspiring. 4k resolution, no text, no people.`,
+            text: `High resolution, cinematic church presentation background: ${artPrompt}.
+No text. No people. 16:9. 4k.`,
           },
         ],
       },
@@ -108,37 +137,40 @@ export const generateVisionaryBackdrop = async (verseText: string): Promise<stri
       },
     });
 
-    // Follow Guidelines: Iterate through candidates and parts to find the image part (inlineData)
-    for (const part of imageResponse.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        return `data:image/png;base64,${part.inlineData.data}`;
+    const parts = imageResponse.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+      if ((part as any).inlineData?.data) {
+        return `data:image/png;base64,${(part as any).inlineData.data}`;
       }
     }
-    
+
     return null;
-  } catch (error) {
-    console.error("Image generation failed", error);
+  } catch (e) {
+    console.error("generateVisionaryBackdrop failed:", e);
     return null;
   }
 };
 
 /**
- * Suggests a visual theme based on context.
+ * Used by AIModal.tsx
+ * Returns a single keyword.
  */
 export const suggestVisualTheme = async (contextText: string): Promise<string> => {
-  const ai = getAi();
   try {
+    const ai = getAi();
+
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Based on the following lyrics or text, suggest a single visual keyword for a background image search (e.g., 'mountains', 'worship', 'cross', 'sky', 'hands', 'city').
-      Return ONLY the keyword.
-      
-      Text: "${contextText.substring(0, 500)}..."`
+      contents: `Based on the following lyrics or text, suggest a single visual keyword for a background image search
+(e.g., "mountains", "worship", "cross", "sky", "hands", "city"). Return ONLY the keyword.
+
+Text:
+${contextText.slice(0, 500)}`,
     });
-    // Follow Guidelines: Use .text property
+
     return response.text?.trim() || "abstract";
-  } catch (error) {
-    console.error("Theme suggestion failed", error);
+  } catch (e) {
+    console.error("suggestVisualTheme failed:", e);
     return "abstract";
   }
 };
