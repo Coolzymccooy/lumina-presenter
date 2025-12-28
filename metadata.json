@@ -1,0 +1,7 @@
+{
+  "name": "Lumina Presenter",
+  "description": "Next-gen, AI-powered church presentation platform. Features web-based service planning, smart slide generation, and low-latency presentation controls.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
