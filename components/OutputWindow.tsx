@@ -69,6 +69,18 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
 
     // Base document
     w.document.title = "Lumina Output (Projector)";
+    
+    // Force title persistence
+    const titleScript = w.document.createElement('script');
+    titleScript.innerHTML = `
+      setInterval(() => {
+        if (document.title !== "Lumina Output (Projector)") {
+          document.title = "Lumina Output (Projector)";
+        }
+      }, 1000);
+    `;
+    w.document.head.appendChild(titleScript);
+
     w.document.body.style.margin = "0";
     w.document.body.style.padding = "0";
     w.document.body.style.overflow = "hidden";
