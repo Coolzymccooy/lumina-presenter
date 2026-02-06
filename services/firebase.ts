@@ -40,3 +40,9 @@ export const updateLiveState = async (state: any) => {
 
 export const signIn = () => signInWithPopup(auth, googleProvider);
 export const logOut = () => signOut(auth);
+
+// Check if config is valid (simple heuristic)
+export const isFirebaseConfigured = () => {
+  return firebaseConfig.apiKey && firebaseConfig.apiKey.length > 10;
+};
+

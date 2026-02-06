@@ -373,8 +373,8 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       )}
 
       {/* Text layer (safe padding + hard bounds so it never bleeds outside) */}
-      <div className={`absolute inset-0 flex items-center justify-center ${containerPadding} text-center`} style={textLayerStyle}>
-        <div className="w-full h-full flex items-center justify-center">
+      <div className={`absolute inset-0 flex flex-col items-center justify-center ${containerPadding} text-center`} style={textLayerStyle}>
+        <div className="flex-1 w-full flex items-center justify-center">
           <div
             className={[
               "w-full",
@@ -392,6 +392,18 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
             {contentText}
           </div>
         </div>
+
+        {/* Footer / Reference Layer */}
+        {!isThumbnail && slide.label && (
+          <div className="w-full text-right mt-4 pb-2 pr-4 opacity-80">
+            <span 
+              className="text-[2.5vh] font-bold uppercase tracking-widest inline-block px-3 py-1 rounded-md" 
+              style={{ backgroundColor: 'rgba(0,0,0,0.4)', textShadow: 'none' }}
+            >
+              {slide.label}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
