@@ -14,13 +14,16 @@ const firebaseConfig = {
   measurementId: "G-C0P1C211PM"
 };
 
-export const isFirebaseConfigured = Boolean(firebaseConfig?.apiKey);
-
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
+
+// Check if config is valid (simple heuristic)
+export const isFirebaseConfigured = () => {
+  return firebaseConfig.apiKey && firebaseConfig.apiKey.length > 10;
+};
 
 // --- Sync Helpers ---
 
@@ -40,8 +43,3 @@ export const updateLiveState = async (state: any) => {
 
 export const signIn = () => signInWithPopup(auth, googleProvider);
 export const logOut = () => signOut(auth);
-
-// Check if config is valid (simple heuristic)
-export const isFirebaseConfigured = () => {
-  return firebaseConfig.apiKey && firebaseConfig.apiKey.length > 10;
-};
