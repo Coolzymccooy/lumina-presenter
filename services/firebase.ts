@@ -45,4 +45,3 @@ export const logOut = () => signOut(auth);
 export const isFirebaseConfigured = () => {
   return firebaseConfig.apiKey && firebaseConfig.apiKey.length > 10;
 };
-
