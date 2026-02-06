@@ -1,29 +1,40 @@
-// firebase.ts
-import { initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
 
-/**
- * Vite exposes env vars via import.meta.env (NOT process.env).
- * These must be prefixed with VITE_ to be available in the browser.
- */
+import { initializeApp } from 'firebase/app';
+import { getFirestore, doc, onSnapshot, updateDoc, setDoc } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string | undefined,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID as string | undefined,
+  apiKey: "AIzaSyDzEt6scke_SnD9ee6AgCcf_y38lUppDn0",
+  authDomain: "lumina-91144.firebaseapp.com",
+  projectId: "lumina-91144",
+  storageBucket: "lumina-91144.firebasestorage.app",
+  messagingSenderId: "161399880211",
+  appId: "1:161399880211:web:f5d4affd057b621cc75de6",
+  measurementId: "G-C0P1C211PM"
 };
 
-// “configured” means the minimum keys exist
-export const isFirebaseConfigured =
-  !!firebaseConfig.apiKey && !!firebaseConfig.authDomain && !!firebaseConfig.projectId;
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+export const storage = getStorage(app);
+export const googleProvider = new GoogleAuthProvider();
 
-export const app: FirebaseApp | null = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
-export const auth: Auth | null = app ? getAuth(app) : null;
-export const db: Firestore | null = app ? getFirestore(app) : null;
+// --- Sync Helpers ---
 
-if (!isFirebaseConfigured) {
-  console.warn("Firebase credentials missing. App running in Demo Mode (Local Storage only).");
-}
+export const subscribeToState = (callback: (data: any) => void) => {
+  return onSnapshot(doc(db, 'sessions', 'live'), (doc) => {
+    if (doc.exists()) callback(doc.data());
+  });
+};
+
+export const updateLiveState = async (state: any) => {
+  try {
+    await setDoc(doc(db, 'sessions', 'live'), state, { merge: true });
+  } catch (e) {
+    console.error("Sync Error:", e);
+  }
+};
+
+export const signIn = () => signInWithPopup(auth, googleProvider);
+export const logOut = () => signOut(auth);
