@@ -12,11 +12,13 @@ import { OutputWindow } from './components/OutputWindow';
 import { LoginScreen } from './components/LoginScreen';
 import { AudioLibrary } from './components/AudioLibrary';
 import { BibleBrowser } from './components/BibleBrowser';
+import { LandingPage } from './components/LandingPage'; // NEW
+import { ProfileSettings } from './components/ProfileSettings'; // NEW
 import { logActivity, analyzeSentimentContext } from './services/analytics';
 import { auth, isFirebaseConfigured } from './services/firebase';
 import { onAuthStateChanged } from "firebase/auth";
 import { clearMediaCache } from './services/localMedia';
-import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon } from './components/Icons';
+import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings } from './components/Icons'; // Added Settings Icon
 
 // --- CONSTANTS ---
 const STORAGE_KEY = 'lumina_session_v1';
@@ -35,12 +37,14 @@ const ForwardIcon = ({ className }: { className?: string }) => (
 function App() {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [viewState, setViewState] = useState<'landing' | 'studio'>('landing'); // NEW: Top-level routing
+  
   const [saveError, setSaveError] = useState<boolean>(false);
   const [popupBlocked, setPopupBlocked] = useState(false);
   
   // ✅ Projector popout window handle (opened in click handler to avoid popup blockers)
   const [outputWin, setOutputWin] = useState<Window | null>(null);
-const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'AUDIO' | 'BIBLE'>('SCHEDULE');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'AUDIO' | 'BIBLE'>('SCHEDULE');
 
   const getSavedState = () => {
     try {
@@ -71,6 +75,7 @@ const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'AUDIO' | 
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isSlideEditorOpen, setIsSlideEditorOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false); // NEW
   const [editingSlide, setEditingSlide] = useState<Slide | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
 
@@ -100,20 +105,26 @@ const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'AUDIO' | 
   const activeSlideRef = useRef<HTMLDivElement>(null);
   const antiSleepAudioRef = useRef<HTMLAudioElement>(null);
 
-useEffect(() => {
-  if (isFirebaseConfigured && auth) {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setAuthLoading(false);
-    });
-    return () => unsub();
-  }
+  // --- SESSION PERSISTENCE LOGIC ---
+  useEffect(() => {
+    if (isFirebaseConfigured && auth) {
+      const unsub = onAuthStateChanged(auth, (u) => {
+        setUser(u);
+        setAuthLoading(false);
+        // Auto-enter workspace if authenticated
+        if (u) setViewState('studio'); 
+      });
+      return () => unsub();
+    }
 
-  // demo mode fallback
-  const demoUser = localStorage.getItem("lumina_demo_user");
-  if (demoUser) setUser(JSON.parse(demoUser));
-  setAuthLoading(false);
-}, []);
+    // demo mode fallback
+    const demoUser = localStorage.getItem("lumina_demo_user");
+    if (demoUser) {
+        setUser(JSON.parse(demoUser));
+        setViewState('studio');
+    }
+    setAuthLoading(false);
+  }, []);
 
 
   useEffect(() => {
@@ -205,6 +216,7 @@ useEffect(() => {
         localStorage.setItem('lumina_demo_user', JSON.stringify(loggedInUser));
     }
     logActivity(loggedInUser.uid, 'SESSION_START');
+    setViewState('studio'); // Transition to app
   };
 
   const handleLogout = () => {
@@ -212,6 +224,7 @@ useEffect(() => {
     if (isFirebaseConfigured && auth) auth.signOut();
     else localStorage.removeItem('lumina_demo_user');
     setUser(null);
+    setViewState('landing'); // Return to home
   };
 
   useEffect(() => {
@@ -370,8 +383,17 @@ useEffect(() => {
     try { w.focus(); } catch {}
   };
 
-  if (authLoading) return <div className="h-screen w-screen bg-zinc-950 flex items-center justify-center text-zinc-500 font-mono text-xs animate-pulse">LOADING WORKSPACE...</div>;
-  if (!user) return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  if (authLoading) return <div className="h-screen w-screen bg-black flex items-center justify-center text-zinc-500 font-mono text-xs animate-pulse">LOADING NEURAL HUB...</div>;
+
+  // ROUTING: LANDING PAGE
+  if (viewState === 'landing') {
+      return <LandingPage onEnter={() => user ? setViewState('studio') : setUser({uid:'guest'})} isAuthenticated={!!user} />;
+  }
+
+  // ROUTING: LOGIN (If not authenticated and trying to enter)
+  if (!user && viewState === 'studio') {
+      return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  }
   
   const ScheduleList = () => (
     <div className="flex-1 overflow-y-auto bg-zinc-950">
@@ -406,6 +428,7 @@ useEffect(() => {
     </div>
   );
 
+  // ROUTING: STUDIO (MAIN APP)
   return (
     <div className="flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] bg-zinc-950 text-zinc-200 font-sans selection:bg-blue-900 selection:text-white relative">
       <audio ref={antiSleepAudioRef} src={SILENT_AUDIO_B64} loop muted />
@@ -414,23 +437,36 @@ useEffect(() => {
 
       <header className="h-12 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2 text-zinc-100 font-mono tracking-tighter text-lg font-bold">LUMINA <span className="px-1.5 py-0.5 rounded-sm bg-zinc-900 text-[10px] text-zinc-500 border border-zinc-800">v2.1</span></div>
+          <div 
+            onClick={() => setViewState('landing')}
+            className="flex items-center gap-2 text-zinc-100 font-mono tracking-tighter text-lg font-bold cursor-pointer hover:opacity-80 transition-opacity"
+          >
+            LUMINA <span className="px-1.5 py-0.5 rounded-sm bg-zinc-900 text-[10px] text-zinc-500 border border-zinc-800">v2.1</span>
+          </div>
           <div className="h-4 w-px bg-zinc-800"></div>
-          <div className="flex gap-1">
+          <div className="flex gap-1 hidden md:flex">
             <button onClick={() => setViewMode('BUILDER')} className={`px-3 py-1 rounded-sm text-xs font-medium border ${viewMode === 'BUILDER' ? 'bg-zinc-900 text-white border-zinc-700' : 'text-zinc-500 border-transparent'}`}>BUILD</button>
             <button onClick={() => setViewMode('PRESENTER')} className={`px-3 py-1 rounded-sm text-xs font-medium border ${viewMode === 'PRESENTER' ? 'bg-zinc-900 text-white border-zinc-700' : 'text-zinc-500 border-transparent'}`}>PRESENT</button>
           </div>
         </div>
         <div className="flex items-center gap-3">
            <button onClick={() => setIsHelpOpen(true)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-sm"><HelpIcon className="w-4 h-4" /></button>
+           <button onClick={() => setIsProfileOpen(true)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-sm"><Settings className="w-4 h-4" /></button>
            <button onClick={() => setIsAIModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 text-zinc-400 border border-zinc-800 hover:border-blue-900 rounded-sm text-xs"><SparklesIcon className="w-3 h-3" />AI ASSIST</button>
            <button onClick={handleToggleOutput} className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-bold border ${isOutputLive ? 'bg-emerald-950/30 text-emerald-400 border-emerald-900' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}><MonitorIcon className="w-3 h-3" />{isOutputLive ? 'OUTPUT ACTIVE' : 'LAUNCH OUTPUT'}</button>
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar with Tabs */}
-        <div className="w-64 bg-zinc-950 border-r border-zinc-900 flex flex-col shrink-0">
+      {/* MOBILE NAV BAR (Visible only on small screens) */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 flex justify-around p-3 z-50">
+         <button onClick={() => setViewMode('BUILDER')} className={`flex flex-col items-center gap-1 ${viewMode === 'BUILDER' ? 'text-white' : 'text-zinc-500'}`}><EditIcon className="w-5 h-5"/> <span className="text-[10px] font-bold">BUILD</span></button>
+         <button onClick={() => setViewMode('PRESENTER')} className={`flex flex-col items-center gap-1 ${viewMode === 'PRESENTER' ? 'text-white' : 'text-zinc-500'}`}><PlayIcon className="w-5 h-5"/> <span className="text-[10px] font-bold">PRESENT</span></button>
+         <button onClick={handleToggleOutput} className={`flex flex-col items-center gap-1 ${isOutputLive ? 'text-emerald-400' : 'text-zinc-500'}`}><MonitorIcon className="w-5 h-5"/> <span className="text-[10px] font-bold">OUTPUT</span></button>
+      </div>
+
+      <div className="flex-1 flex overflow-hidden mb-16 md:mb-0">
+        {/* Sidebar with Tabs (Hidden on Mobile unless Builder Mode) */}
+        <div className={`w-full md:w-64 bg-zinc-950 border-r border-zinc-900 flex-col shrink-0 ${viewMode === 'BUILDER' ? 'flex' : 'hidden md:flex'}`}>
           <div className="flex border-b border-zinc-900 bg-zinc-950">
              <button onClick={() => setActiveSidebarTab('SCHEDULE')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeSidebarTab === 'SCHEDULE' ? 'text-blue-500 border-blue-600 bg-zinc-900/50' : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>Items</button>
              <button onClick={() => setActiveSidebarTab('AUDIO')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeSidebarTab === 'AUDIO' ? 'text-blue-500 border-blue-600 bg-zinc-900/50' : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>Audio</button>
@@ -456,11 +492,11 @@ useEffect(() => {
                 />
             ) : (
                 <BibleBrowser 
-                  onAddRequest={(item) => {
+                  onAddRequest={(item: ServiceItem) => {
                     addItem(item);
                     setActiveSidebarTab('SCHEDULE');
                   }}
-                  onProjectRequest={(item) => {
+                  onProjectRequest={(item: ServiceItem) => {
                     addItem(item);
                     goLive(item, 0);
                     setActiveSidebarTab('SCHEDULE');
@@ -470,8 +506,9 @@ useEffect(() => {
           </div>
         </div>
 
+        {/* ... (Existing Builder/Presenter Logic) ... */}
         {viewMode === 'BUILDER' ? (
-          <div className="flex-1 flex bg-zinc-950">
+          <div className="flex-1 flex bg-zinc-950 hidden md:flex">
              <div className="w-56 bg-zinc-900/30 border-r border-zinc-900 flex flex-col hidden lg:flex">
                 <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex items-center">Library</div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
@@ -514,7 +551,7 @@ useEffect(() => {
                     <div className="flex items-center gap-2"><button onClick={() => setBlackout(!blackout)} className={`h-12 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button></div>
                 </div>
             </div>
-            <div className="w-full lg:w-72 bg-zinc-950 border-l border-zinc-900 flex flex-col h-64 lg:h-auto border-t lg:border-t-0">
+            <div className="w-full lg:w-72 bg-zinc-950 border-l border-zinc-900 flex flex-col h-64 lg:h-auto border-t lg:border-t-0 hidden md:flex">
                 <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-500 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950"><span>Live Queue</span>{activeItem && <span className="text-red-500 animate-pulse">● LIVE</span>}</div>
                 <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 lg:grid-cols-2 gap-2 content-start scroll-smooth">
                     {activeItem?.slides.map((slide, idx) => (<div key={slide.id} ref={activeSlideIndex === idx ? activeSlideRef : null} onClick={() => { setActiveSlideIndex(idx); setBlackout(false); setIsPlaying(true); }} className={`cursor-pointer rounded-sm overflow-hidden border transition-all relative aspect-video ${activeSlideIndex === idx ? 'ring-2 ring-red-500 border-red-500 opacity-100' : 'border-zinc-800 opacity-50 hover:opacity-80'}`}><div className="absolute inset-0 pointer-events-none"><SlideRenderer slide={slide} item={activeItem} fitContainer={true} isThumbnail={true} /></div><div className="absolute bottom-0 left-0 right-0 bg-black/80 text-zinc-300 text-[9px] px-1 py-0.5 font-mono truncate border-t border-zinc-800">{idx + 1}. {slide.label}</div></div>))}
@@ -538,6 +575,7 @@ useEffect(() => {
           }}>{blackout ? (<div className="w-full h-full bg-black cursor-none"></div>) : (<SlideRenderer slide={activeSlide} item={activeItem} fitContainer={true} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={false} />)}</OutputWindow>)}
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
+      {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={() => {}} currentSettings={{}} />} {/* NEW */}
       <SlideEditorModal isOpen={isSlideEditorOpen} onClose={() => setIsSlideEditorOpen(false)} slide={editingSlide} onSave={(slide) => { if (!selectedItem) return; const slideExists = selectedItem.slides.find(s => s.id === slide.id); let newSlides = slideExists ? selectedItem.slides.map(s => s.id === slide.id ? slide : s) : [...selectedItem.slides, slide]; updateItem({ ...selectedItem, slides: newSlides }); setIsSlideEditorOpen(false); }} />
     </div>
   );
