@@ -1,36 +1,40 @@
 
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp } from 'firebase/app';
+import { getFirestore, doc, onSnapshot, updateDoc, setDoc } from 'firebase/firestore';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 
-// TODO: User must provide these env variables for full backend functionality
 const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.FIREBASE_APP_ID
+  apiKey: "AIzaSyDzEt6scke_SnD9ee6AgCcf_y38lUppDn0",
+  authDomain: "lumina-91144.firebaseapp.com",
+  projectId: "lumina-91144",
+  storageBucket: "lumina-91144.firebasestorage.app",
+  messagingSenderId: "161399880211",
+  appId: "1:161399880211:web:f5d4affd057b621cc75de6",
+  measurementId: "G-C0P1C211PM"
 };
 
-// Check if config is present to avoid crashing in "Demo Mode"
-const isFirebaseConfigured = !!firebaseConfig.apiKey;
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+export const storage = getStorage(app);
+export const googleProvider = new GoogleAuthProvider();
 
-let app;
-let auth;
-let db;
+// --- Sync Helpers ---
 
-if (isFirebaseConfigured) {
+export const subscribeToState = (callback: (data: any) => void) => {
+  return onSnapshot(doc(db, 'sessions', 'live'), (doc) => {
+    if (doc.exists()) callback(doc.data());
+  });
+};
+
+export const updateLiveState = async (state: any) => {
   try {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
-    console.log("Firebase initialized successfully");
-  } catch (error) {
-    console.error("Firebase initialization failed:", error);
+    await setDoc(doc(db, 'sessions', 'live'), state, { merge: true });
+  } catch (e) {
+    console.error("Sync Error:", e);
   }
-} else {
-  console.warn("Firebase credentials missing. App running in Demo Mode (Local Storage only).");
-}
+};
 
-export { auth, db, isFirebaseConfigured };
+export const signIn = () => signInWithPopup(auth, googleProvider);
+export const logOut = () => signOut(auth);
