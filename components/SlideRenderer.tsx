@@ -336,7 +336,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
           key={resolvedUrl}
           ref={htmlVideoRef}
           src={resolvedUrl}
-          className="w-full h-full object-contain"
+          className="w-full h-full object-cover"
           loop
           muted={isThumbnail || isMuted}
           playsInline
@@ -352,7 +352,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
         <img
           src={resolvedUrl}
           alt=""
-          className="w-full h-full object-contain"
+          className="w-full h-full object-cover"
           draggable={false}
           onError={() => setMediaError(true)}
         />

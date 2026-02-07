@@ -151,6 +151,80 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isAuthenticat
         </div>
       </section>
 
+      {/* How It Works Section */}
+      <section id="how-it-works" className="py-32 px-6 bg-[#050505] border-t border-white/5">
+        <div className="max-w-7xl mx-auto">
+           <div className="text-center mb-20">
+            <h2 className="text-3xl md:text-5xl font-bold mb-6">How It Works</h2>
+            <p className="text-gray-400 max-w-2xl mx-auto">From preparation to presentation, Lumina streamlines your entire workflow.</p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-12 relative">
+             <div className="hidden md:block absolute top-12 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
+             
+             {[
+                { step: "01", title: "Create", desc: "Build your service flow, add songs, and import media using our drag-and-drop builder." },
+                { step: "02", title: "Sync", desc: "Your changes are instantly saved to the cloud. Log in from the booth and everything is ready." },
+                { step: "03", title: "Present", desc: "Go live with confidence. Control slides, video, and audio from a single dashboard." }
+             ].map((item, i) => (
+                <div key={i} className="relative bg-black border border-white/10 p-8 rounded-2xl text-center hover:border-purple-500/50 transition-colors z-10">
+                   <div className="w-16 h-16 bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-6 text-2xl font-bold text-white border-4 border-black relative -mt-16 shadow-xl">
+                      {item.step}
+                   </div>
+                   <h3 className="text-xl font-bold mb-4">{item.title}</h3>
+                   <p className="text-gray-400 text-sm leading-relaxed">{item.desc}</p>
+                </div>
+             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-32 px-6 bg-black border-t border-white/5">
+         <div className="max-w-7xl mx-auto">
+            <div className="text-center mb-20">
+               <h2 className="text-3xl md:text-5xl font-bold mb-6">Simple Pricing</h2>
+               <p className="text-gray-400">Start for free, upgrade when you grow.</p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+               <div className="p-8 rounded-3xl border border-white/10 bg-white/[0.02] flex flex-col">
+                  <h3 className="text-lg font-medium text-gray-400 mb-2">Starter</h3>
+                  <div className="text-4xl font-bold text-white mb-6">Free</div>
+                  <ul className="space-y-4 mb-8 flex-1">
+                     {['Unlimited Services', 'Cloud Sync (1 User)', 'Basic Motion Library', 'Bible Engine'].map(f => (
+                        <li key={f} className="flex items-center gap-3 text-sm text-gray-300"><CheckCircle2 size={16} className="text-green-500" /> {f}</li>
+                     ))}
+                  </ul>
+                  <button onClick={onEnter} className="w-full py-3 rounded-xl border border-white/20 hover:bg-white hover:text-black transition-all font-bold text-sm">Get Started</button>
+               </div>
+
+               <div className="p-8 rounded-3xl border border-purple-500 bg-purple-500/5 flex flex-col relative transform md:-translate-y-4">
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-purple-500 text-white text-[10px] font-bold px-3 py-1 rounded-b-lg uppercase tracking-wider">Most Popular</div>
+                  <h3 className="text-lg font-medium text-purple-400 mb-2">Pro</h3>
+                  <div className="text-4xl font-bold text-white mb-6">$19<span className="text-lg text-gray-500 font-normal">/mo</span></div>
+                  <ul className="space-y-4 mb-8 flex-1">
+                     {['Everything in Starter', 'Cloud Sync (5 Users)', 'Premium Motion Library', 'AI Assistant (GPT-4o)', 'Priority Support'].map(f => (
+                        <li key={f} className="flex items-center gap-3 text-sm text-white"><CheckCircle2 size={16} className="text-purple-400" /> {f}</li>
+                     ))}
+                  </ul>
+                  <button className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white transition-all font-bold text-sm shadow-lg shadow-purple-900/50">Start Free Trial</button>
+               </div>
+
+               <div className="p-8 rounded-3xl border border-white/10 bg-white/[0.02] flex flex-col">
+                  <h3 className="text-lg font-medium text-gray-400 mb-2">Enterprise</h3>
+                  <div className="text-4xl font-bold text-white mb-6">Custom</div>
+                  <ul className="space-y-4 mb-8 flex-1">
+                     {['Unlimited Users', 'Multi-Campus Sync', 'Custom Branding', 'SLA & 24/7 Support', 'Dedicated Success Manager'].map(f => (
+                        <li key={f} className="flex items-center gap-3 text-sm text-gray-300"><CheckCircle2 size={16} className="text-green-500" /> {f}</li>
+                     ))}
+                  </ul>
+                  <button className="w-full py-3 rounded-xl border border-white/20 hover:bg-white hover:text-black transition-all font-bold text-sm">Contact Sales</button>
+               </div>
+            </div>
+         </div>
+      </section>
+
       {/* Footer */}
       <footer className="py-12 border-t border-white/10 text-center">
         <p className="text-gray-500 text-sm">© 2026 Lumina Presenter. All rights reserved.</p>

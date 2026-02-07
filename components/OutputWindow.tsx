@@ -53,10 +53,30 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
       w = targetWindow;
       createdByMeRef.current = false;
     } else {
-      w =
-        winRef.current && !winRef.current.closed
+      // 1. Create a minimal HTML blob with the correct title
+      const initialHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Lumina Output (Projector)</title>
+    <style>
+      body { margin: 0; padding: 0; background-color: black; overflow: hidden; }
+      #output-root { width: 100vw; height: 100vh; }
+    </style>
+  </head>
+  <body>
+    <div id="output-root"></div>
+  </body>
+</html>`;
+
+      const blob = new Blob([initialHtml], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+
+      // 2. Open the blob URL
+      w = winRef.current && !winRef.current.closed
           ? winRef.current
-          : window.open("", windowName, features);
+          : window.open(url, windowName, features);
+      
       createdByMeRef.current = true;
     }
 
@@ -67,62 +87,57 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
 
     winRef.current = w;
 
-    // Base document
-    w.document.title = "Lumina Output (Projector)";
-    
-    // Force title persistence
-    const titleScript = w.document.createElement('script');
-    titleScript.innerHTML = `
-      setInterval(() => {
-        if (document.title !== "Lumina Output (Projector)") {
-          document.title = "Lumina Output (Projector)";
-        }
-      }, 1000);
-    `;
-    w.document.head.appendChild(titleScript);
+    // 3. Wait for the window to load the blob, then inject React
+    const onWindowLoad = () => {
+      if (!w || w.closed) return;
+      
+      // Ensure title is set again just in case
+      w.document.title = "Lumina Output (Projector)";
+      
+      // Find the container we defined in the blob
+      const div = w.document.getElementById("output-root");
+      if (div) {
+        setContainer(div);
+      } else {
+        // Fallback if blob didn't render for some reason
+        const newDiv = w.document.createElement("div");
+        newDiv.id = "output-root";
+        w.document.body.appendChild(newDiv);
+        setContainer(newDiv);
+      }
 
-    w.document.body.style.margin = "0";
-    w.document.body.style.padding = "0";
-    w.document.body.style.overflow = "hidden";
-    w.document.body.style.backgroundColor = "black";
+      // Copy styles (Vite dev injects <style> tags, Tailwind compiled CSS is <style>/<link>)
+      const head = w.document.head;
+      const markerName = "lumina-output-styles";
+      
+      if (!head.querySelector(`meta[name="${markerName}"]`)) {
+        const marker = w.document.createElement("meta");
+        marker.name = markerName;
+        marker.content = "1";
+        head.appendChild(marker);
 
-    // Clear body
-    w.document.body.innerHTML = "";
+        Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).forEach(
+          (link) => {
+            const newLink = w!.document.createElement("link");
+            newLink.rel = "stylesheet";
+            newLink.href = link.href;
+            head.appendChild(newLink);
+          }
+        );
 
-    // Root container
-    const div = w.document.createElement("div");
-    div.id = "output-root";
-    div.style.width = "100vw";
-    div.style.height = "100vh";
-    div.style.background = "black";
-    w.document.body.appendChild(div);
-    setContainer(div);
+        Array.from(document.querySelectorAll<HTMLStyleElement>("style")).forEach((style) => {
+          const newStyle = w!.document.createElement("style");
+          newStyle.textContent = style.textContent;
+          head.appendChild(newStyle);
+        });
+      }
+    };
 
-    // Copy styles (Vite dev injects <style> tags, Tailwind compiled CSS is <style>/<link>)
-    const head = w.document.head;
-    const markerName = "lumina-output-styles";
-    const existingMarker = head.querySelector(`meta[name="${markerName}"]`);
-
-    if (!existingMarker) {
-      const marker = w.document.createElement("meta");
-      marker.name = markerName;
-      marker.content = "1";
-      head.appendChild(marker);
-
-      Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).forEach(
-        (link) => {
-          const newLink = w!.document.createElement("link");
-          newLink.rel = "stylesheet";
-          newLink.href = link.href;
-          head.appendChild(newLink);
-        }
-      );
-
-      Array.from(document.querySelectorAll<HTMLStyleElement>("style")).forEach((style) => {
-        const newStyle = w!.document.createElement("style");
-        newStyle.textContent = style.textContent;
-        head.appendChild(newStyle);
-      });
+    // If it's an existing window, it might already be loaded
+    if (w.document.readyState === 'complete') {
+        onWindowLoad();
+    } else {
+        w.addEventListener('load', onWindowLoad);
     }
 
     try {
@@ -156,6 +171,7 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
     };
 
     return () => {
+      w?.removeEventListener('load', onWindowLoad); // Cleanup listener
       window.removeEventListener("unload", handleParentUnload);
       window.removeEventListener("beforeunload", handleParentUnload);
       window.clearInterval(checkClosed);
