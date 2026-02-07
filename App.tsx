@@ -366,8 +366,27 @@ function App() {
     }
 
     // Turn ON: open immediately (must happen inside click handler to avoid popup blockers)
+    // 1. Create a minimal HTML blob with the correct title to AVOID about:blank
+    const initialHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Lumina Output (Projector)</title>
+    <style>
+      body { margin: 0; padding: 0; background-color: black; overflow: hidden; }
+      #output-root { width: 100vw; height: 100vh; }
+    </style>
+  </head>
+  <body>
+    <div id="output-root"></div>
+  </body>
+</html>`;
+
+    const blob = new Blob([initialHtml], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+
     const w = window.open(
-      "",
+      url,
       "LuminaOutput",
       "width=1280,height=720,menubar=no,toolbar=no,location=no,status=no"
     );
@@ -378,9 +397,6 @@ function App() {
       setOutputWin(null);
       return;
     }
-
-    // Force title immediately
-    w.document.title = "Lumina Output (Projector)";
 
     setPopupBlocked(false);
     setOutputWin(w);

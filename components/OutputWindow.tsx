@@ -116,6 +116,7 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
         marker.content = "1";
         head.appendChild(marker);
 
+        // Standard link tags
         Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).forEach(
           (link) => {
             const newLink = w!.document.createElement("link");
@@ -125,11 +126,22 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
           }
         );
 
+        // Style tags
         Array.from(document.querySelectorAll<HTMLStyleElement>("style")).forEach((style) => {
           const newStyle = w!.document.createElement("style");
           newStyle.textContent = style.textContent;
           head.appendChild(newStyle);
         });
+        
+        // Font imports (Google Fonts, etc.)
+        Array.from(document.querySelectorAll<HTMLLinkElement>('link[href*="fonts.googleapis.com"]')).forEach(
+          (link) => {
+             const newLink = w!.document.createElement("link");
+             newLink.rel = "stylesheet";
+             newLink.href = link.href;
+             head.appendChild(newLink);
+          }
+        );
       }
     };
 

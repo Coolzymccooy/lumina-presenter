@@ -395,10 +395,15 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
 
         {/* Footer / Reference Layer */}
         {!isThumbnail && slide.label && (
-          <div className="w-full text-right mt-4 pb-2 pr-4 opacity-80">
+          <div className="absolute bottom-8 right-8 max-w-[80%] text-right">
             <span 
-              className="text-[2.5vh] font-bold uppercase tracking-widest inline-block px-3 py-1 rounded-md" 
-              style={{ backgroundColor: 'rgba(0,0,0,0.4)', textShadow: 'none' }}
+              className="text-[3.5vh] font-bold uppercase tracking-wide inline-block px-4 py-2 rounded-lg backdrop-blur-sm" 
+              style={{ 
+                fontFamily: 'Inter, system-ui, sans-serif', // Modern, clean font for reference
+                backgroundColor: 'rgba(0,0,0,0.3)', 
+                textShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                color: '#e4e4e7' // zinc-200
+              }}
             >
               {slide.label}
             </span>

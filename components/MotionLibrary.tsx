@@ -2,12 +2,12 @@
 import React from 'react';
 import { PlayIcon, PlusIcon } from './Icons';
 
-// High-quality, royalty-free motion loops (Pexels/Pixabay direct links)
+// High-quality, royalty-free motion loops (Pixabay/Pexels)
 const MOTION_ASSETS = [
   { id: 'm1', name: 'Nebula Clouds', thumb: 'https://images.pexels.com/videos/3125866/free-video-3125866.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500', url: 'https://player.vimeo.com/external/3125866.sd.mp4?s=a709292850320743950106297379237070f19619&profile_id=164&oauth2_token_id=57447761' },
   { id: 'm2', name: 'Ocean Waves', thumb: 'https://images.pexels.com/videos/854226/free-video-854226.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500', url: 'https://player.vimeo.com/external/854226.sd.mp4?s=f14d952002722026330925232709272302325327&profile_id=164&oauth2_token_id=57447761' },
-  { id: 'm3', name: 'Gold Particles', thumb: 'https://images.pexels.com/videos/3163534/free-video-3163534.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500', url: 'https://player.vimeo.com/external/3163534.sd.mp4?s=3465345634563456&profile_id=164' },
-  { id: 'm4', name: 'Blue Geometric', thumb: 'https://images.pexels.com/videos/2759477/free-video-2759477.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500', url: 'https://player.vimeo.com/external/2759477.sd.mp4?s=34563456&profile_id=164' },
+  { id: 'm3', name: 'Abstract Particles', thumb: 'https://cdn.pixabay.com/vimeo/328940142/particle-22929.jpg?width=640&hash=d128e46979267152011116279313361110196726', url: 'https://cdn.pixabay.com/video/2019/04/06/22929-328940142_small.mp4' },
+  { id: 'm4', name: 'Blue Tunnel', thumb: 'https://cdn.pixabay.com/vimeo/329596677/blue-23232.jpg?width=640&hash=02577626334551130172931163456782', url: 'https://cdn.pixabay.com/video/2019/04/10/23232-329596677_small.mp4' },
 ];
 
 interface MotionLibraryProps {
