@@ -2,13 +2,15 @@
 import React from 'react';
 import { ServiceItem } from '../types';
 import { DEFAULT_BACKGROUNDS } from '../constants';
+import { PlusIcon } from './Icons';
 
 interface ItemEditorPanelProps {
   item: ServiceItem;
   onUpdate: (updatedItem: ServiceItem) => void;
+  onOpenLibrary?: () => void;
 }
 
-export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate }) => {
+export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate, onOpenLibrary }) => {
   
   const updateTheme = (updates: Partial<typeof item.theme>) => {
     onUpdate({
@@ -75,16 +77,25 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
 
         {/* Background Picker */}
         <div className="flex flex-col gap-1">
-           <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">Quick BG</span>
+           <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">Background</span>
            <div className="flex gap-1">
-              {DEFAULT_BACKGROUNDS.slice(0, 6).map((url, i) => (
+              {DEFAULT_BACKGROUNDS.slice(0, 5).map((url, i) => (
                   <button 
                     key={i}
                     onClick={() => updateTheme({ backgroundUrl: url })}
-                    className={`w-6 h-6 rounded-sm border ${item.theme.backgroundUrl === url ? 'border-blue-500' : 'border-zinc-800 opacity-60 hover:opacity-100'} bg-cover bg-center transition-all`}
+                    className={`w-6 h-6 rounded-sm border ${item.theme.backgroundUrl === url ? 'border-blue-500 ring-1 ring-blue-500' : 'border-zinc-800 opacity-60 hover:opacity-100'} bg-cover bg-center transition-all`}
                     style={{ backgroundImage: `url(${url})` }}
                   />
               ))}
+              {onOpenLibrary && (
+                <button 
+                    onClick={onOpenLibrary}
+                    className="w-6 h-6 rounded-sm border border-zinc-700 bg-zinc-900 flex items-center justify-center text-zinc-500 hover:text-white hover:border-zinc-500 transition-all"
+                    title="Open Motion Library"
+                >
+                    <PlusIcon className="w-3 h-3" />
+                </button>
+              )}
            </div>
         </div>
 

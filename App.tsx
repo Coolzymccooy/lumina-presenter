@@ -14,6 +14,7 @@ import { AudioLibrary } from './components/AudioLibrary';
 import { BibleBrowser } from './components/BibleBrowser';
 import { LandingPage } from './components/LandingPage'; // NEW
 import { ProfileSettings } from './components/ProfileSettings'; // NEW
+import { MotionLibrary } from './components/MotionLibrary'; // NEW
 import { logActivity, analyzeSentimentContext } from './services/analytics';
 import { auth, isFirebaseConfigured } from './services/firebase';
 import { onAuthStateChanged } from "firebase/auth";
@@ -76,6 +77,7 @@ function App() {
   const [isSlideEditorOpen, setIsSlideEditorOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false); // NEW
+  const [isMotionLibOpen, setIsMotionLibOpen] = useState(false); // NEW
   const [editingSlide, setEditingSlide] = useState<Slide | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
 
@@ -377,6 +379,9 @@ function App() {
       return;
     }
 
+    // Force title immediately
+    w.document.title = "Lumina Output (Projector)";
+
     setPopupBlocked(false);
     setOutputWin(w);
     setIsOutputLive(true);
@@ -518,7 +523,11 @@ function App() {
              <div className="flex-1 bg-zinc-950 flex flex-col overflow-hidden">
                {selectedItem ? (
                  <>
-                   <ItemEditorPanel item={selectedItem} onUpdate={updateItem} />
+                   <ItemEditorPanel 
+                      item={selectedItem} 
+                      onUpdate={updateItem} 
+                      onOpenLibrary={() => setIsMotionLibOpen(true)}
+                   />
                    <div className="flex-1 overflow-y-auto p-6 bg-zinc-950">
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                           {selectedItem.slides.map((slide, idx) => (
@@ -576,6 +585,18 @@ function App() {
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
       {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={() => {}} currentSettings={{}} />} {/* NEW */}
+      {isMotionLibOpen && (
+        <MotionLibrary 
+            onClose={() => setIsMotionLibOpen(false)} 
+            onSelect={(url) => { 
+                if (selectedItem) {
+                    updateItem({ ...selectedItem, theme: { ...selectedItem.theme, backgroundUrl: url } });
+                    logActivity(user?.uid, 'UPDATE_THEME', { type: 'MOTION_BG', itemId: selectedItem.id });
+                }
+                setIsMotionLibOpen(false); 
+            }} 
+        />
+      )}
       <SlideEditorModal isOpen={isSlideEditorOpen} onClose={() => setIsSlideEditorOpen(false)} slide={editingSlide} onSave={(slide) => { if (!selectedItem) return; const slideExists = selectedItem.slides.find(s => s.id === slide.id); let newSlides = slideExists ? selectedItem.slides.map(s => s.id === slide.id ? slide : s) : [...selectedItem.slides, slide]; updateItem({ ...selectedItem, slides: newSlides }); setIsSlideEditorOpen(false); }} />
     </div>
   );
