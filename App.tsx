@@ -387,7 +387,7 @@ function App() {
 
   // ROUTING: LANDING PAGE
   if (viewState === 'landing') {
-      return <LandingPage onEnter={() => user ? setViewState('studio') : setUser({uid:'guest'})} isAuthenticated={!!user} />;
+      return <LandingPage onEnter={() => setViewState('studio')} isAuthenticated={!!user} />;
   }
 
   // ROUTING: LOGIN (If not authenticated and trying to enter)
