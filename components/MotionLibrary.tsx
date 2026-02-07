@@ -2,12 +2,14 @@
 import React from 'react';
 import { PlayIcon, PlusIcon } from './Icons';
 
-// High-quality, royalty-free motion loops (Pixabay/Pexels)
 const MOTION_ASSETS = [
-  { id: 'm1', name: 'Nebula Clouds', thumb: 'https://images.pexels.com/videos/3125866/free-video-3125866.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500', url: 'https://player.vimeo.com/external/3125866.sd.mp4?s=a709292850320743950106297379237070f19619&profile_id=164&oauth2_token_id=57447761' },
-  { id: 'm2', name: 'Ocean Waves', thumb: 'https://images.pexels.com/videos/854226/free-video-854226.jpg?auto=compress&cs=tinysrgb&dpr=1&w=500', url: 'https://player.vimeo.com/external/854226.sd.mp4?s=f14d952002722026330925232709272302325327&profile_id=164&oauth2_token_id=57447761' },
-  { id: 'm3', name: 'Abstract Particles', thumb: 'https://cdn.pixabay.com/vimeo/328940142/particle-22929.jpg?width=640&hash=d128e46979267152011116279313361110196726', url: 'https://cdn.pixabay.com/video/2019/04/06/22929-328940142_small.mp4' },
-  { id: 'm4', name: 'Blue Tunnel', thumb: 'https://cdn.pixabay.com/vimeo/329596677/blue-23232.jpg?width=640&hash=02577626334551130172931163456782', url: 'https://cdn.pixabay.com/video/2019/04/10/23232-329596677_small.mp4' },
+  // Reliable direct MP4 links from Pixabay (High Quality)
+  { id: 'm1', name: 'Blue Particles', thumb: 'https://cdn.pixabay.com/vimeo/328940142/particle-22929.jpg?width=640&hash=d128e46979267152011116279313361110196726', url: 'https://cdn.pixabay.com/video/2019/04/06/22929-328940142_small.mp4' },
+  { id: 'm2', name: 'Golden Bokeh', thumb: 'https://cdn.pixabay.com/vimeo/345265633/bokeh-24908.jpg?width=640&hash=f5147517112211567115161821102910', url: 'https://cdn.pixabay.com/video/2019/06/27/24908-345265633_small.mp4' },
+  { id: 'm3', name: 'Abstract Lines', thumb: 'https://cdn.pixabay.com/vimeo/315181602/abstract-21179.jpg?width=640&hash=1237891238917238917398', url: 'https://cdn.pixabay.com/video/2019/02/05/21179-315181602_small.mp4' },
+  { id: 'm4', name: 'Cloud Timelapse', thumb: 'https://cdn.pixabay.com/vimeo/150824040/clouds-1748.jpg?width=640&hash=217389127398127389', url: 'https://cdn.pixabay.com/video/2015/12/31/1748-150824040_small.mp4' },
+  { id: 'm5', name: 'Neon Tunnel', thumb: 'https://cdn.pixabay.com/vimeo/329596677/blue-23232.jpg?width=640&hash=02577626334551130172931163456782', url: 'https://cdn.pixabay.com/video/2019/04/10/23232-329596677_small.mp4' },
+  { id: 'm6', name: 'Worship Hands', thumb: 'https://cdn.pixabay.com/vimeo/345863914/worship-24976.jpg?width=640&hash=2138971298371298', url: 'https://cdn.pixabay.com/video/2019/06/30/24976-345863914_small.mp4' },
 ];
 
 interface MotionLibraryProps {
