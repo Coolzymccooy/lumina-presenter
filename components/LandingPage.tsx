@@ -7,10 +7,12 @@ import {
 
 interface LandingPageProps {
   onEnter: () => void;
+  onLogout?: () => void;
   isAuthenticated: boolean;
+  hasSavedSession?: boolean;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isAuthenticated }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isAuthenticated, hasSavedSession = false }) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -21,7 +23,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isAuthenticat
   }, []);
 
   return (
-    <div className="min-h-screen bg-black text-white font-sans selection:bg-purple-500/30">
+    <div className="min-h-screen overflow-y-auto bg-black text-white font-sans selection:bg-purple-500/30">
       {/* Navigation */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-black/80 backdrop-blur-md border-b border-white/10' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
@@ -40,8 +42,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isAuthenticat
               onClick={onEnter}
               className="px-5 py-2.5 bg-white text-black text-sm font-bold rounded-lg hover:bg-gray-200 transition-all flex items-center gap-2"
             >
-              {isAuthenticated ? 'Enter Workspace' : 'Sign In'} <Play size={14} fill="currentColor" />
+              {isAuthenticated && hasSavedSession ? 'Resume Session' : isAuthenticated ? 'Enter Workspace' : 'Sign In'} <Play size={14} fill="currentColor" />
             </button>
+            {isAuthenticated && onLogout && (
+              <button onClick={onLogout} className="px-4 py-2.5 border border-white/20 text-sm font-bold rounded-lg hover:bg-white/10 transition-all">Logout</button>
+            )}
           </div>
 
           <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
@@ -56,8 +61,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isAuthenticat
           <a href="#features" onClick={() => setMobileMenuOpen(false)} className="text-2xl font-bold">Features</a>
           <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="text-2xl font-bold">How it works</a>
           <button onClick={onEnter} className="w-full py-4 bg-purple-600 text-white rounded-xl font-bold mt-4">
-            {isAuthenticated ? 'Enter Workspace' : 'Sign In'}
+            {isAuthenticated && hasSavedSession ? 'Resume Session' : isAuthenticated ? 'Enter Workspace' : 'Sign In'}
           </button>
+          {isAuthenticated && onLogout && (
+            <button onClick={onLogout} className="w-full py-4 border border-white/20 text-white rounded-xl font-bold">Logout</button>
+          )}
         </div>
       )}
 
@@ -81,12 +89,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, isAuthenticat
             No expensive hardware required.
           </p>
           
+
+          {isAuthenticated && hasSavedSession && (
+            <p className="text-sm text-emerald-300 mb-6">Session detected. Click Resume Session to jump back into your workspace.</p>
+          )}
           <div className="flex flex-col md:flex-row items-center justify-center gap-4">
             <button 
               onClick={onEnter}
               className="px-8 py-4 bg-white text-black rounded-xl font-bold text-lg hover:bg-gray-100 transition-all shadow-xl shadow-white/10 flex items-center gap-2"
             >
-              Start Presenting <Play size={18} fill="currentColor" />
+              {isAuthenticated && hasSavedSession ? 'Resume Session' : 'Start Presenting'} <Play size={18} fill="currentColor" />
             </button>
             <button className="px-8 py-4 bg-white/5 border border-white/10 text-white rounded-xl font-bold text-lg hover:bg-white/10 transition-all">
               View Demo
