@@ -9,6 +9,7 @@ export type EventType =
   | 'SIGNUP'
   | 'ADD_ITEM'
   | 'DELETE_ITEM'
+  | 'UPDATE_THEME'
   | 'AI_GENERATION'
   | 'PRESENTATION_START'
   | 'SLIDE_CHANGE'
