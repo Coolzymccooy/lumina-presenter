@@ -422,6 +422,7 @@ function App() {
     if (!isFirebaseConfigured()) return;
 
     const unsubState = subscribeToState((data) => {
+
       const incomingAt = typeof data.remoteCommandAt === 'number' ? data.remoteCommandAt : null;
 
       // First snapshot should only initialize marker to avoid replaying stale commands.
@@ -437,6 +438,14 @@ function App() {
       if (data.remoteCommand === 'NEXT') nextSlide();
       if (data.remoteCommand === 'PREV') prevSlide();
       if (data.remoteCommand === 'BLACKOUT') setBlackout((prev) => !prev);
+
+      if (data.remoteCommandAt && data.remoteCommandAt !== (window as any).__lastRemoteCommandAt) {
+        (window as any).__lastRemoteCommandAt = data.remoteCommandAt;
+        if (data.remoteCommand === 'NEXT') nextSlide();
+        if (data.remoteCommand === 'PREV') prevSlide();
+        if (data.remoteCommand === 'BLACKOUT') setBlackout((prev) => !prev);
+      }
+
     });
 
     const teamId = user?.uid || 'default-team';
@@ -444,8 +453,11 @@ function App() {
     return () => {
       unsubState();
       unsubPlaylists();
+
       hasInitializedRemoteSnapshotRef.current = false;
       lastRemoteCommandAtRef.current = null;
+
+
     };
   }, [user?.uid, nextSlide, prevSlide]);
 
