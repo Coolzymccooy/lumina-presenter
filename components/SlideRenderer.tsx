@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Slide, ServiceItem, MediaType } from "../types";
 import { getMedia, getCachedMedia } from "../services/localMedia";
+import { DEFAULT_BACKGROUNDS } from "../constants";
 
 interface SlideRendererProps {
   slide: Slide | null;
@@ -27,6 +28,15 @@ interface SlideRendererProps {
 
 function safeString(v: unknown) {
   return typeof v === "string" ? v : "";
+}
+
+function hashSeed(input: string): number {
+  let h = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    h = (h << 5) - h + input.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h);
 }
 
 function getYoutubeId(url: string): string | null {
@@ -262,6 +272,10 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     color: item.theme?.textColor || "#fff",
     textShadow: item.theme?.shadow ? "2px 2px 4px rgba(0,0,0,0.8)" : "none",
   };
+  const fallbackBackground = useMemo(() => {
+    const seed = `${item?.id || "item"}:${slide?.id || "slide"}`;
+    return DEFAULT_BACKGROUNDS[hashSeed(seed) % DEFAULT_BACKGROUNDS.length];
+  }, [item?.id, slide?.id]);
 
   const renderMedia = () => {
     // ✅ MVP rule: if there is no background configured, just render black (no “asset missing” behind text)
@@ -271,16 +285,12 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
 
     if (mediaError) {
       return (
-        <div className="w-full h-full bg-zinc-900 flex flex-col items-center justify-center text-zinc-500 p-4 text-center">
-          {!isThumbnail ? (
-            <>
-              <span className="text-xs text-red-400 font-bold uppercase">Asset Missing</span>
-              <p className="text-[10px] mt-2 opacity-70 max-w-xs">
-                The media file could not be found or is unsupported.
-              </p>
-            </>
-          ) : (
-            <span className="text-[8px] text-red-400">Error</span>
+        <div className="w-full h-full relative">
+          <img src={fallbackBackground} alt="" className="w-full h-full object-cover" />
+          {!isThumbnail && (
+            <div className="absolute top-3 right-3 text-[9px] uppercase tracking-wider bg-black/50 text-amber-200 border border-amber-400/40 px-2 py-1 rounded">
+              Fallback Background
+            </div>
           )}
         </div>
       );
@@ -288,8 +298,11 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
 
     if (isLoading && !isThumbnail) {
       return (
-        <div className="w-full h-full bg-black flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-zinc-800 border-t-zinc-400 rounded-full animate-spin" />
+        <div className="w-full h-full relative">
+          <img src={fallbackBackground} alt="" className="w-full h-full object-cover" />
+          <div className="absolute inset-0 flex items-center justify-center bg-black/35">
+            <div className="w-8 h-8 border-2 border-zinc-800 border-t-zinc-300 rounded-full animate-spin" />
+          </div>
         </div>
       );
     }
@@ -374,7 +387,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       );
     }
 
-    return <div className="w-full h-full bg-black" />;
+    return <img src={fallbackBackground} alt="" className="w-full h-full object-cover" />;
   };
 
   return (

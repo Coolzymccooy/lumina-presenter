@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState, updateLiveState } from '../services/firebase';
+import { logActivity } from '../services/analytics';
 import { LoginScreen } from './LoginScreen';
 
 export const RemoteControl: React.FC = () => {
+  const params = new URLSearchParams(window.location.search);
+  const sessionId = (params.get('session') || 'live').trim() || 'live';
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [state, setState] = useState<any>({});
@@ -30,12 +33,14 @@ export const RemoteControl: React.FC = () => {
         setState(data);
         setSyncError('');
       },
-      'live',
+      sessionId,
       (error) => {
-        setSyncError(error?.message || 'Failed to subscribe to live session.');
+        const message = error?.message || 'Failed to subscribe to live session.';
+        setSyncError(message);
+        logActivity(user?.uid, 'ERROR', { type: 'REMOTE_SUBSCRIBE_FAIL', sessionId, message });
       }
     );
-  }, [user]);
+  }, [user, sessionId]);
 
   const ownerUid = state?.controllerOwnerUid || null;
   const allowedUids = Array.isArray(state?.controllerAllowedUids) ? state.controllerAllowedUids : [];
@@ -59,11 +64,12 @@ export const RemoteControl: React.FC = () => {
 
     setSending(true);
     setCommandStatus('');
-    const ok = await updateLiveState({ remoteCommand: command, remoteCommandAt: Date.now() });
+    const ok = await updateLiveState({ remoteCommand: command, remoteCommandAt: Date.now() }, sessionId);
     setSending(false);
 
     if (!ok) {
       setCommandStatus('Command failed. Check login and Firestore permissions.');
+      logActivity(user?.uid, 'ERROR', { type: 'REMOTE_COMMAND_FAIL', command, sessionId });
       return;
     }
 
@@ -87,6 +93,7 @@ export const RemoteControl: React.FC = () => {
     <div className="min-h-screen bg-zinc-950 text-white p-6">
       <h1 className="text-2xl font-bold mb-2">Lumina Remote</h1>
       <p className="text-zinc-400 text-sm mb-2">Mobile control surface synced over Firebase.</p>
+      <p className="text-zinc-500 text-xs mb-2">Session: {sessionId}</p>
       <p className="text-zinc-500 text-xs mb-4">Signed in as: {user?.email || user?.uid}</p>
       {ownerUid && (
         <p className="text-zinc-500 text-xs mb-4">Session owner UID: {ownerUid}</p>

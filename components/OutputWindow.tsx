@@ -33,6 +33,8 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
   const winRef = useRef<Window | null>(null);
   const createdByMeRef = useRef(false);
   const [container, setContainer] = useState<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+  const onBlockRef = useRef(onBlock);
 
   // React 18 StrictMode (dev): mount/cleanup/mount again.
   // Ignore the first cleanup so the popout doesn't close immediately.
@@ -42,6 +44,14 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
     if (externalWindow && !externalWindow.closed) return externalWindow;
     return null;
   }, [externalWindow]);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    onBlockRef.current = onBlock;
+  }, [onBlock]);
 
   useEffect(() => {
     effectRunIdRef.current += 1;
@@ -76,7 +86,7 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
     }
 
     if (!w || w.closed || typeof w.closed === "undefined") {
-      onBlock();
+      onBlockRef.current();
       return;
     }
 
@@ -166,7 +176,7 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
     // Closed detection
     const checkClosed = window.setInterval(() => {
       if (w && w.closed) {
-        onClose();
+        onCloseRef.current();
         window.clearInterval(checkClosed);
       }
     }, 500);
@@ -184,7 +194,7 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
     window.addEventListener("beforeunload", handleParentUnload);
 
     w.onbeforeunload = () => {
-      onClose();
+      onCloseRef.current();
     };
 
     return () => {
@@ -205,7 +215,7 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
         }
       }
     };
-  }, [targetWindow, windowName, features, onClose, onBlock]);
+  }, [targetWindow, windowName, features]);
 
   if (!container) return null;
   return createPortal(children, container);

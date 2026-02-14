@@ -15,9 +15,12 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
   const [defaultVersion, setDefaultVersion] = useState(currentSettings?.defaultVersion || 'kjv');
   const [theme, setTheme] = useState(currentSettings?.theme || 'dark');
   const [remoteAdminEmails, setRemoteAdminEmails] = useState(currentSettings?.remoteAdminEmails || '');
+  const [sessionId, setSessionId] = useState(currentSettings?.sessionId || 'live');
+  const [stageProfile, setStageProfile] = useState(currentSettings?.stageProfile || 'classic');
+  const [machineMode, setMachineMode] = useState(!!currentSettings?.machineMode);
 
   const handleSave = () => {
-    onSave({ churchName, ccli, defaultVersion, theme, remoteAdminEmails });
+    onSave({ churchName, ccli, defaultVersion, theme, remoteAdminEmails, sessionId, stageProfile, machineMode });
     onClose();
   };
 
@@ -100,6 +103,34 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
                 </select>
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Session ID</label>
+                <input
+                  type="text"
+                  value={sessionId}
+                  onChange={e => setSessionId(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none transition-all font-mono"
+                  placeholder="live"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Stage Profile</label>
+                <select
+                  value={stageProfile}
+                  onChange={e => setStageProfile(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-3 text-sm text-white focus:border-purple-500 focus:outline-none appearance-none"
+                >
+                  <option value="classic">Classic</option>
+                  <option value="compact">Compact</option>
+                  <option value="high_contrast">High Contrast</option>
+                </select>
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-xs text-zinc-300">
+              <input type="checkbox" checked={machineMode} onChange={(e) => setMachineMode(e.target.checked)} />
+              Enable Machine Mode by default
+            </label>
           </div>
 
           <hr className="border-zinc-800" />
@@ -114,10 +145,10 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
                 value={remoteAdminEmails}
                 onChange={(e) => setRemoteAdminEmails(e.target.value)}
                 className="w-full min-h-28 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none transition-all"
-                placeholder={'pastor@church.org, media@church.org\nadmin2@church.org'}
+                placeholder={'pastor@church.org:owner, media@church.org:operator\nadmin2@church.org'}
               />
               <p className="mt-2 text-[10px] text-zinc-500">
-                Comma or new-line separated emails. These users can control /remote during live session.
+                Comma/new-line separated. Optional role suffix (e.g. email:operator) is accepted.
               </p>
             </div>
           </div>

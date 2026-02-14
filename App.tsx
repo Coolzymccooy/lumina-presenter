@@ -25,6 +25,7 @@ import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, Arr
 // --- CONSTANTS ---
 const STORAGE_KEY = 'lumina_session_v1';
 const SETTINGS_KEY = 'lumina_workspace_settings_v1';
+const LIVE_STATE_QUEUE_KEY = 'lumina_live_state_queue_v1';
 const SILENT_AUDIO_B64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOkiJAAAAAAAAAAAAAAAAAAAAAAA=";
 
 type WorkspaceSettings = {
@@ -33,7 +34,27 @@ type WorkspaceSettings = {
   defaultVersion: string;
   theme: 'dark' | 'light' | 'midnight';
   remoteAdminEmails: string;
+  sessionId: string;
+  stageProfile: 'classic' | 'compact' | 'high_contrast';
+  machineMode: boolean;
 };
+
+type SmokeTestResult = {
+  name: string;
+  ok: boolean;
+  details: string;
+};
+
+declare global {
+  interface Window {
+    luminaSmokeTest?: () => {
+      ok: boolean;
+      sessionId: string;
+      timestamp: string;
+      results: SmokeTestResult[];
+    };
+  }
+}
 
 const PauseIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
@@ -52,15 +73,24 @@ function App() {
   
   const [saveError, setSaveError] = useState<boolean>(false);
   const [popupBlocked, setPopupBlocked] = useState(false);
+  const [syncIssue, setSyncIssue] = useState<string | null>(null);
   
   // ✅ Projector popout window handle (opened in click handler to avoid popup blockers)
   const [outputWin, setOutputWin] = useState<Window | null>(null);
   const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'AUDIO' | 'BIBLE'>('SCHEDULE');
 
+  const parseJson = <T,>(raw: string | null, fallback: T): T => {
+    if (!raw) return fallback;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return fallback;
+    }
+  };
+
   const getSavedState = () => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? JSON.parse(saved) : null;
+      return parseJson(localStorage.getItem(STORAGE_KEY), null as any);
     } catch (e) {
       console.warn("State load failed", e);
       return null;
@@ -93,16 +123,32 @@ function App() {
     defaultVersion: 'kjv',
     theme: 'dark',
     remoteAdminEmails: '',
+    sessionId: 'live',
+    stageProfile: 'classic',
+    machineMode: false,
   });
   const allowedAdminEmails = useMemo(() => {
     const raw = workspaceSettings.remoteAdminEmails || '';
     const parsed = raw
       .split(/[\n,;]+/)
       .map((entry) => entry.trim().toLowerCase())
+      .map((entry) => {
+        const [email] = entry.split(/[:|]/);
+        return email.trim();
+      })
       .filter(Boolean);
     return Array.from(new Set(parsed));
   }, [workspaceSettings.remoteAdminEmails]);
+  const liveSessionId = useMemo(() => (workspaceSettings.sessionId || 'live').trim() || 'live', [workspaceSettings.sessionId]);
   const [isMotionLibOpen, setIsMotionLibOpen] = useState(false); // NEW
+  const [isTemplateOpen, setIsTemplateOpen] = useState(false);
+  const [isLyricsImportOpen, setIsLyricsImportOpen] = useState(false);
+  const [importTitle, setImportTitle] = useState('Imported Lyrics');
+  const [importLyrics, setImportLyrics] = useState('');
+  const [syncPendingCount, setSyncPendingCount] = useState(0);
+  const [autoCueEnabled, setAutoCueEnabled] = useState(false);
+  const [autoCueSeconds, setAutoCueSeconds] = useState(7);
+  const [autoCueRemaining, setAutoCueRemaining] = useState(7);
   const [editingSlide, setEditingSlide] = useState<Slide | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
   const [isStageDisplayLive, setIsStageDisplayLive] = useState(false);
@@ -142,6 +188,80 @@ function App() {
   const antiSleepAudioRef = useRef<HTMLAudioElement>(null);
   const hasInitializedRemoteSnapshotRef = useRef(false);
   const lastRemoteCommandAtRef = useRef<number | null>(null);
+  const lastSyncErrorRef = useRef<{ key: string; at: number } | null>(null);
+  const historyRef = useRef<Array<{ schedule: ServiceItem[]; selectedItemId: string; at: number }>>([]);
+  const [historyCount, setHistoryCount] = useState(0);
+  type RemoteCommand = 'NEXT' | 'PREV' | 'BLACKOUT';
+  const isRemoteCommand = (command: unknown): command is RemoteCommand =>
+    command === 'NEXT' || command === 'PREV' || command === 'BLACKOUT';
+  const isRecord = (value: unknown): value is Record<string, any> =>
+    !!value && typeof value === 'object' && !Array.isArray(value);
+
+  const reportSyncFailure = useCallback((source: string, error: unknown, meta: Record<string, any> = {}) => {
+    const message = error instanceof Error ? error.message : String(error || 'Unknown sync failure');
+    const key = `${source}:${message}`;
+    const now = Date.now();
+    const last = lastSyncErrorRef.current;
+    if (last && last.key === key && now - last.at < 8000) return;
+    lastSyncErrorRef.current = { key, at: now };
+    setSyncIssue(`${source}: ${message}`);
+    logActivity(user?.uid, 'ERROR', {
+      type: 'LIVE_SYNC_FAILURE',
+      source,
+      message,
+      sessionId: liveSessionId,
+      ...meta,
+    });
+  }, [user?.uid, liveSessionId]);
+
+  const enqueueLiveState = useCallback((payload: any) => {
+    try {
+      const existing = parseJson<any[]>(localStorage.getItem(LIVE_STATE_QUEUE_KEY), []);
+      existing.push({ sessionId: liveSessionId, payload, at: Date.now() });
+      localStorage.setItem(LIVE_STATE_QUEUE_KEY, JSON.stringify(existing));
+      setSyncPendingCount(existing.length);
+    } catch (error) {
+      console.warn('Failed to queue live state', error);
+      reportSyncFailure('queue', error, { queueOp: 'enqueue' });
+    }
+  }, [liveSessionId, reportSyncFailure]);
+
+  const flushLiveStateQueue = useCallback(async () => {
+    if (!navigator.onLine) return;
+    try {
+      const queued = parseJson<Array<{ sessionId: string; payload: any; at: number }>>(localStorage.getItem(LIVE_STATE_QUEUE_KEY), []);
+      if (!queued.length) {
+        setSyncPendingCount(0);
+        return;
+      }
+      const failed: typeof queued = [];
+      for (const entry of queued) {
+        const ok = await updateLiveState(entry.payload, entry.sessionId || liveSessionId);
+        if (!ok) failed.push(entry);
+      }
+      localStorage.setItem(LIVE_STATE_QUEUE_KEY, JSON.stringify(failed));
+      setSyncPendingCount(failed.length);
+      if (!failed.length) setSyncIssue(null);
+    } catch (error) {
+      console.warn('Failed to flush queued live state', error);
+      reportSyncFailure('flush', error, { queueOp: 'flush' });
+    }
+  }, [liveSessionId, reportSyncFailure]);
+
+  const syncLiveState = useCallback(async (payload: any) => {
+    if (!isFirebaseConfigured() || !user?.uid) return;
+    if (!navigator.onLine) {
+      enqueueLiveState(payload);
+      return;
+    }
+    const ok = await updateLiveState(payload, liveSessionId);
+    if (!ok) {
+      reportSyncFailure('live-update', new Error('updateLiveState returned false'));
+      enqueueLiveState(payload);
+    } else {
+      setSyncIssue(null);
+    }
+  }, [user?.uid, liveSessionId, enqueueLiveState, reportSyncFailure]);
 
   // --- SESSION PERSISTENCE LOGIC ---
   useEffect(() => {
@@ -181,6 +301,25 @@ function App() {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(workspaceSettings));
     document.documentElement.dataset.theme = workspaceSettings.theme;
   }, [workspaceSettings]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LIVE_STATE_QUEUE_KEY);
+      const queued = raw ? JSON.parse(raw) : [];
+      setSyncPendingCount(Array.isArray(queued) ? queued.length : 0);
+    } catch {
+      setSyncPendingCount(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    const onOnline = () => {
+      flushLiveStateQueue();
+    };
+    window.addEventListener('online', onOnline);
+    flushLiveStateQueue();
+    return () => window.removeEventListener('online', onOnline);
+  }, [flushLiveStateQueue]);
 
   useEffect(() => {
     const cleanup = () => clearMediaCache();
@@ -297,17 +436,23 @@ function App() {
 
   useEffect(() => {
     if (!user?.uid) return;
-    updateLiveState({
+    syncLiveState({
       scheduleSnapshot: schedule.slice(0, 20),
       controllerOwnerUid: user.uid,
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
-    upsertTeamPlaylist(user.uid, 'default-playlist', {
-      title: 'Default Playlist',
-      items: schedule,
-    });
-  }, [schedule, user?.uid, user?.email, allowedAdminEmails]);
+    (async () => {
+      try {
+        await upsertTeamPlaylist(user.uid, 'default-playlist', {
+          title: 'Default Playlist',
+          items: schedule,
+        });
+      } catch (error) {
+        reportSyncFailure('playlist-upsert', error, { itemCount: schedule.length });
+      }
+    })();
+  }, [schedule, user?.uid, user?.email, allowedAdminEmails, syncLiveState, reportSyncFailure]);
 
   useEffect(() => {
     if (viewMode === 'PRESENTER' && activeSlideRef.current) {
@@ -337,9 +482,198 @@ function App() {
     const ss = Math.floor(safe % 60).toString().padStart(2, '0');
     return `${mm}:${ss}`;
   };
+  const obsOutputUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/output?session=${encodeURIComponent(liveSessionId)}`
+    : `/output?session=${encodeURIComponent(liveSessionId)}`;
+  const remoteControlUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/remote?session=${encodeURIComponent(liveSessionId)}`
+    : `/remote?session=${encodeURIComponent(liveSessionId)}`;
+  const cloneSchedule = (value: ServiceItem[]) => JSON.parse(JSON.stringify(value)) as ServiceItem[];
+  const pushHistory = () => {
+    historyRef.current.push({
+      schedule: cloneSchedule(schedule),
+      selectedItemId,
+      at: Date.now(),
+    });
+    if (historyRef.current.length > 50) {
+      historyRef.current.shift();
+    }
+    setHistoryCount(historyRef.current.length);
+  };
+  const rollbackLastChange = () => {
+    const last = historyRef.current.pop();
+    if (!last) return;
+    setSchedule(last.schedule);
+    setSelectedItemId(last.selectedItemId);
+    setHistoryCount(historyRef.current.length);
+  };
+
+  const buildTemplate = (templateId: 'CLASSIC' | 'YOUTH' | 'PRAYER'): ServiceItem[] => {
+    const now = Date.now();
+    const baseTheme = {
+      backgroundUrl: DEFAULT_BACKGROUNDS[0],
+      mediaType: 'image' as const,
+      fontFamily: 'sans-serif',
+      textColor: '#ffffff',
+      shadow: true,
+      fontSize: 'large' as const,
+    };
+    if (templateId === 'CLASSIC') {
+      return cloneSchedule(INITIAL_SCHEDULE).map((item, idx) => ({ ...item, id: `${now}-${idx}` }));
+    }
+    if (templateId === 'YOUTH') {
+      return [
+        {
+          id: `${now}-1`,
+          title: 'Countdown + Hype',
+          type: ItemType.ANNOUNCEMENT,
+          theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[9], fontSize: 'xlarge' },
+          slides: [
+            { id: `${now}-1a`, label: 'Start', content: 'Service starts in 05:00' },
+            { id: `${now}-1b`, label: 'Welcome', content: 'Welcome to Youth Night' },
+          ],
+        },
+        {
+          id: `${now}-2`,
+          title: 'Worship Set',
+          type: ItemType.SONG,
+          theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[7], fontSize: 'large' },
+          slides: [
+            { id: `${now}-2a`, label: 'Verse 1', content: 'You are here, moving in our midst' },
+            { id: `${now}-2b`, label: 'Chorus', content: 'Way maker, miracle worker' },
+          ],
+        },
+        {
+          id: `${now}-3`,
+          title: 'Message + Call',
+          type: ItemType.ANNOUNCEMENT,
+          theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[2], fontSize: 'medium' },
+          slides: [
+            { id: `${now}-3a`, label: 'Main Point', content: 'Faith over fear' },
+            { id: `${now}-3b`, label: 'Response', content: 'Prayer team available at the front' },
+          ],
+        },
+      ];
+    }
+    return [
+      {
+        id: `${now}-p1`,
+        title: 'Prayer + Reflection',
+        type: ItemType.SCRIPTURE,
+        theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[5], fontFamily: 'serif', fontSize: 'medium' },
+        slides: [
+          { id: `${now}-p1a`, label: 'Reading', content: 'Psalm 23:1-3' },
+          { id: `${now}-p1b`, label: 'Meditation', content: 'Be still and know that I am God.' },
+        ],
+      },
+      {
+        id: `${now}-p2`,
+        title: 'Intercession',
+        type: ItemType.ANNOUNCEMENT,
+        theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[10], fontSize: 'large' },
+        slides: [
+          { id: `${now}-p2a`, label: 'Prayer Focus', content: 'Families, healing, and community leaders' },
+        ],
+      },
+    ];
+  };
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+
+    window.luminaSmokeTest = () => {
+      const results: SmokeTestResult[] = [];
+      const templates: Array<'CLASSIC' | 'YOUTH' | 'PRAYER'> = ['CLASSIC', 'YOUTH', 'PRAYER'];
+      templates.forEach((templateId) => {
+        const built = buildTemplate(templateId);
+        const ok = Array.isArray(built)
+          && built.length > 0
+          && built.every((item) => item && Array.isArray(item.slides) && item.slides.length > 0);
+        results.push({
+          name: `template:${templateId.toLowerCase()}`,
+          ok,
+          details: ok ? `items=${built.length}` : 'Template returned invalid item/slide structure',
+        });
+      });
+
+      const cueOk = Number.isFinite(autoCueSeconds) && autoCueSeconds >= 2 && autoCueSeconds <= 120;
+      results.push({
+        name: 'cue:bounds',
+        ok: cueOk,
+        details: cueOk ? `autoCueSeconds=${autoCueSeconds}` : `Out of bounds: ${autoCueSeconds}`,
+      });
+
+      const samples: Array<unknown> = ['NEXT', 'PREV', 'BLACKOUT', 'SKIP', null, 2];
+      const marks = samples.map((sample) => isRemoteCommand(sample));
+      const remoteGuardOk = marks[0] && marks[1] && marks[2] && !marks[3] && !marks[4] && !marks[5];
+      results.push({
+        name: 'remote:command-guard',
+        ok: remoteGuardOk,
+        details: `accepted=${samples.filter((_, idx) => marks[idx]).join(',') || 'none'}`,
+      });
+
+      return {
+        ok: results.every((entry) => entry.ok),
+        sessionId: liveSessionId,
+        timestamp: new Date().toISOString(),
+        results,
+      };
+    };
+
+    return () => {
+      delete window.luminaSmokeTest;
+    };
+  }, [autoCueSeconds, liveSessionId]);
+
+  const applyTemplate = (templateId: 'CLASSIC' | 'YOUTH' | 'PRAYER') => {
+    const template = buildTemplate(templateId);
+    if (!template.length) return;
+    historyRef.current.push({ schedule: cloneSchedule(schedule), selectedItemId, at: Date.now() });
+    setHistoryCount(historyRef.current.length);
+    setSchedule(template);
+    setSelectedItemId(template[0].id);
+    setActiveItemId(null);
+    setActiveSlideIndex(-1);
+    setIsTemplateOpen(false);
+  };
+
+  const importLyricsAsItem = () => {
+    const raw = importLyrics.trim();
+    if (!raw) return;
+    const chunks = raw
+      .split(/\n\s*\n+/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+    if (!chunks.length) return;
+    const now = Date.now();
+    const slides: Slide[] = chunks.map((content, idx) => ({
+      id: `${now}-${idx}`,
+      label: `Part ${idx + 1}`,
+      content,
+    }));
+    const newItem: ServiceItem = {
+      id: `${now}`,
+      title: importTitle.trim() || 'Imported Lyrics',
+      type: ItemType.SONG,
+      slides,
+      theme: {
+        backgroundUrl: DEFAULT_BACKGROUNDS[0],
+        mediaType: 'image',
+        fontFamily: 'sans-serif',
+        textColor: '#ffffff',
+        shadow: true,
+        fontSize: 'large',
+      },
+    };
+    addItem(newItem);
+    setImportTitle('Imported Lyrics');
+    setImportLyrics('');
+    setIsLyricsImportOpen(false);
+  };
 
 
   const addItem = (item: ServiceItem) => {
+    pushHistory();
     setSchedule(prev => [...prev, item]);
     setSelectedItemId(item.id);
     logActivity(user?.uid, 'ADD_ITEM', { type: item.type, title: item.title });
@@ -352,10 +686,12 @@ function App() {
   };
 
   const updateItem = (updatedItem: ServiceItem) => {
+    pushHistory();
     setSchedule(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
   };
 
   const removeItem = (id: string) => {
+    pushHistory();
     logActivity(user?.uid, 'DELETE_ITEM', { itemId: id });
     const newSchedule = schedule.filter(i => i.id !== id);
     setSchedule(newSchedule);
@@ -374,8 +710,10 @@ function App() {
   };
 
   const goLive = (item: ServiceItem, slideIndex: number = 0) => {
+    if (!item || !Array.isArray(item.slides) || item.slides.length === 0) return;
+    const boundedIndex = Math.max(0, Math.min(item.slides.length - 1, slideIndex));
     setActiveItemId(item.id);
-    setActiveSlideIndex(slideIndex);
+    setActiveSlideIndex(boundedIndex);
     setBlackout(false);
     setIsPlaying(true);
     logActivity(user?.uid, 'PRESENTATION_START', { itemTitle: item.title });
@@ -389,6 +727,7 @@ function App() {
       const currentItemIdx = schedule.findIndex(i => i.id === activeItem.id);
       if (currentItemIdx < schedule.length - 1) {
         const nextItem = schedule[currentItemIdx + 1];
+        if (!nextItem || !Array.isArray(nextItem.slides) || nextItem.slides.length === 0) return;
         setActiveItemId(nextItem.id);
         setActiveSlideIndex(0);
         setIsPlaying(true);
@@ -404,6 +743,7 @@ function App() {
       const currentItemIdx = schedule.findIndex(i => i.id === activeItem.id);
       if (currentItemIdx > 0) {
         const prevItem = schedule[currentItemIdx - 1];
+        if (!prevItem || !Array.isArray(prevItem.slides) || prevItem.slides.length === 0) return;
         setActiveItemId(prevItem.id);
         setActiveSlideIndex(prevItem.slides.length - 1);
         setIsPlaying(true);
@@ -449,8 +789,13 @@ function App() {
     if (!isFirebaseConfigured()) return;
 
     const unsubState = subscribeToState((data) => {
+      if (!isRecord(data)) {
+        reportSyncFailure('remote-snapshot-parse', new Error('Snapshot payload is not an object'));
+        return;
+      }
 
-      const incomingAt = typeof data.remoteCommandAt === 'number' ? data.remoteCommandAt : null;
+      const rawIncomingAt = data.remoteCommandAt;
+      const incomingAt = typeof rawIncomingAt === 'number' && Number.isFinite(rawIncomingAt) ? rawIncomingAt : null;
 
       // First snapshot should only initialize marker to avoid replaying stale commands.
       if (!hasInitializedRemoteSnapshotRef.current) {
@@ -462,14 +807,32 @@ function App() {
       if (!incomingAt || incomingAt === lastRemoteCommandAtRef.current) return;
       lastRemoteCommandAtRef.current = incomingAt;
 
-      if (data.remoteCommand === 'NEXT') nextSlide();
-      if (data.remoteCommand === 'PREV') prevSlide();
-      if (data.remoteCommand === 'BLACKOUT') setBlackout((prev) => !prev);
+      const command = data.remoteCommand;
+      if (!isRemoteCommand(command)) {
+        reportSyncFailure('remote-command-parse', new Error('Unsupported remote command payload'), {
+          command: String(command),
+          remoteCommandAt: incomingAt,
+        });
+        return;
+      }
 
+      if (command === 'NEXT') nextSlide();
+      if (command === 'PREV') prevSlide();
+      if (command === 'BLACKOUT') setBlackout((prev) => !prev);
+
+    }, liveSessionId, (error) => {
+      reportSyncFailure('remote-subscribe', error);
     });
 
     const teamId = user?.uid || 'default-team';
-    const unsubPlaylists = subscribeToTeamPlaylists(teamId, setTeamPlaylists);
+    let unsubPlaylists = () => {};
+    try {
+      unsubPlaylists = subscribeToTeamPlaylists(teamId, (data) => {
+        setTeamPlaylists(Array.isArray(data) ? data : []);
+      });
+    } catch (error) {
+      reportSyncFailure('playlist-subscribe', error, { teamId });
+    }
     return () => {
       unsubState();
       unsubPlaylists();
@@ -479,11 +842,11 @@ function App() {
 
 
     };
-  }, [user?.uid, nextSlide, prevSlide]);
+  }, [user?.uid, nextSlide, prevSlide, liveSessionId, reportSyncFailure]);
 
   useEffect(() => {
     if (!user?.uid) return;
-    updateLiveState({
+    syncLiveState({
       activeItemId,
       activeSlideIndex,
       blackout,
@@ -493,16 +856,16 @@ function App() {
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
-  }, [activeItemId, activeSlideIndex, blackout, lowerThirdsEnabled, routingMode, user?.uid, user?.email, allowedAdminEmails]);
+  }, [activeItemId, activeSlideIndex, blackout, lowerThirdsEnabled, routingMode, user?.uid, user?.email, allowedAdminEmails, syncLiveState]);
 
   useEffect(() => {
     if (!user?.uid) return;
-    updateLiveState({
+    syncLiveState({
       controllerOwnerUid: user.uid,
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
-  }, [user?.uid, user?.email, allowedAdminEmails]);
+  }, [user?.uid, user?.email, allowedAdminEmails, syncLiveState]);
 
   useEffect(() => {
     if (!navigator.requestMIDIAccess) return;
@@ -542,6 +905,24 @@ function App() {
 
     return () => window.clearInterval(id);
   }, [timerRunning, timerMode]);
+
+  useEffect(() => {
+    if (!autoCueEnabled) return;
+    if (viewMode !== 'PRESENTER') return;
+    if (!activeItem) return;
+
+    setAutoCueRemaining(autoCueSeconds);
+    const id = window.setInterval(() => {
+      setAutoCueRemaining((prev) => {
+        if (prev <= 1) {
+          nextSlide();
+          return autoCueSeconds;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [autoCueEnabled, autoCueSeconds, viewMode, activeItemId, nextSlide, activeItem]);
 
   // ✅ Launch Output handler (opens window synchronously from user gesture — popup-safe)
   const handleToggleOutput = () => {
@@ -704,6 +1085,7 @@ function App() {
     <div className={`theme-${workspaceSettings.theme} flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] bg-zinc-950 text-zinc-200 font-sans selection:bg-blue-900 selection:text-white relative`}>
       <audio ref={antiSleepAudioRef} src={SILENT_AUDIO_B64} loop muted />
       {saveError && <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-red-900/90 border border-red-500 text-white px-4 py-2 rounded-sm shadow-xl z-50 flex items-center gap-3 text-xs font-bold animate-pulse"><span>⚠ STORAGE FULL: Changes are NOT saving.</span><button onClick={() => setSaveError(false)} className="hover:text-zinc-300">✕</button></div>}
+      {syncIssue && <div className="absolute top-24 right-4 z-50 max-w-md bg-amber-950/90 border border-amber-800 text-amber-200 px-3 py-2 rounded-sm text-[11px]"><span className="font-bold">SYNC WARNING:</span> {syncIssue}</div>}
       {popupBlocked && <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4"><div className="bg-zinc-900 border border-red-500 p-6 max-w-md rounded-lg shadow-2xl text-center"><div className="text-red-500 mb-2"><MonitorIcon className="w-12 h-12 mx-auto" /></div><h2 className="text-xl font-bold text-white mb-2">Projection Blocked</h2><p className="text-zinc-400 text-sm mb-4">The browser blocked the projector window. Check address bar pop-up settings.</p><button onClick={() => { setPopupBlocked(false); setIsOutputLive(false); }} className="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded font-bold transition-colors">I Understand</button></div></div>}
 
       <header className="h-12 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 shrink-0">
@@ -718,15 +1100,23 @@ function App() {
           <div className="flex gap-1 hidden md:flex">
             <button onClick={() => setViewMode('BUILDER')} className={`px-3 py-1 rounded-sm text-xs font-medium border ${viewMode === 'BUILDER' ? 'bg-zinc-900 text-white border-zinc-700' : 'text-zinc-500 border-transparent'}`}>BUILD</button>
             <button onClick={() => setViewMode('PRESENTER')} className={`px-3 py-1 rounded-sm text-xs font-medium border ${viewMode === 'PRESENTER' ? 'bg-zinc-900 text-white border-zinc-700' : 'text-zinc-500 border-transparent'}`}>PRESENT</button>
+            <button onClick={rollbackLastChange} disabled={historyCount === 0} className="px-3 py-1 rounded-sm text-xs font-medium border border-zinc-700 text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed">ROLLBACK</button>
+          </div>
+          <div className="hidden lg:flex items-center gap-2 text-[10px]">
+            <span className="px-2 py-0.5 rounded-sm border border-zinc-800 text-zinc-400">SESSION {liveSessionId}</span>
+            <span className={`px-2 py-0.5 rounded-sm border ${navigator.onLine ? 'border-emerald-900 text-emerald-400' : 'border-amber-900 text-amber-400'}`}>{navigator.onLine ? 'ONLINE' : 'OFFLINE'}</span>
+            {syncPendingCount > 0 && <span className="px-2 py-0.5 rounded-sm border border-amber-900 text-amber-400">QUEUED {syncPendingCount}</span>}
           </div>
         </div>
         <div className="flex items-center gap-3">
            <button onClick={() => setIsHelpOpen(true)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-sm"><HelpIcon className="w-4 h-4" /></button>
            <button onClick={() => setIsProfileOpen(true)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-sm"><Settings className="w-4 h-4" /></button>
+           <button onClick={() => setWorkspaceSettings((prev) => ({ ...prev, machineMode: !prev.machineMode }))} className={`px-3 py-1.5 rounded-sm text-xs font-bold border ${workspaceSettings.machineMode ? 'bg-cyan-950 text-cyan-300 border-cyan-800' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}>MACHINE</button>
            <button onClick={handleLogout} className="px-3 py-1.5 rounded-sm text-xs font-bold border bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white">LOGOUT</button>
            <button onClick={() => setIsAIModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 text-zinc-400 border border-zinc-800 hover:border-blue-900 rounded-sm text-xs"><SparklesIcon className="w-3 h-3" />AI ASSIST</button>
            <button onClick={handleToggleOutput} className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-bold border ${isOutputLive ? 'bg-emerald-950/30 text-emerald-400 border-emerald-900' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}><MonitorIcon className="w-3 h-3" />{isOutputLive ? 'OUTPUT ACTIVE' : 'LAUNCH OUTPUT'}</button>
            <button onClick={handleToggleStageDisplay} className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-bold border ${isStageDisplayLive ? 'bg-purple-950/30 text-purple-400 border-purple-900' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}>STAGE DISPLAY</button>
+           <button onClick={() => navigator.clipboard?.writeText(remoteControlUrl)} className="px-3 py-1.5 rounded-sm text-xs font-bold border bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white">COPY REMOTE URL</button>
         </div>
       </header>
 
@@ -749,7 +1139,14 @@ function App() {
           <div className="flex-1 flex flex-col overflow-hidden">
             {activeSidebarTab === 'SCHEDULE' ? (
                <>
-                <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950">Run Sheet <button onClick={addEmptyItem} className="hover:text-white p-1 hover:bg-zinc-900 rounded-sm"><PlusIcon className="w-3 h-3" /></button></div>
+                <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950">
+                  <span>Run Sheet</span>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setIsTemplateOpen(true)} className="px-1.5 py-0.5 text-[9px] border border-zinc-800 rounded-sm hover:text-white hover:border-zinc-600">TPL</button>
+                    <button onClick={() => setIsLyricsImportOpen(true)} className="px-1.5 py-0.5 text-[9px] border border-zinc-800 rounded-sm hover:text-white hover:border-zinc-600">LYR</button>
+                    <button onClick={addEmptyItem} className="hover:text-white p-1 hover:bg-zinc-900 rounded-sm"><PlusIcon className="w-3 h-3" /></button>
+                  </div>
+                </div>
                 <ScheduleList />
                </>
             ) : activeSidebarTab === 'AUDIO' ? (
@@ -856,11 +1253,21 @@ function App() {
                           setTimerSeconds(timerMode === 'COUNTDOWN' ? timerDurationMin * 60 : 0);
                         }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">Reset</button>
                       </div>
+                      <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
+                        <span className="text-[10px] text-zinc-400">Cue</span>
+                        <input type="number" min={2} max={120} value={autoCueSeconds} onChange={(e) => {
+                          const value = Math.max(2, Math.min(120, Number(e.target.value) || 2));
+                          setAutoCueSeconds(value);
+                          setAutoCueRemaining(value);
+                        }} className="w-12 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
+                        <button onClick={() => setAutoCueEnabled((p) => !p)} className={`text-[10px] px-2 py-1 rounded ${autoCueEnabled ? 'bg-cyan-900/40 text-cyan-300' : 'bg-zinc-800 text-zinc-300'}`}>{autoCueEnabled ? `On ${autoCueRemaining}s` : 'Off'}</button>
+                      </div>
+                      <button onClick={() => navigator.clipboard?.writeText(obsOutputUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY OBS URL</button>
                       <button onClick={() => setBlackout(!blackout)} className={`h-12 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button>
                     </div>
                 </div>
             </div>
-            <div className="w-full lg:w-72 bg-zinc-950 border-l border-zinc-900 flex flex-col h-64 lg:h-auto border-t lg:border-t-0 hidden md:flex">
+            <div className={`w-full lg:w-72 bg-zinc-950 border-l border-zinc-900 flex flex-col h-64 lg:h-auto border-t lg:border-t-0 ${workspaceSettings.machineMode ? 'hidden' : 'hidden md:flex'}`}>
                 <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-500 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950"><span>Live Queue</span>{activeItem && <span className="text-red-500 animate-pulse">● LIVE</span>}</div>
                 <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 lg:grid-cols-2 gap-2 content-start scroll-smooth">
                     {activeItem?.slides.map((slide, idx) => (<div key={slide.id} ref={activeSlideIndex === idx ? activeSlideRef : null} onClick={() => { setActiveSlideIndex(idx); setBlackout(false); setIsPlaying(true); }} className={`cursor-pointer rounded-sm overflow-hidden border transition-all relative aspect-video ${activeSlideIndex === idx ? 'ring-2 ring-red-500 border-red-500 opacity-100' : 'border-zinc-800 opacity-50 hover:opacity-80'}`}><div className="absolute inset-0 pointer-events-none"><SlideRenderer slide={slide} item={activeItem} fitContainer={true} isThumbnail={true} /></div><div className="absolute bottom-0 left-0 right-0 bg-black/80 text-zinc-300 text-[9px] px-1 py-0.5 font-mono truncate border-t border-zinc-800">{idx + 1}. {slide.label}</div></div>))}
@@ -892,17 +1299,47 @@ function App() {
             setPopupBlocked(true);
             setIsStageDisplayLive(false);
             setStageWin(null);
-          }}><StageDisplay currentSlide={activeSlide} nextSlide={nextSlidePreview} activeItem={activeItem} timerLabel="Pastor Timer" timerDisplay={formatTimer(timerSeconds)} timerMode={timerMode} /></OutputWindow>)}
+          }}><StageDisplay currentSlide={activeSlide} nextSlide={nextSlidePreview} activeItem={activeItem} timerLabel="Pastor Timer" timerDisplay={formatTimer(timerSeconds)} timerMode={timerMode} profile={workspaceSettings.stageProfile} /></OutputWindow>)}
+      {isTemplateOpen && (
+        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm p-4 flex items-center justify-center">
+          <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-lg p-5">
+            <h3 className="text-sm font-bold text-zinc-200 mb-1">Apply Service Template</h3>
+            <p className="text-xs text-zinc-500 mb-4">Replaces the current run sheet.</p>
+            <div className="grid grid-cols-1 gap-2 mb-4">
+              <button onClick={() => applyTemplate('CLASSIC')} className="text-left px-3 py-2 border border-zinc-800 rounded hover:border-zinc-600"><div className="text-sm font-semibold">Classic Sunday</div><div className="text-[11px] text-zinc-500">Welcome + Worship + Message</div></button>
+              <button onClick={() => applyTemplate('YOUTH')} className="text-left px-3 py-2 border border-zinc-800 rounded hover:border-zinc-600"><div className="text-sm font-semibold">Youth Night</div><div className="text-[11px] text-zinc-500">Countdown + Hype + Response</div></button>
+              <button onClick={() => applyTemplate('PRAYER')} className="text-left px-3 py-2 border border-zinc-800 rounded hover:border-zinc-600"><div className="text-sm font-semibold">Prayer Service</div><div className="text-[11px] text-zinc-500">Reflection + Intercession</div></button>
+            </div>
+            <div className="flex justify-end">
+              <button onClick={() => setIsTemplateOpen(false)} className="px-3 py-1.5 text-xs border border-zinc-700 rounded">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {isLyricsImportOpen && (
+        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm p-4 flex items-center justify-center">
+          <div className="w-full max-w-2xl bg-zinc-900 border border-zinc-800 rounded-lg p-5">
+            <h3 className="text-sm font-bold text-zinc-200 mb-1">Import Lyrics</h3>
+            <p className="text-xs text-zinc-500 mb-4">Separate slide chunks with a blank line.</p>
+            <input value={importTitle} onChange={(e) => setImportTitle(e.target.value)} className="w-full mb-3 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm" placeholder="Song title" />
+            <textarea value={importLyrics} onChange={(e) => setImportLyrics(e.target.value)} className="w-full h-56 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm font-mono" placeholder={'Verse 1 line 1\nVerse 1 line 2\n\nChorus line 1\nChorus line 2'} />
+            <div className="flex justify-between mt-4">
+              <button onClick={() => setIsLyricsImportOpen(false)} className="px-3 py-1.5 text-xs border border-zinc-700 rounded">Cancel</button>
+              <button onClick={importLyricsAsItem} className="px-4 py-1.5 text-xs font-bold bg-blue-600 rounded">Import</button>
+            </div>
+          </div>
+        </div>
+      )}
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
       {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={(settings) => setWorkspaceSettings((prev) => ({ ...prev, ...settings }))} onLogout={handleLogout} currentSettings={workspaceSettings} />} {/* NEW */}
       {isMotionLibOpen && (
         <MotionLibrary 
             onClose={() => setIsMotionLibOpen(false)} 
-            onSelect={(url) => { 
+            onSelect={(url, mediaType = 'video') => { 
                 if (selectedItem) {
-                    updateItem({ ...selectedItem, theme: { ...selectedItem.theme, backgroundUrl: url } });
-                    logActivity(user?.uid, 'UPDATE_THEME', { type: 'MOTION_BG', itemId: selectedItem.id });
+                    updateItem({ ...selectedItem, theme: { ...selectedItem.theme, backgroundUrl: url, mediaType } });
+                    logActivity(user?.uid, 'UPDATE_THEME', { type: 'MOTION_BG', itemId: selectedItem.id, mediaType });
                 }
                 setIsMotionLibOpen(false); 
             }} 
