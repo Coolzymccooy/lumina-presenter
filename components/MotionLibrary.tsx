@@ -1,41 +1,96 @@
+import React, { useEffect, useState } from 'react';
+import { PlayIcon } from './Icons';
 
-import React from 'react';
-import { PlayIcon, PlusIcon } from './Icons';
-
-const MOTION_ASSETS = [
-  // Reliable direct MP4 links from Pixabay (High Quality)
-  { id: 'm1', name: 'Blue Particles', thumb: 'https://cdn.pixabay.com/vimeo/328940142/particle-22929.jpg?width=640&hash=d128e46979267152011116279313361110196726', url: 'https://cdn.pixabay.com/video/2019/04/06/22929-328940142_small.mp4' },
-  { id: 'm2', name: 'Golden Bokeh', thumb: 'https://cdn.pixabay.com/vimeo/345265633/bokeh-24908.jpg?width=640&hash=f5147517112211567115161821102910', url: 'https://cdn.pixabay.com/video/2019/06/27/24908-345265633_small.mp4' },
-  { id: 'm3', name: 'Abstract Lines', thumb: 'https://cdn.pixabay.com/vimeo/315181602/abstract-21179.jpg?width=640&hash=1237891238917238917398', url: 'https://cdn.pixabay.com/video/2019/02/05/21179-315181602_small.mp4' },
-  { id: 'm4', name: 'Cloud Timelapse', thumb: 'https://cdn.pixabay.com/vimeo/150824040/clouds-1748.jpg?width=640&hash=217389127398127389', url: 'https://cdn.pixabay.com/video/2015/12/31/1748-150824040_small.mp4' },
-  { id: 'm5', name: 'Neon Tunnel', thumb: 'https://cdn.pixabay.com/vimeo/329596677/blue-23232.jpg?width=640&hash=02577626334551130172931163456782', url: 'https://cdn.pixabay.com/video/2019/04/10/23232-329596677_small.mp4' },
-  { id: 'm6', name: 'Worship Hands', thumb: 'https://cdn.pixabay.com/vimeo/345863914/worship-24976.jpg?width=640&hash=2138971298371298', url: 'https://cdn.pixabay.com/video/2019/06/30/24976-345863914_small.mp4' },
+const MOCK_MOTION_ASSETS = [
+  { id: 'mock-1', name: 'Moving Oceans', thumb: 'https://images.pexels.com/videos/854936/free-video-854936.jpeg?auto=compress&cs=tinysrgb&w=800', url: 'https://videos.pexels.com/video-files/854936/854936-hd_1920_1080_25fps.mp4' },
+  { id: 'mock-2', name: 'Abstract Clouds', thumb: 'https://images.pexels.com/videos/2325443/free-video-2325443.jpeg?auto=compress&cs=tinysrgb&w=800', url: 'https://videos.pexels.com/video-files/2325443/2325443-hd_1920_1080_24fps.mp4' },
 ];
+
+interface MotionAsset {
+  id: string;
+  name: string;
+  thumb: string;
+  url: string;
+}
 
 interface MotionLibraryProps {
   onSelect: (url: string) => void;
+  onClose: () => void;
 }
 
-export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect }) => {
+export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose }) => {
+  const [activeTab, setActiveTab] = useState<'mock' | 'pexels'>('mock');
+  const [assets, setAssets] = useState<MotionAsset[]>(MOCK_MOTION_ASSETS);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchPexels = async () => {
+      if (activeTab !== 'pexels') {
+        setAssets(MOCK_MOTION_ASSETS);
+        return;
+      }
+
+      setLoading(true);
+      const key = import.meta.env.VITE_PEXELS_API_KEY as string | undefined;
+      if (!key) {
+        setAssets(MOCK_MOTION_ASSETS);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const query = encodeURIComponent('abstract worship background 4k loop');
+        const res = await fetch(`https://api.pexels.com/videos/search?query=${query}&per_page=12&orientation=landscape`, {
+          headers: { Authorization: key },
+        });
+        const data = await res.json();
+        const parsed: MotionAsset[] = (data.videos || []).map((video: any) => ({
+          id: `pexels-${video.id}`,
+          name: video.user?.name || `Pexels ${video.id}`,
+          thumb: video.image,
+          url: (video.video_files || []).find((f: any) => f.quality === 'hd' || f.width >= 1920)?.link || video.video_files?.[0]?.link,
+        })).filter((item: MotionAsset) => !!item.url);
+
+        setAssets(parsed.length ? parsed : MOCK_MOTION_ASSETS);
+      } catch (error) {
+        console.error('Failed to fetch Pexels videos', error);
+        setAssets(MOCK_MOTION_ASSETS);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPexels();
+  }, [activeTab]);
+
   return (
-    <div className="p-4 bg-zinc-950 h-full">
-      <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-4">Motion Backgrounds</h3>
-      <div className="grid grid-cols-2 gap-4">
-        {MOTION_ASSETS.map((motion) => (
-          <div key={motion.id} className="group relative aspect-video bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800 hover:border-purple-500 transition-all cursor-pointer" onClick={() => onSelect(motion.url)}>
-            <img src={motion.thumb} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
-            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-              <PlayIcon className="w-8 h-8 text-white drop-shadow-lg" />
+    <div className="fixed inset-0 bg-black/80 z-50 p-6">
+      <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-full overflow-hidden flex flex-col">
+        <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+          <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-widest">Motion Library</h3>
+          <button onClick={onClose} className="text-zinc-500 hover:text-white">✕</button>
+        </div>
+        <div className="p-4 border-b border-zinc-900 flex gap-2">
+          <button onClick={() => setActiveTab('mock')} className={`px-3 py-1 text-xs rounded ${activeTab === 'mock' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Mock Presets</button>
+          <button onClick={() => setActiveTab('pexels')} className={`px-3 py-1 text-xs rounded ${activeTab === 'pexels' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Pexels Motion</button>
+        </div>
+        <div className="p-4 overflow-y-auto flex-1">
+          {loading ? <div className="text-zinc-400 text-xs">Loading Pexels videos...</div> : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {assets.map((motion) => (
+                <div key={motion.id} className="group relative aspect-video bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800 hover:border-purple-500 transition-all cursor-pointer" onClick={() => onSelect(motion.url)}>
+                  <img src={motion.thumb} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                    <PlayIcon className="w-8 h-8 text-white drop-shadow-lg" />
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
+                    <span className="text-[10px] font-bold text-white truncate">{motion.name}</span>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-              <span className="text-[10px] font-bold text-white truncate">{motion.name}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-6 p-4 border border-dashed border-zinc-800 rounded-lg text-center">
-        <p className="text-[10px] text-zinc-500 mb-2">Want more?</p>
-        <button className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded text-xs font-bold hover:bg-zinc-700 transition-all">Browse Pexels Library</button>
+          )}
+        </div>
       </div>
     </div>
   );
