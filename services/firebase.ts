@@ -23,10 +23,20 @@ export const isFirebaseConfigured = () => {
   return firebaseConfig.apiKey && firebaseConfig.apiKey.length > 10;
 };
 
-export const subscribeToState = (callback: (data: any) => void, sessionId = 'live') => {
-  return onSnapshot(doc(db, 'sessions', sessionId), (snapshot) => {
-    if (snapshot.exists()) callback(snapshot.data());
-  });
+export const subscribeToState = (
+  callback: (data: any) => void,
+  sessionId = 'live',
+  onError?: (error: any) => void
+) => {
+  return onSnapshot(
+    doc(db, 'sessions', sessionId),
+    (snapshot) => {
+      if (snapshot.exists()) callback(snapshot.data());
+    },
+    (error) => {
+      if (onError) onError(error);
+    }
+  );
 };
 
 export const updateLiveState = async (state: any, sessionId = 'live') => {
@@ -35,8 +45,10 @@ export const updateLiveState = async (state: any, sessionId = 'live') => {
       ...state,
       updatedAt: Date.now(),
     }, { merge: true });
+    return true;
   } catch (e) {
     console.error("Sync Error:", e);
+    return false;
   }
 };
 

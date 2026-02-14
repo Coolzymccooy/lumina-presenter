@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { UserIcon, Settings, X, Save, Church } from 'lucide-react';
+import { UserIcon, Settings, X, Save, Church, ShieldCheck } from 'lucide-react';
 
 interface ProfileSettingsProps {
   onClose: () => void;
@@ -14,9 +14,10 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
   const [ccli, setCcli] = useState(currentSettings?.ccli || '');
   const [defaultVersion, setDefaultVersion] = useState(currentSettings?.defaultVersion || 'kjv');
   const [theme, setTheme] = useState(currentSettings?.theme || 'dark');
+  const [remoteAdminEmails, setRemoteAdminEmails] = useState(currentSettings?.remoteAdminEmails || '');
 
   const handleSave = () => {
-    onSave({ churchName, ccli, defaultVersion, theme });
+    onSave({ churchName, ccli, defaultVersion, theme, remoteAdminEmails });
     onClose();
   };
 
@@ -98,6 +99,26 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
                   <option value="midnight">Midnight OLED</option>
                 </select>
               </div>
+            </div>
+          </div>
+
+          <hr className="border-zinc-800" />
+
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+              <ShieldCheck size={12} /> Remote Access
+            </h3>
+            <div>
+              <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Allowed Admin Emails</label>
+              <textarea
+                value={remoteAdminEmails}
+                onChange={(e) => setRemoteAdminEmails(e.target.value)}
+                className="w-full min-h-28 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none transition-all"
+                placeholder={'pastor@church.org, media@church.org\nadmin2@church.org'}
+              />
+              <p className="mt-2 text-[10px] text-zinc-500">
+                Comma or new-line separated emails. These users can control /remote during live session.
+              </p>
             </div>
           </div>
         </div>

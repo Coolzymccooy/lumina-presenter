@@ -9,10 +9,28 @@ service cloud.firestore {
       return signedIn() && teamId in request.auth.token.teams;
     }
 
+    function controllerAllowed(data) {
+      return signedIn() && (
+        data.controllerOwnerUid == request.auth.uid ||
+        (data.controllerAllowedUids is list && request.auth.uid in data.controllerAllowedUids) ||
+        (
+          request.auth.token.email is string &&
+          data.controllerAllowedEmails is list &&
+          request.auth.token.email in data.controllerAllowedEmails
+        )
+      );
+    }
+
     // Live presenter/remote sync
     match /sessions/{sessionId} {
       allow read: if signedIn();
-      allow write: if signedIn();
+      allow create: if signedIn();
+      allow update: if signedIn() && (
+        // Allow session bootstrap when owner is not set yet.
+        (resource.data.controllerOwnerUid == null && request.resource.data.controllerOwnerUid == request.auth.uid) ||
+        controllerAllowed(resource.data)
+      );
+      allow delete: if signedIn() && resource.data.controllerOwnerUid == request.auth.uid;
     }
 
     // Team playlists synced across home + sanctuary devices

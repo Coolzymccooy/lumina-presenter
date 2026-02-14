@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { INITIAL_SCHEDULE, MOCK_SONGS, DEFAULT_BACKGROUNDS, GOSPEL_TRACKS, GospelTrack } from './constants';
 import { ServiceItem, Slide, ItemType } from './types';
 import { SlideRenderer } from './components/SlideRenderer';
@@ -26,6 +26,14 @@ import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, Arr
 const STORAGE_KEY = 'lumina_session_v1';
 const SETTINGS_KEY = 'lumina_workspace_settings_v1';
 const SILENT_AUDIO_B64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOkiJAAAAAAAAAAAAAAAAAAAAAAA=";
+
+type WorkspaceSettings = {
+  churchName: string;
+  ccli: string;
+  defaultVersion: string;
+  theme: 'dark' | 'light' | 'midnight';
+  remoteAdminEmails: string;
+};
 
 const PauseIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
@@ -79,7 +87,21 @@ function App() {
   const [isSlideEditorOpen, setIsSlideEditorOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false); // NEW
-  const [workspaceSettings, setWorkspaceSettings] = useState<{churchName: string; ccli: string; defaultVersion: string; theme: 'dark' | 'light' | 'midnight';}>({ churchName: 'My Church', ccli: '', defaultVersion: 'kjv', theme: 'dark' });
+  const [workspaceSettings, setWorkspaceSettings] = useState<WorkspaceSettings>({
+    churchName: 'My Church',
+    ccli: '',
+    defaultVersion: 'kjv',
+    theme: 'dark',
+    remoteAdminEmails: '',
+  });
+  const allowedAdminEmails = useMemo(() => {
+    const raw = workspaceSettings.remoteAdminEmails || '';
+    const parsed = raw
+      .split(/[\n,;]+/)
+      .map((entry) => entry.trim().toLowerCase())
+      .filter(Boolean);
+    return Array.from(new Set(parsed));
+  }, [workspaceSettings.remoteAdminEmails]);
   const [isMotionLibOpen, setIsMotionLibOpen] = useState(false); // NEW
   const [editingSlide, setEditingSlide] = useState<Slide | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
@@ -275,12 +297,17 @@ function App() {
 
   useEffect(() => {
     if (!user?.uid) return;
-    updateLiveState({ scheduleSnapshot: schedule.slice(0, 20) });
+    updateLiveState({
+      scheduleSnapshot: schedule.slice(0, 20),
+      controllerOwnerUid: user.uid,
+      controllerOwnerEmail: user.email || null,
+      controllerAllowedEmails: allowedAdminEmails,
+    });
     upsertTeamPlaylist(user.uid, 'default-playlist', {
       title: 'Default Playlist',
       items: schedule,
     });
-  }, [schedule, user?.uid]);
+  }, [schedule, user?.uid, user?.email, allowedAdminEmails]);
 
   useEffect(() => {
     if (viewMode === 'PRESENTER' && activeSlideRef.current) {
@@ -439,13 +466,6 @@ function App() {
       if (data.remoteCommand === 'PREV') prevSlide();
       if (data.remoteCommand === 'BLACKOUT') setBlackout((prev) => !prev);
 
-      if (data.remoteCommandAt && data.remoteCommandAt !== (window as any).__lastRemoteCommandAt) {
-        (window as any).__lastRemoteCommandAt = data.remoteCommandAt;
-        if (data.remoteCommand === 'NEXT') nextSlide();
-        if (data.remoteCommand === 'PREV') prevSlide();
-        if (data.remoteCommand === 'BLACKOUT') setBlackout((prev) => !prev);
-      }
-
     });
 
     const teamId = user?.uid || 'default-team';
@@ -462,14 +482,27 @@ function App() {
   }, [user?.uid, nextSlide, prevSlide]);
 
   useEffect(() => {
+    if (!user?.uid) return;
     updateLiveState({
       activeItemId,
       activeSlideIndex,
       blackout,
       lowerThirdsEnabled,
       routingMode,
+      controllerOwnerUid: user.uid,
+      controllerOwnerEmail: user.email || null,
+      controllerAllowedEmails: allowedAdminEmails,
     });
-  }, [activeItemId, activeSlideIndex, blackout, lowerThirdsEnabled, routingMode]);
+  }, [activeItemId, activeSlideIndex, blackout, lowerThirdsEnabled, routingMode, user?.uid, user?.email, allowedAdminEmails]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    updateLiveState({
+      controllerOwnerUid: user.uid,
+      controllerOwnerEmail: user.email || null,
+      controllerAllowedEmails: allowedAdminEmails,
+    });
+  }, [user?.uid, user?.email, allowedAdminEmails]);
 
   useEffect(() => {
     if (!navigator.requestMIDIAccess) return;
@@ -525,7 +558,7 @@ function App() {
     }
 
     // Turn ON: open immediately (must happen inside click handler to avoid popup blockers)
-    // 1. Create a minimal HTML blob with the correct title to AVOID about:blank
+    // Open a same-origin blank window and inject shell HTML (avoids blob: URL display).
     const initialHtml = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -541,11 +574,8 @@ function App() {
   </body>
 </html>`;
 
-    const blob = new Blob([initialHtml], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-
     const w = window.open(
-      url,
+      "",
       "LuminaOutput",
       "width=1280,height=720,menubar=no,toolbar=no,location=no,status=no"
     );
@@ -557,9 +587,69 @@ function App() {
       return;
     }
 
+    try {
+      w.document.open();
+      w.document.write(initialHtml);
+      w.document.close();
+      w.document.title = "Lumina Output (Projector)";
+    } catch (e) {
+      console.error("Failed to initialize output window", e);
+    }
+
     setPopupBlocked(false);
     setOutputWin(w);
     setIsOutputLive(true);
+    try { w.focus(); } catch {}
+  };
+
+  const handleToggleStageDisplay = () => {
+    if (isStageDisplayLive) {
+      setIsStageDisplayLive(false);
+      try { stageWin?.close(); } catch {}
+      setStageWin(null);
+      return;
+    }
+
+    const initialHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Lumina Stage Display</title>
+    <style>
+      body { margin: 0; padding: 0; background-color: black; overflow: hidden; }
+      #output-root { width: 100vw; height: 100vh; }
+    </style>
+  </head>
+  <body>
+    <div id="output-root"></div>
+  </body>
+</html>`;
+
+    const w = window.open(
+      "",
+      "LuminaStageDisplay",
+      "width=1280,height=720,menubar=no,toolbar=no,location=no,status=no"
+    );
+
+    if (!w || w.closed || typeof w.closed === "undefined") {
+      setPopupBlocked(true);
+      setIsStageDisplayLive(false);
+      setStageWin(null);
+      return;
+    }
+
+    try {
+      w.document.open();
+      w.document.write(initialHtml);
+      w.document.close();
+      w.document.title = "Lumina Stage Display";
+    } catch (e) {
+      console.error("Failed to initialize stage display window", e);
+    }
+
+    setPopupBlocked(false);
+    setStageWin(w);
+    setIsStageDisplayLive(true);
     try { w.focus(); } catch {}
   };
 
@@ -636,7 +726,7 @@ function App() {
            <button onClick={handleLogout} className="px-3 py-1.5 rounded-sm text-xs font-bold border bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white">LOGOUT</button>
            <button onClick={() => setIsAIModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 text-zinc-400 border border-zinc-800 hover:border-blue-900 rounded-sm text-xs"><SparklesIcon className="w-3 h-3" />AI ASSIST</button>
            <button onClick={handleToggleOutput} className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-bold border ${isOutputLive ? 'bg-emerald-950/30 text-emerald-400 border-emerald-900' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}><MonitorIcon className="w-3 h-3" />{isOutputLive ? 'OUTPUT ACTIVE' : 'LAUNCH OUTPUT'}</button>
-           <button onClick={() => setIsStageDisplayLive((p) => !p)} className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-bold border ${isStageDisplayLive ? 'bg-purple-950/30 text-purple-400 border-purple-900' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}>STAGE DISPLAY</button>
+           <button onClick={handleToggleStageDisplay} className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-bold border ${isStageDisplayLive ? 'bg-purple-950/30 text-purple-400 border-purple-900' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}>STAGE DISPLAY</button>
         </div>
       </header>
 
@@ -791,7 +881,7 @@ function App() {
             setPopupBlocked(true);
             setIsOutputLive(false);
             setOutputWin(null);
-          }}>{blackout ? (<div className="w-full h-full bg-black cursor-none"></div>) : (<SlideRenderer slide={routedSlide || activeSlide} item={routingMode === 'STREAM' && routedItem ? { ...routedItem, theme: { ...routedItem.theme, backgroundUrl: '' } } : routedItem} fitContainer={true} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={false} lowerThirds={routingMode === 'STREAM' || lowerThirdsEnabled} />)}</OutputWindow>)}
+          }}>{blackout ? (<div className="w-full h-full bg-black cursor-none"></div>) : (<SlideRenderer slide={routedSlide || activeSlide} item={routedItem} fitContainer={true} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={false} isProjector={true} lowerThirds={lowerThirdsEnabled} />)}</OutputWindow>)}
       {isStageDisplayLive && (<OutputWindow
           externalWindow={stageWin}
           onClose={() => {
@@ -799,6 +889,7 @@ function App() {
             setStageWin(null);
           }}
           onBlock={() => {
+            setPopupBlocked(true);
             setIsStageDisplayLive(false);
             setStageWin(null);
           }}><StageDisplay currentSlide={activeSlide} nextSlide={nextSlidePreview} activeItem={activeItem} timerLabel="Pastor Timer" timerDisplay={formatTimer(timerSeconds)} timerMode={timerMode} /></OutputWindow>)}

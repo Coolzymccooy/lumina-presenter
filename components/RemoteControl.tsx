@@ -1,26 +1,129 @@
-import React, { useEffect, useState } from 'react';
-import { subscribeToState, updateLiveState } from '../services/firebase';
+import React, { useEffect, useMemo, useState } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, subscribeToState, updateLiveState } from '../services/firebase';
+import { LoginScreen } from './LoginScreen';
 
 export const RemoteControl: React.FC = () => {
+  const [authLoading, setAuthLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
   const [state, setState] = useState<any>({});
+  const [syncError, setSyncError] = useState('');
+  const [commandStatus, setCommandStatus] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    return subscribeToState((data) => setState(data));
+    if (!auth) {
+      setAuthLoading(false);
+      return;
+    }
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      setAuthLoading(false);
+    });
+    return () => unsub();
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+    return subscribeToState(
+      (data) => {
+        setState(data);
+        setSyncError('');
+      },
+      'live',
+      (error) => {
+        setSyncError(error?.message || 'Failed to subscribe to live session.');
+      }
+    );
+  }, [user]);
+
+  const ownerUid = state?.controllerOwnerUid || null;
+  const allowedUids = Array.isArray(state?.controllerAllowedUids) ? state.controllerAllowedUids : [];
+  const allowedEmails = Array.isArray(state?.controllerAllowedEmails)
+    ? state.controllerAllowedEmails.map((e: string) => String(e).toLowerCase())
+    : [];
+  const userEmail = String(user?.email || '').toLowerCase();
+  const canControl = useMemo(() => {
+    if (!user?.uid || !ownerUid) return false;
+    if (user.uid === ownerUid) return true;
+    if (allowedUids.includes(user.uid)) return true;
+    if (userEmail && allowedEmails.includes(userEmail)) return true;
+    return false;
+  }, [user?.uid, ownerUid, allowedUids, allowedEmails, userEmail]);
+
   const sendCommand = async (command: 'NEXT' | 'PREV' | 'BLACKOUT') => {
-    await updateLiveState({ remoteCommand: command, remoteCommandAt: Date.now() });
+    if (!canControl) {
+      setCommandStatus('Not authorized for this active session.');
+      return;
+    }
+
+    setSending(true);
+    setCommandStatus('');
+    const ok = await updateLiveState({ remoteCommand: command, remoteCommandAt: Date.now() });
+    setSending(false);
+
+    if (!ok) {
+      setCommandStatus('Command failed. Check login and Firestore permissions.');
+      return;
+    }
+
+    setCommandStatus(`Sent: ${command}`);
+    window.setTimeout(() => setCommandStatus(''), 900);
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-zinc-950 text-zinc-400 flex items-center justify-center">
+        <span className="text-sm">Loading remote access...</span>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginScreen onLoginSuccess={(loggedInUser) => setUser(loggedInUser)} />;
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-6">
       <h1 className="text-2xl font-bold mb-2">Lumina Remote</h1>
-      <p className="text-zinc-400 text-sm mb-6">Mobile control surface synced over Firebase.</p>
+      <p className="text-zinc-400 text-sm mb-2">Mobile control surface synced over Firebase.</p>
+      <p className="text-zinc-500 text-xs mb-4">Signed in as: {user?.email || user?.uid}</p>
+      {ownerUid && (
+        <p className="text-zinc-500 text-xs mb-4">Session owner UID: {ownerUid}</p>
+      )}
+      {!ownerUid && (
+        <p className="text-amber-400 text-xs mb-4">No active session owner yet. Open presenter first.</p>
+      )}
+      {!canControl && ownerUid && (
+        <p className="text-red-400 text-xs mb-4">Access denied: use owner account or an allowlisted admin email.</p>
+      )}
+      {syncError && <p className="text-red-400 text-xs mb-4">{syncError}</p>}
+      {commandStatus && <p className="text-emerald-400 text-xs mb-4">{commandStatus}</p>}
+
       <div className="grid grid-cols-1 gap-3">
-        <button onClick={() => sendCommand('PREV')} className="p-4 rounded bg-zinc-800">◀ Prev Slide</button>
-        <button onClick={() => sendCommand('NEXT')} className="p-4 rounded bg-blue-600 font-bold">Next Slide ▶</button>
-        <button onClick={() => sendCommand('BLACKOUT')} className="p-4 rounded bg-red-700">Blackout</button>
+        <button
+          disabled={!canControl || sending}
+          onClick={() => sendCommand('PREV')}
+          className="p-4 rounded bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Prev Slide
+        </button>
+        <button
+          disabled={!canControl || sending}
+          onClick={() => sendCommand('NEXT')}
+          className="p-4 rounded bg-blue-600 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Next Slide
+        </button>
+        <button
+          disabled={!canControl || sending}
+          onClick={() => sendCommand('BLACKOUT')}
+          className="p-4 rounded bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Blackout
+        </button>
       </div>
+
       <div className="mt-6 text-xs text-zinc-500">
         <div>Current Item: {state.activeItemId || 'n/a'}</div>
         <div>Current Slide: {typeof state.activeSlideIndex === 'number' ? state.activeSlideIndex + 1 : 'n/a'}</div>
