@@ -23,7 +23,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
   }, []);
 
   return (
-    <div className="min-h-screen overflow-y-auto bg-black text-white font-sans selection:bg-purple-500/30">
+    <div className="min-h-[100dvh] overflow-x-hidden bg-black text-white font-sans selection:bg-purple-500/30">
       {/* Navigation */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-black/80 backdrop-blur-md border-b border-white/10' : 'bg-transparent'}`}>
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">

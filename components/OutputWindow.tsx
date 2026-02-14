@@ -48,13 +48,7 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
     const runId = effectRunIdRef.current;
 
     let w: Window | null = null;
-
-    if (targetWindow) {
-      w = targetWindow;
-      createdByMeRef.current = false;
-    } else {
-      // 1. Create a minimal HTML blob with the correct title
-      const initialHtml = `<!DOCTYPE html>
+    const initialHtml = `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -69,13 +63,14 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
   </body>
 </html>`;
 
-      const blob = new Blob([initialHtml], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-
-      // 2. Open the blob URL
+    if (targetWindow) {
+      w = targetWindow;
+      createdByMeRef.current = false;
+    } else {
+      // Open same-origin blank page to avoid blob: URLs in the address bar.
       w = winRef.current && !winRef.current.closed
           ? winRef.current
-          : window.open(url, windowName, features);
+          : window.open("", windowName, features);
       
       createdByMeRef.current = true;
     }
@@ -87,19 +82,29 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
 
     winRef.current = w;
 
-    // 3. Wait for the window to load the blob, then inject React
+    // Ensure host document exists, then inject React.
     const onWindowLoad = () => {
       if (!w || w.closed) return;
+
+      if (!w.document.getElementById("output-root")) {
+        try {
+          w.document.open();
+          w.document.write(initialHtml);
+          w.document.close();
+        } catch {
+          // ignore
+        }
+      }
       
       // Ensure title is set again just in case
       w.document.title = "Lumina Output (Projector)";
       
-      // Find the container we defined in the blob
+      // Find the output root (create if needed)
       const div = w.document.getElementById("output-root");
       if (div) {
         setContainer(div);
       } else {
-        // Fallback if blob didn't render for some reason
+        // Fallback if shell write failed for some reason
         const newDiv = w.document.createElement("div");
         newDiv.id = "output-root";
         w.document.body.appendChild(newDiv);

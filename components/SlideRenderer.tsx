@@ -387,29 +387,51 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
         <div className="absolute inset-0 bg-black/20" />
       )}
 
-      {/* Text layer (safe padding + hard bounds so it never bleeds outside) */}
-      <div className={`absolute inset-0 flex flex-col ${lowerThirds ? 'items-end pb-20' : 'items-center justify-center'} ${containerPadding} text-center`} style={textLayerStyle}>
-        <div className="flex-1 w-full flex items-center justify-center">
-          <div
-            className={[
-              "w-full",
-              "max-w-[92%]",
-              "max-h-full",
-              "overflow-hidden",
-              "whitespace-pre-wrap",
-              "break-words",
-              "leading-tight",
-              "text-center",
-              isThumbnail ? "text-[0.65rem]" : "",
-            ].join(" ")}
-            style={!isThumbnail ? { fontSize: `${textVh}vh` } : undefined}
-          >
-            {contentText}
+      {/* Text layer */}
+      <div
+        className={`absolute inset-0 ${lowerThirds ? "flex items-end justify-center px-8 pb-12" : `flex flex-col items-center justify-center ${containerPadding} text-center`}`}
+        style={textLayerStyle}
+      >
+        {lowerThirds ? (
+          <div className="w-full max-w-[92%] text-center">
+            <div className="inline-block max-w-full px-6 py-3 rounded-2xl bg-black/60 border border-white/15 backdrop-blur-md shadow-xl">
+              <div
+                className={[
+                  "whitespace-pre-wrap",
+                  "break-words",
+                  "leading-tight",
+                  "text-center",
+                  isThumbnail ? "text-[0.65rem]" : "",
+                ].join(" ")}
+                style={!isThumbnail ? { fontSize: `${Math.max(2.2, textVh * 0.58)}vh` } : undefined}
+              >
+                {contentText}
+              </div>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="flex-1 w-full flex items-center justify-center">
+            <div
+              className={[
+                "w-full",
+                "max-w-[92%]",
+                "max-h-full",
+                "overflow-hidden",
+                "whitespace-pre-wrap",
+                "break-words",
+                "leading-tight",
+                "text-center",
+                isThumbnail ? "text-[0.65rem]" : "",
+              ].join(" ")}
+              style={!isThumbnail ? { fontSize: `${textVh}vh` } : undefined}
+            >
+              {contentText}
+            </div>
+          </div>
+        )}
 
         {/* Footer / Reference Layer */}
-        {!isThumbnail && slide.label && (
+        {!isThumbnail && slide.label && !lowerThirds && (
            <div className="absolute bottom-6 right-8 max-w-[80%] opacity-90 transition-all duration-300">
              <span 
               className="text-[2.2vh] font-medium tracking-wide inline-block px-4 py-2 rounded-full backdrop-blur-md border border-white/10 shadow-lg" 
