@@ -1,6 +1,5 @@
-
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, onSnapshot, updateDoc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, onSnapshot, setDoc, collection, query, where, orderBy } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
@@ -20,25 +19,45 @@ export const auth = getAuth(app);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Check if config is valid (simple heuristic)
 export const isFirebaseConfigured = () => {
   return firebaseConfig.apiKey && firebaseConfig.apiKey.length > 10;
 };
 
-// --- Sync Helpers ---
-
-export const subscribeToState = (callback: (data: any) => void) => {
-  return onSnapshot(doc(db, 'sessions', 'live'), (doc) => {
-    if (doc.exists()) callback(doc.data());
+export const subscribeToState = (callback: (data: any) => void, sessionId = 'live') => {
+  return onSnapshot(doc(db, 'sessions', sessionId), (snapshot) => {
+    if (snapshot.exists()) callback(snapshot.data());
   });
 };
 
-export const updateLiveState = async (state: any) => {
+export const updateLiveState = async (state: any, sessionId = 'live') => {
   try {
-    await setDoc(doc(db, 'sessions', 'live'), state, { merge: true });
+    await setDoc(doc(db, 'sessions', sessionId), {
+      ...state,
+      updatedAt: Date.now(),
+    }, { merge: true });
   } catch (e) {
     console.error("Sync Error:", e);
   }
+};
+
+export const subscribeToTeamPlaylists = (teamId: string, callback: (data: any[]) => void) => {
+  const playlistQuery = query(
+    collection(db, 'playlists'),
+    where('teamId', '==', teamId),
+    orderBy('updatedAt', 'desc')
+  );
+
+  return onSnapshot(playlistQuery, (snapshot) => {
+    callback(snapshot.docs.map((docItem) => ({ id: docItem.id, ...docItem.data() })));
+  });
+};
+
+export const upsertTeamPlaylist = async (teamId: string, playlistId: string, payload: any) => {
+  await setDoc(doc(db, 'playlists', playlistId), {
+    teamId,
+    ...payload,
+    updatedAt: Date.now(),
+  }, { merge: true });
 };
 
 export const signIn = () => signInWithPopup(auth, googleProvider);

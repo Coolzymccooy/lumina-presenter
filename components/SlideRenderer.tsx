@@ -22,6 +22,7 @@ interface SlideRendererProps {
 
   /** When rendering inside the projector popout window. Enables a safer YouTube strategy. */
   isProjector?: boolean;
+  lowerThirds?: boolean;
 }
 
 function safeString(v: unknown) {
@@ -33,6 +34,18 @@ function getYoutubeId(url: string): string | null {
     /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i
   );
   return m?.[1] ?? null;
+}
+
+function looksLikeDirectVideo(url: string): boolean {
+  if (!url) return false;
+  const normalized = url.split("?")[0].toLowerCase();
+  return (
+    normalized.endsWith(".mp4") ||
+    normalized.endsWith(".webm") ||
+    normalized.endsWith(".mov") ||
+    normalized.includes("/video/") ||
+    normalized.startsWith("blob:")
+  );
 }
 
 /**
@@ -90,6 +103,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   seekAmount = 0,
   isMuted = false,
   isProjector = false,
+  lowerThirds = false,
 }) => {
   const htmlVideoRef = useRef<HTMLVideoElement>(null);
   const [mediaError, setMediaError] = useState(false);
@@ -177,8 +191,9 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   const mediaType: MediaType = useMemo(() => {
     if (!hasBackground) return "image";
     if (isYoutube) return "video";
+    if (looksLikeDirectVideo(resolvedUrl || rawBgUrl)) return "video";
     return (slide?.mediaType || item?.theme?.mediaType || "image") as MediaType;
-  }, [hasBackground, isYoutube, slide?.mediaType, item?.theme?.mediaType]);
+  }, [hasBackground, isYoutube, slide?.mediaType, item?.theme?.mediaType, resolvedUrl, rawBgUrl]);
 
   // Reset errors when slide changes
   useEffect(() => {
@@ -373,7 +388,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       )}
 
       {/* Text layer (safe padding + hard bounds so it never bleeds outside) */}
-      <div className={`absolute inset-0 flex flex-col items-center justify-center ${containerPadding} text-center`} style={textLayerStyle}>
+      <div className={`absolute inset-0 flex flex-col ${lowerThirds ? 'items-end pb-20' : 'items-center justify-center'} ${containerPadding} text-center`} style={textLayerStyle}>
         <div className="flex-1 w-full flex items-center justify-center">
           <div
             className={[

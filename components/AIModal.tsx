@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { generateSlidesFromText, suggestVisualTheme } from '../services/geminiService';
+import { analyzeSermonAndGenerateDeck, generateSlidesFromText, suggestVisualTheme } from '../services/geminiService';
 import { ItemType, ServiceItem } from '../types';
 import { SparklesIcon, BibleIcon, MonitorIcon } from './Icons'; // Assuming icons exist or use generics
 
@@ -17,6 +17,7 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
   const [isProcessing, setIsProcessing] = useState(false);
   const [mode, setMode] = useState<AIMode>('SONG');
   const [error, setError] = useState<string | null>(null);
+  const [sermonValidation, setSermonValidation] = useState<{references: string[]; points: string[]} | null>(null);
 
   if (!isOpen) return null;
 
@@ -33,16 +34,27 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
       if (mode === 'SCRIPTURE') prompt = `Create a visual scripture presentation for: ${inputText}`;
 
       // 1. Generate Slides Structure
-      const slideData = await generateSlidesFromText(prompt);
+      const slideData = mode === 'SERMON'
+        ? await analyzeSermonAndGenerateDeck(inputText)
+        : await generateSlidesFromText(prompt);
       
       if (slideData) {
         // 2. Suggest Theme
         const themeKeyword = await suggestVisualTheme(inputText);
         const bgUrl = `https://picsum.photos/seed/${themeKeyword}/1920/1080`;
 
+        const slides = slideData.slides.slice(0, mode === 'SERMON' ? 20 : slideData.slides.length);
+
+        if (mode === 'SERMON') {
+          setSermonValidation({
+            references: (slideData as any).scriptureReferences || [],
+            points: (slideData as any).keyPoints || [],
+          });
+        }
+
         const newItem: ServiceItem = {
           id: Date.now().toString(),
-          title: mode === 'SCRIPTURE' ? inputText : (slideData.slides[0]?.content.substring(0, 20) || "AI Generated"),
+          title: mode === 'SCRIPTURE' ? inputText : mode === 'SERMON' ? 'AI Sermon Deck' : (slides[0]?.content.substring(0, 20) || "AI Generated"),
           type: mode === 'SONG' ? ItemType.SONG : ItemType.ANNOUNCEMENT, // Map others to generic or keep simple
           theme: {
             backgroundUrl: bgUrl,
@@ -51,7 +63,7 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
             shadow: true,
             fontSize: mode === 'SERMON' ? 'medium' : 'large'
           },
-          slides: slideData.slides.map((s, idx) => ({
+          slides: slides.map((s, idx) => ({
             id: `gen-${Date.now()}-${idx}`,
             content: s.content,
             label: s.label || `Slide ${idx + 1}`
@@ -126,6 +138,16 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
                     <div className="absolute bottom-3 right-3 text-[10px] text-zinc-600 font-mono">{inputText.length}/5000</div>
                 </div>
             </div>
+
+
+
+            {mode === 'SERMON' && sermonValidation && (
+                <div className="mb-4 p-3 bg-emerald-950/20 border border-emerald-900/40 text-emerald-300 text-xs rounded-md">
+                    <div className="font-bold mb-1">Validated Sermon Analysis</div>
+                    <div>Scripture References: {sermonValidation.references.length ? sermonValidation.references.join(', ') : 'None detected'}</div>
+                    <div className="mt-1">Key Points Found: {sermonValidation.points.length}</div>
+                </div>
+            )}
 
             {error && (
                 <div className="mb-4 p-3 bg-red-950/30 border border-red-900/50 text-red-400 text-xs rounded-md flex justify-between items-center">
