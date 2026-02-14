@@ -22,24 +22,30 @@ export const GOSPEL_TRACKS: GospelTrack[] = [
   { id: 't10', title: "Holy Holy Holy (Brass)", artist: "Royal Praise", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-17.mp3", duration: "3:10" },
 ];
 
+const makeGradientBackground = (a: string, b: string, c: string) => {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='${a}'/><stop offset='55%' stop-color='${b}'/><stop offset='100%' stop-color='${c}'/></linearGradient><radialGradient id='r' cx='70%' cy='20%' r='80%'><stop offset='0%' stop-color='rgba(255,255,255,0.22)'/><stop offset='100%' stop-color='rgba(255,255,255,0)'/></radialGradient></defs><rect width='1920' height='1080' fill='url(#g)'/><rect width='1920' height='1080' fill='url(#r)'/></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
+
 export const DEFAULT_BACKGROUNDS = [
-  "https://images.unsplash.com/photo-1438232992991-995b705861de?auto=format&fit=crop&q=80&w=1920",
-  "https://images.unsplash.com/photo-1518655061710-5ccf392c275a?auto=format&fit=crop&q=80&w=1920",
-  "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1920",
-  "https://images.unsplash.com/photo-1501854140801-50d01698950b?auto=format&fit=crop&q=80&w=1920",
-  "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&q=80&w=1920",
-  "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&q=80&w=1920",
-  "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&q=80&w=1920",
-  "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?auto=format&fit=crop&q=80&w=1920",
-  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=1920",
-  "https://images.unsplash.com/photo-1532274402911-5a3b027c90be?auto=format&fit=crop&q=80&w=1920",
-  "https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&q=80&w=1920",
-  "https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?auto=format&fit=crop&q=80&w=1920",
+  makeGradientBackground('#112240', '#1a365d', '#2d3748'),
+  makeGradientBackground('#3c1053', '#ad5389', '#1e1b4b'),
+  makeGradientBackground('#0b132b', '#1c2541', '#3a506b'),
+  makeGradientBackground('#2f4f4f', '#3b6978', '#84a9ac'),
+  makeGradientBackground('#1b4332', '#2d6a4f', '#40916c'),
+  makeGradientBackground('#2c003e', '#5f0f40', '#9a031e'),
+  makeGradientBackground('#1d3557', '#457b9d', '#a8dadc'),
+  makeGradientBackground('#2b2d42', '#3a506b', '#5bc0be'),
+  makeGradientBackground('#4a4e69', '#22223b', '#1b1b2f'),
+  makeGradientBackground('#102a43', '#243b53', '#334e68'),
+  makeGradientBackground('#3d0c02', '#7f1d1d', '#991b1b'),
+  makeGradientBackground('#0f172a', '#1e293b', '#334155'),
 ];
 
 export const VIDEO_BACKGROUNDS = [
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-  "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4"
+  "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
+  "https://www.w3schools.com/html/mov_bbb.mp4",
+  "https://samplelib.com/lib/preview/mp4/sample-5s.mp4"
 ];
 
 export const SOLID_COLORS = [

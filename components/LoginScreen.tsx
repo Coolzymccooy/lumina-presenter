@@ -7,6 +7,15 @@ interface LoginScreenProps {
   onLoginSuccess: (user: any) => void;
 }
 
+const GoogleMark = () => (
+  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+    <path fill="#EA4335" d="M9 7.37v3.58h4.97C13.75 12.1 12.6 13 11 13c-2.31 0-4.19-1.91-4.19-4.26S8.69 4.48 11 4.48c1.23 0 2.33.46 3.17 1.2l2.45-2.5C15.1 1.8 13.15 1 11 1 6.58 1 3 4.59 3 9s3.58 8 8 8c4.62 0 7.67-3.25 7.67-7.83 0-.52-.05-.93-.14-1.3H9z" />
+    <path fill="#4285F4" d="M17.67 9.17c0-.52-.05-.93-.14-1.3H9v3.58h4.97c-.22 1.15-1.37 2.05-2.97 2.05-1.8 0-3.31-1.2-3.83-2.84l-2.91 2.25C5.56 15.54 8.09 17 11 17c4.62 0 7.67-3.25 7.67-7.83z" />
+    <path fill="#FBBC05" d="M7.17 10.66c-.13-.39-.2-.8-.2-1.22 0-.42.07-.83.2-1.22L4.26 5.97A8 8 0 003 9c0 1.28.3 2.5.84 3.57l3.33-1.91z" />
+    <path fill="#34A853" d="M11 17c2.15 0 4.1-.8 5.62-2.18l-2.45-2.5c-.85.74-1.95 1.2-3.17 1.2-2.31 0-4.19-1.91-4.19-4.26 0-.42.07-.83.2-1.22L4.26 5.97A8 8 0 0011 17z" />
+  </svg>
+);
+
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -143,9 +152,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             type="button"
             disabled={loading}
             onClick={handleGoogleSignIn}
-            className="w-full py-3 bg-white text-zinc-900 font-bold text-sm tracking-wide rounded-sm hover:bg-zinc-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3 px-4 bg-white text-zinc-900 font-semibold text-sm tracking-wide rounded-sm hover:bg-zinc-100 transition-all border border-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            CONTINUE WITH GOOGLE
+            <GoogleMark />
+            {isLogin ? 'CONTINUE WITH GOOGLE' : 'SIGN UP WITH GOOGLE'}
           </button>
         </form>
 

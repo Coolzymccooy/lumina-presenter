@@ -29,7 +29,7 @@ export const logActivity = async (userId: string | undefined, event: EventType, 
     userAgent: navigator.userAgent
   };
 
-  if (isFirebaseConfigured && db) {
+  if (isFirebaseConfigured() && db) {
     try {
       await addDoc(collection(db, "user_activity_logs"), payload);
     } catch (e) {
