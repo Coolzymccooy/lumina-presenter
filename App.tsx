@@ -87,6 +87,11 @@ function App() {
   const [teamPlaylists, setTeamPlaylists] = useState<any[]>([]);
   const [stageWin, setStageWin] = useState<Window | null>(null);
 
+  const [timerMode, setTimerMode] = useState<'COUNTDOWN' | 'ELAPSED'>('COUNTDOWN');
+  const [timerDurationMin, setTimerDurationMin] = useState(35);
+  const [timerSeconds, setTimerSeconds] = useState(35 * 60);
+  const [timerRunning, setTimerRunning] = useState(false);
+
   const [activeItemId, setActiveItemId] = useState<string | null>(() => {
     const saved = getSavedState();
     return saved?.activeItemId || null;
@@ -263,6 +268,14 @@ function App() {
     }
   }, [activeSlideIndex, activeItemId, viewMode]);
 
+  const hasSavedSession = (() => {
+    try {
+      return !!localStorage.getItem(STORAGE_KEY);
+    } catch {
+      return false;
+    }
+  })();
+
   const selectedItem = schedule.find(i => i.id === selectedItemId) || null;
   const activeItem = schedule.find(i => i.id === activeItemId) || null;
   const activeSlide = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex] : null;
@@ -271,6 +284,13 @@ function App() {
   const routedItem = routingMode === 'LOBBY' ? lobbyItem : activeItem;
   const routedSlide = routingMode === 'LOBBY' ? lobbyItem?.slides?.[0] || activeSlide : activeSlide;
   const isActiveVideo = activeSlide && (activeSlide.mediaType === 'video' || (!activeSlide.mediaType && activeItem?.theme.mediaType === 'video'));
+  const formatTimer = (total: number) => {
+    const safe = Math.max(0, total);
+    const mm = Math.floor(safe / 60).toString().padStart(2, '0');
+    const ss = Math.floor(safe % 60).toString().padStart(2, '0');
+    return `${mm}:${ss}`;
+  };
+
 
   const addItem = (item: ServiceItem) => {
     setSchedule(prev => [...prev, item]);
@@ -432,8 +452,27 @@ function App() {
     };
   }, [nextSlide, prevSlide]);
 
+  useEffect(() => {
+    if (!timerRunning) return;
+
+    const id = window.setInterval(() => {
+      setTimerSeconds((prev) => {
+        if (timerMode === 'COUNTDOWN') {
+          return prev > 0 ? prev - 1 : 0;
+        }
+        return prev + 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(id);
+  }, [timerRunning, timerMode]);
+
   // ✅ Launch Output handler (opens window synchronously from user gesture — popup-safe)
   const handleToggleOutput = () => {
+    if (!activeSlide && selectedItem && selectedItem.slides.length > 0) {
+      goLive(selectedItem, 0);
+    }
+
     // Turn OFF
     if (isOutputLive) {
       setIsOutputLive(false);
@@ -485,7 +524,7 @@ function App() {
 
   // ROUTING: LANDING PAGE
   if (viewState === 'landing') {
-      return <LandingPage onEnter={() => setViewState('studio')} isAuthenticated={!!user} />;
+      return <LandingPage onEnter={() => setViewState('studio')} onLogout={user ? handleLogout : undefined} isAuthenticated={!!user} hasSavedSession={hasSavedSession} />;
   }
 
   // ROUTING: LOGIN (If not authenticated and trying to enter)
@@ -551,6 +590,7 @@ function App() {
         <div className="flex items-center gap-3">
            <button onClick={() => setIsHelpOpen(true)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-sm"><HelpIcon className="w-4 h-4" /></button>
            <button onClick={() => setIsProfileOpen(true)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-sm"><Settings className="w-4 h-4" /></button>
+           <button onClick={handleLogout} className="px-3 py-1.5 rounded-sm text-xs font-bold border bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white">LOGOUT</button>
            <button onClick={() => setIsAIModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 text-zinc-400 border border-zinc-800 hover:border-blue-900 rounded-sm text-xs"><SparklesIcon className="w-3 h-3" />AI ASSIST</button>
            <button onClick={handleToggleOutput} className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-bold border ${isOutputLive ? 'bg-emerald-950/30 text-emerald-400 border-emerald-900' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}><MonitorIcon className="w-3 h-3" />{isOutputLive ? 'OUTPUT ACTIVE' : 'LAUNCH OUTPUT'}</button>
            <button onClick={() => setIsStageDisplayLive((p) => !p)} className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-bold border ${isStageDisplayLive ? 'bg-purple-950/30 text-purple-400 border-purple-900' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}>STAGE DISPLAY</button>
@@ -659,6 +699,32 @@ function App() {
                         <option value="STREAM">Stream</option>
                         <option value="LOBBY">Lobby</option>
                       </select>
+
+                      <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
+                        <select value={timerMode} onChange={(e) => {
+                          const mode = e.target.value as 'COUNTDOWN' | 'ELAPSED';
+                          setTimerMode(mode);
+                          setTimerRunning(false);
+                          setTimerSeconds(mode === 'COUNTDOWN' ? timerDurationMin * 60 : 0);
+                        }} className="bg-transparent text-zinc-300 text-[10px]">
+                          <option value="COUNTDOWN">Countdown</option>
+                          <option value="ELAPSED">Elapsed</option>
+                        </select>
+                        {timerMode === 'COUNTDOWN' && (
+                          <input type="number" min={1} max={180} value={timerDurationMin} onChange={(e) => {
+                            const value = Math.max(1, Math.min(180, Number(e.target.value) || 1));
+                            setTimerDurationMin(value);
+                            if (!timerRunning) setTimerSeconds(value * 60);
+                          }} className="w-14 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
+                        )}
+                        <div className="text-[11px] font-mono text-cyan-300 w-12 text-center">{formatTimer(timerSeconds)}</div>
+                        <button onClick={() => setTimerRunning((p) => !p)} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">{timerRunning ? 'Pause' : 'Start'}</button>
+                        <button onClick={() => {
+                          setTimerRunning(false);
+                          setTimerSeconds(timerMode === 'COUNTDOWN' ? timerDurationMin * 60 : 0);
+                        }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">Reset</button>
+                      </div>
+
                       <button onClick={() => setBlackout(!blackout)} className={`h-12 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button>
                     </div>
                 </div>
@@ -694,6 +760,9 @@ function App() {
           onBlock={() => {
             setIsStageDisplayLive(false);
             setStageWin(null);
+
+          }}><StageDisplay currentSlide={activeSlide} nextSlide={nextSlidePreview} activeItem={activeItem} timerLabel="Pastor Timer" timerDisplay={formatTimer(timerSeconds)} timerMode={timerMode} /></OutputWindow>)}
+
           }}><StageDisplay currentSlide={activeSlide} nextSlide={nextSlidePreview} activeItem={activeItem} /></OutputWindow>)}
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />

@@ -36,6 +36,18 @@ function getYoutubeId(url: string): string | null {
   return m?.[1] ?? null;
 }
 
+function looksLikeDirectVideo(url: string): boolean {
+  if (!url) return false;
+  const normalized = url.split("?")[0].toLowerCase();
+  return (
+    normalized.endsWith(".mp4") ||
+    normalized.endsWith(".webm") ||
+    normalized.endsWith(".mov") ||
+    normalized.includes("/video/") ||
+    normalized.startsWith("blob:")
+  );
+}
+
 /**
  * Shrinks text for long slides to avoid clipping.
  * Uses vh so it scales naturally on projector resolutions.
@@ -179,8 +191,9 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   const mediaType: MediaType = useMemo(() => {
     if (!hasBackground) return "image";
     if (isYoutube) return "video";
+    if (looksLikeDirectVideo(resolvedUrl || rawBgUrl)) return "video";
     return (slide?.mediaType || item?.theme?.mediaType || "image") as MediaType;
-  }, [hasBackground, isYoutube, slide?.mediaType, item?.theme?.mediaType]);
+  }, [hasBackground, isYoutube, slide?.mediaType, item?.theme?.mediaType, resolvedUrl, rawBgUrl]);
 
   // Reset errors when slide changes
   useEffect(() => {
