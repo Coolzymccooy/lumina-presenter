@@ -86,6 +86,7 @@ function App() {
   const [routingMode, setRoutingMode] = useState<'PROJECTOR' | 'STREAM' | 'LOBBY'>('PROJECTOR');
   const [teamPlaylists, setTeamPlaylists] = useState<any[]>([]);
   const [stageWin, setStageWin] = useState<Window | null>(null);
+
   const [timerMode, setTimerMode] = useState<'COUNTDOWN' | 'ELAPSED'>('COUNTDOWN');
   const [timerDurationMin, setTimerDurationMin] = useState(35);
   const [timerSeconds, setTimerSeconds] = useState(35 * 60);
@@ -698,6 +699,7 @@ function App() {
                         <option value="STREAM">Stream</option>
                         <option value="LOBBY">Lobby</option>
                       </select>
+
                       <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
                         <select value={timerMode} onChange={(e) => {
                           const mode = e.target.value as 'COUNTDOWN' | 'ELAPSED';
@@ -722,6 +724,7 @@ function App() {
                           setTimerSeconds(timerMode === 'COUNTDOWN' ? timerDurationMin * 60 : 0);
                         }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">Reset</button>
                       </div>
+
                       <button onClick={() => setBlackout(!blackout)} className={`h-12 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button>
                     </div>
                 </div>
@@ -757,7 +760,10 @@ function App() {
           onBlock={() => {
             setIsStageDisplayLive(false);
             setStageWin(null);
+
           }}><StageDisplay currentSlide={activeSlide} nextSlide={nextSlidePreview} activeItem={activeItem} timerLabel="Pastor Timer" timerDisplay={formatTimer(timerSeconds)} timerMode={timerMode} /></OutputWindow>)}
+
+          }}><StageDisplay currentSlide={activeSlide} nextSlide={nextSlidePreview} activeItem={activeItem} /></OutputWindow>)}
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
       {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={() => {}} currentSettings={{}} />} {/* NEW */}
