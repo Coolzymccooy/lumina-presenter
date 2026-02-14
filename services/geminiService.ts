@@ -174,3 +174,96 @@ ${contextText.slice(0, 500)}`,
     return "abstract";
   }
 };
+
+
+export interface SermonAnalysisResult {
+  scriptureReferences: string[];
+  keyPoints: string[];
+  slides: { label: string; content: string }[];
+}
+
+const scriptureRegex = /\b(?:[1-3]\s)?[A-Za-z]+\s\d{1,3}:\d{1,3}(?:-\d{1,3})?\b/g;
+
+export const analyzeSermonAndGenerateDeck = async (sermonText: string): Promise<SermonAnalysisResult> => {
+  const references = Array.from(new Set((sermonText.match(scriptureRegex) || []).slice(0, 12)));
+  const paragraphs = sermonText
+    .split(/\n{2,}|(?<=[.!?])\s+(?=[A-Z])/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const keyPoints = paragraphs.slice(0, 8).map((part, index) => {
+    const compact = part.replace(/\s+/g, ' ').trim();
+    return compact.length > 140 ? `${compact.slice(0, 137)}...` : compact || `Point ${index + 1}`;
+  });
+
+  try {
+    const ai = getAi();
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `You are a sermon slide architect. Analyze the sermon text and return JSON with:
+1) scriptureReferences: array of references found
+2) keyPoints: concise bullet points
+3) slides: exactly 20 slides with label/content for a preaching deck.
+
+Sermon Text:
+${sermonText}`,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            scriptureReferences: { type: Type.ARRAY, items: { type: Type.STRING } },
+            keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
+            slides: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  label: { type: Type.STRING },
+                  content: { type: Type.STRING },
+                },
+                required: ['label', 'content'],
+              },
+            },
+          },
+          required: ['scriptureReferences', 'keyPoints', 'slides'],
+        },
+      },
+    });
+
+    const parsed = response.text?.trim() ? JSON.parse(response.text.trim()) : null;
+    if (parsed?.slides?.length) {
+      const normalizedSlides = parsed.slides.slice(0, 20);
+      while (normalizedSlides.length < 20) {
+        const idx = normalizedSlides.length + 1;
+        normalizedSlides.push({
+          label: `Application ${idx}`,
+          content: keyPoints[idx % Math.max(keyPoints.length, 1)] || `Reflection point ${idx}`,
+        });
+      }
+      return {
+        scriptureReferences: parsed.scriptureReferences?.length ? parsed.scriptureReferences : references,
+        keyPoints: parsed.keyPoints?.length ? parsed.keyPoints : keyPoints,
+        slides: normalizedSlides,
+      };
+    }
+  } catch (error) {
+    console.error('analyzeSermonAndGenerateDeck failed:', error);
+  }
+
+  const fallbackSlides = Array.from({ length: 20 }).map((_, idx) => ({
+    label: idx === 0 ? 'Title' : idx <= references.length ? `Scripture ${idx}` : `Point ${idx}`,
+    content:
+      idx === 0
+        ? 'Sermon Overview'
+        : idx <= references.length
+        ? references[idx - 1]
+        : keyPoints[(idx - 1) % Math.max(keyPoints.length, 1)] || `Key takeaway ${idx}`,
+  }));
+
+  return {
+    scriptureReferences: references,
+    keyPoints,
+    slides: fallbackSlides,
+  };
+};

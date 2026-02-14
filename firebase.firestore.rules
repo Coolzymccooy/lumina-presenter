@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function sameTeam(teamId) {
+      return signedIn() && teamId in request.auth.token.teams;
+    }
+
+    // Live presenter/remote sync
+    match /sessions/{sessionId} {
+      allow read: if signedIn();
+      allow write: if signedIn();
+    }
+
+    // Team playlists synced across home + sanctuary devices
+    match /playlists/{playlistId} {
+      allow read: if signedIn() && (
+        resource.data.teamId == request.auth.uid ||
+        (resource.data.teamId is string && sameTeam(resource.data.teamId))
+      );
+
+      allow create: if signedIn() && (
+        request.resource.data.teamId == request.auth.uid ||
+        (request.resource.data.teamId is string && sameTeam(request.resource.data.teamId))
+      );
+
+      allow update, delete: if signedIn() && (
+        resource.data.teamId == request.auth.uid ||
+        (resource.data.teamId is string && sameTeam(resource.data.teamId))
+      );
+    }
+  }
+}

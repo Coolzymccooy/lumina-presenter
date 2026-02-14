@@ -22,6 +22,7 @@ interface SlideRendererProps {
 
   /** When rendering inside the projector popout window. Enables a safer YouTube strategy. */
   isProjector?: boolean;
+  lowerThirds?: boolean;
 }
 
 function safeString(v: unknown) {
@@ -90,6 +91,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   seekAmount = 0,
   isMuted = false,
   isProjector = false,
+  lowerThirds = false,
 }) => {
   const htmlVideoRef = useRef<HTMLVideoElement>(null);
   const [mediaError, setMediaError] = useState(false);
@@ -373,7 +375,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       )}
 
       {/* Text layer (safe padding + hard bounds so it never bleeds outside) */}
-      <div className={`absolute inset-0 flex flex-col items-center justify-center ${containerPadding} text-center`} style={textLayerStyle}>
+      <div className={`absolute inset-0 flex flex-col ${lowerThirds ? 'items-end pb-20' : 'items-center justify-center'} ${containerPadding} text-center`} style={textLayerStyle}>
         <div className="flex-1 w-full flex items-center justify-center">
           <div
             className={[

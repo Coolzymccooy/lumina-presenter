@@ -15,8 +15,9 @@ import { BibleBrowser } from './components/BibleBrowser';
 import { LandingPage } from './components/LandingPage'; // NEW
 import { ProfileSettings } from './components/ProfileSettings'; // NEW
 import { MotionLibrary } from './components/MotionLibrary'; // NEW
+import { StageDisplay } from './components/StageDisplay';
 import { logActivity, analyzeSentimentContext } from './services/analytics';
-import { auth, isFirebaseConfigured } from './services/firebase';
+import { auth, isFirebaseConfigured, subscribeToState, subscribeToTeamPlaylists, updateLiveState, upsertTeamPlaylist } from './services/firebase';
 import { onAuthStateChanged } from "firebase/auth";
 import { clearMediaCache } from './services/localMedia';
 import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings } from './components/Icons'; // Added Settings Icon
@@ -80,6 +81,11 @@ function App() {
   const [isMotionLibOpen, setIsMotionLibOpen] = useState(false); // NEW
   const [editingSlide, setEditingSlide] = useState<Slide | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
+  const [isStageDisplayLive, setIsStageDisplayLive] = useState(false);
+  const [lowerThirdsEnabled, setLowerThirdsEnabled] = useState(false);
+  const [routingMode, setRoutingMode] = useState<'PROJECTOR' | 'STREAM' | 'LOBBY'>('PROJECTOR');
+  const [teamPlaylists, setTeamPlaylists] = useState<any[]>([]);
+  const [stageWin, setStageWin] = useState<Window | null>(null);
 
   const [activeItemId, setActiveItemId] = useState<string | null>(() => {
     const saved = getSavedState();
@@ -109,7 +115,7 @@ function App() {
 
   // --- SESSION PERSISTENCE LOGIC ---
   useEffect(() => {
-    if (isFirebaseConfigured && auth) {
+    if (isFirebaseConfigured() && auth) {
       const unsub = onAuthStateChanged(auth, (u) => {
         setUser(u);
         setAuthLoading(false);
@@ -214,7 +220,7 @@ function App() {
 
   const handleLoginSuccess = (loggedInUser: any) => {
     setUser(loggedInUser);
-    if (!isFirebaseConfigured) {
+    if (!isFirebaseConfigured()) {
         localStorage.setItem('lumina_demo_user', JSON.stringify(loggedInUser));
     }
     logActivity(loggedInUser.uid, 'SESSION_START');
@@ -223,7 +229,7 @@ function App() {
 
   const handleLogout = () => {
     if (user) logActivity(user.uid, 'SESSION_END');
-    if (isFirebaseConfigured && auth) auth.signOut();
+    if (isFirebaseConfigured() && auth) auth.signOut();
     else localStorage.removeItem('lumina_demo_user');
     setUser(null);
     setViewState('landing'); // Return to home
@@ -240,6 +246,17 @@ function App() {
     }
   }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, user]);
 
+
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    updateLiveState({ scheduleSnapshot: schedule.slice(0, 20) });
+    upsertTeamPlaylist(user.uid, 'default-playlist', {
+      title: 'Default Playlist',
+      items: schedule,
+    });
+  }, [schedule, user?.uid]);
+
   useEffect(() => {
     if (viewMode === 'PRESENTER' && activeSlideRef.current) {
         activeSlideRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
@@ -249,6 +266,10 @@ function App() {
   const selectedItem = schedule.find(i => i.id === selectedItemId) || null;
   const activeItem = schedule.find(i => i.id === activeItemId) || null;
   const activeSlide = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex] : null;
+  const nextSlidePreview = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex + 1] || null : null;
+  const lobbyItem = schedule.find((item) => item.type === ItemType.ANNOUNCEMENT) || activeItem;
+  const routedItem = routingMode === 'LOBBY' ? lobbyItem : activeItem;
+  const routedSlide = routingMode === 'LOBBY' ? lobbyItem?.slides?.[0] || activeSlide : activeSlide;
   const isActiveVideo = activeSlide && (activeSlide.mediaType === 'video' || (!activeSlide.mediaType && activeItem?.theme.mediaType === 'video'));
 
   const addItem = (item: ServiceItem) => {
@@ -355,6 +376,62 @@ function App() {
   }, [viewMode, nextSlide, prevSlide, isAIModalOpen, isSlideEditorOpen, isHelpOpen]);
 
 
+
+
+  useEffect(() => {
+    if (!isFirebaseConfigured()) return;
+
+    const unsubState = subscribeToState((data) => {
+      if (data.remoteCommandAt && data.remoteCommandAt !== (window as any).__lastRemoteCommandAt) {
+        (window as any).__lastRemoteCommandAt = data.remoteCommandAt;
+        if (data.remoteCommand === 'NEXT') nextSlide();
+        if (data.remoteCommand === 'PREV') prevSlide();
+        if (data.remoteCommand === 'BLACKOUT') setBlackout((prev) => !prev);
+      }
+    });
+
+    const teamId = user?.uid || 'default-team';
+    const unsubPlaylists = subscribeToTeamPlaylists(teamId, setTeamPlaylists);
+    return () => {
+      unsubState();
+      unsubPlaylists();
+    };
+  }, [user?.uid, nextSlide, prevSlide]);
+
+  useEffect(() => {
+    updateLiveState({
+      activeItemId,
+      activeSlideIndex,
+      blackout,
+      lowerThirdsEnabled,
+      routingMode,
+    });
+  }, [activeItemId, activeSlideIndex, blackout, lowerThirdsEnabled, routingMode]);
+
+  useEffect(() => {
+    if (!navigator.requestMIDIAccess) return;
+
+    let active = true;
+    navigator.requestMIDIAccess().then((access) => {
+      if (!active) return;
+      const onMidiMessage = (event: any) => {
+        const [status, note, velocity] = event.data || [];
+        if ((status & 0xf0) !== 0x90 || velocity === 0) return;
+        if (note === 60) nextSlide();
+        if (note === 59) prevSlide();
+        if (note === 58) setBlackout((prev) => !prev);
+      };
+
+      access.inputs.forEach((input) => {
+        input.onmidimessage = onMidiMessage;
+      });
+    }).catch((error) => console.warn('MIDI unavailable', error));
+
+    return () => {
+      active = false;
+    };
+  }, [nextSlide, prevSlide]);
+
   // ✅ Launch Output handler (opens window synchronously from user gesture — popup-safe)
   const handleToggleOutput = () => {
     // Turn OFF
@@ -418,6 +495,7 @@ function App() {
   
   const ScheduleList = () => (
     <div className="flex-1 overflow-y-auto bg-zinc-950">
+      {teamPlaylists.length > 0 && (<div className="px-3 py-2 text-[10px] text-emerald-400 border-b border-zinc-900">Cloud Playlists Synced: {teamPlaylists.length}</div>)}
       {schedule.map((item, idx) => (
         <div key={item.id} className="flex flex-col border-b border-zinc-900">
             <div onClick={() => setSelectedItemId(item.id)} className={`px-3 py-3 cursor-pointer flex items-center justify-between group transition-colors ${selectedItemId === item.id ? 'bg-zinc-900 border-l-2 border-l-blue-600' : 'hover:bg-zinc-900/50 border-l-2 border-l-transparent'} ${activeItemId === item.id ? 'bg-red-950/20' : ''}`}>
@@ -475,6 +553,7 @@ function App() {
            <button onClick={() => setIsProfileOpen(true)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-sm"><Settings className="w-4 h-4" /></button>
            <button onClick={() => setIsAIModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 text-zinc-400 border border-zinc-800 hover:border-blue-900 rounded-sm text-xs"><SparklesIcon className="w-3 h-3" />AI ASSIST</button>
            <button onClick={handleToggleOutput} className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-bold border ${isOutputLive ? 'bg-emerald-950/30 text-emerald-400 border-emerald-900' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}><MonitorIcon className="w-3 h-3" />{isOutputLive ? 'OUTPUT ACTIVE' : 'LAUNCH OUTPUT'}</button>
+           <button onClick={() => setIsStageDisplayLive((p) => !p)} className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-bold border ${isStageDisplayLive ? 'bg-purple-950/30 text-purple-400 border-purple-900' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}>STAGE DISPLAY</button>
         </div>
       </header>
 
@@ -565,7 +644,7 @@ function App() {
                 <div className="flex-1 relative flex items-center justify-center bg-zinc-950 overflow-hidden border-r border-zinc-900">
                     <div className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group">
                          {blackout ? (<div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em]">BLACKOUT</div>) : (
-                             <SlideRenderer slide={activeSlide} item={activeItem} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={isPreviewMuted} />
+                             <SlideRenderer slide={activeSlide} item={activeItem} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={isPreviewMuted} lowerThirds={lowerThirdsEnabled} />
                          )}
                          <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-500 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">PREVIEW <button onClick={() => setIsPreviewMuted(!isPreviewMuted)} className={`ml-2 hover:text-white transition-colors ${isPreviewMuted ? 'text-red-400' : 'text-green-400'}`}>{isPreviewMuted ? <VolumeXIcon className="w-3 h-3" /> : <Volume2Icon className="w-3 h-3" />}</button></div>
                     </div>
@@ -573,7 +652,15 @@ function App() {
                 <div className="h-16 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between px-6 gap-4">
                     <div className="flex items-center gap-2"><button onClick={prevSlide} className="h-12 w-14 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center border border-zinc-700 active:scale-95 transition-transform"><ArrowLeftIcon className="w-5 h-5" /></button><button onClick={nextSlide} className="h-12 w-28 rounded-sm bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-bold text-sm tracking-wide active:scale-95 transition-transform"><ArrowRightIcon className="w-5 h-5 mr-1" /> NEXT</button></div>
                     {isActiveVideo && (<div className="flex items-center gap-2 bg-zinc-950 rounded-sm p-1 border border-zinc-800"><button onClick={() => triggerSeek(-10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><RewindIcon className="w-4 h-4"/></button><button onClick={() => setIsPlaying(!isPlaying)} className={`p-2.5 rounded-sm ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-green-900/50 text-green-400'}`}>{isPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4 fill-current" />}</button><button onClick={() => triggerSeek(10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><ForwardIcon className="w-4 h-4"/></button></div>)}
-                    <div className="flex items-center gap-2"><button onClick={() => setBlackout(!blackout)} className={`h-12 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button></div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setLowerThirdsEnabled((prev) => !prev)} className={`h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border ${lowerThirdsEnabled ? 'bg-blue-950 text-blue-400 border-blue-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800'}`}>LOWER THIRDS</button>
+                      <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} className="h-12 px-2 bg-zinc-950 border border-zinc-800 text-zinc-300 text-xs rounded-sm">
+                        <option value="PROJECTOR">Projector</option>
+                        <option value="STREAM">Stream</option>
+                        <option value="LOBBY">Lobby</option>
+                      </select>
+                      <button onClick={() => setBlackout(!blackout)} className={`h-12 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button>
+                    </div>
                 </div>
             </div>
             <div className="w-full lg:w-72 bg-zinc-950 border-l border-zinc-900 flex flex-col h-64 lg:h-auto border-t lg:border-t-0 hidden md:flex">
@@ -597,7 +684,17 @@ function App() {
             setPopupBlocked(true);
             setIsOutputLive(false);
             setOutputWin(null);
-          }}>{blackout ? (<div className="w-full h-full bg-black cursor-none"></div>) : (<SlideRenderer slide={activeSlide} item={activeItem} fitContainer={true} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={false} />)}</OutputWindow>)}
+          }}>{blackout ? (<div className="w-full h-full bg-black cursor-none"></div>) : (<SlideRenderer slide={routedSlide || activeSlide} item={routingMode === 'STREAM' && routedItem ? { ...routedItem, theme: { ...routedItem.theme, backgroundUrl: '' } } : routedItem} fitContainer={true} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={false} lowerThirds={routingMode === 'STREAM' || lowerThirdsEnabled} />)}</OutputWindow>)}
+      {isStageDisplayLive && (<OutputWindow
+          externalWindow={stageWin}
+          onClose={() => {
+            setIsStageDisplayLive(false);
+            setStageWin(null);
+          }}
+          onBlock={() => {
+            setIsStageDisplayLive(false);
+            setStageWin(null);
+          }}><StageDisplay currentSlide={activeSlide} nextSlide={nextSlidePreview} activeItem={activeItem} /></OutputWindow>)}
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
       {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={() => {}} currentSettings={{}} />} {/* NEW */}
