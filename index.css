@@ -24,3 +24,45 @@ html, #root {
 }
 
 .aspect-video { aspect-ratio: 16 / 9; }
+
+/* Workspace theme variants */
+html[data-theme="light"] body,
+.theme-light {
+  background-color: #f4f6fb !important;
+  color: #0f172a !important;
+}
+
+.theme-light .bg-zinc-950,
+.theme-light .bg-zinc-900,
+.theme-light .bg-zinc-900\/30,
+.theme-light .bg-zinc-900\/50,
+.theme-light .bg-zinc-950\/50,
+.theme-light .bg-black {
+  background-color: #ffffff !important;
+}
+
+.theme-light .text-zinc-200,
+.theme-light .text-zinc-300,
+.theme-light .text-zinc-400,
+.theme-light .text-zinc-500,
+.theme-light .text-zinc-600,
+.theme-light .text-white {
+  color: #0f172a !important;
+}
+
+.theme-light .border-zinc-800,
+.theme-light .border-zinc-900,
+.theme-light .border-zinc-700 {
+  border-color: #dbe2f0 !important;
+}
+
+.theme-midnight {
+  background-color: #000000 !important;
+}
+
+.theme-midnight .bg-zinc-950,
+.theme-midnight .bg-zinc-900,
+.theme-midnight .bg-zinc-900\/30,
+.theme-midnight .bg-zinc-900\/50 {
+  background-color: #050505 !important;
+}

@@ -5,10 +5,11 @@ import { UserIcon, Settings, X, Save, Church } from 'lucide-react';
 interface ProfileSettingsProps {
   onClose: () => void;
   onSave: (settings: any) => void;
+  onLogout?: () => void;
   currentSettings: any;
 }
 
-export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSave, currentSettings }) => {
+export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSave, onLogout, currentSettings }) => {
   const [churchName, setChurchName] = useState(currentSettings?.churchName || 'My Church');
   const [ccli, setCcli] = useState(currentSettings?.ccli || '');
   const [defaultVersion, setDefaultVersion] = useState(currentSettings?.defaultVersion || 'kjv');
@@ -101,13 +102,22 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
           </div>
         </div>
 
-        <div className="p-6 border-t border-zinc-800 bg-zinc-950/50 flex justify-end gap-3">
-          <button onClick={onClose} className="px-6 py-2.5 rounded-lg text-xs font-bold text-zinc-400 hover:text-white transition-colors">
-            CANCEL
-          </button>
-          <button onClick={handleSave} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-purple-900/20 transition-all flex items-center gap-2">
-            <Save size={14} /> SAVE SETTINGS
-          </button>
+        <div className="p-6 border-t border-zinc-800 bg-zinc-950/50 flex justify-between gap-3">
+          <div>
+            {onLogout && (
+              <button onClick={onLogout} className="px-6 py-2.5 rounded-lg text-xs font-bold text-red-300 border border-red-900/60 bg-red-950/20 hover:bg-red-950/40 transition-colors">
+                LOGOUT
+              </button>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="px-6 py-2.5 rounded-lg text-xs font-bold text-zinc-400 hover:text-white transition-colors">
+              CANCEL
+            </button>
+            <button onClick={handleSave} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-purple-900/20 transition-all flex items-center gap-2">
+              <Save size={14} /> SAVE SETTINGS
+            </button>
+          </div>
         </div>
       </div>
     </div>

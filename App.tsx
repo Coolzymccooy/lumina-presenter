@@ -24,6 +24,7 @@ import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, Arr
 
 // --- CONSTANTS ---
 const STORAGE_KEY = 'lumina_session_v1';
+const SETTINGS_KEY = 'lumina_workspace_settings_v1';
 const SILENT_AUDIO_B64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOkiJAAAAAAAAAAAAAAAAAAAAAAA=";
 
 const PauseIcon = ({ className }: { className?: string }) => (
@@ -78,6 +79,7 @@ function App() {
   const [isSlideEditorOpen, setIsSlideEditorOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false); // NEW
+  const [workspaceSettings, setWorkspaceSettings] = useState<{churchName: string; ccli: string; defaultVersion: string; theme: 'dark' | 'light' | 'midnight';}>({ churchName: 'My Church', ccli: '', defaultVersion: 'kjv', theme: 'dark' });
   const [isMotionLibOpen, setIsMotionLibOpen] = useState(false); // NEW
   const [editingSlide, setEditingSlide] = useState<Slide | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
@@ -140,6 +142,23 @@ function App() {
     setAuthLoading(false);
   }, []);
 
+
+  useEffect(() => {
+    try {
+      const savedSettings = localStorage.getItem(SETTINGS_KEY);
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        setWorkspaceSettings((prev) => ({ ...prev, ...parsed }));
+      }
+    } catch (error) {
+      console.warn('Failed to load workspace settings', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(workspaceSettings));
+    document.documentElement.dataset.theme = workspaceSettings.theme;
+  }, [workspaceSettings]);
 
   useEffect(() => {
     const cleanup = () => clearMediaCache();
@@ -580,7 +599,7 @@ function App() {
 
   // ROUTING: STUDIO (MAIN APP)
   return (
-    <div className="flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] bg-zinc-950 text-zinc-200 font-sans selection:bg-blue-900 selection:text-white relative">
+    <div className={`theme-${workspaceSettings.theme} flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] bg-zinc-950 text-zinc-200 font-sans selection:bg-blue-900 selection:text-white relative`}>
       <audio ref={antiSleepAudioRef} src={SILENT_AUDIO_B64} loop muted />
       {saveError && <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-red-900/90 border border-red-500 text-white px-4 py-2 rounded-sm shadow-xl z-50 flex items-center gap-3 text-xs font-bold animate-pulse"><span>⚠ STORAGE FULL: Changes are NOT saving.</span><button onClick={() => setSaveError(false)} className="hover:text-zinc-300">✕</button></div>}
       {popupBlocked && <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4"><div className="bg-zinc-900 border border-red-500 p-6 max-w-md rounded-lg shadow-2xl text-center"><div className="text-red-500 mb-2"><MonitorIcon className="w-12 h-12 mx-auto" /></div><h2 className="text-xl font-bold text-white mb-2">Projection Blocked</h2><p className="text-zinc-400 text-sm mb-4">The browser blocked the projector window. Check address bar pop-up settings.</p><button onClick={() => { setPopupBlocked(false); setIsOutputLive(false); }} className="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded font-bold transition-colors">I Understand</button></div></div>}
@@ -773,7 +792,7 @@ function App() {
           }}><StageDisplay currentSlide={activeSlide} nextSlide={nextSlidePreview} activeItem={activeItem} timerLabel="Pastor Timer" timerDisplay={formatTimer(timerSeconds)} timerMode={timerMode} /></OutputWindow>)}
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
-      {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={() => {}} currentSettings={{}} />} {/* NEW */}
+      {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={(settings) => setWorkspaceSettings((prev) => ({ ...prev, ...settings }))} onLogout={handleLogout} currentSettings={workspaceSettings} />} {/* NEW */}
       {isMotionLibOpen && (
         <MotionLibrary 
             onClose={() => setIsMotionLibOpen(false)} 
