@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/remote/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/output/:path*",
+      "destination": "/index.html"
+    }
+  ]
+}

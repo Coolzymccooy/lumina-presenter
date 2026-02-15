@@ -26,6 +26,7 @@ import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, Arr
 const STORAGE_KEY = 'lumina_session_v1';
 const SETTINGS_KEY = 'lumina_workspace_settings_v1';
 const LIVE_STATE_QUEUE_KEY = 'lumina_live_state_queue_v1';
+const CLOUD_PLAYLIST_SUFFIX = 'default-playlist-v2';
 const SILENT_AUDIO_B64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOkiJAAAAAAAAAAAAAAAAAAAAAAA=";
 
 type WorkspaceSettings = {
@@ -43,6 +44,36 @@ type SmokeTestResult = {
   name: string;
   ok: boolean;
   details: string;
+};
+
+type CloudPlaylistRecord = {
+  id: string;
+  title?: string;
+  updatedAt?: number;
+  items?: ServiceItem[];
+  selectedItemId?: string;
+  activeItemId?: string | null;
+  activeSlideIndex?: number;
+  workspaceSettings?: Partial<WorkspaceSettings>;
+};
+
+const buildCloudPlaylistId = (uid: string) => `${uid}-${CLOUD_PLAYLIST_SUFFIX}`;
+
+const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const raw = value as Record<string, unknown>;
+  const safe: Partial<WorkspaceSettings> = {};
+  if (typeof raw.churchName === 'string') safe.churchName = raw.churchName;
+  if (typeof raw.ccli === 'string') safe.ccli = raw.ccli;
+  if (typeof raw.defaultVersion === 'string') safe.defaultVersion = raw.defaultVersion;
+  if (raw.theme === 'dark' || raw.theme === 'light' || raw.theme === 'midnight') safe.theme = raw.theme;
+  if (typeof raw.remoteAdminEmails === 'string') safe.remoteAdminEmails = raw.remoteAdminEmails;
+  if (typeof raw.sessionId === 'string') safe.sessionId = raw.sessionId;
+  if (raw.stageProfile === 'classic' || raw.stageProfile === 'compact' || raw.stageProfile === 'high_contrast') {
+    safe.stageProfile = raw.stageProfile;
+  }
+  if (typeof raw.machineMode === 'boolean') safe.machineMode = raw.machineMode;
+  return safe;
 };
 
 declare global {
@@ -96,20 +127,25 @@ function App() {
       return null;
     }
   };
+  const initialSavedStateRef = useRef<any>(null);
+  if (initialSavedStateRef.current === null) {
+    initialSavedStateRef.current = getSavedState();
+  }
+  const initialSavedState = initialSavedStateRef.current;
 
   const [schedule, setSchedule] = useState<ServiceItem[]>(() => {
-    const saved = getSavedState();
+    const saved = initialSavedState;
     return saved?.schedule || INITIAL_SCHEDULE;
   });
 
   const [selectedItemId, setSelectedItemId] = useState<string>(() => {
-    const saved = getSavedState();
+    const saved = initialSavedState;
     const savedSchedule = saved?.schedule || INITIAL_SCHEDULE;
     return saved?.selectedItemId || savedSchedule[0]?.id || '';
   });
 
   const [viewMode, setViewMode] = useState<'BUILDER' | 'PRESENTER'>(() => {
-    const saved = getSavedState();
+    const saved = initialSavedState;
     return saved?.viewMode || 'BUILDER';
   });
 
@@ -154,7 +190,8 @@ function App() {
   const [isStageDisplayLive, setIsStageDisplayLive] = useState(false);
   const [lowerThirdsEnabled, setLowerThirdsEnabled] = useState(false);
   const [routingMode, setRoutingMode] = useState<'PROJECTOR' | 'STREAM' | 'LOBBY'>('PROJECTOR');
-  const [teamPlaylists, setTeamPlaylists] = useState<any[]>([]);
+  const [teamPlaylists, setTeamPlaylists] = useState<CloudPlaylistRecord[]>([]);
+  const [cloudBootstrapComplete, setCloudBootstrapComplete] = useState(!isFirebaseConfigured());
   const [stageWin, setStageWin] = useState<Window | null>(null);
   const [timerMode, setTimerMode] = useState<'COUNTDOWN' | 'ELAPSED'>('COUNTDOWN');
   const [timerDurationMin, setTimerDurationMin] = useState(35);
@@ -162,12 +199,12 @@ function App() {
   const [timerRunning, setTimerRunning] = useState(false);
 
   const [activeItemId, setActiveItemId] = useState<string | null>(() => {
-    const saved = getSavedState();
+    const saved = initialSavedState;
     return saved?.activeItemId || null;
   });
 
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(() => {
-    const saved = getSavedState();
+    const saved = initialSavedState;
     return saved?.activeSlideIndex ?? -1;
   });
 
@@ -187,6 +224,7 @@ function App() {
   const activeSlideRef = useRef<HTMLDivElement>(null);
   const antiSleepAudioRef = useRef<HTMLAudioElement>(null);
   const hasInitializedRemoteSnapshotRef = useRef(false);
+  const hasHydratedCloudStateRef = useRef(false);
   const lastRemoteCommandAtRef = useRef<number | null>(null);
   const lastSyncErrorRef = useRef<{ key: string; at: number } | null>(null);
   const historyRef = useRef<Array<{ schedule: ServiceItem[]; selectedItemId: string; at: number }>>([]);
@@ -196,6 +234,9 @@ function App() {
     command === 'NEXT' || command === 'PREV' || command === 'BLACKOUT';
   const isRecord = (value: unknown): value is Record<string, any> =>
     !!value && typeof value === 'object' && !Array.isArray(value);
+  const cloudPlaylistId = useMemo(() => (
+    user?.uid ? buildCloudPlaylistId(user.uid) : ''
+  ), [user?.uid]);
 
   const reportSyncFailure = useCallback((source: string, error: unknown, meta: Record<string, any> = {}) => {
     const message = error instanceof Error ? error.message : String(error || 'Unknown sync failure');
@@ -283,6 +324,21 @@ function App() {
     }
     setAuthLoading(false);
   }, []);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured()) {
+      hasHydratedCloudStateRef.current = true;
+      setCloudBootstrapComplete(true);
+      return;
+    }
+    if (!user?.uid) {
+      hasHydratedCloudStateRef.current = false;
+      setCloudBootstrapComplete(false);
+      return;
+    }
+    hasHydratedCloudStateRef.current = false;
+    setCloudBootstrapComplete(false);
+  }, [user?.uid]);
 
 
   useEffect(() => {
@@ -423,7 +479,7 @@ function App() {
 
   useEffect(() => {
     if (!user) return;
-    const saveData = { schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex };
+    const saveData = { schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, updatedAt: Date.now() };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
       setSaveError(false);
@@ -435,7 +491,8 @@ function App() {
 
 
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.uid || !cloudBootstrapComplete) return;
+    const updatedAt = Date.now();
     syncLiveState({
       scheduleSnapshot: schedule.slice(0, 20),
       controllerOwnerUid: user.uid,
@@ -444,15 +501,33 @@ function App() {
     });
     (async () => {
       try {
-        await upsertTeamPlaylist(user.uid, 'default-playlist', {
+        await upsertTeamPlaylist(user.uid, cloudPlaylistId, {
           title: 'Default Playlist',
           items: schedule,
+          selectedItemId,
+          activeItemId,
+          activeSlideIndex,
+          workspaceSettings,
+          updatedAt,
         });
       } catch (error) {
         reportSyncFailure('playlist-upsert', error, { itemCount: schedule.length });
       }
     })();
-  }, [schedule, user?.uid, user?.email, allowedAdminEmails, syncLiveState, reportSyncFailure]);
+  }, [
+    schedule,
+    selectedItemId,
+    activeItemId,
+    activeSlideIndex,
+    workspaceSettings,
+    user?.uid,
+    user?.email,
+    allowedAdminEmails,
+    syncLiveState,
+    reportSyncFailure,
+    cloudBootstrapComplete,
+    cloudPlaylistId,
+  ]);
 
   useEffect(() => {
     if (viewMode === 'PRESENTER' && activeSlideRef.current) {
@@ -484,12 +559,17 @@ function App() {
     return `${negative ? '-' : ''}${mm}:${ss}`;
   };
   const isTimerOvertime = timerMode === 'COUNTDOWN' && timerSeconds < 0;
+  const buildSharedRouteUrl = (route: 'output' | 'remote') => (
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/#/${route}?session=${encodeURIComponent(liveSessionId)}`
+      : `/#/${route}?session=${encodeURIComponent(liveSessionId)}`
+  );
   const obsOutputUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/output?session=${encodeURIComponent(liveSessionId)}`
-    : `/output?session=${encodeURIComponent(liveSessionId)}`;
+    ? buildSharedRouteUrl('output')
+    : `/#/output?session=${encodeURIComponent(liveSessionId)}`;
   const remoteControlUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/remote?session=${encodeURIComponent(liveSessionId)}`
-    : `/remote?session=${encodeURIComponent(liveSessionId)}`;
+    ? buildSharedRouteUrl('remote')
+    : `/#/remote?session=${encodeURIComponent(liveSessionId)}`;
   const cloneSchedule = (value: ServiceItem[]) => JSON.parse(JSON.stringify(value)) as ServiceItem[];
   const pushHistory = () => {
     historyRef.current.push({
@@ -788,7 +868,81 @@ function App() {
 
 
   useEffect(() => {
-    if (!isFirebaseConfigured()) return;
+    if (!isFirebaseConfigured() || !user?.uid) return;
+
+    let unsubPlaylists = () => {};
+    try {
+      unsubPlaylists = subscribeToTeamPlaylists(
+        user.uid,
+        (data) => {
+          const playlists = Array.isArray(data) ? (data as CloudPlaylistRecord[]) : [];
+          setTeamPlaylists(playlists);
+
+          if (hasHydratedCloudStateRef.current) return;
+          hasHydratedCloudStateRef.current = true;
+          setCloudBootstrapComplete(true);
+
+          const preferred = playlists.find((entry) => entry.id === cloudPlaylistId) || playlists[0];
+          if (!preferred) return;
+
+          const localUpdatedAt = typeof initialSavedStateRef.current?.updatedAt === 'number'
+            ? initialSavedStateRef.current.updatedAt
+            : 0;
+
+          const cloudUpdatedAt = typeof preferred.updatedAt === 'number' ? preferred.updatedAt : 0;
+          if (localUpdatedAt > cloudUpdatedAt) return;
+
+          if (Array.isArray(preferred.items) && preferred.items.length > 0) {
+            const nextSchedule = preferred.items as ServiceItem[];
+            setSchedule(nextSchedule);
+
+            const preferredSelected = typeof preferred.selectedItemId === 'string' ? preferred.selectedItemId : '';
+            const selectedExists = nextSchedule.some((item) => item.id === preferredSelected);
+            setSelectedItemId(selectedExists ? preferredSelected : nextSchedule[0]?.id || '');
+
+            const preferredActiveItemId = typeof preferred.activeItemId === 'string' ? preferred.activeItemId : null;
+            const activeItem = preferredActiveItemId
+              ? nextSchedule.find((item) => item.id === preferredActiveItemId)
+              : null;
+            if (activeItem) {
+              const rawActiveIndex = typeof preferred.activeSlideIndex === 'number' ? preferred.activeSlideIndex : 0;
+              const boundedIndex = Math.max(0, Math.min(activeItem.slides.length - 1, rawActiveIndex));
+              setActiveItemId(activeItem.id);
+              setActiveSlideIndex(activeItem.slides.length > 0 ? boundedIndex : -1);
+            } else {
+              setActiveItemId(null);
+              setActiveSlideIndex(-1);
+            }
+          }
+
+          const cloudSettings = sanitizeWorkspaceSettings(preferred.workspaceSettings);
+          if (Object.keys(cloudSettings).length > 0) {
+            setWorkspaceSettings((prev) => ({ ...prev, ...cloudSettings }));
+          }
+        },
+        (error) => {
+          reportSyncFailure('playlist-subscribe', error, { teamId: user.uid });
+          if (!hasHydratedCloudStateRef.current) {
+            hasHydratedCloudStateRef.current = true;
+            setCloudBootstrapComplete(true);
+          }
+        }
+      );
+    } catch (error) {
+      reportSyncFailure('playlist-subscribe', error, { teamId: user.uid });
+      if (!hasHydratedCloudStateRef.current) {
+        hasHydratedCloudStateRef.current = true;
+        setCloudBootstrapComplete(true);
+      }
+    }
+
+    return () => {
+      unsubPlaylists();
+    };
+  }, [user?.uid, cloudPlaylistId, reportSyncFailure]);
+
+  useEffect(() => {
+    if (!isFirebaseConfigured() || !user?.uid || !cloudBootstrapComplete) return;
 
     const unsubState = subscribeToState((data) => {
       if (!isRecord(data)) {
@@ -826,28 +980,15 @@ function App() {
       reportSyncFailure('remote-subscribe', error);
     });
 
-    const teamId = user?.uid || 'default-team';
-    let unsubPlaylists = () => {};
-    try {
-      unsubPlaylists = subscribeToTeamPlaylists(teamId, (data) => {
-        setTeamPlaylists(Array.isArray(data) ? data : []);
-      });
-    } catch (error) {
-      reportSyncFailure('playlist-subscribe', error, { teamId });
-    }
     return () => {
       unsubState();
-      unsubPlaylists();
-
       hasInitializedRemoteSnapshotRef.current = false;
       lastRemoteCommandAtRef.current = null;
-
-
     };
-  }, [user?.uid, nextSlide, prevSlide, liveSessionId, reportSyncFailure]);
+  }, [user?.uid, cloudBootstrapComplete, nextSlide, prevSlide, liveSessionId, reportSyncFailure]);
 
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.uid || !cloudBootstrapComplete) return;
     syncLiveState({
       activeItemId,
       activeSlideIndex,
@@ -858,16 +999,16 @@ function App() {
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
-  }, [activeItemId, activeSlideIndex, blackout, lowerThirdsEnabled, routingMode, user?.uid, user?.email, allowedAdminEmails, syncLiveState]);
+  }, [activeItemId, activeSlideIndex, blackout, lowerThirdsEnabled, routingMode, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
 
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.uid || !cloudBootstrapComplete) return;
     syncLiveState({
       controllerOwnerUid: user.uid,
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
-  }, [user?.uid, user?.email, allowedAdminEmails, syncLiveState]);
+  }, [user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
 
   useEffect(() => {
     if (!navigator.requestMIDIAccess) return;
@@ -1053,7 +1194,13 @@ function App() {
       {teamPlaylists.length > 0 && (<div className="px-3 py-2 text-[10px] text-emerald-400 border-b border-zinc-900">Cloud Playlists Synced: {teamPlaylists.length}</div>)}
       {schedule.map((item, idx) => (
         <div key={item.id} className="flex flex-col border-b border-zinc-900">
-            <div onClick={() => setSelectedItemId(item.id)} className={`px-3 py-3 cursor-pointer flex items-center justify-between group transition-colors ${selectedItemId === item.id ? 'bg-zinc-900 border-l-2 border-l-blue-600' : 'hover:bg-zinc-900/50 border-l-2 border-l-transparent'} ${activeItemId === item.id ? 'bg-red-950/20' : ''}`}>
+            <div onClick={() => {
+              setSelectedItemId(item.id);
+              if (viewMode === 'PRESENTER' && Array.isArray(item.slides) && item.slides.length > 0) {
+                const currentIdx = activeItemId === item.id && activeSlideIndex >= 0 ? activeSlideIndex : 0;
+                goLive(item, currentIdx);
+              }
+            }} className={`px-3 py-3 cursor-pointer flex items-center justify-between group transition-colors ${selectedItemId === item.id ? 'bg-zinc-900 border-l-2 border-l-blue-600' : 'hover:bg-zinc-900/50 border-l-2 border-l-transparent'} ${activeItemId === item.id ? 'bg-red-950/20' : ''}`}>
               <div className="flex flex-col truncate flex-1 min-w-0 pr-2">
                 <span className={`font-medium text-sm truncate ${activeItemId === item.id ? 'text-red-500' : 'text-zinc-300'}`}>{item.title}</span>
                 <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mt-1 flex items-center gap-1">{item.type}</span>
@@ -1334,7 +1481,7 @@ function App() {
       )}
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
-      {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={(settings) => setWorkspaceSettings((prev) => ({ ...prev, ...settings }))} onLogout={handleLogout} currentSettings={workspaceSettings} />} {/* NEW */}
+      {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={(settings) => setWorkspaceSettings((prev) => ({ ...prev, ...settings }))} onLogout={handleLogout} currentSettings={workspaceSettings} currentUser={user} />} {/* NEW */}
       {isMotionLibOpen && (
         <MotionLibrary 
             onClose={() => setIsMotionLibOpen(false)} 
