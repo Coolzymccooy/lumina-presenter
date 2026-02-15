@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState } from '../services/firebase';
+import { fetchServerSessionState } from '../services/serverApi';
 import { ItemType, ServiceItem } from '../types';
 import { LoginScreen } from './LoginScreen';
 import { SlideRenderer } from './SlideRenderer';
@@ -35,27 +36,37 @@ const readLocalPresenterState = (): LocalPresenterState => {
 };
 
 export const OutputRoute: React.FC = () => {
-  const getSessionId = () => {
+  const getRouteParams = () => {
     const searchParams = new URLSearchParams(window.location.search);
     const fromSearch = (searchParams.get('session') || '').trim();
-    if (fromSearch) return fromSearch;
+    const fromSearchWorkspace = (searchParams.get('workspace') || '').trim();
+    const fromSearchFullscreen = (searchParams.get('fullscreen') || '').trim();
 
     const hash = window.location.hash || '';
     const queryStart = hash.indexOf('?');
+    let fromHash = '';
+    let fromHashWorkspace = '';
+    let fromHashFullscreen = '';
     if (queryStart >= 0) {
       const hashParams = new URLSearchParams(hash.slice(queryStart + 1));
-      const fromHash = (hashParams.get('session') || '').trim();
-      if (fromHash) return fromHash;
+      fromHash = (hashParams.get('session') || '').trim();
+      fromHashWorkspace = (hashParams.get('workspace') || '').trim();
+      fromHashFullscreen = (hashParams.get('fullscreen') || '').trim();
     }
 
-    return 'live';
+    return {
+      sessionId: fromSearch || fromHash || 'live',
+      workspaceId: fromSearchWorkspace || fromHashWorkspace || 'default-workspace',
+      fullscreen: fromSearchFullscreen || fromHashFullscreen,
+    };
   };
-  const [sessionId] = useState(getSessionId);
+  const [{ sessionId, workspaceId, fullscreen }] = useState(getRouteParams);
 
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [liveState, setLiveState] = useState<any>({});
   const [localState, setLocalState] = useState<LocalPresenterState>(() => readLocalPresenterState());
+  const [serverState, setServerState] = useState<Record<string, any> | null>(null);
 
   useEffect(() => {
     if (!auth) {
@@ -75,6 +86,14 @@ export const OutputRoute: React.FC = () => {
   }, [user, sessionId]);
 
   useEffect(() => {
+    if (fullscreen !== '1') return;
+    if (document.fullscreenElement) return;
+    document.documentElement.requestFullscreen?.().catch(() => {
+      // Browser may block fullscreen without additional gesture.
+    });
+  }, [fullscreen]);
+
+  useEffect(() => {
     const refresh = () => setLocalState(readLocalPresenterState());
     refresh();
 
@@ -90,30 +109,45 @@ export const OutputRoute: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      const response = await fetchServerSessionState(workspaceId, sessionId);
+      if (!active) return;
+      if (response?.ok && response.state) {
+        setServerState(response.state);
+      }
+    };
+    refresh();
+    const id = window.setInterval(refresh, 700);
+    return () => {
+      active = false;
+      window.clearInterval(id);
+    };
+  }, [workspaceId, sessionId]);
+
   const liveSchedule: ServiceItem[] = Array.isArray(liveState?.scheduleSnapshot) ? liveState.scheduleSnapshot : [];
   const localSchedule: ServiceItem[] = Array.isArray(localState?.schedule) ? localState.schedule : [];
+  const serverSchedule: ServiceItem[] = Array.isArray(serverState?.scheduleSnapshot) ? serverState.scheduleSnapshot : [];
   const liveUpdatedAt = typeof liveState?.updatedAt === 'number' ? liveState.updatedAt : 0;
   const localUpdatedAt = typeof localState?.updatedAt === 'number' ? localState.updatedAt : 0;
-  const preferLocal = localSchedule.length > 0 && (liveSchedule.length === 0 || localUpdatedAt > liveUpdatedAt);
+  const serverUpdatedAt = typeof serverState?.updatedAt === 'number' ? serverState.updatedAt : 0;
+  const preferLocal = localSchedule.length > 0 && localUpdatedAt >= liveUpdatedAt && localUpdatedAt >= serverUpdatedAt;
+  const preferServer = !preferLocal && serverSchedule.length > 0 && serverUpdatedAt >= liveUpdatedAt;
 
   const effective = useMemo(() => {
-    const schedule = preferLocal ? localSchedule : liveSchedule;
-    const activeItemId = preferLocal ? localState.activeItemId : liveState?.activeItemId;
-    const rawSlideIndex = preferLocal ? localState.activeSlideIndex : liveState?.activeSlideIndex;
+    const source = preferLocal ? localState : (preferServer ? serverState : liveState);
+    const schedule = preferLocal ? localSchedule : (preferServer ? serverSchedule : liveSchedule);
+    const activeItemId = source?.activeItemId;
+    const rawSlideIndex = source?.activeSlideIndex;
     const activeSlideIndex = typeof rawSlideIndex === 'number' ? rawSlideIndex : -1;
-    const routingMode = (preferLocal ? localState.routingMode : liveState?.routingMode) as RoutingMode | undefined;
-    const blackout = preferLocal ? !!localState.blackout : !!liveState?.blackout;
-    const isPlaying = preferLocal
-      ? (typeof localState.isPlaying === 'boolean' ? localState.isPlaying : true)
-      : (typeof liveState?.isPlaying === 'boolean' ? liveState.isPlaying : true);
-    const outputMuted = preferLocal ? !!localState.outputMuted : !!liveState?.outputMuted;
-    const seekCommand = preferLocal
-      ? (typeof localState.seekCommand === 'number' ? localState.seekCommand : null)
-      : (typeof liveState?.seekCommand === 'number' ? liveState.seekCommand : null);
-    const seekAmount = preferLocal
-      ? (typeof localState.seekAmount === 'number' ? localState.seekAmount : 0)
-      : (typeof liveState?.seekAmount === 'number' ? liveState.seekAmount : 0);
-    const lowerThirdsEnabled = preferLocal ? !!localState.lowerThirdsEnabled : !!liveState?.lowerThirdsEnabled;
+    const routingMode = source?.routingMode as RoutingMode | undefined;
+    const blackout = !!source?.blackout;
+    const isPlaying = typeof source?.isPlaying === 'boolean' ? source.isPlaying : true;
+    const outputMuted = !!source?.outputMuted;
+    const seekCommand = typeof source?.seekCommand === 'number' ? source.seekCommand : null;
+    const seekAmount = typeof source?.seekAmount === 'number' ? source.seekAmount : 0;
+    const lowerThirdsEnabled = !!source?.lowerThirdsEnabled;
 
     const activeItem = schedule.find((item) => item.id === activeItemId) || null;
     const activeSlide = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex] : null;
@@ -132,7 +166,7 @@ export const OutputRoute: React.FC = () => {
     }
 
     return { item: activeItem, slide: activeSlide, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled };
-  }, [preferLocal, liveSchedule, localSchedule, localState, liveState]);
+  }, [preferLocal, preferServer, liveSchedule, localSchedule, serverSchedule, localState, liveState, serverState]);
 
   if (authLoading && !preferLocal) {
     return <div className="h-screen w-screen bg-black text-zinc-500 flex items-center justify-center text-xs">Loading output...</div>;
