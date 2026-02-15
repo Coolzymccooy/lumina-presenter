@@ -7,11 +7,15 @@ import Database from "better-sqlite3";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = path.join(__dirname, "data");
-const DB_PATH = path.join(DATA_DIR, "lumina.sqlite");
-const PORT = Number(process.env.LUMINA_API_PORT || 8787);
+const DATA_DIR = process.env.LUMINA_DATA_DIR
+  ? path.resolve(process.env.LUMINA_DATA_DIR)
+  : path.join(__dirname, "data");
+const DB_PATH = process.env.LUMINA_DB_PATH
+  ? path.resolve(process.env.LUMINA_DB_PATH)
+  : path.join(DATA_DIR, "lumina.sqlite");
+const PORT = Number(process.env.PORT || process.env.LUMINA_API_PORT || 8787);
 
-fs.mkdirSync(DATA_DIR, { recursive: true });
+fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
