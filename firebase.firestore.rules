@@ -5,8 +5,16 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function authEmail() {
+      return signedIn() && request.auth.token.email is string
+        ? request.auth.token.email
+        : '';
+    }
+
     function sameTeam(teamId) {
-      return signedIn() && teamId in request.auth.token.teams;
+      return signedIn() &&
+        request.auth.token.teams is list &&
+        teamId in request.auth.token.teams;
     }
 
     function controllerAllowed(data) {
@@ -14,21 +22,46 @@ service cloud.firestore {
         data.controllerOwnerUid == request.auth.uid ||
         (data.controllerAllowedUids is list && request.auth.uid in data.controllerAllowedUids) ||
         (
-          request.auth.token.email is string &&
+          authEmail() != '' &&
           data.controllerAllowedEmails is list &&
-          request.auth.token.email in data.controllerAllowedEmails
+          (
+            authEmail() in data.controllerAllowedEmails ||
+            authEmail().lower() in data.controllerAllowedEmails
+          )
         )
       );
     }
 
     // Live presenter/remote sync
     match /sessions/{sessionId} {
-      allow read: if signedIn();
-      allow create: if signedIn();
-      allow update: if signedIn() && (
-        // Allow session bootstrap when owner is not set yet.
-        (resource.data.controllerOwnerUid == null && request.resource.data.controllerOwnerUid == request.auth.uid) ||
+      // Allow bootstrap reads before owner is claimed, otherwise require ACL.
+      allow read: if signedIn() && (
+        resource.data.controllerOwnerUid == null ||
         controllerAllowed(resource.data)
+      );
+
+      // First writer becomes owner.
+      allow create: if signedIn() &&
+        request.resource.data.controllerOwnerUid == request.auth.uid;
+
+      allow update: if signedIn() && (
+        // Bootstrap owner claim if somehow owner is still null.
+        (resource.data.controllerOwnerUid == null &&
+          request.resource.data.controllerOwnerUid == request.auth.uid) ||
+
+        // Owner can update any session fields.
+        (resource.data.controllerOwnerUid == request.auth.uid) ||
+
+        // Allowlisted admins can send control commands only (no ACL/owner mutation).
+        (
+          controllerAllowed(resource.data) &&
+          request.resource.data.controllerOwnerUid == resource.data.controllerOwnerUid &&
+          request.resource.data.diff(resource.data).changedKeys().hasOnly([
+            'remoteCommand',
+            'remoteCommandAt',
+            'updatedAt',
+          ])
+        )
       );
       allow delete: if signedIn() && resource.data.controllerOwnerUid == request.auth.uid;
     }
@@ -49,6 +82,16 @@ service cloud.firestore {
         resource.data.teamId == request.auth.uid ||
         (resource.data.teamId is string && sameTeam(resource.data.teamId))
       );
+    }
+
+    // App telemetry and operator analytics
+    match /user_activity_logs/{logId} {
+      allow create: if signedIn() && (
+        request.resource.data.userId == request.auth.uid ||
+        request.resource.data.userId == 'anonymous'
+      );
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
     }
   }
 }
