@@ -5,8 +5,22 @@ import { logActivity } from '../services/analytics';
 import { LoginScreen } from './LoginScreen';
 
 export const RemoteControl: React.FC = () => {
-  const params = new URLSearchParams(window.location.search);
-  const sessionId = (params.get('session') || 'live').trim() || 'live';
+  const getSessionId = () => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const fromSearch = (searchParams.get('session') || '').trim();
+    if (fromSearch) return fromSearch;
+
+    const hash = window.location.hash || '';
+    const queryStart = hash.indexOf('?');
+    if (queryStart >= 0) {
+      const hashParams = new URLSearchParams(hash.slice(queryStart + 1));
+      const fromHash = (hashParams.get('session') || '').trim();
+      if (fromHash) return fromHash;
+    }
+
+    return 'live';
+  };
+  const [sessionId] = useState(getSessionId);
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [state, setState] = useState<any>({});

@@ -11,8 +11,19 @@ if (!rootElement) {
 }
 
 const root = ReactDOM.createRoot(rootElement);
-const isRemoteRoute = window.location.pathname.startsWith('/remote');
-const isOutputRoute = window.location.pathname.startsWith('/output');
+const getActiveRoutePath = () => {
+  const hash = window.location.hash || '';
+  if (hash.startsWith('#/')) {
+    const hashRoute = hash.slice(1);
+    const queryIndex = hashRoute.indexOf('?');
+    return queryIndex >= 0 ? hashRoute.slice(0, queryIndex) : hashRoute;
+  }
+  return window.location.pathname;
+};
+
+const activeRoutePath = getActiveRoutePath();
+const isRemoteRoute = activeRoutePath.startsWith('/remote');
+const isOutputRoute = activeRoutePath.startsWith('/output');
 
 root.render(
   <React.StrictMode>

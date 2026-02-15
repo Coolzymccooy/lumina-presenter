@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, onSnapshot, setDoc, collection, query, where, orderBy } from 'firebase/firestore';
+import { getFirestore, doc, onSnapshot, setDoc, collection, query, where } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
@@ -52,16 +52,31 @@ export const updateLiveState = async (state: any, sessionId = 'live') => {
   }
 };
 
-export const subscribeToTeamPlaylists = (teamId: string, callback: (data: any[]) => void) => {
+export const subscribeToTeamPlaylists = (
+  teamId: string,
+  callback: (data: any[]) => void,
+  onError?: (error: any) => void
+) => {
   const playlistQuery = query(
     collection(db, 'playlists'),
-    where('teamId', '==', teamId),
-    orderBy('updatedAt', 'desc')
+    where('teamId', '==', teamId)
   );
 
-  return onSnapshot(playlistQuery, (snapshot) => {
-    callback(snapshot.docs.map((docItem) => ({ id: docItem.id, ...docItem.data() })));
-  });
+  return onSnapshot(
+    playlistQuery,
+    (snapshot) => {
+      const rows = snapshot.docs.map((docItem) => ({ id: docItem.id, ...docItem.data() }));
+      rows.sort((a: any, b: any) => {
+        const left = typeof a.updatedAt === 'number' ? a.updatedAt : 0;
+        const right = typeof b.updatedAt === 'number' ? b.updatedAt : 0;
+        return right - left;
+      });
+      callback(rows);
+    },
+    (error) => {
+      if (onError) onError(error);
+    }
+  );
 };
 
 export const upsertTeamPlaylist = async (teamId: string, playlistId: string, payload: any) => {
