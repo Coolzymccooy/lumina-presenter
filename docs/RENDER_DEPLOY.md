@@ -13,6 +13,12 @@
 
 The API stores SQLite at `LUMINA_DATA_DIR` (default from blueprint is `/var/data`).
 
+## Free plan note (important)
+- The blueprint is configured as `plan: free` to avoid monthly cost.
+- Render free web services do not support persistent disks.
+- If you stay on free + SQLite, backend DB state can reset (redeploy/restart/suspension).
+- For reliable persistence on free, keep Firestore as system-of-record for now, or migrate server DB to an external free hosted Postgres.
+
 ## 3) Configure frontend to use Render API
 Set this env var in the frontend app:
 

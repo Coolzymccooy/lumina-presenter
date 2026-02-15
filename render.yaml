@@ -2,7 +2,7 @@ services:
   - type: web
     name: lumina-presenter-api
     runtime: node
-    plan: starter
+    plan: free
     region: ohio
     buildCommand: npm ci
     startCommand: npm start
