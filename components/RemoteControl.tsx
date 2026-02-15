@@ -70,7 +70,7 @@ export const RemoteControl: React.FC = () => {
     return false;
   }, [user?.uid, ownerUid, allowedUids, allowedEmails, userEmail]);
 
-  const sendCommand = async (command: 'NEXT' | 'PREV' | 'BLACKOUT') => {
+  const sendCommand = async (command: 'NEXT' | 'PREV' | 'BLACKOUT' | 'PLAY' | 'PAUSE' | 'STOP' | 'MUTE' | 'UNMUTE') => {
     if (!canControl) {
       setCommandStatus('Not authorized for this active session.');
       return;
@@ -142,6 +142,44 @@ export const RemoteControl: React.FC = () => {
           className="p-4 rounded bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Blackout
+        </button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <button
+          disabled={!canControl || sending}
+          onClick={() => sendCommand('PLAY')}
+          className="p-3 rounded bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+        >
+          Play Video
+        </button>
+        <button
+          disabled={!canControl || sending}
+          onClick={() => sendCommand('PAUSE')}
+          className="p-3 rounded bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+        >
+          Pause Video
+        </button>
+        <button
+          disabled={!canControl || sending}
+          onClick={() => sendCommand('STOP')}
+          className="p-3 rounded bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+        >
+          Stop Video
+        </button>
+        <button
+          disabled={!canControl || sending}
+          onClick={() => sendCommand('MUTE')}
+          className="p-3 rounded bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+        >
+          Mute Output
+        </button>
+        <button
+          disabled={!canControl || sending}
+          onClick={() => sendCommand('UNMUTE')}
+          className="p-3 rounded bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold col-span-2"
+        >
+          Unmute Output
         </button>
       </div>
 

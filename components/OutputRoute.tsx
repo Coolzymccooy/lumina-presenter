@@ -13,6 +13,10 @@ type LocalPresenterState = {
   activeItemId?: string | null;
   activeSlideIndex?: number;
   blackout?: boolean;
+  isPlaying?: boolean;
+  outputMuted?: boolean;
+  seekCommand?: number | null;
+  seekAmount?: number;
   lowerThirdsEnabled?: boolean;
   routingMode?: RoutingMode;
   updatedAt?: number;
@@ -99,6 +103,16 @@ export const OutputRoute: React.FC = () => {
     const activeSlideIndex = typeof rawSlideIndex === 'number' ? rawSlideIndex : -1;
     const routingMode = (preferLocal ? localState.routingMode : liveState?.routingMode) as RoutingMode | undefined;
     const blackout = preferLocal ? !!localState.blackout : !!liveState?.blackout;
+    const isPlaying = preferLocal
+      ? (typeof localState.isPlaying === 'boolean' ? localState.isPlaying : true)
+      : (typeof liveState?.isPlaying === 'boolean' ? liveState.isPlaying : true);
+    const outputMuted = preferLocal ? !!localState.outputMuted : !!liveState?.outputMuted;
+    const seekCommand = preferLocal
+      ? (typeof localState.seekCommand === 'number' ? localState.seekCommand : null)
+      : (typeof liveState?.seekCommand === 'number' ? liveState.seekCommand : null);
+    const seekAmount = preferLocal
+      ? (typeof localState.seekAmount === 'number' ? localState.seekAmount : 0)
+      : (typeof liveState?.seekAmount === 'number' ? liveState.seekAmount : 0);
     const lowerThirdsEnabled = preferLocal ? !!localState.lowerThirdsEnabled : !!liveState?.lowerThirdsEnabled;
 
     const activeItem = schedule.find((item) => item.id === activeItemId) || null;
@@ -109,11 +123,15 @@ export const OutputRoute: React.FC = () => {
         item: lobbyItem || null,
         slide: lobbyItem?.slides?.[0] || activeSlide,
         blackout,
+        isPlaying,
+        outputMuted,
+        seekCommand,
+        seekAmount,
         lowerThirdsEnabled,
       };
     }
 
-    return { item: activeItem, slide: activeSlide, blackout, lowerThirdsEnabled };
+    return { item: activeItem, slide: activeSlide, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled };
   }, [preferLocal, liveSchedule, localSchedule, localState, liveState]);
 
   if (authLoading && !preferLocal) {
@@ -133,9 +151,14 @@ export const OutputRoute: React.FC = () => {
           slide={effective.slide || null}
           item={effective.item || null}
           fitContainer={true}
-          isMuted={false}
+          isPlaying={effective.isPlaying}
+          seekCommand={effective.seekCommand}
+          seekAmount={effective.seekAmount}
+          isMuted={effective.outputMuted}
           isProjector={true}
           lowerThirds={effective.lowerThirdsEnabled}
+          showSlideLabel={false}
+          showProjectorHelper={false}
         />
       )}
     </div>

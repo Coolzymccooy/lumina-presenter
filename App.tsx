@@ -210,11 +210,27 @@ function App() {
     return saved?.activeSlideIndex ?? -1;
   });
 
-  const [blackout, setBlackout] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [blackout, setBlackout] = useState(() => {
+    const saved = initialSavedState;
+    return !!saved?.blackout;
+  });
+  const [isPlaying, setIsPlaying] = useState(() => {
+    const saved = initialSavedState;
+    return typeof saved?.isPlaying === 'boolean' ? saved.isPlaying : true;
+  });
+  const [outputMuted, setOutputMuted] = useState(() => {
+    const saved = initialSavedState;
+    return !!saved?.outputMuted;
+  });
   const [isPreviewMuted, setIsPreviewMuted] = useState(true);
-  const [seekCommand, setSeekCommand] = useState<number | null>(null);
-  const [seekAmount, setSeekAmount] = useState<number>(0);
+  const [seekCommand, setSeekCommand] = useState<number | null>(() => {
+    const saved = initialSavedState;
+    return typeof saved?.seekCommand === 'number' ? saved.seekCommand : null;
+  });
+  const [seekAmount, setSeekAmount] = useState<number>(() => {
+    const saved = initialSavedState;
+    return typeof saved?.seekAmount === 'number' ? saved.seekAmount : 0;
+  });
 
   // --- AUDIO SOUNDTRACK STATE ---
   const [currentTrack, setCurrentTrack] = useState<GospelTrack | null>(null);
@@ -233,9 +249,16 @@ function App() {
   const syncBackoffUntilRef = useRef(0);
   const historyRef = useRef<Array<{ schedule: ServiceItem[]; selectedItemId: string; at: number }>>([]);
   const [historyCount, setHistoryCount] = useState(0);
-  type RemoteCommand = 'NEXT' | 'PREV' | 'BLACKOUT';
+  type RemoteCommand = 'NEXT' | 'PREV' | 'BLACKOUT' | 'PLAY' | 'PAUSE' | 'STOP' | 'MUTE' | 'UNMUTE';
   const isRemoteCommand = (command: unknown): command is RemoteCommand =>
-    command === 'NEXT' || command === 'PREV' || command === 'BLACKOUT';
+    command === 'NEXT'
+    || command === 'PREV'
+    || command === 'BLACKOUT'
+    || command === 'PLAY'
+    || command === 'PAUSE'
+    || command === 'STOP'
+    || command === 'MUTE'
+    || command === 'UNMUTE';
   const isRecord = (value: unknown): value is Record<string, any> =>
     !!value && typeof value === 'object' && !Array.isArray(value);
   const cloudPlaylistId = useMemo(() => (
@@ -543,6 +566,10 @@ function App() {
       activeItemId,
       activeSlideIndex,
       blackout,
+      isPlaying,
+      outputMuted,
+      seekCommand,
+      seekAmount,
       lowerThirdsEnabled,
       routingMode,
       updatedAt: Date.now(),
@@ -553,7 +580,7 @@ function App() {
     } catch (e: any) {
       if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') setSaveError(true);
     }
-  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, lowerThirdsEnabled, routingMode, user]);
+  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, user]);
 
 
 
@@ -750,9 +777,9 @@ function App() {
         details: cueOk ? `autoCueSeconds=${autoCueSeconds}` : `Out of bounds: ${autoCueSeconds}`,
       });
 
-      const samples: Array<unknown> = ['NEXT', 'PREV', 'BLACKOUT', 'SKIP', null, 2];
+      const samples: Array<unknown> = ['NEXT', 'PREV', 'BLACKOUT', 'PLAY', 'PAUSE', 'STOP', 'MUTE', 'UNMUTE', 'SKIP', null, 2];
       const marks = samples.map((sample) => isRemoteCommand(sample));
-      const remoteGuardOk = marks[0] && marks[1] && marks[2] && !marks[3] && !marks[4] && !marks[5];
+      const remoteGuardOk = marks[0] && marks[1] && marks[2] && marks[3] && marks[4] && marks[5] && marks[6] && marks[7] && !marks[8] && !marks[9] && !marks[10];
       results.push({
         name: 'remote:command-guard',
         ok: remoteGuardOk,
@@ -905,6 +932,13 @@ function App() {
      setSeekCommand(Date.now());
   };
 
+  const stopProgramVideo = useCallback(() => {
+    setIsPlaying(false);
+    // Large negative seek safely clamps to zero in the renderer.
+    setSeekAmount(-86400);
+    setSeekCommand(Date.now());
+  }, []);
+
   const handleEditSlide = (slide: Slide) => {
     setEditingSlide(slide);
     setIsSlideEditorOpen(true);
@@ -1050,6 +1084,11 @@ function App() {
       if (command === 'NEXT') nextSlide();
       if (command === 'PREV') prevSlide();
       if (command === 'BLACKOUT') setBlackout((prev) => !prev);
+      if (command === 'PLAY') setIsPlaying(true);
+      if (command === 'PAUSE') setIsPlaying(false);
+      if (command === 'STOP') stopProgramVideo();
+      if (command === 'MUTE') setOutputMuted(true);
+      if (command === 'UNMUTE') setOutputMuted(false);
 
     }, liveSessionId, (error) => {
       reportSyncFailure('remote-subscribe', error);
@@ -1060,7 +1099,7 @@ function App() {
       hasInitializedRemoteSnapshotRef.current = false;
       lastRemoteCommandAtRef.current = null;
     };
-  }, [user?.uid, cloudBootstrapComplete, nextSlide, prevSlide, liveSessionId, reportSyncFailure]);
+  }, [user?.uid, cloudBootstrapComplete, nextSlide, prevSlide, stopProgramVideo, liveSessionId, reportSyncFailure]);
 
   useEffect(() => {
     if (!user?.uid || !cloudBootstrapComplete) return;
@@ -1068,13 +1107,17 @@ function App() {
       activeItemId,
       activeSlideIndex,
       blackout,
+      isPlaying,
+      outputMuted,
+      seekCommand,
+      seekAmount,
       lowerThirdsEnabled,
       routingMode,
       controllerOwnerUid: user.uid,
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
-  }, [activeItemId, activeSlideIndex, blackout, lowerThirdsEnabled, routingMode, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
+  }, [activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
 
   useEffect(() => {
     if (!user?.uid || !cloudBootstrapComplete) return;

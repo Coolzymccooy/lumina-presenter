@@ -24,6 +24,8 @@ interface SlideRendererProps {
   /** When rendering inside the projector popout window. Enables a safer YouTube strategy. */
   isProjector?: boolean;
   lowerThirds?: boolean;
+  showSlideLabel?: boolean;
+  showProjectorHelper?: boolean;
 }
 
 function safeString(v: unknown) {
@@ -114,6 +116,8 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   isMuted = false,
   isProjector = false,
   lowerThirds = false,
+  showSlideLabel = true,
+  showProjectorHelper = true,
 }) => {
   const htmlVideoRef = useRef<HTMLVideoElement>(null);
   const [mediaError, setMediaError] = useState(false);
@@ -347,7 +351,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
             onError={() => setMediaError(true)}
           />
           {/* MVP helper (only in projector) */}
-          {isProjector && !isThumbnail && (
+          {isProjector && showProjectorHelper && !isThumbnail && (
             <div className="absolute bottom-6 left-0 right-0 flex justify-center pointer-events-none">
               <div className="bg-black/55 text-white/90 text-xs px-3 py-2 rounded-md">
                 If YouTube refuses to play in projector mode, open it in YouTube or use a downloaded MP4.
@@ -445,7 +449,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
         )}
 
         {/* Footer / Reference Layer */}
-        {!isThumbnail && slide.label && !lowerThirds && (
+        {!isThumbnail && showSlideLabel && slide.label && !lowerThirds && (
            <div className="absolute bottom-6 right-8 max-w-[80%] opacity-90 transition-all duration-300">
              <span 
               className="text-[2.2vh] font-medium tracking-wide inline-block px-4 py-2 rounded-full backdrop-blur-md border border-white/10 shadow-lg" 
