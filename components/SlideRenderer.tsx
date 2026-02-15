@@ -255,6 +255,11 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     }
   }, [hasBackground, seekCommand, seekAmount, mediaType, isYoutube, isLoading, mediaError]);
 
+  const fallbackBackground = useMemo(() => {
+    const seed = `${item?.id || "item"}:${slide?.id || "slide"}`;
+    return DEFAULT_BACKGROUNDS[hashSeed(seed) % DEFAULT_BACKGROUNDS.length];
+  }, [item?.id, slide?.id]);
+
   if (!slide || !item) {
     return (
       <div className="w-full h-full bg-black flex items-center justify-center text-zinc-500">
@@ -272,10 +277,6 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     color: item.theme?.textColor || "#fff",
     textShadow: item.theme?.shadow ? "2px 2px 4px rgba(0,0,0,0.8)" : "none",
   };
-  const fallbackBackground = useMemo(() => {
-    const seed = `${item?.id || "item"}:${slide?.id || "slide"}`;
-    return DEFAULT_BACKGROUNDS[hashSeed(seed) % DEFAULT_BACKGROUNDS.length];
-  }, [item?.id, slide?.id]);
 
   const renderMedia = () => {
     // ✅ MVP rule: if there is no background configured, just render black (no “asset missing” behind text)

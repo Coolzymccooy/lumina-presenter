@@ -27,6 +27,8 @@ const STORAGE_KEY = 'lumina_session_v1';
 const SETTINGS_KEY = 'lumina_workspace_settings_v1';
 const LIVE_STATE_QUEUE_KEY = 'lumina_live_state_queue_v1';
 const CLOUD_PLAYLIST_SUFFIX = 'default-playlist-v2';
+const SYNC_BACKOFF_BASE_MS = 5000;
+const SYNC_BACKOFF_MAX_MS = 60000;
 const SILENT_AUDIO_B64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOkiJAAAAAAAAAAAAAAAAAAAAAAA=";
 
 type WorkspaceSettings = {
@@ -227,6 +229,8 @@ function App() {
   const hasHydratedCloudStateRef = useRef(false);
   const lastRemoteCommandAtRef = useRef<number | null>(null);
   const lastSyncErrorRef = useRef<{ key: string; at: number } | null>(null);
+  const syncFailureStreakRef = useRef(0);
+  const syncBackoffUntilRef = useRef(0);
   const historyRef = useRef<Array<{ schedule: ServiceItem[]; selectedItemId: string; at: number }>>([]);
   const [historyCount, setHistoryCount] = useState(0);
   type RemoteCommand = 'NEXT' | 'PREV' | 'BLACKOUT';
@@ -255,6 +259,35 @@ function App() {
     });
   }, [user?.uid, liveSessionId]);
 
+  const computeSyncBackoffMs = useCallback((failureStreak: number) => {
+    return Math.min(SYNC_BACKOFF_MAX_MS, SYNC_BACKOFF_BASE_MS * (2 ** Math.max(0, failureStreak - 1)));
+  }, []);
+
+  const buildSyncPausedMessage = useCallback((seconds: number) => {
+    return `Live sync paused for ${seconds}s (permissions). Presenter continues locally.`;
+  }, []);
+
+  const resetSyncBackoff = useCallback(() => {
+    syncFailureStreakRef.current = 0;
+    syncBackoffUntilRef.current = 0;
+  }, []);
+
+  const applySyncBackoff = useCallback((source: 'live-update' | 'flush') => {
+    syncFailureStreakRef.current += 1;
+    const streak = syncFailureStreakRef.current;
+    const backoffMs = computeSyncBackoffMs(streak);
+    const retryAt = Date.now() + backoffMs;
+    syncBackoffUntilRef.current = retryAt;
+    const seconds = Math.max(1, Math.ceil(backoffMs / 1000));
+    reportSyncFailure('live-sync-backoff', new Error('Firestore write denied for live session'), {
+      source,
+      streak,
+      backoffMs,
+      retryAt,
+    });
+    setSyncIssue(buildSyncPausedMessage(seconds));
+  }, [buildSyncPausedMessage, computeSyncBackoffMs, reportSyncFailure]);
+
   const enqueueLiveState = useCallback((payload: any) => {
     try {
       const existing = parseJson<any[]>(localStorage.getItem(LIVE_STATE_QUEUE_KEY), []);
@@ -269,6 +302,12 @@ function App() {
 
   const flushLiveStateQueue = useCallback(async () => {
     if (!navigator.onLine) return;
+    const now = Date.now();
+    if (syncBackoffUntilRef.current > now) {
+      const remainingSeconds = Math.max(1, Math.ceil((syncBackoffUntilRef.current - now) / 1000));
+      setSyncIssue(buildSyncPausedMessage(remainingSeconds));
+      return;
+    }
     try {
       const queued = parseJson<Array<{ sessionId: string; payload: any; at: number }>>(localStorage.getItem(LIVE_STATE_QUEUE_KEY), []);
       if (!queued.length) {
@@ -276,18 +315,26 @@ function App() {
         return;
       }
       const failed: typeof queued = [];
-      for (const entry of queued) {
+      for (let idx = 0; idx < queued.length; idx += 1) {
+        const entry = queued[idx];
         const ok = await updateLiveState(entry.payload, entry.sessionId || liveSessionId);
-        if (!ok) failed.push(entry);
+        if (!ok) {
+          failed.push(...queued.slice(idx));
+          applySyncBackoff('flush');
+          break;
+        }
       }
       localStorage.setItem(LIVE_STATE_QUEUE_KEY, JSON.stringify(failed));
       setSyncPendingCount(failed.length);
-      if (!failed.length) setSyncIssue(null);
+      if (!failed.length) {
+        resetSyncBackoff();
+        setSyncIssue(null);
+      }
     } catch (error) {
       console.warn('Failed to flush queued live state', error);
       reportSyncFailure('flush', error, { queueOp: 'flush' });
     }
-  }, [liveSessionId, reportSyncFailure]);
+  }, [liveSessionId, reportSyncFailure, applySyncBackoff, resetSyncBackoff, buildSyncPausedMessage]);
 
   const syncLiveState = useCallback(async (payload: any) => {
     if (!isFirebaseConfigured() || !user?.uid) return;
@@ -295,14 +342,20 @@ function App() {
       enqueueLiveState(payload);
       return;
     }
+    const now = Date.now();
+    if (syncBackoffUntilRef.current > now) {
+      const remainingSeconds = Math.max(1, Math.ceil((syncBackoffUntilRef.current - now) / 1000));
+      setSyncIssue(buildSyncPausedMessage(remainingSeconds));
+      return;
+    }
     const ok = await updateLiveState(payload, liveSessionId);
     if (!ok) {
-      reportSyncFailure('live-update', new Error('updateLiveState returned false'));
-      enqueueLiveState(payload);
+      applySyncBackoff('live-update');
     } else {
+      resetSyncBackoff();
       setSyncIssue(null);
     }
-  }, [user?.uid, liveSessionId, enqueueLiveState, reportSyncFailure]);
+  }, [user?.uid, liveSessionId, enqueueLiveState, applySyncBackoff, resetSyncBackoff, buildSyncPausedMessage]);
 
   // --- SESSION PERSISTENCE LOGIC ---
   useEffect(() => {
@@ -339,6 +392,10 @@ function App() {
     hasHydratedCloudStateRef.current = false;
     setCloudBootstrapComplete(false);
   }, [user?.uid]);
+
+  useEffect(() => {
+    resetSyncBackoff();
+  }, [user?.uid, liveSessionId, resetSyncBackoff]);
 
 
   useEffect(() => {
@@ -479,14 +536,24 @@ function App() {
 
   useEffect(() => {
     if (!user) return;
-    const saveData = { schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, updatedAt: Date.now() };
+    const saveData = {
+      schedule,
+      selectedItemId,
+      viewMode,
+      activeItemId,
+      activeSlideIndex,
+      blackout,
+      lowerThirdsEnabled,
+      routingMode,
+      updatedAt: Date.now(),
+    };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
       setSaveError(false);
     } catch (e: any) {
       if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') setSaveError(true);
     }
-  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, user]);
+  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, lowerThirdsEnabled, routingMode, user]);
 
 
 
@@ -548,8 +615,6 @@ function App() {
   const activeSlide = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex] : null;
   const nextSlidePreview = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex + 1] || null : null;
   const lobbyItem = schedule.find((item) => item.type === ItemType.ANNOUNCEMENT) || activeItem;
-  const routedItem = routingMode === 'LOBBY' ? lobbyItem : activeItem;
-  const routedSlide = routingMode === 'LOBBY' ? lobbyItem?.slides?.[0] || activeSlide : activeSlide;
   const isActiveVideo = activeSlide && (activeSlide.mediaType === 'video' || (!activeSlide.mediaType && activeItem?.theme.mediaType === 'video'));
   const formatTimer = (total: number) => {
     const negative = total < 0;
@@ -802,6 +867,7 @@ function App() {
   };
 
   const nextSlide = useCallback(() => {
+    setBlackout((prev) => (prev ? false : prev));
     if (!activeItem) return;
     if (activeSlideIndex < activeItem.slides.length - 1) {
       setActiveSlideIndex(prev => prev + 1);
@@ -818,6 +884,7 @@ function App() {
   }, [activeItem, activeSlideIndex, schedule]);
 
   const prevSlide = useCallback(() => {
+    setBlackout((prev) => (prev ? false : prev));
     if (!activeItem) return;
     if (activeSlideIndex > 0) {
       setActiveSlideIndex(prev => prev - 1);
@@ -852,7 +919,15 @@ function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isAIModalOpen || isSlideEditorOpen || isHelpOpen) return;
+      const target = e.target as HTMLElement | null;
+      const isTypingTarget = !!target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable
+      );
+      if (isTypingTarget) return;
+      if (isAIModalOpen || isSlideEditorOpen || isHelpOpen || isProfileOpen || isMotionLibOpen || isTemplateOpen || isLyricsImportOpen) return;
       if (viewMode !== 'PRESENTER') return;
       switch(e.key) {
         case 'ArrowRight': case ' ': case 'PageDown': e.preventDefault(); nextSlide(); break;
@@ -862,7 +937,7 @@ function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [viewMode, nextSlide, prevSlide, isAIModalOpen, isSlideEditorOpen, isHelpOpen]);
+  }, [viewMode, nextSlide, prevSlide, isAIModalOpen, isSlideEditorOpen, isHelpOpen, isProfileOpen, isMotionLibOpen, isTemplateOpen, isLyricsImportOpen]);
 
 
 
@@ -1073,7 +1148,6 @@ function App() {
       goLive(selectedItem, 0);
     }
 
-    // Turn OFF
     if (isOutputLive) {
       setIsOutputLive(false);
       try { outputWin?.close(); } catch {}
@@ -1081,25 +1155,8 @@ function App() {
       return;
     }
 
-    // Turn ON: open immediately (must happen inside click handler to avoid popup blockers)
-    // Open a same-origin blank window and inject shell HTML (avoids blob: URL display).
-    const initialHtml = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Lumina Output (Projector)</title>
-    <style>
-      body { margin: 0; padding: 0; background-color: black; overflow: hidden; }
-      #output-root { width: 100vw; height: 100vh; }
-    </style>
-  </head>
-  <body>
-    <div id="output-root"></div>
-  </body>
-</html>`;
-
     const w = window.open(
-      "",
+      obsOutputUrl,
       "LuminaOutput",
       "width=1280,height=720,menubar=no,toolbar=no,location=no,status=no"
     );
@@ -1111,20 +1168,23 @@ function App() {
       return;
     }
 
-    try {
-      w.document.open();
-      w.document.write(initialHtml);
-      w.document.close();
-      w.document.title = "Lumina Output (Projector)";
-    } catch (e) {
-      console.error("Failed to initialize output window", e);
-    }
-
     setPopupBlocked(false);
     setOutputWin(w);
     setIsOutputLive(true);
     try { w.focus(); } catch {}
   };
+
+  useEffect(() => {
+    if (!isOutputLive || !outputWin) return;
+    const checkClosed = window.setInterval(() => {
+      if (outputWin.closed) {
+        setIsOutputLive(false);
+        setOutputWin(null);
+        window.clearInterval(checkClosed);
+      }
+    }, 500);
+    return () => window.clearInterval(checkClosed);
+  }, [isOutputLive, outputWin]);
 
   const handleToggleStageDisplay = () => {
     if (isStageDisplayLive) {
@@ -1196,9 +1256,12 @@ function App() {
         <div key={item.id} className="flex flex-col border-b border-zinc-900">
             <div onClick={() => {
               setSelectedItemId(item.id);
-              if (viewMode === 'PRESENTER' && Array.isArray(item.slides) && item.slides.length > 0) {
-                const currentIdx = activeItemId === item.id && activeSlideIndex >= 0 ? activeSlideIndex : 0;
-                goLive(item, currentIdx);
+              if (viewMode === 'PRESENTER') {
+                setBlackout(false);
+                if (Array.isArray(item.slides) && item.slides.length > 0) {
+                  const currentIdx = activeItemId === item.id && activeSlideIndex >= 0 ? activeSlideIndex : 0;
+                  goLive(item, currentIdx);
+                }
               }
             }} className={`px-3 py-3 cursor-pointer flex items-center justify-between group transition-colors ${selectedItemId === item.id ? 'bg-zinc-900 border-l-2 border-l-blue-600' : 'hover:bg-zinc-900/50 border-l-2 border-l-transparent'} ${activeItemId === item.id ? 'bg-red-950/20' : ''}`}>
               <div className="flex flex-col truncate flex-1 min-w-0 pr-2">
@@ -1427,17 +1490,6 @@ function App() {
         )}
       </div>
 
-      {isOutputLive && (<OutputWindow
-          externalWindow={outputWin}
-          onClose={() => {
-            setIsOutputLive(false);
-            setOutputWin(null);
-          }}
-          onBlock={() => {
-            setPopupBlocked(true);
-            setIsOutputLive(false);
-            setOutputWin(null);
-          }}>{blackout ? (<div className="w-full h-full bg-black cursor-none"></div>) : (<SlideRenderer slide={routedSlide || activeSlide} item={routedItem} fitContainer={true} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={false} isProjector={true} lowerThirds={lowerThirdsEnabled} />)}</OutputWindow>)}
       {isStageDisplayLive && (<OutputWindow
           externalWindow={stageWin}
           onClose={() => {

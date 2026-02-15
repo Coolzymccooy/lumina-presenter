@@ -46,8 +46,7 @@ export const updateLiveState = async (state: any, sessionId = 'live') => {
       updatedAt: Date.now(),
     }, { merge: true });
     return true;
-  } catch (e) {
-    console.error("Sync Error:", e);
+  } catch {
     return false;
   }
 };

@@ -5,6 +5,31 @@ import { ItemType, ServiceItem } from '../types';
 import { LoginScreen } from './LoginScreen';
 import { SlideRenderer } from './SlideRenderer';
 
+const STORAGE_KEY = 'lumina_session_v1';
+
+type RoutingMode = 'PROJECTOR' | 'STREAM' | 'LOBBY';
+type LocalPresenterState = {
+  schedule?: ServiceItem[];
+  activeItemId?: string | null;
+  activeSlideIndex?: number;
+  blackout?: boolean;
+  lowerThirdsEnabled?: boolean;
+  routingMode?: RoutingMode;
+  updatedAt?: number;
+};
+
+const readLocalPresenterState = (): LocalPresenterState => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as LocalPresenterState;
+    if (!parsed || typeof parsed !== 'object') return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+};
+
 export const OutputRoute: React.FC = () => {
   const getSessionId = () => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -26,6 +51,7 @@ export const OutputRoute: React.FC = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [liveState, setLiveState] = useState<any>({});
+  const [localState, setLocalState] = useState<LocalPresenterState>(() => readLocalPresenterState());
 
   useEffect(() => {
     if (!auth) {
@@ -44,42 +70,72 @@ export const OutputRoute: React.FC = () => {
     return subscribeToState((data) => setLiveState(data), sessionId);
   }, [user, sessionId]);
 
-  const scheduleSnapshot: ServiceItem[] = Array.isArray(liveState?.scheduleSnapshot) ? liveState.scheduleSnapshot : [];
-  const activeItem = scheduleSnapshot.find((item) => item.id === liveState?.activeItemId) || null;
-  const activeSlideIndex = typeof liveState?.activeSlideIndex === 'number' ? liveState.activeSlideIndex : -1;
-  const activeSlide = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex] : null;
+  useEffect(() => {
+    const refresh = () => setLocalState(readLocalPresenterState());
+    refresh();
 
-  const routed = useMemo(() => {
-    if (liveState?.routingMode === 'LOBBY') {
-      const lobbyItem = scheduleSnapshot.find((item) => item.type === ItemType.ANNOUNCEMENT) || activeItem;
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || event.key === STORAGE_KEY) refresh();
+    };
+
+    window.addEventListener('storage', onStorage);
+    const intervalId = window.setInterval(refresh, 450);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  const liveSchedule: ServiceItem[] = Array.isArray(liveState?.scheduleSnapshot) ? liveState.scheduleSnapshot : [];
+  const localSchedule: ServiceItem[] = Array.isArray(localState?.schedule) ? localState.schedule : [];
+  const liveUpdatedAt = typeof liveState?.updatedAt === 'number' ? liveState.updatedAt : 0;
+  const localUpdatedAt = typeof localState?.updatedAt === 'number' ? localState.updatedAt : 0;
+  const preferLocal = localSchedule.length > 0 && (liveSchedule.length === 0 || localUpdatedAt > liveUpdatedAt);
+
+  const effective = useMemo(() => {
+    const schedule = preferLocal ? localSchedule : liveSchedule;
+    const activeItemId = preferLocal ? localState.activeItemId : liveState?.activeItemId;
+    const rawSlideIndex = preferLocal ? localState.activeSlideIndex : liveState?.activeSlideIndex;
+    const activeSlideIndex = typeof rawSlideIndex === 'number' ? rawSlideIndex : -1;
+    const routingMode = (preferLocal ? localState.routingMode : liveState?.routingMode) as RoutingMode | undefined;
+    const blackout = preferLocal ? !!localState.blackout : !!liveState?.blackout;
+    const lowerThirdsEnabled = preferLocal ? !!localState.lowerThirdsEnabled : !!liveState?.lowerThirdsEnabled;
+
+    const activeItem = schedule.find((item) => item.id === activeItemId) || null;
+    const activeSlide = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex] : null;
+    if (routingMode === 'LOBBY') {
+      const lobbyItem = schedule.find((item) => item.type === ItemType.ANNOUNCEMENT) || activeItem;
       return {
         item: lobbyItem || null,
         slide: lobbyItem?.slides?.[0] || activeSlide,
+        blackout,
+        lowerThirdsEnabled,
       };
     }
-    return { item: activeItem, slide: activeSlide };
-  }, [liveState?.routingMode, scheduleSnapshot, activeItem, activeSlide]);
 
-  if (authLoading) {
+    return { item: activeItem, slide: activeSlide, blackout, lowerThirdsEnabled };
+  }, [preferLocal, liveSchedule, localSchedule, localState, liveState]);
+
+  if (authLoading && !preferLocal) {
     return <div className="h-screen w-screen bg-black text-zinc-500 flex items-center justify-center text-xs">Loading output...</div>;
   }
 
-  if (!user) {
+  if (!user && !preferLocal) {
     return <LoginScreen onLoginSuccess={(loggedInUser) => setUser(loggedInUser)} />;
   }
 
   return (
     <div className="h-screen w-screen bg-black">
-      {liveState?.blackout ? (
+      {effective.blackout ? (
         <div className="w-full h-full bg-black" />
       ) : (
         <SlideRenderer
-          slide={routed.slide || null}
-          item={routed.item || null}
+          slide={effective.slide || null}
+          item={effective.item || null}
           fitContainer={true}
           isMuted={false}
           isProjector={true}
-          lowerThirds={!!liveState?.lowerThirdsEnabled}
+          lowerThirds={effective.lowerThirdsEnabled}
         />
       )}
     </div>
