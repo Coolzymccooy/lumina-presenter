@@ -9,10 +9,11 @@ interface StageDisplayProps {
   timerLabel?: string;
   timerDisplay?: string;
   timerMode?: 'COUNTDOWN' | 'ELAPSED';
+  isTimerOvertime?: boolean;
   profile?: 'classic' | 'compact' | 'high_contrast';
 }
 
-export const StageDisplay: React.FC<StageDisplayProps> = ({ currentSlide, nextSlide, activeItem, timerLabel = 'Service Timer', timerDisplay = '00:00', timerMode = 'COUNTDOWN', profile = 'classic' }) => {
+export const StageDisplay: React.FC<StageDisplayProps> = ({ currentSlide, nextSlide, activeItem, timerLabel = 'Service Timer', timerDisplay = '00:00', timerMode = 'COUNTDOWN', isTimerOvertime = false, profile = 'classic' }) => {
   const [time, setTime] = useState(new Date());
   const clockFormatter = useMemo(
     () => new Intl.DateTimeFormat([], { hour: '2-digit', minute: '2-digit' }),
@@ -41,7 +42,8 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({ currentSlide, nextSl
         <div className="flex items-center gap-8">
           <div className="text-right">
             <div className="text-[10px] uppercase tracking-[0.25em] text-cyan-400 font-bold">{timerLabel} ({timerMode})</div>
-            <div className={`${compact ? 'text-3xl' : 'text-4xl'} font-mono font-bold text-cyan-300`}>{safeTimerDisplay}</div>
+            <div className={`${compact ? 'text-3xl' : 'text-4xl'} font-mono font-bold ${isTimerOvertime ? 'text-red-400 animate-pulse' : 'text-cyan-300'}`}>{safeTimerDisplay}</div>
+            {isTimerOvertime && <div className="text-[10px] text-red-400 font-bold tracking-wider">OVERTIME</div>}
           </div>
           <div className={`${compact ? 'text-4xl' : 'text-6xl'} font-mono font-bold text-yellow-500`}>
             {clockFormatter.format(time)}

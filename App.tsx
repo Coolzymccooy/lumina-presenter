@@ -477,11 +477,13 @@ function App() {
   const routedSlide = routingMode === 'LOBBY' ? lobbyItem?.slides?.[0] || activeSlide : activeSlide;
   const isActiveVideo = activeSlide && (activeSlide.mediaType === 'video' || (!activeSlide.mediaType && activeItem?.theme.mediaType === 'video'));
   const formatTimer = (total: number) => {
-    const safe = Math.max(0, total);
-    const mm = Math.floor(safe / 60).toString().padStart(2, '0');
-    const ss = Math.floor(safe % 60).toString().padStart(2, '0');
-    return `${mm}:${ss}`;
+    const negative = total < 0;
+    const abs = Math.abs(total);
+    const mm = Math.floor(abs / 60).toString().padStart(2, '0');
+    const ss = Math.floor(abs % 60).toString().padStart(2, '0');
+    return `${negative ? '-' : ''}${mm}:${ss}`;
   };
+  const isTimerOvertime = timerMode === 'COUNTDOWN' && timerSeconds < 0;
   const obsOutputUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/output?session=${encodeURIComponent(liveSessionId)}`
     : `/output?session=${encodeURIComponent(liveSessionId)}`;
@@ -897,7 +899,7 @@ function App() {
     const id = window.setInterval(() => {
       setTimerSeconds((prev) => {
         if (timerMode === 'COUNTDOWN') {
-          return prev > 0 ? prev - 1 : 0;
+          return prev - 1;
         }
         return prev + 1;
       });
@@ -1246,7 +1248,7 @@ function App() {
                             if (!timerRunning) setTimerSeconds(value * 60);
                           }} className="w-14 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
                         )}
-                        <div className="text-[11px] font-mono text-cyan-300 w-12 text-center">{formatTimer(timerSeconds)}</div>
+                        <div className={`text-[11px] font-mono w-14 text-center ${isTimerOvertime ? 'text-red-400 animate-pulse' : 'text-cyan-300'}`}>{formatTimer(timerSeconds)}</div>
                         <button onClick={() => setTimerRunning((p) => !p)} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">{timerRunning ? 'Pause' : 'Start'}</button>
                         <button onClick={() => {
                           setTimerRunning(false);
@@ -1299,7 +1301,7 @@ function App() {
             setPopupBlocked(true);
             setIsStageDisplayLive(false);
             setStageWin(null);
-          }}><StageDisplay currentSlide={activeSlide} nextSlide={nextSlidePreview} activeItem={activeItem} timerLabel="Pastor Timer" timerDisplay={formatTimer(timerSeconds)} timerMode={timerMode} profile={workspaceSettings.stageProfile} /></OutputWindow>)}
+          }}><StageDisplay currentSlide={activeSlide} nextSlide={nextSlidePreview} activeItem={activeItem} timerLabel="Pastor Timer" timerDisplay={formatTimer(timerSeconds)} timerMode={timerMode} isTimerOvertime={isTimerOvertime} profile={workspaceSettings.stageProfile} /></OutputWindow>)}
       {isTemplateOpen && (
         <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm p-4 flex items-center justify-center">
           <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-lg p-5">
