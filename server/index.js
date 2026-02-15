@@ -1,21 +1,37 @@
 import express from "express";
 import cors from "cors";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = process.env.LUMINA_DATA_DIR
+const requestedDataDir = process.env.LUMINA_DATA_DIR
   ? path.resolve(process.env.LUMINA_DATA_DIR)
   : path.join(__dirname, "data");
-const DB_PATH = process.env.LUMINA_DB_PATH
+const requestedDbPath = process.env.LUMINA_DB_PATH
   ? path.resolve(process.env.LUMINA_DB_PATH)
-  : path.join(DATA_DIR, "lumina.sqlite");
+  : path.join(requestedDataDir, "lumina.sqlite");
 const PORT = Number(process.env.PORT || process.env.LUMINA_API_PORT || 8787);
 
-fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+const resolveWritableDbPath = (candidatePath) => {
+  const filename = path.basename(candidatePath) || "lumina.sqlite";
+  try {
+    const dir = path.dirname(candidatePath);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.accessSync(dir, fs.constants.W_OK);
+    return { dbPath: candidatePath, usedFallback: false };
+  } catch {
+    const fallbackDir = path.join(os.tmpdir(), "lumina-data");
+    fs.mkdirSync(fallbackDir, { recursive: true });
+    return { dbPath: path.join(fallbackDir, filename), usedFallback: true };
+  }
+};
+
+const { dbPath: DB_PATH, usedFallback: USED_EPHEMERAL_FALLBACK } = resolveWritableDbPath(requestedDbPath);
+const DATA_DIR = path.dirname(DB_PATH);
 
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
@@ -482,4 +498,7 @@ app.get("/api/workspaces/:workspaceId/reports/audit", requireActor, (req, res) =
 app.listen(PORT, () => {
   console.log(`[lumina-server-api] listening on http://localhost:${PORT}`);
   console.log(`[lumina-server-api] sqlite: ${DB_PATH}`);
+  if (USED_EPHEMERAL_FALLBACK) {
+    console.warn("[lumina-server-api] warning: requested data path was not writable; using ephemeral /tmp fallback.");
+  }
 });
