@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Slide, ServiceItem, MediaType } from "../types";
 import { getMedia, getCachedMedia } from "../services/localMedia";
 import { DEFAULT_BACKGROUNDS } from "../constants";
@@ -120,7 +120,9 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   showProjectorHelper = true,
 }) => {
   const htmlVideoRef = useRef<HTMLVideoElement>(null);
+  const youtubeIframeRef = useRef<HTMLIFrameElement>(null);
   const [mediaError, setMediaError] = useState(false);
+  const [isYoutubeReady, setIsYoutubeReady] = useState(false);
 
   const rawBgUrl = useMemo(() => {
     return safeString(slide?.backgroundUrl) || safeString(item?.theme?.backgroundUrl) || "";
@@ -214,6 +216,10 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     setMediaError(false);
   }, [slide?.id, item?.id, rawBgUrl]);
 
+  useEffect(() => {
+    setIsYoutubeReady(false);
+  }, [youtubeId, resolvedUrl, slide?.id, item?.id]);
+
   // HTML5 video control (for non-YouTube)
   useEffect(() => {
     if (!hasBackground) return;
@@ -258,6 +264,38 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       // ignore
     }
   }, [hasBackground, seekCommand, seekAmount, mediaType, isYoutube, isLoading, mediaError]);
+
+  const postYoutubeCommand = useCallback((func: string, args: any[] = []) => {
+    const frameWindow = youtubeIframeRef.current?.contentWindow;
+    if (!frameWindow) return;
+    frameWindow.postMessage(JSON.stringify({
+      event: "command",
+      func,
+      args,
+    }), "*");
+  }, []);
+
+  useEffect(() => {
+    if (!hasBackground || !isYoutube || !isYoutubeReady || isLoading || mediaError || isThumbnail) return;
+    if (isPlaying) postYoutubeCommand("playVideo");
+    else postYoutubeCommand("pauseVideo");
+  }, [hasBackground, isYoutube, isYoutubeReady, isLoading, mediaError, isThumbnail, isPlaying, postYoutubeCommand]);
+
+  useEffect(() => {
+    if (!hasBackground || !isYoutube || !isYoutubeReady || isLoading || mediaError) return;
+    if (isMuted || isThumbnail) postYoutubeCommand("mute");
+    else postYoutubeCommand("unMute");
+  }, [hasBackground, isYoutube, isYoutubeReady, isLoading, mediaError, isMuted, isThumbnail, postYoutubeCommand]);
+
+  useEffect(() => {
+    if (!hasBackground || !isYoutube || !isYoutubeReady || isLoading || mediaError) return;
+    if (seekCommand === null) return;
+    if (!seekAmount || !Number.isFinite(seekAmount)) return;
+    if (seekAmount <= -3600) {
+      postYoutubeCommand("seekTo", [0, true]);
+      postYoutubeCommand("pauseVideo");
+    }
+  }, [hasBackground, isYoutube, isYoutubeReady, isLoading, mediaError, seekCommand, seekAmount, postYoutubeCommand]);
 
   const fallbackBackground = useMemo(() => {
     const seed = `${item?.id || "item"}:${slide?.id || "slide"}`;
@@ -330,8 +368,9 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
         iv_load_policy: "3",
         loop: "1",
         playlist: youtubeId,
+        enablejsapi: "1",
         // ✅ Force mute in projector to satisfy autoplay policies and reduce failures
-        mute: isThumbnail || isMuted || isProjector ? "1" : "0",
+        mute: isThumbnail || isMuted ? "1" : "0",
       });
 
       // Adding origin helps some browsers/contexts (especially popouts) avoid “player configuration error”.
@@ -342,12 +381,22 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       return (
         <div className="w-full h-full">
           <iframe
+            ref={youtubeIframeRef}
             className="w-full h-full"
             src={src}
             title="YouTube"
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             referrerPolicy="no-referrer-when-downgrade"
+            onLoad={() => {
+              setIsYoutubeReady(true);
+              window.setTimeout(() => {
+                if (isMuted || isThumbnail) postYoutubeCommand("mute");
+                else postYoutubeCommand("unMute");
+                if (isPlaying && !isThumbnail) postYoutubeCommand("playVideo");
+                else postYoutubeCommand("pauseVideo");
+              }, 180);
+            }}
             onError={() => setMediaError(true)}
           />
           {/* MVP helper (only in projector) */}

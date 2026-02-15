@@ -2,31 +2,38 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState, updateLiveState } from '../services/firebase';
 import { logActivity } from '../services/analytics';
+import { resolveWorkspaceId, sendServerRemoteCommand } from '../services/serverApi';
 import { LoginScreen } from './LoginScreen';
 
 export const RemoteControl: React.FC = () => {
-  const getSessionId = () => {
+  const getRouteParams = () => {
     const searchParams = new URLSearchParams(window.location.search);
     const fromSearch = (searchParams.get('session') || '').trim();
-    if (fromSearch) return fromSearch;
+    const fromSearchWorkspace = (searchParams.get('workspace') || '').trim();
 
     const hash = window.location.hash || '';
     const queryStart = hash.indexOf('?');
+    let fromHash = '';
+    let fromHashWorkspace = '';
     if (queryStart >= 0) {
       const hashParams = new URLSearchParams(hash.slice(queryStart + 1));
-      const fromHash = (hashParams.get('session') || '').trim();
-      if (fromHash) return fromHash;
+      fromHash = (hashParams.get('session') || '').trim();
+      fromHashWorkspace = (hashParams.get('workspace') || '').trim();
     }
 
-    return 'live';
+    return {
+      sessionId: fromSearch || fromHash || 'live',
+      workspaceHint: fromSearchWorkspace || fromHashWorkspace || '',
+    };
   };
-  const [sessionId] = useState(getSessionId);
+  const [{ sessionId, workspaceHint }] = useState(getRouteParams);
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [state, setState] = useState<any>({});
   const [syncError, setSyncError] = useState('');
   const [commandStatus, setCommandStatus] = useState('');
   const [sending, setSending] = useState(false);
+  const workspaceId = useMemo(() => resolveWorkspaceId(user, workspaceHint || 'default-workspace'), [user?.uid, workspaceHint]);
 
   useEffect(() => {
     if (!auth) {
@@ -78,16 +85,19 @@ export const RemoteControl: React.FC = () => {
 
     setSending(true);
     setCommandStatus('');
-    const ok = await updateLiveState({ remoteCommand: command, remoteCommandAt: Date.now() }, sessionId);
+    const [firebaseOk, serverOk] = await Promise.all([
+      updateLiveState({ remoteCommand: command, remoteCommandAt: Date.now() }, sessionId),
+      sendServerRemoteCommand(workspaceId, sessionId, user, command).then((response) => !!response?.ok),
+    ]);
     setSending(false);
 
-    if (!ok) {
+    if (!firebaseOk && !serverOk) {
       setCommandStatus('Command failed. Check login and Firestore permissions.');
       logActivity(user?.uid, 'ERROR', { type: 'REMOTE_COMMAND_FAIL', command, sessionId });
       return;
     }
 
-    setCommandStatus(`Sent: ${command}`);
+    setCommandStatus(firebaseOk ? `Sent: ${command}` : `Sent via server: ${command}`);
     window.setTimeout(() => setCommandStatus(''), 900);
   };
 

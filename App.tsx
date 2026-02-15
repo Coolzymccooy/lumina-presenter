@@ -20,6 +20,7 @@ import { logActivity, analyzeSentimentContext } from './services/analytics';
 import { auth, isFirebaseConfigured, subscribeToState, subscribeToTeamPlaylists, updateLiveState, upsertTeamPlaylist } from './services/firebase';
 import { onAuthStateChanged } from "firebase/auth";
 import { clearMediaCache } from './services/localMedia';
+import { fetchServerSessionState, loadLatestWorkspaceSnapshot, resolveWorkspaceId, saveServerSessionState, saveWorkspaceSettings, saveWorkspaceSnapshot } from './services/serverApi';
 import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings } from './components/Icons'; // Added Settings Icon
 
 // --- CONSTANTS ---
@@ -60,6 +61,22 @@ type CloudPlaylistRecord = {
 };
 
 const buildCloudPlaylistId = (uid: string) => `${uid}-${CLOUD_PLAYLIST_SUFFIX}`;
+
+const getYoutubeId = (url: string): string | null => {
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/i);
+  return m?.[1] ?? null;
+};
+
+const looksLikeVideoUrl = (url: string): boolean => {
+  if (!url) return false;
+  if (getYoutubeId(url)) return true;
+  const normalized = url.split('?')[0].toLowerCase();
+  return normalized.endsWith('.mp4')
+    || normalized.endsWith('.webm')
+    || normalized.endsWith('.mov')
+    || normalized.includes('/video/')
+    || normalized.startsWith('blob:');
+};
 
 const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
@@ -178,6 +195,7 @@ function App() {
     return Array.from(new Set(parsed));
   }, [workspaceSettings.remoteAdminEmails]);
   const liveSessionId = useMemo(() => (workspaceSettings.sessionId || 'live').trim() || 'live', [workspaceSettings.sessionId]);
+  const workspaceId = useMemo(() => resolveWorkspaceId(user), [user?.uid]);
   const [isMotionLibOpen, setIsMotionLibOpen] = useState(false); // NEW
   const [isTemplateOpen, setIsTemplateOpen] = useState(false);
   const [isLyricsImportOpen, setIsLyricsImportOpen] = useState(false);
@@ -243,7 +261,9 @@ function App() {
   const antiSleepAudioRef = useRef<HTMLAudioElement>(null);
   const hasInitializedRemoteSnapshotRef = useRef(false);
   const hasHydratedCloudStateRef = useRef(false);
+  const hasHydratedServerSnapshotRef = useRef(false);
   const lastRemoteCommandAtRef = useRef<number | null>(null);
+  const lastServerRemoteCommandAtRef = useRef<number | null>(null);
   const lastSyncErrorRef = useRef<{ key: string; at: number } | null>(null);
   const syncFailureStreakRef = useRef(0);
   const syncBackoffUntilRef = useRef(0);
@@ -340,8 +360,11 @@ function App() {
       const failed: typeof queued = [];
       for (let idx = 0; idx < queued.length; idx += 1) {
         const entry = queued[idx];
-        const ok = await updateLiveState(entry.payload, entry.sessionId || liveSessionId);
-        if (!ok) {
+        const [firebaseOk, serverOk] = await Promise.all([
+          updateLiveState(entry.payload, entry.sessionId || liveSessionId),
+          saveServerSessionState(workspaceId, entry.sessionId || liveSessionId, user, entry.payload).then((response) => !!response?.ok),
+        ]);
+        if (!firebaseOk && !serverOk) {
           failed.push(...queued.slice(idx));
           applySyncBackoff('flush');
           break;
@@ -357,10 +380,10 @@ function App() {
       console.warn('Failed to flush queued live state', error);
       reportSyncFailure('flush', error, { queueOp: 'flush' });
     }
-  }, [liveSessionId, reportSyncFailure, applySyncBackoff, resetSyncBackoff, buildSyncPausedMessage]);
+  }, [liveSessionId, workspaceId, user, reportSyncFailure, applySyncBackoff, resetSyncBackoff, buildSyncPausedMessage]);
 
   const syncLiveState = useCallback(async (payload: any) => {
-    if (!isFirebaseConfigured() || !user?.uid) return;
+    if (!user?.uid) return;
     if (!navigator.onLine) {
       enqueueLiveState(payload);
       return;
@@ -371,14 +394,22 @@ function App() {
       setSyncIssue(buildSyncPausedMessage(remainingSeconds));
       return;
     }
-    const ok = await updateLiveState(payload, liveSessionId);
-    if (!ok) {
+    const [firebaseOk, serverOk] = await Promise.all([
+      isFirebaseConfigured() ? updateLiveState(payload, liveSessionId) : Promise.resolve(false),
+      saveServerSessionState(workspaceId, liveSessionId, user, payload).then((response) => !!response?.ok),
+    ]);
+    if (!firebaseOk && !serverOk) {
       applySyncBackoff('live-update');
+      enqueueLiveState(payload);
     } else {
       resetSyncBackoff();
-      setSyncIssue(null);
+      if (!firebaseOk && serverOk) {
+        setSyncIssue('Firebase sync denied; server sync active.');
+      } else {
+        setSyncIssue(null);
+      }
     }
-  }, [user?.uid, liveSessionId, enqueueLiveState, applySyncBackoff, resetSyncBackoff, buildSyncPausedMessage]);
+  }, [user?.uid, user, workspaceId, liveSessionId, enqueueLiveState, applySyncBackoff, resetSyncBackoff, buildSyncPausedMessage]);
 
   // --- SESSION PERSISTENCE LOGIC ---
   useEffect(() => {
@@ -418,6 +449,8 @@ function App() {
 
   useEffect(() => {
     resetSyncBackoff();
+    hasHydratedServerSnapshotRef.current = false;
+    lastServerRemoteCommandAtRef.current = null;
   }, [user?.uid, liveSessionId, resetSyncBackoff]);
 
 
@@ -437,6 +470,49 @@ function App() {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(workspaceSettings));
     document.documentElement.dataset.theme = workspaceSettings.theme;
   }, [workspaceSettings]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    const id = window.setTimeout(() => {
+      saveWorkspaceSettings(workspaceId, user, workspaceSettings);
+    }, 700);
+    return () => window.clearTimeout(id);
+  }, [workspaceId, user, workspaceSettings]);
+
+  useEffect(() => {
+    if (!user?.uid || hasHydratedServerSnapshotRef.current) return;
+    hasHydratedServerSnapshotRef.current = true;
+
+    (async () => {
+      const response = await loadLatestWorkspaceSnapshot(workspaceId, user);
+      const snapshot = response?.snapshot;
+      if (!snapshot?.payload) return;
+
+      const localUpdatedAt = typeof initialSavedStateRef.current?.updatedAt === 'number'
+        ? initialSavedStateRef.current.updatedAt
+        : 0;
+      if (localUpdatedAt > snapshot.updatedAt) return;
+
+      const payload = snapshot.payload;
+      if (Array.isArray(payload.schedule) && payload.schedule.length > 0) {
+        setSchedule(payload.schedule);
+      }
+      if (typeof payload.selectedItemId === 'string') {
+        setSelectedItemId(payload.selectedItemId);
+      }
+      if (typeof payload.activeItemId === 'string') {
+        setActiveItemId(payload.activeItemId);
+      } else {
+        setActiveItemId(null);
+      }
+      if (typeof payload.activeSlideIndex === 'number') {
+        setActiveSlideIndex(payload.activeSlideIndex);
+      }
+      if (payload.workspaceSettings && typeof payload.workspaceSettings === 'object') {
+        setWorkspaceSettings((prev) => ({ ...prev, ...payload.workspaceSettings }));
+      }
+    })();
+  }, [workspaceId, user?.uid, user]);
 
   useEffect(() => {
     try {
@@ -604,6 +680,14 @@ function App() {
           workspaceSettings,
           updatedAt,
         });
+        await saveWorkspaceSnapshot(workspaceId, user, {
+          schedule,
+          selectedItemId,
+          activeItemId,
+          activeSlideIndex,
+          workspaceSettings,
+          updatedAt,
+        });
       } catch (error) {
         reportSyncFailure('playlist-upsert', error, { itemCount: schedule.length });
       }
@@ -621,6 +705,8 @@ function App() {
     reportSyncFailure,
     cloudBootstrapComplete,
     cloudPlaylistId,
+    workspaceId,
+    user,
   ]);
 
   useEffect(() => {
@@ -642,7 +728,12 @@ function App() {
   const activeSlide = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex] : null;
   const nextSlidePreview = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex + 1] || null : null;
   const lobbyItem = schedule.find((item) => item.type === ItemType.ANNOUNCEMENT) || activeItem;
-  const isActiveVideo = activeSlide && (activeSlide.mediaType === 'video' || (!activeSlide.mediaType && activeItem?.theme.mediaType === 'video'));
+  const activeBackgroundUrl = (activeSlide?.backgroundUrl || activeItem?.theme?.backgroundUrl || '').trim();
+  const isActiveVideo = !!activeSlide && (
+    activeSlide.mediaType === 'video'
+    || (!activeSlide.mediaType && activeItem?.theme.mediaType === 'video')
+    || looksLikeVideoUrl(activeBackgroundUrl)
+  );
   const formatTimer = (total: number) => {
     const negative = total < 0;
     const abs = Math.abs(total);
@@ -653,15 +744,15 @@ function App() {
   const isTimerOvertime = timerMode === 'COUNTDOWN' && timerSeconds < 0;
   const buildSharedRouteUrl = (route: 'output' | 'remote') => (
     typeof window !== 'undefined'
-      ? `${window.location.origin}/#/${route}?session=${encodeURIComponent(liveSessionId)}`
-      : `/#/${route}?session=${encodeURIComponent(liveSessionId)}`
+      ? `${window.location.origin}/#/${route}?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&fullscreen=1`
+      : `/#/${route}?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&fullscreen=1`
   );
   const obsOutputUrl = typeof window !== 'undefined'
     ? buildSharedRouteUrl('output')
-    : `/#/output?session=${encodeURIComponent(liveSessionId)}`;
+    : `/#/output?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&fullscreen=1`;
   const remoteControlUrl = typeof window !== 'undefined'
     ? buildSharedRouteUrl('remote')
-    : `/#/remote?session=${encodeURIComponent(liveSessionId)}`;
+    : `/#/remote?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&fullscreen=1`;
   const cloneSchedule = (value: ServiceItem[]) => JSON.parse(JSON.stringify(value)) as ServiceItem[];
   const pushHistory = () => {
     historyRef.current.push({
@@ -939,6 +1030,17 @@ function App() {
     setSeekCommand(Date.now());
   }, []);
 
+  const executeRemoteCommand = useCallback((command: RemoteCommand) => {
+    if (command === 'NEXT') nextSlide();
+    if (command === 'PREV') prevSlide();
+    if (command === 'BLACKOUT') setBlackout((prev) => !prev);
+    if (command === 'PLAY') setIsPlaying(true);
+    if (command === 'PAUSE') setIsPlaying(false);
+    if (command === 'STOP') stopProgramVideo();
+    if (command === 'MUTE') setOutputMuted(true);
+    if (command === 'UNMUTE') setOutputMuted(false);
+  }, [nextSlide, prevSlide, stopProgramVideo]);
+
   const handleEditSlide = (slide: Slide) => {
     setEditingSlide(slide);
     setIsSlideEditorOpen(true);
@@ -1081,14 +1183,7 @@ function App() {
         return;
       }
 
-      if (command === 'NEXT') nextSlide();
-      if (command === 'PREV') prevSlide();
-      if (command === 'BLACKOUT') setBlackout((prev) => !prev);
-      if (command === 'PLAY') setIsPlaying(true);
-      if (command === 'PAUSE') setIsPlaying(false);
-      if (command === 'STOP') stopProgramVideo();
-      if (command === 'MUTE') setOutputMuted(true);
-      if (command === 'UNMUTE') setOutputMuted(false);
+      executeRemoteCommand(command);
 
     }, liveSessionId, (error) => {
       reportSyncFailure('remote-subscribe', error);
@@ -1099,7 +1194,31 @@ function App() {
       hasInitializedRemoteSnapshotRef.current = false;
       lastRemoteCommandAtRef.current = null;
     };
-  }, [user?.uid, cloudBootstrapComplete, nextSlide, prevSlide, stopProgramVideo, liveSessionId, reportSyncFailure]);
+  }, [user?.uid, cloudBootstrapComplete, executeRemoteCommand, liveSessionId, reportSyncFailure]);
+
+  useEffect(() => {
+    if (!user?.uid || !cloudBootstrapComplete) return;
+    let active = true;
+    const pollServerCommands = async () => {
+      const response = await fetchServerSessionState(workspaceId, liveSessionId);
+      if (!active || !response?.state) return;
+      const data = response.state;
+      const rawIncomingAt = data.remoteCommandAt;
+      const incomingAt = typeof rawIncomingAt === 'number' && Number.isFinite(rawIncomingAt) ? rawIncomingAt : null;
+      if (!incomingAt || incomingAt === lastServerRemoteCommandAtRef.current) return;
+      lastServerRemoteCommandAtRef.current = incomingAt;
+
+      const command = data.remoteCommand;
+      if (!isRemoteCommand(command)) return;
+      executeRemoteCommand(command);
+    };
+    pollServerCommands();
+    const id = window.setInterval(pollServerCommands, 650);
+    return () => {
+      active = false;
+      window.clearInterval(id);
+    };
+  }, [workspaceId, liveSessionId, user?.uid, cloudBootstrapComplete, executeRemoteCommand]);
 
   useEffect(() => {
     if (!user?.uid || !cloudBootstrapComplete) return;
@@ -1198,10 +1317,12 @@ function App() {
       return;
     }
 
+    const width = window.screen?.availWidth || 1280;
+    const height = window.screen?.availHeight || 720;
     const w = window.open(
       obsOutputUrl,
       "LuminaOutput",
-      "width=1280,height=720,menubar=no,toolbar=no,location=no,status=no"
+      `popup=yes,width=${width},height=${height},left=0,top=0,menubar=no,toolbar=no,location=no,status=no,scrollbars=no,resizable=yes`
     );
 
     if (!w || w.closed || typeof w.closed === "undefined") {
@@ -1214,7 +1335,15 @@ function App() {
     setPopupBlocked(false);
     setOutputWin(w);
     setIsOutputLive(true);
-    try { w.focus(); } catch {}
+    try {
+      w.focus();
+      w.moveTo?.(0, 0);
+      w.resizeTo?.(width, height);
+    } catch {}
+    try {
+      const fsAttempt = w.document?.documentElement?.requestFullscreen?.();
+      fsAttempt?.catch(() => {});
+    } catch {}
   };
 
   useEffect(() => {
