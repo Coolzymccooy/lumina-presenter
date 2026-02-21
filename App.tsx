@@ -19,8 +19,9 @@ import { StageDisplay } from './components/StageDisplay';
 import { logActivity, analyzeSentimentContext } from './services/analytics';
 import { auth, isFirebaseConfigured, subscribeToState, subscribeToTeamPlaylists, updateLiveState, upsertTeamPlaylist } from './services/firebase';
 import { onAuthStateChanged } from "firebase/auth";
-import { clearMediaCache } from './services/localMedia';
-import { fetchServerSessionState, loadLatestWorkspaceSnapshot, resolveWorkspaceId, saveServerSessionState, saveWorkspaceSettings, saveWorkspaceSnapshot } from './services/serverApi';
+import { clearMediaCache, saveMedia } from './services/localMedia';
+import { fetchServerSessionState, importVisualPptxDeck, loadLatestWorkspaceSnapshot, resolveWorkspaceId, saveServerSessionState, saveWorkspaceSettings, saveWorkspaceSnapshot } from './services/serverApi';
+import { parsePptxFile } from './services/pptxImport';
 import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings } from './components/Icons'; // Added Settings Icon
 
 // --- CONSTANTS ---
@@ -201,6 +202,9 @@ function App() {
   const [isLyricsImportOpen, setIsLyricsImportOpen] = useState(false);
   const [importTitle, setImportTitle] = useState('Imported Lyrics');
   const [importLyrics, setImportLyrics] = useState('');
+  const [importModalError, setImportModalError] = useState<string | null>(null);
+  const [isImportingDeck, setIsImportingDeck] = useState(false);
+  const [importDeckStatus, setImportDeckStatus] = useState('');
   const [syncPendingCount, setSyncPendingCount] = useState(0);
   const [autoCueEnabled, setAutoCueEnabled] = useState(false);
   const [autoCueSeconds, setAutoCueSeconds] = useState(7);
@@ -903,6 +907,7 @@ function App() {
   };
 
   const importLyricsAsItem = () => {
+    setImportModalError(null);
     const raw = importLyrics.trim();
     if (!raw) return;
     const chunks = raw
@@ -934,6 +939,170 @@ function App() {
     setImportTitle('Imported Lyrics');
     setImportLyrics('');
     setIsLyricsImportOpen(false);
+  };
+
+  const resolveImportedDeckTitle = (fallbackTitle: string) => {
+    const customTitle = importTitle.trim();
+    if (customTitle && customTitle.toLowerCase() !== 'imported lyrics') return customTitle;
+    return fallbackTitle || 'Imported Presentation';
+  };
+
+  const base64ToFile = (base64: string, filename: string, mimeType = 'image/png') => {
+    const raw = (base64 || '').trim();
+    const clean = raw.includes(',') ? raw.slice(raw.indexOf(',') + 1) : raw;
+    const binary = atob(clean);
+    const bytes = new Uint8Array(binary.length);
+    for (let idx = 0; idx < binary.length; idx += 1) {
+      bytes[idx] = binary.charCodeAt(idx);
+    }
+    return new File([bytes], filename, { type: mimeType });
+  };
+
+  const buildTextSlidesFromPptx = async (file: File) => {
+    const parsed = await parsePptxFile(file);
+    const now = Date.now();
+    const slides: Slide[] = parsed.slides.map((entry, idx) => ({
+      id: `${now}-pptx-text-${idx + 1}`,
+      label: entry.label || `Slide ${idx + 1}`,
+      content: entry.content,
+      notes: entry.notes,
+    }));
+    return {
+      suggestedTitle: parsed.title,
+      slides,
+    };
+  };
+
+  const buildVisualSlidesFromPptx = async (
+    file: File,
+    onProgress?: (message: string) => void
+  ) => {
+    if (!user?.uid) {
+      throw new Error('Please sign in before importing PowerPoint visuals.');
+    }
+    const converted = await importVisualPptxDeck(workspaceId, user, file);
+    if (!converted?.ok || !Array.isArray(converted.slides) || !converted.slides.length) {
+      throw new Error(converted?.message || 'Visual PowerPoint import failed.');
+    }
+
+    const parsedFallback = await parsePptxFile(file).catch(() => null);
+    const now = Date.now();
+    const slides: Slide[] = [];
+    for (let idx = 0; idx < converted.slides.length; idx += 1) {
+      const entry = converted.slides[idx];
+      onProgress?.(`Saving slide ${idx + 1} of ${converted.slides.length}...`);
+      const fileName = entry?.name || `slide-${idx + 1}.png`;
+      const imageFile = base64ToFile(entry?.imageBase64 || '', fileName, 'image/png');
+      const localUrl = await saveMedia(imageFile);
+      slides.push({
+        id: `${now}-pptx-visual-${idx + 1}`,
+        label: `Slide ${idx + 1}`,
+        content: '',
+        backgroundUrl: localUrl,
+        mediaType: 'image',
+        notes: parsedFallback?.slides?.[idx]?.notes || '',
+      });
+    }
+    return {
+      suggestedTitle: file.name.replace(/\.[^.]+$/, ''),
+      slides,
+    };
+  };
+
+  const importPowerPointTextAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setImportModalError(null);
+    setIsImportingDeck(true);
+    setImportDeckStatus('Parsing PowerPoint text...');
+    try {
+      const parsed = await buildTextSlidesFromPptx(file);
+      const now = Date.now();
+      const slides = parsed.slides;
+
+      const importedItem: ServiceItem = {
+        id: `${now}`,
+        title: resolveImportedDeckTitle(parsed.suggestedTitle),
+        type: ItemType.ANNOUNCEMENT,
+        slides,
+        theme: {
+          backgroundUrl: DEFAULT_BACKGROUNDS[0],
+          mediaType: 'image',
+          fontFamily: 'sans-serif',
+          textColor: '#ffffff',
+          shadow: true,
+          fontSize: 'large',
+        },
+      };
+
+      addItem(importedItem);
+      logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: slides.length, mode: 'text' });
+      setImportTitle('Imported Lyrics');
+      setImportLyrics('');
+      setIsLyricsImportOpen(false);
+    } catch (error: any) {
+      const message = error?.message || 'PowerPoint import failed.';
+      setImportModalError(message);
+    } finally {
+      setIsImportingDeck(false);
+      setImportDeckStatus('');
+    }
+  };
+
+  const importPowerPointVisualAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setImportModalError(null);
+    setIsImportingDeck(true);
+    setImportDeckStatus('Rendering slide visuals...');
+    try {
+      const converted = await buildVisualSlidesFromPptx(file, (status) => setImportDeckStatus(status));
+      const now = Date.now();
+      const slides = converted.slides;
+
+      const importedItem: ServiceItem = {
+        id: `${now}`,
+        title: resolveImportedDeckTitle(converted.suggestedTitle),
+        type: ItemType.MEDIA,
+        slides,
+        theme: {
+          backgroundUrl: '',
+          mediaType: 'image',
+          fontFamily: 'sans-serif',
+          textColor: '#ffffff',
+          shadow: false,
+          fontSize: 'medium',
+        },
+      };
+
+      addItem(importedItem);
+      logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: slides.length, mode: 'visual' });
+      setImportTitle('Imported Lyrics');
+      setImportLyrics('');
+      setIsLyricsImportOpen(false);
+    } catch (error: any) {
+      const message = error?.message || 'Visual PowerPoint import failed.';
+      setImportModalError(message);
+    } finally {
+      setIsImportingDeck(false);
+      setImportDeckStatus('');
+    }
+  };
+
+  const importPowerPointVisualSlidesForSlideEditor = async (file: File): Promise<Slide[]> => {
+    const visual = await buildVisualSlidesFromPptx(file);
+    logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: visual.slides.length, mode: 'visual_slide_editor' });
+    return visual.slides;
+  };
+
+  const importPowerPointTextSlidesForSlideEditor = async (file: File): Promise<Slide[]> => {
+    const text = await buildTextSlidesFromPptx(file);
+    logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: text.slides.length, mode: 'text_slide_editor' });
+    return text.slides;
   };
 
 
@@ -1040,6 +1209,41 @@ function App() {
     if (command === 'MUTE') setOutputMuted(true);
     if (command === 'UNMUTE') setOutputMuted(false);
   }, [nextSlide, prevSlide, stopProgramVideo]);
+
+  const handleSaveSlideFromEditor = (slideToSave: Slide) => {
+    if (!selectedItem) return;
+    const slideExists = selectedItem.slides.find((entry) => entry.id === slideToSave.id);
+    const nextSlides = slideExists
+      ? selectedItem.slides.map((entry) => (entry.id === slideToSave.id ? slideToSave : entry))
+      : [...selectedItem.slides, slideToSave];
+    updateItem({ ...selectedItem, slides: nextSlides });
+    setIsSlideEditorOpen(false);
+  };
+
+  const handleInsertSlidesFromEditor = (slidesToInsert: Slide[], replaceCurrentId?: string | null) => {
+    if (!selectedItem || !slidesToInsert.length) return;
+    const incoming = slidesToInsert.map((entry, idx) => ({
+      ...entry,
+      id: entry.id || `${Date.now()}-import-${idx + 1}`,
+    }));
+
+    const nextSlides = [...selectedItem.slides];
+    if (replaceCurrentId) {
+      const targetIndex = nextSlides.findIndex((entry) => entry.id === replaceCurrentId);
+      if (targetIndex >= 0) {
+        const [first, ...rest] = incoming;
+        const replacement = { ...first, id: replaceCurrentId };
+        nextSlides.splice(targetIndex, 1, replacement, ...rest);
+      } else {
+        nextSlides.push(...incoming);
+      }
+    } else {
+      nextSlides.push(...incoming);
+    }
+
+    updateItem({ ...selectedItem, slides: nextSlides });
+    setIsSlideEditorOpen(false);
+  };
 
   const handleEditSlide = (slide: Slide) => {
     setEditingSlide(slide);
@@ -1306,8 +1510,10 @@ function App() {
 
   // ✅ Launch Output handler (opens window synchronously from user gesture — popup-safe)
   const handleToggleOutput = () => {
-    if (!activeSlide && selectedItem && selectedItem.slides.length > 0) {
+    if (!activeItem && selectedItem && selectedItem.slides.length > 0) {
       goLive(selectedItem, 0);
+    } else if (activeItem && !activeSlide && activeItem.slides.length > 0) {
+      goLive(activeItem, 0);
     }
 
     if (isOutputLive) {
@@ -1527,7 +1733,7 @@ function App() {
                   <span>Run Sheet</span>
                   <div className="flex items-center gap-1">
                     <button onClick={() => setIsTemplateOpen(true)} className="px-1.5 py-0.5 text-[9px] border border-zinc-800 rounded-sm hover:text-white hover:border-zinc-600">TPL</button>
-                    <button onClick={() => setIsLyricsImportOpen(true)} className="px-1.5 py-0.5 text-[9px] border border-zinc-800 rounded-sm hover:text-white hover:border-zinc-600">LYR</button>
+                    <button onClick={() => { setImportModalError(null); setImportDeckStatus(''); setIsLyricsImportOpen(true); }} className="px-1.5 py-0.5 text-[9px] border border-zinc-800 rounded-sm hover:text-white hover:border-zinc-600">LYR</button>
                     <button onClick={addEmptyItem} className="hover:text-white p-1 hover:bg-zinc-900 rounded-sm"><PlusIcon className="w-3 h-3" /></button>
                   </div>
                 </div>
@@ -1693,12 +1899,26 @@ function App() {
         <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm p-4 flex items-center justify-center">
           <div className="w-full max-w-2xl bg-zinc-900 border border-zinc-800 rounded-lg p-5">
             <h3 className="text-sm font-bold text-zinc-200 mb-1">Import Lyrics</h3>
-            <p className="text-xs text-zinc-500 mb-4">Separate slide chunks with a blank line.</p>
+            <p className="text-xs text-zinc-500 mb-4">Paste lyrics with blank lines or import a PowerPoint deck as visual slides.</p>
             <input value={importTitle} onChange={(e) => setImportTitle(e.target.value)} className="w-full mb-3 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm" placeholder="Song title" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+              <label className="block border border-zinc-800 rounded px-3 py-2 bg-zinc-950 text-xs text-zinc-300 cursor-pointer hover:border-zinc-600 transition-colors">
+                <span className="font-semibold">Retain Exact Layout (.pptx Visual)</span>
+                <input type="file" accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint" className="hidden" onChange={importPowerPointVisualAsItem} disabled={isImportingDeck} />
+                <div className="text-[10px] text-zinc-500 mt-1">Keeps original PowerPoint design/background exactly. Requires backend + LibreOffice.</div>
+              </label>
+              <label className="block border border-zinc-800 rounded px-3 py-2 bg-zinc-950 text-xs text-zinc-300 cursor-pointer hover:border-zinc-600 transition-colors">
+                <span className="font-semibold">Use Lumina Theme (.pptx Text)</span>
+                <input type="file" accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint" className="hidden" onChange={importPowerPointTextAsItem} disabled={isImportingDeck} />
+                <div className="text-[10px] text-zinc-500 mt-1">Imports text/notes so you can style with Lumina backgrounds.</div>
+              </label>
+            </div>
+            {importDeckStatus && <div className="mb-2 text-[11px] text-cyan-300 border border-cyan-900/60 bg-cyan-950/20 rounded px-3 py-2">{importDeckStatus}</div>}
             <textarea value={importLyrics} onChange={(e) => setImportLyrics(e.target.value)} className="w-full h-56 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm font-mono" placeholder={'Verse 1 line 1\nVerse 1 line 2\n\nChorus line 1\nChorus line 2'} />
+            {importModalError && <div className="mt-2 text-xs text-red-400 border border-red-900/60 bg-red-950/30 rounded px-3 py-2">{importModalError}</div>}
             <div className="flex justify-between mt-4">
-              <button onClick={() => setIsLyricsImportOpen(false)} className="px-3 py-1.5 text-xs border border-zinc-700 rounded">Cancel</button>
-              <button onClick={importLyricsAsItem} className="px-4 py-1.5 text-xs font-bold bg-blue-600 rounded">Import</button>
+              <button onClick={() => { setIsLyricsImportOpen(false); setImportModalError(null); setImportDeckStatus(''); }} className="px-3 py-1.5 text-xs border border-zinc-700 rounded" disabled={isImportingDeck}>Cancel</button>
+              <button onClick={importLyricsAsItem} className="px-4 py-1.5 text-xs font-bold bg-blue-600 rounded" disabled={isImportingDeck}>Import Lyrics</button>
             </div>
           </div>
         </div>
@@ -1718,7 +1938,15 @@ function App() {
             }} 
         />
       )}
-      <SlideEditorModal isOpen={isSlideEditorOpen} onClose={() => setIsSlideEditorOpen(false)} slide={editingSlide} onSave={(slide) => { if (!selectedItem) return; const slideExists = selectedItem.slides.find(s => s.id === slide.id); let newSlides = slideExists ? selectedItem.slides.map(s => s.id === slide.id ? slide : s) : [...selectedItem.slides, slide]; updateItem({ ...selectedItem, slides: newSlides }); setIsSlideEditorOpen(false); }} />
+      <SlideEditorModal
+        isOpen={isSlideEditorOpen}
+        onClose={() => setIsSlideEditorOpen(false)}
+        slide={editingSlide}
+        onSave={handleSaveSlideFromEditor}
+        onImportPowerPointVisual={importPowerPointVisualSlidesForSlideEditor}
+        onImportPowerPointText={importPowerPointTextSlidesForSlideEditor}
+        onInsertSlides={handleInsertSlidesFromEditor}
+      />
     </div>
   );
 }

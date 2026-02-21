@@ -9,6 +9,9 @@ interface SlideEditorModalProps {
   onClose: () => void;
   slide: Slide | null; 
   onSave: (slide: Slide) => void;
+  onImportPowerPointVisual?: (file: File) => Promise<Slide[]>;
+  onImportPowerPointText?: (file: File) => Promise<Slide[]>;
+  onInsertSlides?: (slides: Slide[], replaceCurrentId?: string | null) => void;
 }
 
 const getYoutubeId = (url: string) => {
@@ -18,7 +21,15 @@ const getYoutubeId = (url: string) => {
   return (match && match[2].length === 11) ? match[2] : null;
 };
 
-export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({ isOpen, onClose, slide, onSave }) => {
+export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
+  isOpen,
+  onClose,
+  slide,
+  onSave,
+  onImportPowerPointVisual,
+  onImportPowerPointText,
+  onInsertSlides,
+}) => {
   const [content, setContent] = useState('');
   const [label, setLabel] = useState('');
   const [bgUrl, setBgUrl] = useState('');
@@ -26,15 +37,22 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({ isOpen, onCl
   const [activeTab, setActiveTab] = useState<'image'|'video'|'color'>('image');
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [pptxError, setPptxError] = useState<string | null>(null);
+  const [pptxStatus, setPptxStatus] = useState('');
+  const [isImportingPptx, setIsImportingPptx] = useState(false);
   
   // For previewing local IndexedDB blobs
   const [previewUrl, setPreviewUrl] = useState<string>('');
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pptxVisualInputRef = useRef<HTMLInputElement>(null);
+  const pptxTextInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setUploadError(null);
+      setPptxError(null);
+      setPptxStatus('');
       if (slide) {
         setContent(slide.content);
         setLabel(slide.label || '');
@@ -106,12 +124,15 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({ isOpen, onCl
     setBgUrl(url);
     setMediaType(type);
     setUploadError(null);
+    setPptxError(null);
   };
 
   const clearBackground = () => {
     setBgUrl('');
     setMediaType('image');
     setUploadError(null);
+    setPptxError(null);
+    setPptxStatus('');
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -138,6 +159,68 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({ isOpen, onCl
       } finally {
         setIsUploading(false);
       }
+    }
+  };
+
+  const applyImportedSlide = (importedSlide: Slide) => {
+    setLabel(importedSlide.label || 'Slide 1');
+    setContent(importedSlide.content || '');
+    setBgUrl(importedSlide.backgroundUrl || '');
+    const nextType: MediaType = importedSlide.mediaType || 'image';
+    setMediaType(nextType);
+    setActiveTab(nextType === 'video' ? 'video' : nextType === 'color' ? 'color' : 'image');
+  };
+
+  const handlePowerPointImport = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    mode: 'visual' | 'text'
+  ) => {
+    setPptxError(null);
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    const lower = file.name.toLowerCase();
+    if (!lower.endsWith('.pptx') && !lower.endsWith('.ppt')) {
+      setPptxError('Please select a PowerPoint file (.pptx).');
+      return;
+    }
+    const importer = mode === 'visual' ? onImportPowerPointVisual : onImportPowerPointText;
+    if (!importer) {
+      setPptxError(mode === 'visual'
+        ? 'Visual PowerPoint import is not available in this view.'
+        : 'Text PowerPoint import is not available in this view.');
+      return;
+    }
+
+    setIsImportingPptx(true);
+    setPptxStatus(mode === 'visual'
+      ? 'Importing PowerPoint with original layout/background...'
+      : 'Importing PowerPoint text for Lumina theming...');
+    try {
+      const importedSlides = await importer(file);
+      if (!Array.isArray(importedSlides) || importedSlides.length === 0) {
+        throw new Error('No slides were imported from this file.');
+      }
+
+      if (importedSlides.length > 1 && onInsertSlides) {
+        onInsertSlides(importedSlides, slide?.id || null);
+        setPptxStatus('');
+        onClose();
+        return;
+      }
+
+      applyImportedSlide(importedSlides[0]);
+      if (importedSlides.length > 1) {
+        setPptxStatus(`${mode === 'visual' ? 'Visual' : 'Text'} import: first slide loaded in editor. File has ${importedSlides.length} slides.`);
+      } else {
+        setPptxStatus(mode === 'visual' ? 'Visual PowerPoint slide imported.' : 'Text PowerPoint slide imported.');
+      }
+    } catch (error: any) {
+      setPptxError(error?.message || 'PowerPoint import failed.');
+      setPptxStatus('');
+    } finally {
+      setIsImportingPptx(false);
     }
   };
 
@@ -250,7 +333,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({ isOpen, onCl
                     <button 
                       onClick={() => fileInputRef.current?.click()}
                       className="px-3 py-2 text-xs font-bold rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 whitespace-nowrap"
-                      disabled={isUploading}
+                      disabled={isUploading || isImportingPptx}
                     >
                       {isUploading ? 'SAVING...' : 'UPLOAD'}
                     </button>
@@ -262,8 +345,37 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({ isOpen, onCl
                       accept="image/*,video/*"
                     />
                     <button 
+                      onClick={() => pptxVisualInputRef.current?.click()}
+                      className="px-3 py-2 text-xs font-bold rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 whitespace-nowrap"
+                      disabled={isUploading || isImportingPptx}
+                    >
+                      {isImportingPptx ? 'VIS...' : 'PPTX VIS'}
+                    </button>
+                    <input 
+                      type="file" 
+                      ref={pptxVisualInputRef}
+                      onChange={(event) => handlePowerPointImport(event, 'visual')}
+                      className="hidden" 
+                      accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint"
+                    />
+                    <button 
+                      onClick={() => pptxTextInputRef.current?.click()}
+                      className="px-3 py-2 text-xs font-bold rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 whitespace-nowrap"
+                      disabled={isUploading || isImportingPptx}
+                    >
+                      {isImportingPptx ? 'TXT...' : 'PPTX TXT'}
+                    </button>
+                    <input 
+                      type="file" 
+                      ref={pptxTextInputRef}
+                      onChange={(event) => handlePowerPointImport(event, 'text')}
+                      className="hidden" 
+                      accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint"
+                    />
+                    <button 
                       onClick={clearBackground}
                       className="px-3 py-2 text-xs font-bold rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border border-zinc-700"
+                      disabled={isImportingPptx}
                     >
                       CLR
                     </button>
@@ -271,6 +383,16 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({ isOpen, onCl
                 {uploadError && (
                     <div className="text-[10px] text-red-400 bg-red-900/10 border border-red-900/30 p-2 rounded-sm font-mono">
                         Error: {uploadError}
+                    </div>
+                )}
+                {pptxError && (
+                    <div className="text-[10px] text-red-400 bg-red-900/10 border border-red-900/30 p-2 rounded-sm font-mono">
+                        PPTX: {pptxError}
+                    </div>
+                )}
+                {pptxStatus && (
+                    <div className="text-[10px] text-cyan-300 bg-cyan-900/10 border border-cyan-900/30 p-2 rounded-sm font-mono">
+                        {pptxStatus}
                     </div>
                 )}
                 
@@ -287,7 +409,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({ isOpen, onCl
                 )}
 
                 <div className="text-[9px] text-zinc-600 italic">
-                    Note: Local uploads are now stored in IndexedDB (Large files supported).
+                    Note: `PPTX VIS` retains original layout/background. `PPTX TXT` imports text for Lumina styling.
                 </div>
             </div>
           </div>
@@ -302,7 +424,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({ isOpen, onCl
           </button>
           <button 
             onClick={handleSave}
-            disabled={isUploading}
+            disabled={isUploading || isImportingPptx}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-sm text-xs font-bold tracking-wide transition-all shadow-sm disabled:opacity-50"
           >
             CONFIRM

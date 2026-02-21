@@ -170,6 +170,131 @@ export const sendServerRemoteCommand = async (
   );
 };
 
+const fileToBase64 = async (file: File) => {
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error || new Error('Failed to read file'));
+    reader.onload = () => {
+      const value = typeof reader.result === 'string' ? reader.result : '';
+      const payload = value.includes(',') ? value.slice(value.indexOf(',') + 1) : value;
+      resolve(payload);
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
+export type VisualPptxImportResponse = {
+  ok: boolean;
+  slideCount: number;
+  slides: Array<{
+    pageNumber: number;
+    name: string;
+    width: number;
+    height: number;
+    imageBase64: string;
+  }>;
+  error?: string;
+  message?: string;
+};
+
+export const importVisualPptxDeck = async (workspaceId: string, user: ActorLike, file: File) => {
+  const fileBase64 = await fileToBase64(file);
+  const headers = await buildHeaders(user, false);
+  if (!headers) {
+    return {
+      ok: false,
+      slideCount: 0,
+      slides: [],
+      error: 'AUTH_REQUIRED',
+      message: 'Sign in required for visual PowerPoint import.',
+    };
+  }
+
+  const readErrorPayload = async (response: Response) => {
+    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+    if (contentType.includes('application/json')) {
+      const payload = await response.json().catch(() => null);
+      return {
+        error: payload?.error as string | undefined,
+        message: payload?.message as string | undefined,
+      };
+    }
+
+    const rawText = await response.text().catch(() => '');
+    const compact = rawText.replace(/\s+/g, ' ').trim();
+    if (!compact) return { error: undefined, message: undefined };
+    if (/cannot post \/api\/workspaces\/.+\/imports\/pptx-visual/i.test(compact)) {
+      return {
+        error: 'PPTX_VISUAL_ENDPOINT_MISSING',
+        message: 'Visual PowerPoint import endpoint is not on this server. Deploy latest backend and verify VITE_API_BASE_URL.',
+      };
+    }
+    return {
+      error: undefined,
+      message: compact.slice(0, 220),
+    };
+  };
+
+  try {
+    const response = await withTimeout(fetch(
+      `${API_BASE_URL}/api/workspaces/${encodeURIComponent(workspaceId)}/imports/pptx-visual`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          filename: file.name || 'import.pptx',
+          fileBase64,
+        }),
+      }
+    ), 240000);
+
+    const payload = await (async () => {
+      if (response.ok) {
+        return await response.json().catch(() => null);
+      }
+      return await readErrorPayload(response);
+    })();
+
+    if (!response.ok) {
+      const fallbackMessage = (() => {
+        if (response.status === 401) return 'Sign in required for visual PowerPoint import.';
+        if (response.status === 403) return 'You do not have access to import into this workspace.';
+        if (response.status === 404) return 'Visual PowerPoint import endpoint is not available. Deploy latest backend and verify VITE_API_BASE_URL.';
+        if (response.status === 413) return 'PowerPoint file is too large for visual import.';
+        if (response.status === 503) return 'Visual import renderer is unavailable on the server (LibreOffice/soffice missing).';
+        if (response.status === 504) return 'Visual import timed out on the server. Try a smaller deck.';
+        return `Visual PowerPoint import failed (HTTP ${response.status}).`;
+      })();
+      return {
+        ok: false,
+        slideCount: 0,
+        slides: [],
+        error: payload?.error || `HTTP_${response.status}`,
+        message: payload?.message || fallbackMessage,
+      };
+    }
+
+    if (!payload || !Array.isArray(payload.slides)) {
+      return {
+        ok: false,
+        slideCount: 0,
+        slides: [],
+        error: 'INVALID_RESPONSE',
+        message: 'Server returned an invalid visual import payload.',
+      };
+    }
+    return payload as VisualPptxImportResponse;
+  } catch {
+    return {
+      ok: false,
+      slideCount: 0,
+      slides: [],
+      error: 'NETWORK_OR_TIMEOUT',
+      message: 'Could not reach server for visual PowerPoint import.',
+    };
+  }
+};
+
 export const fetchWorkspaceReportSummary = async (workspaceId: string, user: ActorLike, from?: number, to?: number) => {
   const params = new URLSearchParams();
   if (typeof from === 'number') params.set('from', String(from));
