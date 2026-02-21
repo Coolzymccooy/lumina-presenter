@@ -4,7 +4,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import Database from "better-sqlite3";
+import { pdfToPng } from "pdf-to-png-converter";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,6 +18,11 @@ const requestedDbPath = process.env.LUMINA_DB_PATH
   ? path.resolve(process.env.LUMINA_DB_PATH)
   : path.join(requestedDataDir, "lumina.sqlite");
 const PORT = Number(process.env.PORT || process.env.LUMINA_API_PORT || 8787);
+const JSON_LIMIT = process.env.LUMINA_JSON_LIMIT || "100mb";
+const SOFFICE_BIN = String(process.env.LUMINA_SOFFICE_BIN || "soffice").trim() || "soffice";
+const PPTX_CONVERT_TIMEOUT_MS = Number(process.env.LUMINA_PPTX_CONVERT_TIMEOUT_MS || 180000);
+const MAX_PPTX_IMPORT_BYTES = Number(process.env.LUMINA_MAX_PPTX_IMPORT_BYTES || 80 * 1024 * 1024);
+const execFileAsync = promisify(execFile);
 
 const resolveWritableDbPath = (candidatePath) => {
   const filename = path.basename(candidatePath) || "lumina.sqlite";
@@ -87,7 +95,7 @@ CREATE INDEX IF NOT EXISTS idx_snapshots_workspace_time ON workspace_snapshots(w
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: "25mb" }));
+app.use(express.json({ limit: JSON_LIMIT }));
 
 const now = () => Date.now();
 const parseJson = (raw, fallback) => {
@@ -99,6 +107,22 @@ const parseJson = (raw, fallback) => {
   }
 };
 const toJson = (value) => JSON.stringify(value ?? {});
+const cleanupDir = (dirPath) => {
+  try {
+    fs.rmSync(dirPath, { recursive: true, force: true });
+  } catch {
+    // best effort cleanup
+  }
+};
+const sanitizeFilename = (name, fallback = "import.pptx") => {
+  const safe = String(name || "").replace(/[^a-zA-Z0-9._-]/g, "_");
+  return safe || fallback;
+};
+const decodeBase64 = (raw) => {
+  if (!raw || typeof raw !== "string") return Buffer.alloc(0);
+  const clean = raw.includes(",") ? raw.slice(raw.indexOf(",") + 1) : raw;
+  return Buffer.from(clean, "base64");
+};
 
 const normalizeEmails = (raw = "") =>
   String(raw)
@@ -320,15 +344,17 @@ app.post("/api/workspaces/:workspaceId/sessions/:sessionId/state", requireActor,
     const actor = req.actor;
     const workspace = ensureWorkspaceForWrite(workspaceId, actor, { allowOperator: true });
     const current = db
-      .prepare("SELECT version FROM sessions WHERE workspace_id = ? AND session_id = ?")
+      .prepare("SELECT version, state_json FROM sessions WHERE workspace_id = ? AND session_id = ?")
       .get(workspaceId, sessionId);
     const nextVersion = Number(current?.version || 0) + 1;
     const updatedAt = now();
     const payloadState = req.body?.state || {};
+    const currentState = parseJson(current?.state_json, {});
     const state = {
+      ...currentState,
       ...payloadState,
       updatedAt,
-      controllerOwnerUid: payloadState.controllerOwnerUid || workspace.owner_uid,
+      controllerOwnerUid: payloadState.controllerOwnerUid || currentState.controllerOwnerUid || workspace.owner_uid,
     };
     db.prepare(`
       INSERT INTO sessions (workspace_id, session_id, owner_uid, version, state_json, updated_at)
@@ -500,5 +526,128 @@ app.listen(PORT, () => {
   console.log(`[lumina-server-api] sqlite: ${DB_PATH}`);
   if (USED_EPHEMERAL_FALLBACK) {
     console.warn("[lumina-server-api] warning: requested data path was not writable; using ephemeral /tmp fallback.");
+  }
+});
+
+app.post("/api/workspaces/:workspaceId/imports/pptx-visual", requireActor, async (req, res) => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumina-pptx-"));
+  try {
+    const workspaceId = req.params.workspaceId;
+    const actor = req.actor;
+    ensureWorkspaceForWrite(workspaceId, actor, { allowOperator: true });
+
+    const filename = sanitizeFilename(req.body?.filename, "import.pptx");
+    if (!filename.toLowerCase().endsWith(".pptx")) {
+      return res.status(400).json({
+        ok: false,
+        error: "INVALID_FILE",
+        message: "Only .pptx files are supported for visual import.",
+      });
+    }
+
+    const bytes = decodeBase64(req.body?.fileBase64);
+    if (!bytes.length) {
+      return res.status(400).json({ ok: false, error: "INVALID_PAYLOAD", message: "Missing PowerPoint file bytes." });
+    }
+    if (bytes.length > MAX_PPTX_IMPORT_BYTES) {
+      return res.status(413).json({
+        ok: false,
+        error: "FILE_TOO_LARGE",
+        message: `PowerPoint file is too large. Max supported size is ${Math.floor(MAX_PPTX_IMPORT_BYTES / (1024 * 1024))}MB.`,
+      });
+    }
+
+    const inputPath = path.join(tempDir, filename);
+    fs.writeFileSync(inputPath, bytes);
+
+    try {
+      await execFileAsync(SOFFICE_BIN, [
+        "--headless",
+        "--nologo",
+        "--nodefault",
+        "--nolockcheck",
+        "--norestore",
+        "--convert-to",
+        "pdf:impress_pdf_Export",
+        "--outdir",
+        tempDir,
+        inputPath,
+      ], {
+        timeout: PPTX_CONVERT_TIMEOUT_MS,
+        windowsHide: true,
+        maxBuffer: 20 * 1024 * 1024,
+      });
+    } catch (error) {
+      const missing = error?.code === "ENOENT";
+      return res.status(missing ? 503 : 422).json({
+        ok: false,
+        error: missing ? "PPTX_RENDERER_UNAVAILABLE" : "PPTX_CONVERT_FAILED",
+        message: missing
+          ? "Visual PowerPoint import requires LibreOffice (`soffice`) installed on the server."
+          : "Failed to convert PowerPoint to PDF for visual import.",
+      });
+    }
+
+    const pdfFile = fs.readdirSync(tempDir).find((entry) => entry.toLowerCase().endsWith(".pdf"));
+    if (!pdfFile) {
+      return res.status(422).json({
+        ok: false,
+        error: "PDF_NOT_FOUND",
+        message: "PowerPoint conversion did not produce a PDF output.",
+      });
+    }
+
+    let pages = [];
+    try {
+      pages = await pdfToPng(path.join(tempDir, pdfFile), {
+        viewportScale: 1.5,
+        disableFontFace: false,
+        useSystemFonts: true,
+        returnPageContent: true,
+        processPagesInParallel: false,
+        verbosityLevel: 0,
+      });
+    } catch {
+      return res.status(422).json({
+        ok: false,
+        error: "PNG_RENDER_FAILED",
+        message: "Failed to render converted PDF pages as PNG slides.",
+      });
+    }
+
+    const slides = pages
+      .filter((page) => page?.content)
+      .map((page) => ({
+        pageNumber: page.pageNumber,
+        name: page.name || `slide-${page.pageNumber}.png`,
+        width: Number(page.width || 0),
+        height: Number(page.height || 0),
+        imageBase64: page.content.toString("base64"),
+      }));
+
+    if (!slides.length) {
+      return res.status(422).json({
+        ok: false,
+        error: "NO_SLIDES",
+        message: "No slides were rendered from this PowerPoint file.",
+      });
+    }
+
+    logAudit.run({
+      workspace_id: workspaceId,
+      session_id: null,
+      actor_uid: actor.uid,
+      actor_email: actor.email || null,
+      action: "PPTX_VISUAL_IMPORT",
+      details_json: toJson({ filename, slideCount: slides.length }),
+      created_at: now(),
+    });
+
+    return res.json({ ok: true, slideCount: slides.length, slides });
+  } catch (error) {
+    if (error?.code === 403) return res.status(403).json({ ok: false, error: "FORBIDDEN" });
+    return res.status(500).json({ ok: false, error: "PPTX_IMPORT_FAILED", message: String(error?.message || error) });
+  } finally {
+    cleanupDir(tempDir);
   }
 });

@@ -17,6 +17,12 @@ service cloud.firestore {
         teamId in request.auth.token.teams;
     }
 
+    function playlistTeamAllowed(teamId) {
+      return signedIn() &&
+        teamId is string &&
+        (teamId == request.auth.uid || sameTeam(teamId));
+    }
+
     function controllerAllowed(data) {
       return signedIn() && (
         data.controllerOwnerUid == request.auth.uid ||
@@ -68,20 +74,13 @@ service cloud.firestore {
 
     // Team playlists synced across home + sanctuary devices
     match /playlists/{playlistId} {
-      allow read: if signedIn() && (
-        resource.data.teamId == request.auth.uid ||
-        (resource.data.teamId is string && sameTeam(resource.data.teamId))
-      );
+      allow read: if playlistTeamAllowed(resource.data.teamId);
 
-      allow create: if signedIn() && (
-        request.resource.data.teamId == request.auth.uid ||
-        (request.resource.data.teamId is string && sameTeam(request.resource.data.teamId))
-      );
+      allow create: if playlistTeamAllowed(request.resource.data.teamId);
 
-      allow update, delete: if signedIn() && (
-        resource.data.teamId == request.auth.uid ||
-        (resource.data.teamId is string && sameTeam(resource.data.teamId))
-      );
+      allow update: if playlistTeamAllowed(resource.data.teamId) &&
+        request.resource.data.teamId == resource.data.teamId;
+      allow delete: if playlistTeamAllowed(resource.data.teamId);
     }
 
     // App telemetry and operator analytics
