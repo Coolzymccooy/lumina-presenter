@@ -1943,13 +1943,13 @@ function App() {
         <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm p-4 flex items-center justify-center">
           <div className="w-full max-w-2xl bg-zinc-900 border border-zinc-800 rounded-lg p-5">
             <h3 className="text-sm font-bold text-zinc-200 mb-1">Import Lyrics</h3>
-            <p className="text-xs text-zinc-500 mb-4">Paste lyrics with blank lines or import a PowerPoint deck as visual slides.</p>
+            <p className="text-xs text-zinc-500 mb-4">Paste lyrics with blank lines or import a PowerPoint/PDF deck as visual slides.</p>
             <input value={importTitle} onChange={(e) => setImportTitle(e.target.value)} className="w-full mb-3 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm" placeholder="Song title" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
               <label className="block border border-zinc-800 rounded px-3 py-2 bg-zinc-950 text-xs text-zinc-300 cursor-pointer hover:border-zinc-600 transition-colors">
-                <span className="font-semibold">Retain Exact Layout (.pptx Visual)</span>
-                <input type="file" accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint" className="hidden" onChange={importPowerPointVisualAsItem} disabled={isImportingDeck} />
-                <div className="text-[10px] text-zinc-500 mt-1">Keeps original PowerPoint design/background exactly. Requires backend + LibreOffice.</div>
+                <span className="font-semibold">Retain Exact Layout (.pptx/.pdf Visual)</span>
+                <input type="file" accept=".pptx,.ppt,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint" className="hidden" onChange={importPowerPointVisualAsItem} disabled={isImportingDeck} />
+                <div className="text-[10px] text-zinc-500 mt-1">Keeps original design/background exactly. PDF is a strong fallback when PPTX fonts mismatch.</div>
               </label>
               <label className="block border border-zinc-800 rounded px-3 py-2 bg-zinc-950 text-xs text-zinc-300 cursor-pointer hover:border-zinc-600 transition-colors">
                 <span className="font-semibold">Use Lumina Theme (.pptx Text)</span>

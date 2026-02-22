@@ -640,11 +640,14 @@ app.post("/api/workspaces/:workspaceId/imports/pptx-visual", requireActor, async
       || parseBool(req.query?.includeBase64, false);
 
     const filename = sanitizeFilename(req.body?.filename, "import.pptx");
-    if (!filename.toLowerCase().endsWith(".pptx")) {
+    const lowerFilename = filename.toLowerCase();
+    const isPptx = lowerFilename.endsWith(".pptx");
+    const isPdf = lowerFilename.endsWith(".pdf");
+    if (!isPptx && !isPdf) {
       return res.status(400).json({
         ok: false,
         error: "INVALID_FILE",
-        message: "Only .pptx files are supported for visual import.",
+        message: "Only .pptx or .pdf files are supported for visual import.",
       });
     }
 
@@ -706,40 +709,46 @@ app.post("/api/workspaces/:workspaceId/imports/pptx-visual", requireActor, async
     const inputPath = path.join(tempDir, filename);
     fs.writeFileSync(inputPath, bytes);
 
-    try {
-      await execFileAsync(SOFFICE_BIN, [
-        "--headless",
-        "--nologo",
-        "--nodefault",
-        "--nolockcheck",
-        "--norestore",
-        "--convert-to",
-        "pdf:impress_pdf_Export",
-        "--outdir",
-        tempDir,
-        inputPath,
-      ], {
-        timeout: PPTX_CONVERT_TIMEOUT_MS,
-        windowsHide: true,
-        maxBuffer: 20 * 1024 * 1024,
-      });
-    } catch (error) {
-      const missing = error?.code === "ENOENT";
-      return res.status(missing ? 503 : 422).json({
-        ok: false,
-        error: missing ? "PPTX_RENDERER_UNAVAILABLE" : "PPTX_CONVERT_FAILED",
-        message: missing
-          ? "Visual PowerPoint import requires LibreOffice (`soffice`) installed on the server."
-          : "Failed to convert PowerPoint to PDF for visual import.",
-      });
+    if (isPptx) {
+      try {
+        await execFileAsync(SOFFICE_BIN, [
+          "--headless",
+          "--nologo",
+          "--nodefault",
+          "--nolockcheck",
+          "--norestore",
+          "--convert-to",
+          "pdf:impress_pdf_Export",
+          "--outdir",
+          tempDir,
+          inputPath,
+        ], {
+          timeout: PPTX_CONVERT_TIMEOUT_MS,
+          windowsHide: true,
+          maxBuffer: 20 * 1024 * 1024,
+        });
+      } catch (error) {
+        const missing = error?.code === "ENOENT";
+        return res.status(missing ? 503 : 422).json({
+          ok: false,
+          error: missing ? "PPTX_RENDERER_UNAVAILABLE" : "PPTX_CONVERT_FAILED",
+          message: missing
+            ? "Visual PowerPoint import requires LibreOffice (`soffice`) installed on the server."
+            : "Failed to convert PowerPoint to PDF for visual import.",
+        });
+      }
     }
 
-    const pdfFile = fs.readdirSync(tempDir).find((entry) => entry.toLowerCase().endsWith(".pdf"));
+    const pdfFile = isPdf
+      ? path.basename(inputPath)
+      : fs.readdirSync(tempDir).find((entry) => entry.toLowerCase().endsWith(".pdf"));
     if (!pdfFile) {
       return res.status(422).json({
         ok: false,
         error: "PDF_NOT_FOUND",
-        message: "PowerPoint conversion did not produce a PDF output.",
+        message: isPdf
+          ? "Uploaded PDF could not be read for visual import."
+          : "PowerPoint conversion did not produce a PDF output.",
       });
     }
 
