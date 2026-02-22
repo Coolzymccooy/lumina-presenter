@@ -26,6 +26,10 @@ const PPTX_VIS_VIEWPORT_SCALE = Math.max(1, Number(process.env.LUMINA_PPTX_VIS_V
 const PPTX_VIS_PARALLEL = String(process.env.LUMINA_PPTX_VIS_PARALLEL || "true").toLowerCase() !== "false";
 const PPTX_VIS_INCLUDE_BASE64_DEFAULT =
   String(process.env.LUMINA_PPTX_VIS_INCLUDE_BASE64 || "false").toLowerCase() === "true";
+const PPTX_VIS_CACHE_VERSION = (() => {
+  const safe = String(process.env.LUMINA_VIS_CACHE_VERSION || "v2").replace(/[^a-zA-Z0-9._-]/g, "_");
+  return safe || "v2";
+})();
 const execFileAsync = promisify(execFile);
 let cachedPdfToPng = null;
 let cachedPdfToPngLoadError = null;
@@ -664,7 +668,10 @@ app.post("/api/workspaces/:workspaceId/imports/pptx-visual", requireActor, async
     }
 
     const fileHash = createHash("sha256").update(bytes).digest("hex");
-    const importSegment = sanitizePathSegment(`${fileHash.slice(0, 20)}_${bytes.length}`, "import");
+    const importSegment = sanitizePathSegment(
+      `${PPTX_VIS_CACHE_VERSION}_${fileHash.slice(0, 20)}_${bytes.length}`,
+      "import",
+    );
     const importDir = path.join(VIS_MEDIA_DIR, workspaceSegment, importSegment);
     const metaPath = path.join(importDir, "meta.json");
     if (fs.existsSync(metaPath)) {
