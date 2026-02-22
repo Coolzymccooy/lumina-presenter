@@ -1020,7 +1020,6 @@ function App() {
       throw new Error(converted?.message || 'Visual PowerPoint import failed.');
     }
 
-    const parsedFallback = await parsePptxFile(file).catch(() => null);
     const now = Date.now();
     const slides: Slide[] = [];
     for (let idx = 0; idx < converted.slides.length; idx += 1) {
@@ -1042,7 +1041,7 @@ function App() {
         content: '',
         backgroundUrl,
         mediaType: 'image',
-        notes: parsedFallback?.slides?.[idx]?.notes || '',
+        notes: '',
       });
     }
     return {
