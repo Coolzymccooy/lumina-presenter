@@ -19,6 +19,7 @@ Lumina is a church-focused presentation app for lyrics, scripture, announcements
    - `VITE_API_BASE_URL=http://localhost:8787` (optional; default is already `http://localhost:8787`)
 3. (Optional for full visual PowerPoint import) install LibreOffice and ensure `soffice` is on PATH.
    - Optional server env override: `LUMINA_SOFFICE_BIN=/full/path/to/soffice`
+   - Local cache/version override (optional): `LUMINA_VIS_CACHE_VERSION=v3`
 4. Start backend API (Terminal A):
    - `npm run server`
 5. Start frontend (Terminal B):
@@ -28,7 +29,7 @@ Lumina is a church-focused presentation app for lyrics, scripture, announcements
 
 Notes:
 - `npm run dev` starts **frontend only**.
-- `npm run server` starts **backend only**.
+- `npm run server` starts **backend only** (and defaults `LUMINA_VIS_CACHE_VERSION=v3` if not set).
 - For production bundle check: `npm run build`
 
 ## Playwright E2E
@@ -65,8 +66,12 @@ Optional VIS tuning env vars:
 - `LUMINA_PPTX_VIS_VIEWPORT_SCALE` (default `1.25`)
 - `LUMINA_PPTX_VIS_PARALLEL` (default `true`)
 - `LUMINA_PPTX_VIS_INCLUDE_BASE64` (default `false`)
-- `LUMINA_VIS_CACHE_VERSION` (default `v2`, bump to force re-render if old cached VIS output is stale)
+- `LUMINA_VIS_CACHE_VERSION` (default `v3`, bump to force re-render if old cached VIS output is stale)
 - `LUMINA_VIS_MEDIA_KEEP_IMPORTS_PER_WORKSPACE` (default `20`)
+
+Render dashboard quick path:
+- Service → **Environment** → add/update `LUMINA_VIS_CACHE_VERSION` (e.g. `v3`, then `v4` later to force another refresh).
+- Redeploy after changing the value.
 
 ---
 
