@@ -12,3 +12,5 @@ services:
         value: /tmp/lumina-data
       - key: LUMINA_SOFFICE_BIN
         value: /usr/bin/soffice
+      - key: LUMINA_VIS_CACHE_VERSION
+        value: v3

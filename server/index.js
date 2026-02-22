@@ -27,8 +27,8 @@ const PPTX_VIS_PARALLEL = String(process.env.LUMINA_PPTX_VIS_PARALLEL || "true")
 const PPTX_VIS_INCLUDE_BASE64_DEFAULT =
   String(process.env.LUMINA_PPTX_VIS_INCLUDE_BASE64 || "false").toLowerCase() === "true";
 const PPTX_VIS_CACHE_VERSION = (() => {
-  const safe = String(process.env.LUMINA_VIS_CACHE_VERSION || "v2").replace(/[^a-zA-Z0-9._-]/g, "_");
-  return safe || "v2";
+  const safe = String(process.env.LUMINA_VIS_CACHE_VERSION || "v3").replace(/[^a-zA-Z0-9._-]/g, "_");
+  return safe || "v3";
 })();
 const execFileAsync = promisify(execFile);
 let cachedPdfToPng = null;

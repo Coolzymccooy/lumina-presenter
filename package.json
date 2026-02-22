@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "server": "node server/index.js",
-    "start": "node server/index.js",
+    "server": "node scripts/server-start.mjs",
+    "start": "node scripts/server-start.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "test:e2e": "node scripts/run-e2e.mjs",
