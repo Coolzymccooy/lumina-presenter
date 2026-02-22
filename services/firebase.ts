@@ -23,6 +23,26 @@ export const isFirebaseConfigured = () => {
   return firebaseConfig.apiKey && firebaseConfig.apiKey.length > 10;
 };
 
+const stripUndefinedDeep = (value: any): any => {
+  if (value === undefined) return undefined;
+  if (Array.isArray(value)) {
+    return value
+      .map((entry) => stripUndefinedDeep(entry))
+      .filter((entry) => entry !== undefined);
+  }
+  if (value && typeof value === 'object') {
+    const next: Record<string, any> = {};
+    Object.entries(value).forEach(([key, entry]) => {
+      const cleaned = stripUndefinedDeep(entry);
+      if (cleaned !== undefined) {
+        next[key] = cleaned;
+      }
+    });
+    return next;
+  }
+  return value;
+};
+
 export const subscribeToState = (
   callback: (data: any) => void,
   sessionId = 'live',
@@ -41,10 +61,11 @@ export const subscribeToState = (
 
 export const updateLiveState = async (state: any, sessionId = 'live') => {
   try {
-    await setDoc(doc(db, 'sessions', sessionId), {
+    const payload = stripUndefinedDeep({
       ...state,
       updatedAt: Date.now(),
-    }, { merge: true });
+    });
+    await setDoc(doc(db, 'sessions', sessionId), payload, { merge: true });
     return true;
   } catch {
     return false;
@@ -79,11 +100,12 @@ export const subscribeToTeamPlaylists = (
 };
 
 export const upsertTeamPlaylist = async (teamId: string, playlistId: string, payload: any) => {
-  await setDoc(doc(db, 'playlists', playlistId), {
+  const nextPayload = stripUndefinedDeep({
     teamId,
     ...payload,
     updatedAt: Date.now(),
-  }, { merge: true });
+  });
+  await setDoc(doc(db, 'playlists', playlistId), nextPayload, { merge: true });
 };
 
 export const signIn = () => signInWithPopup(auth, googleProvider);

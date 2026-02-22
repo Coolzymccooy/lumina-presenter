@@ -7,7 +7,6 @@ import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import Database from "better-sqlite3";
-import { pdfToPng } from "pdf-to-png-converter";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,6 +22,38 @@ const SOFFICE_BIN = String(process.env.LUMINA_SOFFICE_BIN || "soffice").trim() |
 const PPTX_CONVERT_TIMEOUT_MS = Number(process.env.LUMINA_PPTX_CONVERT_TIMEOUT_MS || 180000);
 const MAX_PPTX_IMPORT_BYTES = Number(process.env.LUMINA_MAX_PPTX_IMPORT_BYTES || 80 * 1024 * 1024);
 const execFileAsync = promisify(execFile);
+let cachedPdfToPng = null;
+let cachedPdfToPngLoadError = null;
+
+const loadPdfToPngConverter = async () => {
+  if (typeof cachedPdfToPng === "function") return cachedPdfToPng;
+  if (cachedPdfToPngLoadError) throw cachedPdfToPngLoadError;
+  try {
+    const mod = await import("pdf-to-png-converter");
+    if (typeof mod?.pdfToPng !== "function") {
+      throw new Error("pdf-to-png-converter did not export pdfToPng.");
+    }
+    cachedPdfToPng = mod.pdfToPng;
+    return cachedPdfToPng;
+  } catch (error) {
+    cachedPdfToPngLoadError = error;
+    throw error;
+  }
+};
+
+const logSofficeAvailability = async () => {
+  try {
+    const result = await execFileAsync(SOFFICE_BIN, ["--version"], {
+      timeout: 7000,
+      windowsHide: true,
+      maxBuffer: 1024 * 1024,
+    });
+    const versionLine = String(result?.stdout || result?.stderr || "").split(/\r?\n/)[0]?.trim();
+    console.log(`[lumina-server-api] soffice: available (${versionLine || "version unknown"})`);
+  } catch {
+    console.warn(`[lumina-server-api] warning: soffice not found at '${SOFFICE_BIN}'. Visual PPTX import will return 503.`);
+  }
+};
 
 const resolveWritableDbPath = (candidatePath) => {
   const filename = path.basename(candidatePath) || "lumina.sqlite";
@@ -527,6 +558,7 @@ app.listen(PORT, () => {
   if (USED_EPHEMERAL_FALLBACK) {
     console.warn("[lumina-server-api] warning: requested data path was not writable; using ephemeral /tmp fallback.");
   }
+  logSofficeAvailability();
 });
 
 app.post("/api/workspaces/:workspaceId/imports/pptx-visual", requireActor, async (req, res) => {
@@ -597,9 +629,20 @@ app.post("/api/workspaces/:workspaceId/imports/pptx-visual", requireActor, async
       });
     }
 
+    let convertPdfToPng;
+    try {
+      convertPdfToPng = await loadPdfToPngConverter();
+    } catch {
+      return res.status(503).json({
+        ok: false,
+        error: "PPTX_VISUAL_DEPENDENCY_MISSING",
+        message: "Visual PowerPoint import dependency is missing on the server. Ensure `pdf-to-png-converter` is installed and redeploy.",
+      });
+    }
+
     let pages = [];
     try {
-      pages = await pdfToPng(path.join(tempDir, pdfFile), {
+      pages = await convertPdfToPng(path.join(tempDir, pdfFile), {
         viewportScale: 1.5,
         disableFontFace: false,
         useSystemFonts: true,

@@ -312,6 +312,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
 
   const containerPadding = isThumbnail ? "p-2" : "p-8 md:p-16";
   const contentText = safeString(slide.content);
+  const hasReadableText = contentText.trim().length > 0;
   const textVh = computeTextVh(item.theme?.fontSize, contentText);
 
   const textLayerStyle: React.CSSProperties = {
@@ -450,7 +451,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       <div className="absolute inset-0 flex items-center justify-center">{renderMedia()}</div>
 
       {/* Soft overlay for readability (skip for solid color + skip when no background) */}
-      {hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
+      {hasReadableText && hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
         <div className="absolute inset-0 bg-black/20" />
       )}
 

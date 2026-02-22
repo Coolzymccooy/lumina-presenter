@@ -27,10 +27,12 @@ import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, Arr
 // --- CONSTANTS ---
 const STORAGE_KEY = 'lumina_session_v1';
 const SETTINGS_KEY = 'lumina_workspace_settings_v1';
+const SETTINGS_UPDATED_AT_KEY = 'lumina_workspace_settings_updated_at_v1';
 const LIVE_STATE_QUEUE_KEY = 'lumina_live_state_queue_v1';
 const CLOUD_PLAYLIST_SUFFIX = 'default-playlist-v2';
 const SYNC_BACKOFF_BASE_MS = 5000;
 const SYNC_BACKOFF_MAX_MS = 60000;
+const MAX_LIVE_QUEUE_SIZE = 40;
 const SILENT_AUDIO_B64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOkiJAAAAAAAAAAAAAAAAAAAAAAA=";
 
 type WorkspaceSettings = {
@@ -266,6 +268,7 @@ function App() {
   const hasInitializedRemoteSnapshotRef = useRef(false);
   const hasHydratedCloudStateRef = useRef(false);
   const hasHydratedServerSnapshotRef = useRef(false);
+  const workspaceSettingsUpdatedAtRef = useRef<number>(0);
   const lastRemoteCommandAtRef = useRef<number | null>(null);
   const lastServerRemoteCommandAtRef = useRef<number | null>(null);
   const lastSyncErrorRef = useRef<{ key: string; at: number } | null>(null);
@@ -338,9 +341,9 @@ function App() {
   const enqueueLiveState = useCallback((payload: any) => {
     try {
       const existing = parseJson<any[]>(localStorage.getItem(LIVE_STATE_QUEUE_KEY), []);
-      existing.push({ sessionId: liveSessionId, payload, at: Date.now() });
-      localStorage.setItem(LIVE_STATE_QUEUE_KEY, JSON.stringify(existing));
-      setSyncPendingCount(existing.length);
+      const next = [...existing, { sessionId: liveSessionId, payload, at: Date.now() }].slice(-MAX_LIVE_QUEUE_SIZE);
+      localStorage.setItem(LIVE_STATE_QUEUE_KEY, JSON.stringify(next));
+      setSyncPendingCount(next.length);
     } catch (error) {
       console.warn('Failed to queue live state', error);
       reportSyncFailure('queue', error, { queueOp: 'enqueue' });
@@ -462,16 +465,29 @@ function App() {
     try {
       const savedSettings = localStorage.getItem(SETTINGS_KEY);
       if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
+        const parsed = sanitizeWorkspaceSettings(JSON.parse(savedSettings));
         setWorkspaceSettings((prev) => ({ ...prev, ...parsed }));
       }
+      const savedUpdatedAt = Number(localStorage.getItem(SETTINGS_UPDATED_AT_KEY) || '0');
+      workspaceSettingsUpdatedAtRef.current = Number.isFinite(savedUpdatedAt) ? savedUpdatedAt : 0;
     } catch (error) {
       console.warn('Failed to load workspace settings', error);
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(workspaceSettings));
+    const updatedAt = Date.now();
+    workspaceSettingsUpdatedAtRef.current = updatedAt;
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(workspaceSettings));
+      localStorage.setItem(SETTINGS_UPDATED_AT_KEY, String(updatedAt));
+    } catch (error: any) {
+      if (error?.name === 'QuotaExceededError' || error?.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+        setSaveError(true);
+      } else {
+        console.warn('Failed to persist workspace settings', error);
+      }
+    }
     document.documentElement.dataset.theme = workspaceSettings.theme;
   }, [workspaceSettings]);
 
@@ -513,7 +529,14 @@ function App() {
         setActiveSlideIndex(payload.activeSlideIndex);
       }
       if (payload.workspaceSettings && typeof payload.workspaceSettings === 'object') {
-        setWorkspaceSettings((prev) => ({ ...prev, ...payload.workspaceSettings }));
+        const localSettingsUpdatedAt = workspaceSettingsUpdatedAtRef.current;
+        if (snapshot.updatedAt >= localSettingsUpdatedAt) {
+          const snapshotSettings = sanitizeWorkspaceSettings(payload.workspaceSettings);
+          if (Object.keys(snapshotSettings).length > 0) {
+            workspaceSettingsUpdatedAtRef.current = snapshot.updatedAt;
+            setWorkspaceSettings((prev) => ({ ...prev, ...snapshotSettings }));
+          }
+        }
       }
     })();
   }, [workspaceId, user?.uid, user]);
@@ -522,7 +545,15 @@ function App() {
     try {
       const raw = localStorage.getItem(LIVE_STATE_QUEUE_KEY);
       const queued = raw ? JSON.parse(raw) : [];
-      setSyncPendingCount(Array.isArray(queued) ? queued.length : 0);
+      if (Array.isArray(queued)) {
+        const trimmed = queued.slice(-MAX_LIVE_QUEUE_SIZE);
+        if (trimmed.length !== queued.length) {
+          localStorage.setItem(LIVE_STATE_QUEUE_KEY, JSON.stringify(trimmed));
+        }
+        setSyncPendingCount(trimmed.length);
+      } else {
+        setSyncPendingCount(0);
+      }
     } catch {
       setSyncPendingCount(0);
     }
@@ -639,27 +670,30 @@ function App() {
 
   useEffect(() => {
     if (!user) return;
-    const saveData = {
-      schedule,
-      selectedItemId,
-      viewMode,
-      activeItemId,
-      activeSlideIndex,
-      blackout,
-      isPlaying,
-      outputMuted,
-      seekCommand,
-      seekAmount,
-      lowerThirdsEnabled,
-      routingMode,
-      updatedAt: Date.now(),
-    };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
-      setSaveError(false);
-    } catch (e: any) {
-      if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') setSaveError(true);
-    }
+    const id = window.setTimeout(() => {
+      const saveData = {
+        schedule,
+        selectedItemId,
+        viewMode,
+        activeItemId,
+        activeSlideIndex,
+        blackout,
+        isPlaying,
+        outputMuted,
+        seekCommand,
+        seekAmount,
+        lowerThirdsEnabled,
+        routingMode,
+        updatedAt: Date.now(),
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
+        setSaveError(false);
+      } catch (e: any) {
+        if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') setSaveError(true);
+      }
+    }, 180);
+    return () => window.clearTimeout(id);
   }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, user]);
 
 
@@ -730,6 +764,7 @@ function App() {
   const selectedItem = schedule.find(i => i.id === selectedItemId) || null;
   const activeItem = schedule.find(i => i.id === activeItemId) || null;
   const activeSlide = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex] : null;
+  const previewLowerThirds = lowerThirdsEnabled && routingMode !== 'PROJECTOR';
   const nextSlidePreview = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex + 1] || null : null;
   const lobbyItem = schedule.find((item) => item.type === ItemType.ANNOUNCEMENT) || activeItem;
   const activeBackgroundUrl = (activeSlide?.backgroundUrl || activeItem?.theme?.backgroundUrl || '').trim();
@@ -1331,7 +1366,9 @@ function App() {
           }
 
           const cloudSettings = sanitizeWorkspaceSettings(preferred.workspaceSettings);
-          if (Object.keys(cloudSettings).length > 0) {
+          const localSettingsUpdatedAt = workspaceSettingsUpdatedAtRef.current;
+          if (Object.keys(cloudSettings).length > 0 && cloudUpdatedAt >= localSettingsUpdatedAt) {
+            workspaceSettingsUpdatedAtRef.current = cloudUpdatedAt;
             setWorkspaceSettings((prev) => ({ ...prev, ...cloudSettings }));
           }
         },
@@ -1804,8 +1841,8 @@ function App() {
                 <div className="flex-1 relative flex items-center justify-center bg-zinc-950 overflow-hidden border-r border-zinc-900">
                     <div className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group">
                          {blackout ? (<div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em]">BLACKOUT</div>) : (
-                             <SlideRenderer slide={activeSlide} item={activeItem} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={isPreviewMuted} lowerThirds={lowerThirdsEnabled} />
-                         )}
+                             <SlideRenderer slide={activeSlide} item={activeItem} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={isPreviewMuted} lowerThirds={previewLowerThirds} />
+                          )}
                          <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-500 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">PREVIEW <button onClick={() => setIsPreviewMuted(!isPreviewMuted)} className={`ml-2 hover:text-white transition-colors ${isPreviewMuted ? 'text-red-400' : 'text-green-400'}`}>{isPreviewMuted ? <VolumeXIcon className="w-3 h-3" /> : <Volume2Icon className="w-3 h-3" />}</button></div>
                     </div>
                 </div>
@@ -1813,7 +1850,7 @@ function App() {
                     <div className="flex items-center gap-2"><button onClick={prevSlide} className="h-12 w-14 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center border border-zinc-700 active:scale-95 transition-transform"><ArrowLeftIcon className="w-5 h-5" /></button><button onClick={nextSlide} className="h-12 w-28 rounded-sm bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-bold text-sm tracking-wide active:scale-95 transition-transform"><ArrowRightIcon className="w-5 h-5 mr-1" /> NEXT</button></div>
                     {isActiveVideo && (<div className="flex items-center gap-2 bg-zinc-950 rounded-sm p-1 border border-zinc-800"><button onClick={() => triggerSeek(-10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><RewindIcon className="w-4 h-4"/></button><button onClick={() => setIsPlaying(!isPlaying)} className={`p-2.5 rounded-sm ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-green-900/50 text-green-400'}`}>{isPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4 fill-current" />}</button><button onClick={() => triggerSeek(10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><ForwardIcon className="w-4 h-4"/></button></div>)}
                     <div className="flex items-center gap-2">
-                      <button onClick={() => setLowerThirdsEnabled((prev) => !prev)} className={`h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border ${lowerThirdsEnabled ? 'bg-blue-950 text-blue-400 border-blue-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800'}`}>LOWER THIRDS</button>
+                      <button onClick={() => { if (routingMode !== 'PROJECTOR') setLowerThirdsEnabled((prev) => !prev); }} title={routingMode === 'PROJECTOR' ? 'Projector mode keeps full-screen text (lower thirds disabled).' : 'Toggle lower thirds overlay'} className={`h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border ${previewLowerThirds ? 'bg-blue-950 text-blue-400 border-blue-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800'} ${routingMode === 'PROJECTOR' ? 'opacity-60 cursor-not-allowed' : ''}`}>LOWER THIRDS</button>
                       <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} className="h-12 px-2 bg-zinc-950 border border-zinc-800 text-zinc-300 text-xs rounded-sm">
                         <option value="PROJECTOR">Projector</option>
                         <option value="STREAM">Stream</option>

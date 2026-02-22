@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState } from '../services/firebase';
 import { fetchServerSessionState } from '../services/serverApi';
@@ -80,6 +80,8 @@ export const OutputRoute: React.FC = () => {
   const [liveState, setLiveState] = useState<any>({});
   const [localState, setLocalState] = useState<LocalPresenterState>(() => readLocalPresenterState());
   const [serverState, setServerState] = useState<Record<string, any> | null>(null);
+  const [stableEffective, setStableEffective] = useState<EffectiveOutputState | null>(null);
+  const localStateRawRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!auth) {
@@ -107,7 +109,21 @@ export const OutputRoute: React.FC = () => {
   }, [fullscreen]);
 
   useEffect(() => {
-    const refresh = () => setLocalState(readLocalPresenterState());
+    const refresh = () => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw === localStateRawRef.current) return;
+        localStateRawRef.current = raw;
+        if (!raw) {
+          setLocalState({});
+          return;
+        }
+        const parsed = JSON.parse(raw);
+        setLocalState(parsed && typeof parsed === 'object' ? parsed as LocalPresenterState : {});
+      } catch {
+        setLocalState({});
+      }
+    };
     refresh();
 
     const onStorage = (event: StorageEvent) => {
@@ -115,7 +131,7 @@ export const OutputRoute: React.FC = () => {
     };
 
     window.addEventListener('storage', onStorage);
-    const intervalId = window.setInterval(refresh, 450);
+    const intervalId = window.setInterval(refresh, 1200);
     return () => {
       window.removeEventListener('storage', onStorage);
       window.clearInterval(intervalId);
@@ -132,7 +148,7 @@ export const OutputRoute: React.FC = () => {
       }
     };
     refresh();
-    const id = window.setInterval(refresh, 700);
+    const id = window.setInterval(refresh, 1200);
     return () => {
       active = false;
       window.clearInterval(id);
@@ -145,7 +161,7 @@ export const OutputRoute: React.FC = () => {
   const hasLocalSchedule = localSchedule.length > 0;
 
   const buildEffective = useCallback((source: any, schedule: ServiceItem[]): EffectiveOutputState => {
-    const activeItemId = source?.activeItemId;
+    const activeItemId = typeof source?.activeItemId === 'string' ? source.activeItemId : null;
     const rawSlideIndex = source?.activeSlideIndex;
     const activeSlideIndex = typeof rawSlideIndex === 'number' ? rawSlideIndex : 0;
     const routingMode = source?.routingMode as RoutingMode | undefined;
@@ -155,9 +171,12 @@ export const OutputRoute: React.FC = () => {
     const seekCommand = typeof source?.seekCommand === 'number' ? source.seekCommand : null;
     const seekAmount = typeof source?.seekAmount === 'number' ? source.seekAmount : 0;
     const lowerThirdsEnabled = !!source?.lowerThirdsEnabled;
+    const lowerThirdsForRoute = lowerThirdsEnabled && routingMode !== 'PROJECTOR';
     const updatedAt = typeof source?.updatedAt === 'number' ? source.updatedAt : 0;
 
-    const activeItem = schedule.find((item) => item.id === activeItemId) || schedule[0] || null;
+    const activeItem = activeItemId
+      ? (schedule.find((item) => item.id === activeItemId) || null)
+      : null;
     const activeSlide = activeItem ? (activeItem.slides[activeSlideIndex] || activeItem.slides[0] || null) : null;
     if (routingMode === 'LOBBY') {
       const lobbyItem = schedule.find((item) => item.type === ItemType.ANNOUNCEMENT) || activeItem;
@@ -171,14 +190,14 @@ export const OutputRoute: React.FC = () => {
         outputMuted,
         seekCommand,
         seekAmount,
-        lowerThirdsEnabled,
+        lowerThirdsEnabled: lowerThirdsForRoute,
         updatedAt,
         hasRenderable,
       };
     }
 
     const hasRenderable = !!(activeItem && activeSlide);
-    return { item: activeItem, slide: activeSlide, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, updatedAt, hasRenderable };
+    return { item: activeItem, slide: activeSlide, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled: lowerThirdsForRoute, updatedAt, hasRenderable };
   }, []);
 
   const effective = useMemo(() => {
@@ -192,6 +211,16 @@ export const OutputRoute: React.FC = () => {
     return firstRenderable || candidates[0];
   }, [buildEffective, localState, localSchedule, serverState, serverSchedule, liveState, liveSchedule]);
 
+  useEffect(() => {
+    if (effective.blackout || effective.hasRenderable) {
+      setStableEffective(effective);
+    }
+  }, [effective]);
+
+  const display = (effective.blackout || effective.hasRenderable)
+    ? effective
+    : (stableEffective || effective);
+
   if (authLoading && !hasLocalSchedule) {
     return <div className="h-screen w-screen bg-black text-zinc-500 flex items-center justify-center text-xs">Loading output...</div>;
   }
@@ -202,19 +231,19 @@ export const OutputRoute: React.FC = () => {
 
   return (
     <div className="h-screen w-screen bg-black">
-      {effective.blackout ? (
+      {display.blackout ? (
         <div className="w-full h-full bg-black" />
       ) : (
         <SlideRenderer
-          slide={effective.slide || null}
-          item={effective.item || null}
+          slide={display.slide || null}
+          item={display.item || null}
           fitContainer={true}
-          isPlaying={effective.isPlaying}
-          seekCommand={effective.seekCommand}
-          seekAmount={effective.seekAmount}
-          isMuted={effective.outputMuted}
+          isPlaying={display.isPlaying}
+          seekCommand={display.seekCommand}
+          seekAmount={display.seekAmount}
+          isMuted={display.outputMuted}
           isProjector={true}
-          lowerThirds={effective.lowerThirdsEnabled}
+          lowerThirds={display.lowerThirdsEnabled}
           showSlideLabel={false}
           showProjectorHelper={false}
         />
