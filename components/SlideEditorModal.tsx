@@ -181,8 +181,13 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
     if (!file) return;
 
     const lower = file.name.toLowerCase();
-    if (!lower.endsWith('.pptx') && !lower.endsWith('.ppt')) {
-      setPptxError('Please select a PowerPoint file (.pptx).');
+    const isPdf = lower.endsWith('.pdf');
+    if (!lower.endsWith('.pptx') && !lower.endsWith('.ppt') && !isPdf) {
+      setPptxError('Please select a PowerPoint/PDF file (.pptx or .pdf).');
+      return;
+    }
+    if (mode === 'text' && isPdf) {
+      setPptxError('Text import supports PowerPoint files only (.pptx). Use Visual import for PDF.');
       return;
     }
     const importer = mode === 'visual' ? onImportPowerPointVisual : onImportPowerPointText;
@@ -370,7 +375,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
                       ref={pptxTextInputRef}
                       onChange={(event) => handlePowerPointImport(event, 'text')}
                       className="hidden" 
-                      accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint"
+                      accept=".pptx,.ppt,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint"
                     />
                     <button 
                       onClick={clearBackground}

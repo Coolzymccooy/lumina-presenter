@@ -125,13 +125,14 @@ Yes. The timer shown in presenter controls is the same timer displayed on the St
   - **Pexels Motion** (live fetch, requires `VITE_PEXELS_API_KEY`)
   - **Pixabay Motion** (live fetch, requires `VITE_PIXABAY_API_KEY`)
 
-## 5.1) PowerPoint Import (`.pptx`)
+## 5.1) PowerPoint/PDF Visual Import (`.pptx` / `.pdf`)
 - Open `LYR` import modal from the run sheet header.
-- **Visual PowerPoint Import**: renders each slide as an image and preserves layout/design.
+- **Visual PowerPoint/PDF Import**: renders each slide as an image and preserves layout/design.
+- PDF visual import is useful as a fallback when source deck fonts render poorly from `.pptx`.
 - Visual PPTX slides are now saved by the backend and returned as server URLs, so projector/output and other devices can render the same design.
 - VIS imports are hash-cached per workspace: importing the same `.pptx` again reuses already-rendered images (fast path).
 - Existing VIS decks imported before this change may require a one-time re-import.
-- **Text PowerPoint Import**: fallback mode that extracts slide text + speaker notes.
+- **Text PowerPoint Import**: fallback mode that extracts slide text + speaker notes (`.pptx` only).
 - Slide Editor modal includes:
   - `PPTX VIS` = retain exact PowerPoint layout/background
   - `PPTX TXT` = import text and use Lumina backgrounds/theme
