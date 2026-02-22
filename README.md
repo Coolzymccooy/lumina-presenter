@@ -8,17 +8,57 @@ Lumina is a church-focused presentation app for lyrics, scripture, announcements
 
 ## Run Locally
 
-**Prerequisites:** Node.js
+**Prerequisites:** Node.js 20+ and npm
 
 1. Install dependencies:
    - `npm install`
-2. Configure environment variables in `.env.local`:
+2. Configure `.env.local`:
    - `VITE_GOOGLE_AI_API_KEY=...`
-   - `VITE_PEXELS_API_KEY=...` (optional, for live motion fetch)
-3. Start:
+   - `VITE_PEXELS_API_KEY=...` (optional)
+   - `VITE_PIXABAY_API_KEY=...` (optional)
+   - `VITE_API_BASE_URL=http://localhost:8787` (optional; default is already `http://localhost:8787`)
+3. (Optional for full visual PowerPoint import) install LibreOffice and ensure `soffice` is on PATH.
+   - Optional server env override: `LUMINA_SOFFICE_BIN=/full/path/to/soffice`
+4. Start backend API (Terminal A):
+   - `npm run server`
+5. Start frontend (Terminal B):
    - `npm run dev`
-4. Build:
-   - `npm run build`
+6. Open app:
+   - `http://localhost:5173`
+
+Notes:
+- `npm run dev` starts **frontend only**.
+- `npm run server` starts **backend only**.
+- For production bundle check: `npm run build`
+
+## Playwright E2E
+
+1. Install Playwright browser (first time):
+   - `npm run test:e2e:install`
+2. Run headless E2E:
+   - `npm run test:e2e`
+3. Optional modes:
+   - `npm run test:e2e:headed`
+   - `npm run test:e2e:ui`
+
+What `npm run test:e2e` does:
+- Starts backend on `127.0.0.1:8877`
+- Starts frontend on `127.0.0.1:4173`
+- Uses temp sqlite DB for isolation
+- Runs Playwright tests in `tests/e2e`
+- Shuts everything down automatically
+
+## Deploy API (Render + Docker + LibreOffice)
+
+1. `render.yaml` is configured for Docker using `Dockerfile.api`.
+2. `Dockerfile.api` installs LibreOffice and sets `LUMINA_SOFFICE_BIN=/usr/bin/soffice`.
+3. In Render, deploy with:
+   - **Clear build cache & deploy**
+4. Verify startup logs contain one of:
+   - `soffice: available (...)` (visual PPTX import ready)
+   - `warning: soffice not found ...` (visual import returns 503)
+5. Health check:
+   - `GET /api/health` should return `ok: true`
 
 ---
 
@@ -28,7 +68,7 @@ Lumina is a church-focused presentation app for lyrics, scripture, announcements
 - Use **LAUNCH OUTPUT** to open the live output window.
 - Output routing modes:
   - **Projector**: Full slide + background.
-  - **Stream**: Lower-thirds style text (no background) for OBS/live stream overlays.
+  - **Stream**: Live active slide for stream output; lower-thirds can be used.
   - **Lobby**: Routes lobby/announcement content.
 
 ### Important behavior fix
@@ -49,6 +89,7 @@ Lumina is a church-focused presentation app for lyrics, scripture, announcements
   - **LOWER THIRDS** toggle
   - Route selector (Projector / Stream / Lobby)
   - Timer controls
+  - Note: in `Projector` mode, lower thirds are intentionally disabled (full-screen text standard).
 
 ## 3) Custom Pastor Timer
 Yes — implemented.
@@ -75,6 +116,17 @@ Yes. The timer shown in presenter controls is the same timer displayed on the St
 - Tabs:
   - **Mock Presets** (e.g., Moving Oceans, Abstract Clouds)
   - **Pexels Motion** (live fetch, requires `VITE_PEXELS_API_KEY`)
+  - **Pixabay Motion** (live fetch, requires `VITE_PIXABAY_API_KEY`)
+
+## 5.1) PowerPoint Import (`.pptx`)
+- Open `LYR` import modal from the run sheet header.
+- **Visual PowerPoint Import**: renders each slide as an image and preserves layout/design.
+- **Text PowerPoint Import**: fallback mode that extracts slide text + speaker notes.
+- Slide Editor modal includes:
+  - `PPTX VIS` = retain exact PowerPoint layout/background
+  - `PPTX TXT` = import text and use Lumina backgrounds/theme
+- Legacy `.ppt` files are not supported directly; save as `.pptx` first.
+- If visual import fails, verify LibreOffice (`soffice`) is installed on the backend machine.
 
 ## 6) Remote Control (`/remote`)
 - Visit `/remote` on a phone/tablet.
@@ -101,43 +153,8 @@ Yes. The timer shown in presenter controls is the same timer displayed on the St
 
 ---
 
-## Firestore Rules (paste into Firebase Console)
+## Firestore Rules
 
-```txt
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    function sameTeam(teamId) {
-      return signedIn() && teamId in request.auth.token.teams;
-    }
-
-    // Live presenter/remote sync
-    match /sessions/{sessionId} {
-      allow read: if signedIn();
-      allow write: if signedIn();
-    }
-
-    // Team playlists synced across home + sanctuary devices
-    match /playlists/{playlistId} {
-      allow read: if signedIn() && (
-        resource.data.teamId == request.auth.uid ||
-        (resource.data.teamId is string && sameTeam(resource.data.teamId))
-      );
-
-      allow create: if signedIn() && (
-        request.resource.data.teamId == request.auth.uid ||
-        (request.resource.data.teamId is string && sameTeam(request.resource.data.teamId))
-      );
-
-      allow update, delete: if signedIn() && (
-        resource.data.teamId == request.auth.uid ||
-        (resource.data.teamId is string && sameTeam(resource.data.teamId))
-      );
-    }
-  }
-}
-```
+- Source of truth: `firebase.firestore.rules`
+- Deploy command:
+  - `firebase deploy --only firestore:rules`
