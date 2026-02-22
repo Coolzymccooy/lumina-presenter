@@ -61,6 +61,12 @@ What `npm run test:e2e` does:
 5. Health check:
    - `GET /api/health` should return `ok: true`
 
+Optional VIS tuning env vars:
+- `LUMINA_PPTX_VIS_VIEWPORT_SCALE` (default `1.25`)
+- `LUMINA_PPTX_VIS_PARALLEL` (default `true`)
+- `LUMINA_PPTX_VIS_INCLUDE_BASE64` (default `false`)
+- `LUMINA_VIS_MEDIA_KEEP_IMPORTS_PER_WORKSPACE` (default `20`)
+
 ---
 
 ## New Feature Guide (How it works)
@@ -123,6 +129,7 @@ Yes. The timer shown in presenter controls is the same timer displayed on the St
 - Open `LYR` import modal from the run sheet header.
 - **Visual PowerPoint Import**: renders each slide as an image and preserves layout/design.
 - Visual PPTX slides are now saved by the backend and returned as server URLs, so projector/output and other devices can render the same design.
+- VIS imports are hash-cached per workspace: importing the same `.pptx` again reuses already-rendered images (fast path).
 - Existing VIS decks imported before this change may require a one-time re-import.
 - **Text PowerPoint Import**: fallback mode that extracts slide text + speaker notes.
 - Slide Editor modal includes:
@@ -132,6 +139,7 @@ Yes. The timer shown in presenter controls is the same timer displayed on the St
 - If visual import fails, verify LibreOffice (`soffice`) is installed on the backend machine.
 - If rendered VIS slide images show square/tofu glyphs, your backend is missing the source font family used in the PPTX. Install the matching fonts (Noto/Liberation/etc.) on the API host and re-import.
 - Free Render services use ephemeral storage. VIS media may be lost after restart/redeploy unless you use persistent storage.
+- Performance note: first-time visual conversion still depends on LibreOffice + PDF rasterization and may exceed 5 seconds for large decks. Re-import of unchanged files should be much faster due to hash cache.
 
 ## 6) Remote Control (`/remote`)
 - Visit `/remote` on a phone/tablet.
