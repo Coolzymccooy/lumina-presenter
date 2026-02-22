@@ -121,12 +121,15 @@ Yes. The timer shown in presenter controls is the same timer displayed on the St
 ## 5.1) PowerPoint Import (`.pptx`)
 - Open `LYR` import modal from the run sheet header.
 - **Visual PowerPoint Import**: renders each slide as an image and preserves layout/design.
+- Visual PPTX slides are now saved by the backend and returned as server URLs, so projector/output and other devices can render the same design.
+- Existing VIS decks imported before this change may require a one-time re-import.
 - **Text PowerPoint Import**: fallback mode that extracts slide text + speaker notes.
 - Slide Editor modal includes:
   - `PPTX VIS` = retain exact PowerPoint layout/background
   - `PPTX TXT` = import text and use Lumina backgrounds/theme
 - Legacy `.ppt` files are not supported directly; save as `.pptx` first.
 - If visual import fails, verify LibreOffice (`soffice`) is installed on the backend machine.
+- Free Render services use ephemeral storage. VIS media may be lost after restart/redeploy unless you use persistent storage.
 
 ## 6) Remote Control (`/remote`)
 - Visit `/remote` on a phone/tablet.

@@ -71,6 +71,18 @@ const resolveWritableDbPath = (candidatePath) => {
 
 const { dbPath: DB_PATH, usedFallback: USED_EPHEMERAL_FALLBACK } = resolveWritableDbPath(requestedDbPath);
 const DATA_DIR = path.dirname(DB_PATH);
+const VIS_MEDIA_DIR = process.env.LUMINA_VIS_MEDIA_DIR
+  ? path.resolve(process.env.LUMINA_VIS_MEDIA_DIR)
+  : path.join(DATA_DIR, "vis-media");
+const VIS_MEDIA_BASE_PATH = (() => {
+  const raw = String(process.env.LUMINA_VIS_MEDIA_BASE_PATH || "/media/vis").trim();
+  const normalized = `/${raw.replace(/^\/+|\/+$/g, "")}`;
+  return normalized === "/" ? "/media/vis" : normalized;
+})();
+const VIS_MEDIA_KEEP_IMPORTS_PER_WORKSPACE = Math.max(
+  1,
+  Number(process.env.LUMINA_VIS_MEDIA_KEEP_IMPORTS_PER_WORKSPACE || 20) || 20,
+);
 
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
@@ -127,6 +139,11 @@ CREATE INDEX IF NOT EXISTS idx_snapshots_workspace_time ON workspace_snapshots(w
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: JSON_LIMIT }));
+fs.mkdirSync(VIS_MEDIA_DIR, { recursive: true });
+app.use(
+  VIS_MEDIA_BASE_PATH,
+  express.static(VIS_MEDIA_DIR, { index: false, fallthrough: false }),
+);
 
 const now = () => Date.now();
 const parseJson = (raw, fallback) => {
@@ -149,10 +166,47 @@ const sanitizeFilename = (name, fallback = "import.pptx") => {
   const safe = String(name || "").replace(/[^a-zA-Z0-9._-]/g, "_");
   return safe || fallback;
 };
+const sanitizePathSegment = (name, fallback = "item") => {
+  const safe = String(name || "").replace(/[^a-zA-Z0-9._-]/g, "_");
+  return safe || fallback;
+};
 const decodeBase64 = (raw) => {
   if (!raw || typeof raw !== "string") return Buffer.alloc(0);
   const clean = raw.includes(",") ? raw.slice(raw.indexOf(",") + 1) : raw;
   return Buffer.from(clean, "base64");
+};
+const getRequestOrigin = (req) => {
+  const forwardedProto = String(req.headers["x-forwarded-proto"] || "")
+    .split(",")[0]
+    .trim();
+  const forwardedHost = String(req.headers["x-forwarded-host"] || "")
+    .split(",")[0]
+    .trim();
+  const proto = forwardedProto || req.protocol || "http";
+  const host = forwardedHost || String(req.get("host") || "").trim();
+  if (!host) return `http://localhost:${PORT}`;
+  return `${proto}://${host}`;
+};
+const pruneWorkspaceVisualImports = (workspaceSegment) => {
+  try {
+    const workspaceDir = path.join(VIS_MEDIA_DIR, workspaceSegment);
+    if (!fs.existsSync(workspaceDir)) return;
+    const folders = fs
+      .readdirSync(workspaceDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => {
+        const fullPath = path.join(workspaceDir, entry.name);
+        const stats = fs.statSync(fullPath);
+        return { name: entry.name, fullPath, mtimeMs: Number(stats.mtimeMs || 0) };
+      })
+      .sort((left, right) => right.mtimeMs - left.mtimeMs);
+
+    folders
+      .slice(VIS_MEDIA_KEEP_IMPORTS_PER_WORKSPACE)
+      .forEach((entry) => cleanupDir(entry.fullPath));
+  } catch {
+    // best effort cleanup
+  }
 };
 
 const normalizeEmails = (raw = "") =>
@@ -567,6 +621,11 @@ app.post("/api/workspaces/:workspaceId/imports/pptx-visual", requireActor, async
     const workspaceId = req.params.workspaceId;
     const actor = req.actor;
     ensureWorkspaceForWrite(workspaceId, actor, { allowOperator: true });
+    const workspaceSegment = sanitizePathSegment(workspaceId, "workspace");
+    const importSegment = sanitizePathSegment(`${now()}_${Math.random().toString(36).slice(2, 10)}`, "import");
+    const importDir = path.join(VIS_MEDIA_DIR, workspaceSegment, importSegment);
+    fs.mkdirSync(importDir, { recursive: true });
+    const requestOrigin = getRequestOrigin(req);
 
     const filename = sanitizeFilename(req.body?.filename, "import.pptx");
     if (!filename.toLowerCase().endsWith(".pptx")) {
@@ -660,13 +719,21 @@ app.post("/api/workspaces/:workspaceId/imports/pptx-visual", requireActor, async
 
     const slides = pages
       .filter((page) => page?.content)
-      .map((page) => ({
-        pageNumber: page.pageNumber,
-        name: page.name || `slide-${page.pageNumber}.png`,
-        width: Number(page.width || 0),
-        height: Number(page.height || 0),
-        imageBase64: page.content.toString("base64"),
-      }));
+      .map((page, idx) => {
+        const pageNumber = Number(page.pageNumber || idx + 1);
+        const fileName = `slide-${String(pageNumber).padStart(3, "0")}.png`;
+        const outputPath = path.join(importDir, fileName);
+        fs.writeFileSync(outputPath, page.content);
+        const imagePath = `${VIS_MEDIA_BASE_PATH}/${encodeURIComponent(workspaceSegment)}/${encodeURIComponent(importSegment)}/${encodeURIComponent(fileName)}`;
+        return {
+          pageNumber,
+          name: page.name || fileName,
+          width: Number(page.width || 0),
+          height: Number(page.height || 0),
+          imageUrl: `${requestOrigin}${imagePath}`,
+          imageBase64: page.content.toString("base64"),
+        };
+      });
 
     if (!slides.length) {
       return res.status(422).json({
@@ -685,6 +752,7 @@ app.post("/api/workspaces/:workspaceId/imports/pptx-visual", requireActor, async
       details_json: toJson({ filename, slideCount: slides.length }),
       created_at: now(),
     });
+    pruneWorkspaceVisualImports(workspaceSegment);
 
     return res.json({ ok: true, slideCount: slides.length, slides });
   } catch (error) {
