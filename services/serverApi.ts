@@ -191,7 +191,8 @@ export type VisualPptxImportResponse = {
     name: string;
     width: number;
     height: number;
-    imageBase64: string;
+    imageBase64?: string;
+    imageUrl?: string;
   }>;
   error?: string;
   message?: string;

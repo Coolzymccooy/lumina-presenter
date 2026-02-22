@@ -122,6 +122,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   const htmlVideoRef = useRef<HTMLVideoElement>(null);
   const youtubeIframeRef = useRef<HTMLIFrameElement>(null);
   const [mediaError, setMediaError] = useState(false);
+  const [legacyLocalMediaMissing, setLegacyLocalMediaMissing] = useState(false);
   const [isYoutubeReady, setIsYoutubeReady] = useState(false);
 
   const rawBgUrl = useMemo(() => {
@@ -152,6 +153,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
         setResolvedUrl("");
         setIsLoading(false);
         setMediaError(false);
+        setLegacyLocalMediaMissing(false);
         return;
       }
 
@@ -160,6 +162,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
         setResolvedUrl(rawBgUrl);
         setIsLoading(false);
         setMediaError(false);
+        setLegacyLocalMediaMissing(false);
         return;
       }
 
@@ -170,6 +173,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
         setResolvedUrl(cached);
         setIsLoading(false);
         setMediaError(false);
+        setLegacyLocalMediaMissing(false);
         return;
       }
 
@@ -181,14 +185,17 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
         if (url) {
           setResolvedUrl(url);
           setMediaError(false);
+          setLegacyLocalMediaMissing(false);
         } else {
           setResolvedUrl("");
           setMediaError(true);
+          setLegacyLocalMediaMissing(true);
         }
       } catch {
         if (!active) return;
         setResolvedUrl("");
         setMediaError(true);
+        setLegacyLocalMediaMissing(true);
       } finally {
         if (active) setIsLoading(false);
       }
@@ -214,7 +221,15 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   // Reset errors when slide changes
   useEffect(() => {
     setMediaError(false);
+    setLegacyLocalMediaMissing(false);
   }, [slide?.id, item?.id, rawBgUrl]);
+
+  const handleMediaError = useCallback(() => {
+    setMediaError(true);
+    if (rawBgUrl.startsWith("local://")) {
+      setLegacyLocalMediaMissing(true);
+    }
+  }, [rawBgUrl]);
 
   useEffect(() => {
     setIsYoutubeReady(false);
@@ -333,7 +348,9 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
           <img src={fallbackBackground} alt="" className="w-full h-full object-cover" />
           {!isThumbnail && (
             <div className="absolute top-3 right-3 text-[9px] uppercase tracking-wider bg-black/50 text-amber-200 border border-amber-400/40 px-2 py-1 rounded">
-              Fallback Background
+              {legacyLocalMediaMissing
+                ? "Legacy local VIS media missing — re-import PPTX VIS"
+                : "Fallback Background"}
             </div>
           )}
         </div>
@@ -398,7 +415,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
                 else postYoutubeCommand("pauseVideo");
               }, 180);
             }}
-            onError={() => setMediaError(true)}
+            onError={handleMediaError}
           />
           {/* MVP helper (only in projector) */}
           {isProjector && showProjectorHelper && !isThumbnail && (
@@ -424,7 +441,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
           muted={isThumbnail || isMuted}
           playsInline
           preload="auto"
-          onError={() => setMediaError(true)}
+          onError={handleMediaError}
         />
       );
     }
@@ -437,7 +454,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
           alt=""
           className="w-full h-full object-cover"
           draggable={false}
-          onError={() => setMediaError(true)}
+          onError={handleMediaError}
         />
       );
     }

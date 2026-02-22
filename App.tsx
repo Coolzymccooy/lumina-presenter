@@ -1027,13 +1027,20 @@ function App() {
       const entry = converted.slides[idx];
       onProgress?.(`Saving slide ${idx + 1} of ${converted.slides.length}...`);
       const fileName = entry?.name || `slide-${idx + 1}.png`;
-      const imageFile = base64ToFile(entry?.imageBase64 || '', fileName, 'image/png');
-      const localUrl = await saveMedia(imageFile);
+      const remoteUrl = String(entry?.imageUrl || '').trim();
+      let backgroundUrl = remoteUrl;
+      if (!backgroundUrl) {
+        if (!entry?.imageBase64) {
+          throw new Error(`Visual import slide ${idx + 1} is missing image data.`);
+        }
+        const imageFile = base64ToFile(entry.imageBase64, fileName, 'image/png');
+        backgroundUrl = await saveMedia(imageFile);
+      }
       slides.push({
         id: `${now}-pptx-visual-${idx + 1}`,
         label: `Slide ${idx + 1}`,
         content: '',
-        backgroundUrl: localUrl,
+        backgroundUrl,
         mediaType: 'image',
         notes: parsedFallback?.slides?.[idx]?.notes || '',
       });
