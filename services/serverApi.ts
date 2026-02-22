@@ -274,13 +274,25 @@ export const importVisualPptxDeck = async (workspaceId: string, user: ActorLike,
       };
     }
 
+    // Some upstream/proxy paths can return HTTP 200 with an app-level error payload.
+    if (payload && payload.ok === false) {
+      return {
+        ok: false,
+        slideCount: 0,
+        slides: [],
+        error: payload.error || 'VISUAL_IMPORT_FAILED',
+        message: payload.message || 'Visual PowerPoint import failed on the server.',
+      };
+    }
+
     if (!payload || !Array.isArray(payload.slides)) {
+      const payloadKeys = payload && typeof payload === 'object' ? Object.keys(payload).join(', ') : 'none';
       return {
         ok: false,
         slideCount: 0,
         slides: [],
         error: 'INVALID_RESPONSE',
-        message: 'Server returned an invalid visual import payload.',
+        message: `Server returned an invalid visual import payload (keys: ${payloadKeys}).`,
       };
     }
     return payload as VisualPptxImportResponse;
