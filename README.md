@@ -65,6 +65,7 @@ Optional VIS tuning env vars:
 - `LUMINA_PPTX_VIS_VIEWPORT_SCALE` (default `1.25`)
 - `LUMINA_PPTX_VIS_PARALLEL` (default `true`)
 - `LUMINA_PPTX_VIS_INCLUDE_BASE64` (default `false`)
+- `LUMINA_VIS_CACHE_VERSION` (default `v2`, bump to force re-render if old cached VIS output is stale)
 - `LUMINA_VIS_MEDIA_KEEP_IMPORTS_PER_WORKSPACE` (default `20`)
 
 ---
