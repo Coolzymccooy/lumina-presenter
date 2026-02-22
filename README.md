@@ -52,7 +52,7 @@ What `npm run test:e2e` does:
 
 1. `render.yaml` is configured for Docker using `Dockerfile.api`.
 2. `Dockerfile.api` installs LibreOffice and sets `LUMINA_SOFFICE_BIN=/usr/bin/soffice`.
-   - It also installs broad font coverage (`fonts-noto-*`, `fonts-liberation*`, DejaVu, FreeFont) for non-Latin PPTX rendering.
+   - It also installs broad font coverage (`fonts-noto-*`, `fonts-liberation*`, DejaVu, FreeFont, `fonts-unifont`) for non-Latin PPTX rendering and reduced tofu/square glyph fallbacks.
 3. In Render, deploy with:
    - **Clear build cache & deploy**
 4. Verify startup logs contain one of:
