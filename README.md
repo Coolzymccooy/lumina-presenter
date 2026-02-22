@@ -19,7 +19,7 @@ Lumina is a church-focused presentation app for lyrics, scripture, announcements
    - `VITE_API_BASE_URL=http://localhost:8787` (optional; default is already `http://localhost:8787`)
 3. (Optional for full visual PowerPoint import) install LibreOffice and ensure `soffice` is on PATH.
    - Optional server env override: `LUMINA_SOFFICE_BIN=/full/path/to/soffice`
-   - Local cache/version override (optional): `LUMINA_VIS_CACHE_VERSION=v3`
+   - Local cache/version override (optional): `LUMINA_VIS_CACHE_VERSION=v4`
 4. Start backend API (Terminal A):
    - `npm run server`
 5. Start frontend (Terminal B):
@@ -29,7 +29,7 @@ Lumina is a church-focused presentation app for lyrics, scripture, announcements
 
 Notes:
 - `npm run dev` starts **frontend only**.
-- `npm run server` starts **backend only** (and defaults `LUMINA_VIS_CACHE_VERSION=v3` if not set).
+- `npm run server` starts **backend only** (and defaults `LUMINA_VIS_CACHE_VERSION=v4` if not set).
 - For production bundle check: `npm run build`
 
 ## Playwright E2E
@@ -53,7 +53,8 @@ What `npm run test:e2e` does:
 
 1. `render.yaml` is configured for Docker using `Dockerfile.api`.
 2. `Dockerfile.api` installs LibreOffice and sets `LUMINA_SOFFICE_BIN=/usr/bin/soffice`.
-   - It also installs broad font coverage (`fonts-noto-*`, `fonts-liberation*`, DejaVu, FreeFont, `fonts-unifont`) for non-Latin PPTX rendering and reduced tofu/square glyph fallbacks.
+   - It also installs broad font coverage (`fonts-noto-*`, `fonts-liberation*`, DejaVu, FreeFont, `fonts-unifont`, `fonts-crosextra-carlito`, `fonts-crosextra-caladea`, `fonts-urw-base35`, `fonts-noto-color-emoji`) for reduced tofu/square glyph fallbacks.
+   - Poppler (`pdftocairo`) is installed and used as the primary PDF->PNG renderer for VIS imports.
 3. In Render, deploy with:
    - **Clear build cache & deploy**
 4. Verify startup logs contain one of:
@@ -63,14 +64,17 @@ What `npm run test:e2e` does:
    - `GET /api/health` should return `ok: true`
 
 Optional VIS tuning env vars:
-- `LUMINA_PPTX_VIS_VIEWPORT_SCALE` (default `1.25`)
+- `LUMINA_PPTX_VIS_VIEWPORT_SCALE` (default `1.0`)
 - `LUMINA_PPTX_VIS_PARALLEL` (default `true`)
 - `LUMINA_PPTX_VIS_INCLUDE_BASE64` (default `false`)
-- `LUMINA_VIS_CACHE_VERSION` (default `v3`, bump to force re-render if old cached VIS output is stale)
+- `LUMINA_PDF_RASTER_DPI` (default `120`, used by Poppler)
+- `LUMINA_VIS_RASTER_ENGINE` (default `auto`, tries Poppler first, then pdfjs fallback)
+- `LUMINA_VIS_FONTSET_VERSION` (default `f1`, bump when font stack changes)
+- `LUMINA_VIS_CACHE_VERSION` (default `v4`, bump to force re-render if old cached VIS output is stale)
 - `LUMINA_VIS_MEDIA_KEEP_IMPORTS_PER_WORKSPACE` (default `20`)
 
 Render dashboard quick path:
-- Service → **Environment** → add/update `LUMINA_VIS_CACHE_VERSION` (e.g. `v3`, then `v4` later to force another refresh).
+- Service → **Environment** → add/update `LUMINA_VIS_CACHE_VERSION` (e.g. `v4`, then `v5` later to force another refresh).
 - Redeploy after changing the value.
 
 ---
@@ -134,6 +138,9 @@ Yes. The timer shown in presenter controls is the same timer displayed on the St
 ## 5.1) PowerPoint/PDF Visual Import (`.pptx` / `.pdf`)
 - Open `LYR` import modal from the run sheet header.
 - **Visual PowerPoint/PDF Import**: renders each slide as an image and preserves layout/design.
+- Render pipeline is hardened:
+  - `.pptx` -> LibreOffice headless PDF export (isolated writable profile)
+  - PDF -> PNG via Poppler (`pdftocairo`) first, with `pdf-to-png-converter` fallback.
 - PDF visual import is useful as a fallback when source deck fonts render poorly from `.pptx`.
 - Visual PPTX slides are now saved by the backend and returned as server URLs, so projector/output and other devices can render the same design.
 - VIS imports are hash-cached per workspace: importing the same `.pptx` again reuses already-rendered images (fast path).
@@ -144,7 +151,7 @@ Yes. The timer shown in presenter controls is the same timer displayed on the St
   - `PPTX TXT` = import text and use Lumina backgrounds/theme
 - Legacy `.ppt` files are not supported directly; save as `.pptx` first.
 - If visual import fails, verify LibreOffice (`soffice`) is installed on the backend machine.
-- If rendered VIS slide images show square/tofu glyphs, your backend is missing the source font family used in the PPTX. Install the matching fonts (Noto/Liberation/etc.) on the API host and re-import.
+- If rendered VIS slide images still show square/tofu glyphs, your backend is missing the exact source font family used in the deck. Install/provide those fonts on the API host and re-import.
 - Free Render services use ephemeral storage. VIS media may be lost after restart/redeploy unless you use persistent storage.
 - Performance note: first-time visual conversion still depends on LibreOffice + PDF rasterization and may exceed 5 seconds for large decks. Re-import of unchanged files should be much faster due to hash cache.
 

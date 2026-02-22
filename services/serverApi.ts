@@ -186,6 +186,9 @@ const fileToBase64 = async (file: File) => {
 export type VisualPptxImportResponse = {
   ok: boolean;
   slideCount: number;
+  cached?: boolean;
+  renderer?: "poppler" | "pdfjs-fallback" | string;
+  renderSignature?: string;
   slides: Array<{
     pageNumber: number;
     name: string;

@@ -19,7 +19,12 @@ RUN apt-get update \
     fonts-noto-cjk \
     fonts-noto-cjk-extra \
     fonts-noto-ui-core \
+    fonts-noto-color-emoji \
+    fonts-crosextra-carlito \
+    fonts-crosextra-caladea \
+    fonts-urw-base35 \
     fonts-unifont \
+    poppler-utils \
     fontconfig \
     ca-certificates \
   && fc-cache -f -v \

@@ -13,4 +13,12 @@ services:
       - key: LUMINA_SOFFICE_BIN
         value: /usr/bin/soffice
       - key: LUMINA_VIS_CACHE_VERSION
-        value: v3
+        value: v4
+      - key: LUMINA_VIS_FONTSET_VERSION
+        value: f2
+      - key: LUMINA_PPTX_VIS_VIEWPORT_SCALE
+        value: "1.0"
+      - key: LUMINA_PDF_RASTER_DPI
+        value: "120"
+      - key: LUMINA_VIS_RASTER_ENGINE
+        value: auto
