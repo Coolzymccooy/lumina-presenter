@@ -9,7 +9,17 @@ RUN apt-get update \
     libreoffice-core \
     libreoffice-impress \
     fonts-dejavu-core \
+    fonts-dejavu-extra \
+    fonts-liberation \
+    fonts-liberation2 \
+    fonts-freefont-ttf \
+    fonts-noto-core \
+    fonts-noto-extra \
+    fonts-noto-cjk \
+    fonts-noto-ui-core \
+    fontconfig \
     ca-certificates \
+  && fc-cache -f -v \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

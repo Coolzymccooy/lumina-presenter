@@ -52,6 +52,7 @@ What `npm run test:e2e` does:
 
 1. `render.yaml` is configured for Docker using `Dockerfile.api`.
 2. `Dockerfile.api` installs LibreOffice and sets `LUMINA_SOFFICE_BIN=/usr/bin/soffice`.
+   - It also installs broad font coverage (`fonts-noto-*`, `fonts-liberation*`, DejaVu, FreeFont) for non-Latin PPTX rendering.
 3. In Render, deploy with:
    - **Clear build cache & deploy**
 4. Verify startup logs contain one of:
@@ -129,6 +130,7 @@ Yes. The timer shown in presenter controls is the same timer displayed on the St
   - `PPTX TXT` = import text and use Lumina backgrounds/theme
 - Legacy `.ppt` files are not supported directly; save as `.pptx` first.
 - If visual import fails, verify LibreOffice (`soffice`) is installed on the backend machine.
+- If rendered VIS slide images show square/tofu glyphs, your backend is missing the source font family used in the PPTX. Install the matching fonts (Noto/Liberation/etc.) on the API host and re-import.
 - Free Render services use ephemeral storage. VIS media may be lost after restart/redeploy unless you use persistent storage.
 
 ## 6) Remote Control (`/remote`)
