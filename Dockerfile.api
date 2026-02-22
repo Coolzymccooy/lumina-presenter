@@ -13,10 +13,13 @@ RUN apt-get update \
     fonts-liberation \
     fonts-liberation2 \
     fonts-freefont-ttf \
+    fonts-freefont-otf \
     fonts-noto-core \
     fonts-noto-extra \
     fonts-noto-cjk \
+    fonts-noto-cjk-extra \
     fonts-noto-ui-core \
+    fonts-unifont \
     fontconfig \
     ca-certificates \
   && fc-cache -f -v \
