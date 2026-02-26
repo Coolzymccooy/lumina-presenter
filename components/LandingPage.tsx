@@ -13,8 +13,8 @@ interface LandingPageProps {
   hasSavedSession?: boolean;
 }
 
-const INSTALLER_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases/download/v2.1.1/Lumina-Presenter-Setup-2.1.1.exe';
-const PORTABLE_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases/download/v2.1.1/Lumina-Presenter-2.1.1.exe';
+const INSTALLER_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases/download/v2.2.0/Lumina-Presenter-Setup-2.2.0.exe';
+const PORTABLE_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases/download/v2.2.0/Lumina-Presenter-2.2.0.exe';
 const RELEASES_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases';
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isAuthenticated, hasSavedSession = false }) => {
@@ -87,7 +87,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
         <div className="max-w-5xl mx-auto text-center relative z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-8">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-xs font-medium text-gray-300 tracking-wide uppercase">Version 2.1 — Desktop App Now Available</span>
+            <span className="text-xs font-medium text-gray-300 tracking-wide uppercase">Version 2.2 — Desktop App Now Available</span>
           </div>
 
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-8 leading-tight">
@@ -118,7 +118,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
               {isAuthenticated && hasSavedSession ? 'Resume Session' : 'Use in Browser'} <ArrowRight size={18} />
             </button>
           </div>
-          <p className="text-xs text-gray-600 mt-4">Windows 10/11 · x64 · v2.1.0 · Free</p>
+          <p className="text-xs text-gray-600 mt-4">Windows 10/11 · x64 · v2.2.0 · Free</p>
         </div>
 
         {/* Hero Image */}
@@ -132,7 +132,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
                   <div className="w-3 h-3 rounded-full bg-yellow-500/40" />
                   <div className="w-3 h-3 rounded-full bg-green-500/40" />
                 </div>
-                <span className="text-[10px] text-white/30 ml-2 font-mono">Lumina Presenter v2.1.0</span>
+                <span className="text-[10px] text-white/30 ml-2 font-mono">Lumina Presenter v2.2.0</span>
               </div>
               <div className="flex-1 flex">
                 <div className="w-64 border-r border-white/5 p-4 space-y-4">
