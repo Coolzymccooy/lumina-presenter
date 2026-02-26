@@ -3,33 +3,49 @@
 @tailwind utilities;
 
 /* Technical scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #09090b; }
-::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 0px; }
-::-webkit-scrollbar-thumb:hover { background: #52525b; }
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #09090b;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+    border-radius: 0px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #52525b;
+}
 
 :root {
-  color-scheme: dark;
+    color-scheme: dark;
 }
 
 body {
-  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  background-color: #09090b;
-  color: #e4e4e7;
-  overflow-y: auto;
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    background-color: #09090b;
+    color: #e4e4e7;
+    overflow-y: auto;
 }
 
-html, #root {
-  min-height: 100%;
+html,
+#root {
+    min-height: 100%;
 }
 
-.aspect-video { aspect-ratio: 16 / 9; }
+.aspect-video {
+    aspect-ratio: 16 / 9;
+}
 
 /* Workspace theme variants */
 html[data-theme="light"] body,
 .theme-light {
-  background-color: #f4f6fb !important;
-  color: #0f172a !important;
+    background-color: #f4f6fb !important;
+    color: #0f172a !important;
 }
 
 .theme-light .bg-zinc-950,
@@ -38,7 +54,7 @@ html[data-theme="light"] body,
 .theme-light .bg-zinc-900\/50,
 .theme-light .bg-zinc-950\/50,
 .theme-light .bg-black {
-  background-color: #ffffff !important;
+    background-color: #ffffff !important;
 }
 
 .theme-light .text-zinc-200,
@@ -47,22 +63,22 @@ html[data-theme="light"] body,
 .theme-light .text-zinc-500,
 .theme-light .text-zinc-600,
 .theme-light .text-white {
-  color: #0f172a !important;
+    color: #0f172a !important;
 }
 
 .theme-light .border-zinc-800,
 .theme-light .border-zinc-900,
 .theme-light .border-zinc-700 {
-  border-color: #dbe2f0 !important;
+    border-color: #dbe2f0 !important;
 }
 
 .theme-midnight {
-  background-color: #000000 !important;
+    background-color: #000000 !important;
 }
 
 .theme-midnight .bg-zinc-950,
 .theme-midnight .bg-zinc-900,
 .theme-midnight .bg-zinc-900\/30,
 .theme-midnight .bg-zinc-900\/50 {
-  background-color: #050505 !important;
+    background-color: #050505 !important;
 }
