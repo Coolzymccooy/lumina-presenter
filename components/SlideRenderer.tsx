@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Slide, ServiceItem, MediaType } from "../types";
+
 import { getMedia, getCachedMedia } from "../services/localMedia";
 import { DEFAULT_BACKGROUNDS } from "../constants";
 
@@ -60,31 +61,32 @@ function looksLikeDirectVideo(url: string): boolean {
   );
 }
 
-/**
- * Shrinks text for long slides to avoid clipping.
- * Uses vh so it scales naturally on projector resolutions.
- */
-function computeTextVh(size: string | undefined, text: string) {
-  const base =
-    size === "small"
-      ? 3.0
-      : size === "medium"
-      ? 4.0
-      : size === "xlarge"
-      ? 7.0
-      : 5.0;
+// Internal canvas dimensions — slides are always laid out at this resolution
+// then CSS-scaled to fill any container. Guarantees preview === output appearance.
+const CANVAS_W = 1920;
+const CANVAS_H = 1080;
 
-  const lines = Math.max(1, text.split(/\n/).length);
+/**
+ * Returns fixed pixel font size for the internal 1920×1080 canvas.
+ * Because the canvas is always the same size, layout is identical in
+ * preview (small box) and fullscreen projector output.
+ */
+function computeTextPx(size: string | undefined, text: string): number {
+  const base =
+    size === "small" ? 52
+      : size === "medium" ? 68
+        : size === "xlarge" ? 110
+          : 82; // "large" default
+
   const len = text.length;
+  const lines = Math.max(1, text.split(/\n/).length);
 
   const shrinkByLen =
     len > 900 ? 0.55 : len > 700 ? 0.65 : len > 500 ? 0.75 : len > 350 ? 0.85 : 1.0;
-
   const shrinkByLines =
     lines >= 10 ? 0.62 : lines >= 8 ? 0.72 : lines >= 6 ? 0.82 : lines >= 4 ? 0.92 : 1.0;
 
-  const vh = base * Math.min(shrinkByLen, shrinkByLines);
-  return Math.max(2.0, Math.min(vh, 8.0));
+  return Math.round(Math.max(32, base * Math.min(shrinkByLen, shrinkByLines)));
 }
 
 function getBestOrigin(): string {
@@ -257,7 +259,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     p?.catch((err) => {
       if (err?.name === "NotAllowedError" && v && !v.muted) {
         v.muted = true;
-        v.play().catch(() => {});
+        v.play().catch(() => { });
       }
     });
   }, [hasBackground, resolvedUrl, mediaType, isYoutube, isLoading, mediaError, isPlaying, isMuted, isThumbnail]);
@@ -325,10 +327,9 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     );
   }
 
-  const containerPadding = isThumbnail ? "p-2" : "p-8 md:p-16";
   const contentText = safeString(slide.content);
   const hasReadableText = contentText.trim().length > 0;
-  const textVh = computeTextVh(item.theme?.fontSize, contentText);
+  const textPx = computeTextPx(item.theme?.fontSize, contentText);
 
   const textLayerStyle: React.CSSProperties = {
     fontFamily: item.theme?.fontFamily || "system-ui, sans-serif",
@@ -462,75 +463,217 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     return <img src={fallbackBackground} alt="" className="w-full h-full object-cover" />;
   };
 
+  // ── Scale-canvas rendering ─────────────────────────────────────────────────
+  // We always render the slide at CANVAS_W × CANVAS_H (1920 × 1080) using
+  // fixed-pixel sizes, then CSS-scale it uniformly to fill the container.
+  // This guarantees the preview small box and the fullscreen projector window
+  // look pixel-identical — only the overall scale changes, never the layout.
+
+  if (isThumbnail) {
+    // Thumbnail: simple scaled-down wrapper without all the canvas machinery
+    return (
+      <div className="relative overflow-hidden w-full aspect-video bg-black select-none">
+        <div className="absolute inset-0">{renderMedia()}</div>
+        {hasReadableText && hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
+          <div className="absolute inset-0 bg-black/20" />
+        )}
+        <div className="absolute inset-0 flex items-center justify-center p-2 text-center" style={textLayerStyle}>
+          <div className="text-[0.65rem] whitespace-pre-wrap break-words leading-tight max-w-[92%]">{contentText}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`relative overflow-hidden w-full ${fitContainer ? "h-full" : "aspect-video"} bg-black select-none`}>
-      {/* Media layer */}
-      <div className="absolute inset-0 flex items-center justify-center">{renderMedia()}</div>
+    <ScaledCanvas
+      fitContainer={fitContainer}
+      slide={slide}
+      item={item}
+      contentText={contentText}
+      hasReadableText={hasReadableText}
+      textPx={textPx}
+      textLayerStyle={textLayerStyle}
+      lowerThirds={lowerThirds}
+      showSlideLabel={showSlideLabel}
+      renderMedia={renderMedia}
+      mediaType={mediaType}
+      hasBackground={hasBackground}
+      mediaError={mediaError}
+      isLoading={isLoading}
+    />
+  );
+};
 
-      {/* Soft overlay for readability (skip for solid color + skip when no background) */}
-      {hasReadableText && hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
-        <div className="absolute inset-0 bg-black/20" />
-      )}
+// ── ScaledCanvas ─────────────────────────────────────────────────────────────
+// Renders at 1920×1080 then scales to fill any container.
+interface ScaledCanvasProps {
+  fitContainer: boolean;
+  slide: Slide;
+  item: ServiceItem;
+  contentText: string;
+  hasReadableText: boolean;
+  textPx: number;
+  textLayerStyle: React.CSSProperties;
+  lowerThirds: boolean;
+  showSlideLabel: boolean;
+  renderMedia: () => React.ReactNode;
+  mediaType: string;
+  hasBackground: boolean;
+  mediaError: boolean;
+  isLoading: boolean;
+}
 
-      {/* Text layer */}
+const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
+  fitContainer, slide, item, contentText, hasReadableText, textPx, textLayerStyle,
+  lowerThirds, showSlideLabel, renderMedia, mediaType, hasBackground, mediaError, isLoading,
+}) => {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const update = () => {
+      const { width, height } = el.getBoundingClientRect();
+      const sx = width / CANVAS_W;
+      const sy = height / CANVAS_H;
+      setScale(Math.min(sx, sy));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const labelPx = Math.round(CANVAS_H * 0.026);   // ~28px at 1080p
+  const labelPadH = Math.round(CANVAS_H * 0.014);
+  const labelPadV = Math.round(CANVAS_H * 0.009);
+
+  return (
+    <div
+      ref={wrapperRef}
+      className={`relative overflow-hidden w-full bg-black select-none ${fitContainer ? "h-full" : "aspect-video"
+        }`}
+    >
+      {/* Fixed-size 1920×1080 canvas, CSS-scaled to fit the wrapper */}
       <div
-        className={`absolute inset-0 ${lowerThirds ? "flex items-end justify-center px-8 pb-12" : `flex flex-col items-center justify-center ${containerPadding} text-center`}`}
-        style={textLayerStyle}
+        style={{
+          position: "absolute",
+          width: CANVAS_W,
+          height: CANVAS_H,
+          top: "50%",
+          left: "50%",
+          transform: `translate(-50%, -50%) scale(${scale})`,
+          transformOrigin: "center center",
+        }}
       >
-        {lowerThirds ? (
-          <div className="w-full max-w-[92%] text-center">
-            <div className="inline-block max-w-full px-6 py-3 rounded-2xl bg-black/60 border border-white/15 backdrop-blur-md shadow-xl">
+        {/* Media layer */}
+        <div style={{ position: "absolute", inset: 0 }}>{renderMedia()}</div>
+
+        {/* Soft overlay */}
+        {hasReadableText && hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.2)" }} />
+        )}
+
+        {/* Text layer */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: lowerThirds ? "flex-end" : "center",
+            padding: lowerThirds ? `0 ${CANVAS_W * 0.04}px ${CANVAS_H * 0.07}px` : `${CANVAS_H * 0.08}px ${CANVAS_W * 0.04}px`,
+            textAlign: "center",
+            ...textLayerStyle,
+          }}
+        >
+          {lowerThirds ? (
+            <div style={{ width: "100%", maxWidth: "92%", textAlign: "center" }}>
               <div
-                className={[
-                  "whitespace-pre-wrap",
-                  "break-words",
-                  "leading-tight",
-                  "text-center",
-                  isThumbnail ? "text-[0.65rem]" : "",
-                ].join(" ")}
-                style={!isThumbnail ? { fontSize: `${Math.max(2.2, textVh * 0.58)}vh` } : undefined}
+                style={{
+                  display: "inline-block",
+                  maxWidth: "100%",
+                  padding: `${labelPadH * 2}px ${labelPadV * 4}px`,
+                  borderRadius: 20,
+                  background: "rgba(0,0,0,0.60)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                  backdropFilter: "blur(8px)",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: Math.round(textPx * 0.58),
+                    lineHeight: 1.3,
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {contentText}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                flex: 1,
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  maxWidth: "92%",
+                  fontSize: textPx,
+                  lineHeight: 1.35,
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  textAlign: "center",
+                  overflow: "hidden",
+                }}
               >
                 {contentText}
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex-1 w-full flex items-center justify-center">
-            <div
-              className={[
-                "w-full",
-                "max-w-[92%]",
-                "max-h-full",
-                "overflow-hidden",
-                "whitespace-pre-wrap",
-                "break-words",
-                "leading-tight",
-                "text-center",
-                isThumbnail ? "text-[0.65rem]" : "",
-              ].join(" ")}
-              style={!isThumbnail ? { fontSize: `${textVh}vh` } : undefined}
-            >
-              {contentText}
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* Footer / Reference Layer */}
-        {!isThumbnail && showSlideLabel && slide.label && !lowerThirds && (
-           <div className="absolute bottom-6 right-8 max-w-[80%] opacity-90 transition-all duration-300">
-             <span 
-              className="text-[2.2vh] font-medium tracking-wide inline-block px-4 py-2 rounded-full backdrop-blur-md border border-white/10 shadow-lg" 
-              style={{ 
-                fontFamily: '"Inter", "Segoe UI", system-ui, sans-serif', 
-                backgroundColor: 'rgba(0,0,0,0.4)', 
-                textShadow: '0 1px 2px rgba(0,0,0,0.8)',
-                color: 'rgba(255,255,255,0.95)'
+          {/* Scripture / slide reference label */}
+          {showSlideLabel && slide.label && !lowerThirds && (
+            <div
+              style={{
+                position: "absolute",
+                bottom: CANVAS_H * 0.048,
+                right: CANVAS_W * 0.04,
+                maxWidth: "80%",
+                opacity: 0.92,
               }}
             >
-              {slide.label}
-            </span>
-          </div>
-        )}
+              <span
+                style={{
+                  fontFamily: '"Inter", "Segoe UI", system-ui, sans-serif',
+                  fontSize: labelPx,
+                  fontWeight: 500,
+                  letterSpacing: "0.03em",
+                  display: "inline-block",
+                  padding: `${labelPadH}px ${labelPadH * 2}px`,
+                  borderRadius: 999,
+                  background: "rgba(0,0,0,0.45)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  backdropFilter: "blur(8px)",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
+                  textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+                  color: "rgba(255,255,255,0.95)",
+                }}
+              >
+                {slide.label}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
