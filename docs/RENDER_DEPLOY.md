@@ -5,13 +5,18 @@
 2. In Render: `New` -> `Blueprint`.
 3. Select this repo. Render will read `render.yaml` and create `lumina-presenter-api`.
 
-## 2) Attach persistent storage
+## 2) Storage mode
+### Free plan
+- Use `LUMINA_DATA_DIR=/tmp/lumina-data` (already in `render.yaml`).
+- This storage is ephemeral on Render free services.
+
+### Paid plan (persistent)
 1. Open the created web service in Render.
 2. Go to `Disks` -> `Add Disk`.
 3. Mount path: `/var/data`.
 4. Redeploy the service.
 
-The API stores SQLite at `LUMINA_DATA_DIR` (default from blueprint is `/var/data`).
+The API stores SQLite at `LUMINA_DATA_DIR`.
 
 ## Free plan note (important)
 - The blueprint is configured as `plan: free` to avoid monthly cost.

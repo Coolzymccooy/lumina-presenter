@@ -1,15 +1,21 @@
 {
   "name": "lumina-presenter",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "server": "node server/index.js",
-    "start": "node server/index.js",
+    "server": "node scripts/server-start.mjs",
+    "start": "node scripts/server-start.mjs",
     "build": "vite build",
     "preview": "vite preview",
-    "electron:dev": "electron ."
+    "electron:dev": "electron .",
+    "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:win:publish": "npm run build && electron-builder --win --publish always",
+    "test:e2e": "node scripts/run-e2e.mjs",
+    "test:e2e:headed": "node scripts/run-e2e.mjs --headed",
+    "test:e2e:ui": "node scripts/run-e2e.mjs --ui",
+    "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
     "@google/genai": "^1.33.0",
@@ -17,12 +23,15 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "firebase": "^12.6.0",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.563.0",
+    "pdf-to-png-converter": "^3.11.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
     "react-player": "^3.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "^4.2.1",
     "@types/node": "^22.19.3",
     "@types/react": "^19.2.7",
@@ -30,11 +39,53 @@
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.20",
     "electron": "^40.6.1",
+    "electron-builder": "^25.1.8",
     "electron-is-dev": "^3.0.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.8.2",
     "vite": "^6.4.1"
+  },
+  "build": {
+    "appId": "com.luminapresenter.app",
+    "productName": "Lumina Presenter",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Coolzymccooy",
+      "repo": "lumina-presenter"
+    }
   },
   "description": "<div align=\"center\"> <img width=\"1200\" height=\"475\" alt=\"GHBanner\" src=\"https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6\" /> </div>",
   "main": "electron/main.js",
