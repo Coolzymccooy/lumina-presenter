@@ -460,10 +460,10 @@ app.get("/api/workspaces/:workspaceId", requireActor, (req, res) => {
       },
       latestSnapshot: latestSnapshot
         ? {
-            version: latestSnapshot.version,
-            payload: parseJson(latestSnapshot.payload_json, {}),
-            createdAt: latestSnapshot.created_at,
-          }
+          version: latestSnapshot.version,
+          payload: parseJson(latestSnapshot.payload_json, {}),
+          createdAt: latestSnapshot.created_at,
+        }
         : null,
     });
   } catch (error) {
@@ -766,6 +766,24 @@ app.listen(PORT, () => {
     await logPdftocairoAvailability();
     await logFontDiagnostics();
   })();
+
+  // Keep-alive: ping /api/health every 14 minutes so Render free tier doesn't spin down.
+  // Set LUMINA_KEEP_ALIVE_URL to the public URL of this service (e.g. https://lumina-presenter-api.onrender.com).
+  const keepAliveUrl = process.env.LUMINA_KEEP_ALIVE_URL
+    ? `${String(process.env.LUMINA_KEEP_ALIVE_URL).replace(/\/+$/, "")}/api/health`
+    : null;
+  if (keepAliveUrl) {
+    const KEEP_ALIVE_INTERVAL_MS = 14 * 60 * 1000; // 14 minutes
+    console.log(`[lumina-server-api] keep-alive: pinging ${keepAliveUrl} every 14 min`);
+    setInterval(async () => {
+      try {
+        const res = await fetch(keepAliveUrl, { signal: AbortSignal.timeout(10000) });
+        console.log(`[lumina-server-api] keep-alive: ping ${res.ok ? "ok" : `failed (${res.status})`}`);
+      } catch (err) {
+        console.warn(`[lumina-server-api] keep-alive: ping error — ${String(err?.message || err)}`);
+      }
+    }, KEEP_ALIVE_INTERVAL_MS);
+  }
 });
 
 app.post("/api/workspaces/:workspaceId/imports/pptx-visual", requireActor, async (req, res) => {
