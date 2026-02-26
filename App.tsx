@@ -12,17 +12,20 @@ import { OutputWindow } from './components/OutputWindow';
 import { LoginScreen } from './components/LoginScreen';
 import { AudioLibrary } from './components/AudioLibrary';
 import { BibleBrowser } from './components/BibleBrowser';
-import { LandingPage } from './components/LandingPage'; // NEW
-import { ProfileSettings } from './components/ProfileSettings'; // NEW
-import { MotionLibrary } from './components/MotionLibrary'; // NEW
+import { LandingPage } from './components/LandingPage';
+import { ProfileSettings } from './components/ProfileSettings';
+import { MotionLibrary } from './components/MotionLibrary';
+import { AudienceSubmit } from './components/AudienceSubmit'; // NEW
+import { AudienceStudio } from './components/AudienceStudio'; // NEW
+import { ConnectModal } from './components/ConnectModal'; // NEW
 import { StageDisplay } from './components/StageDisplay';
 import { logActivity, analyzeSentimentContext } from './services/analytics';
 import { auth, isFirebaseConfigured, subscribeToState, subscribeToTeamPlaylists, updateLiveState, upsertTeamPlaylist } from './services/firebase';
 import { onAuthStateChanged } from "firebase/auth";
 import { clearMediaCache, saveMedia } from './services/localMedia';
-import { fetchServerSessionState, importVisualPptxDeck, loadLatestWorkspaceSnapshot, resolveWorkspaceId, saveServerSessionState, saveWorkspaceSettings, saveWorkspaceSnapshot } from './services/serverApi';
+import { fetchServerSessionState, fetchWorkspaceSettings, importVisualPptxDeck, loadLatestWorkspaceSnapshot, resolveWorkspaceId, saveServerSessionState, saveWorkspaceSettings, saveWorkspaceSnapshot } from './services/serverApi';
 import { parsePptxFile } from './services/pptxImport';
-import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings } from './components/Icons'; // Added Settings Icon
+import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon
 
 // --- CONSTANTS ---
 const STORAGE_KEY = 'lumina_session_v1';
@@ -122,7 +125,8 @@ const ForwardIcon = ({ className }: { className?: string }) => (
 function App() {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [viewState, setViewState] = useState<'landing' | 'studio'>(() => {
+  const [viewState, setViewState] = useState<'landing' | 'studio' | 'audience'>(() => {
+    if (window.location.pathname === '/audience') return 'audience';
     // @ts-ignore
     if (window.electron?.isElectron) return 'studio';
     return 'landing';
@@ -134,7 +138,7 @@ function App() {
 
   // ✅ Projector popout window handle (opened in click handler to avoid popup blockers)
   const [outputWin, setOutputWin] = useState<Window | null>(null);
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'AUDIO' | 'BIBLE'>('SCHEDULE');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'AUDIO' | 'BIBLE' | 'AUDIENCE'>('SCHEDULE');
 
   const parseJson = <T,>(raw: string | null, fallback: T): T => {
     if (raw === null) return fallback;
@@ -227,6 +231,7 @@ function App() {
   const [timerDurationMin, setTimerDurationMin] = useState(35);
   const [timerSeconds, setTimerSeconds] = useState(35 * 60);
   const [timerRunning, setTimerRunning] = useState(false);
+  const [isConnectOpen, setIsConnectOpen] = useState(false);
 
   const [activeItemId, setActiveItemId] = useState<string | null>(() => {
     const saved = initialSavedState;
@@ -470,6 +475,7 @@ function App() {
 
 
   useEffect(() => {
+    // 1. First, try to load from local cache for instant UI
     try {
       const savedSettings = localStorage.getItem(SETTINGS_KEY);
       if (savedSettings) {
@@ -479,25 +485,68 @@ function App() {
       const savedUpdatedAt = Number(localStorage.getItem(SETTINGS_UPDATED_AT_KEY) || '0');
       workspaceSettingsUpdatedAtRef.current = Number.isFinite(savedUpdatedAt) ? savedUpdatedAt : 0;
     } catch (error) {
-      console.warn('Failed to load workspace settings', error);
+      console.warn('Failed to load local workspace settings', error);
     }
   }, []);
 
+  // 2. Load from server on login (server always wins)
+  useEffect(() => {
+    if (!user || !workspaceId) return;
+
+    const loadRemoteSettings = async () => {
+      try {
+        const res = await fetchWorkspaceSettings(workspaceId, user);
+        if (res?.ok && res.settings) {
+          const serverSettings = sanitizeWorkspaceSettings(res.settings);
+          setWorkspaceSettings((prev) => {
+            // Keep local-only settings (like machineMode optionally), but server owns critical ones
+            const merged = { ...prev, ...serverSettings };
+
+            // Immediately update local cache to match server
+            localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
+            localStorage.setItem(SETTINGS_UPDATED_AT_KEY, String(res.updatedAt || Date.now()));
+            workspaceSettingsUpdatedAtRef.current = res.updatedAt || Date.now();
+
+            return merged;
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to load remote settings', err);
+      }
+    };
+    loadRemoteSettings();
+  }, [user, workspaceId]);
+
   useEffect(() => {
     const updatedAt = Date.now();
-    workspaceSettingsUpdatedAtRef.current = updatedAt;
-    try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(workspaceSettings));
-      localStorage.setItem(SETTINGS_UPDATED_AT_KEY, String(updatedAt));
-    } catch (error: any) {
-      if (error?.name === 'QuotaExceededError' || error?.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+    // Only save to server if we're authenticated and it's a "fresh" change 
+    // (not just hydrating from server)
+    const PERSIST_THRESHOLD = 2000;
+    const isRecentServerLoad = (updatedAt - workspaceSettingsUpdatedAtRef.current) < PERSIST_THRESHOLD;
+
+    const persistSettings = async () => {
+      // 1. Save to local first for speed
+      try {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(workspaceSettings));
+        localStorage.setItem(SETTINGS_UPDATED_AT_KEY, String(updatedAt));
+      } catch (e) {
         setSaveError(true);
-      } else {
-        console.warn('Failed to persist workspace settings', error);
       }
-    }
+
+      // 2. Save to server if logged in
+      if (user && !isRecentServerLoad) {
+        try {
+          await saveWorkspaceSettings(workspaceId, user, workspaceSettings);
+          workspaceSettingsUpdatedAtRef.current = updatedAt;
+        } catch (err) {
+          console.warn('Server settings sync failed', err);
+        }
+      }
+    };
+
+    persistSettings();
     document.documentElement.dataset.theme = workspaceSettings.theme;
-  }, [workspaceSettings]);
+  }, [workspaceSettings, user, workspaceId]);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -800,6 +849,11 @@ function App() {
   const remoteControlUrl = typeof window !== 'undefined'
     ? buildSharedRouteUrl('remote')
     : `/#/remote?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&fullscreen=1`;
+
+  const audienceUrl = useMemo(() => {
+    return `${window.location.origin}/#/audience?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}`;
+  }, [liveSessionId, workspaceId]);
+
   const cloneSchedule = (value: ServiceItem[]) => JSON.parse(JSON.stringify(value)) as ServiceItem[];
   const pushHistory = () => {
     historyRef.current.push({
@@ -1201,6 +1255,36 @@ function App() {
     setIsPlaying(true);
     logActivity(user?.uid, 'PRESENTATION_START', { itemTitle: item.title });
   };
+  const handleProjectAudienceMessage = (text: string, label?: string) => {
+    const existingIdx = schedule.findIndex(i => i.id === 'audience-live-item');
+    const newItem: ServiceItem = {
+      id: 'audience-live-item',
+      title: label || 'Audience Message',
+      type: ItemType.ANNOUNCEMENT,
+      slides: [{
+        id: 'audience-slide',
+        content: text,
+        label: label || 'Audience Message'
+      }],
+      theme: {
+        backgroundUrl: DEFAULT_BACKGROUNDS[0],
+        fontFamily: 'sans-serif',
+        textColor: '#ffffff',
+        shadow: true,
+        fontSize: 'medium'
+      }
+    };
+
+    if (existingIdx >= 0) {
+      updateItem(newItem);
+    } else {
+      addItem(newItem);
+    }
+
+    setLowerThirdsEnabled(true);
+    goLive(newItem, 0);
+  };
+
 
   const nextSlide = useCallback(() => {
     setBlackout((prev) => (prev ? false : prev));
@@ -1673,6 +1757,11 @@ function App() {
     return <LandingPage onEnter={() => setViewState('studio')} onLogout={user ? handleLogout : undefined} isAuthenticated={!!user} hasSavedSession={hasSavedSession} />;
   }
 
+  // ROUTING: AUDIENCE SUBMISSION PAGE
+  if (viewState === 'audience') {
+    return <AudienceSubmit workspaceId={workspaceId} />;
+  }
+
   // ROUTING: LOGIN (If not authenticated, force login for studio)
   if (!user && viewState === 'studio') {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
@@ -1729,35 +1818,121 @@ function App() {
       {syncIssue && <div className="absolute top-24 right-4 z-50 max-w-md bg-amber-950/90 border border-amber-800 text-amber-200 px-3 py-2 rounded-sm text-[11px]"><span className="font-bold">SYNC WARNING:</span> {syncIssue}</div>}
       {popupBlocked && <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4"><div className="bg-zinc-900 border border-red-500 p-6 max-w-md rounded-lg shadow-2xl text-center"><div className="text-red-500 mb-2"><MonitorIcon className="w-12 h-12 mx-auto" /></div><h2 className="text-xl font-bold text-white mb-2">Projection Blocked</h2><p className="text-zinc-400 text-sm mb-4">The browser blocked the projector window. Check address bar pop-up settings.</p><button onClick={() => { setPopupBlocked(false); setIsOutputLive(false); }} className="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded font-bold transition-colors">I Understand</button></div></div>}
 
-      <header className="h-12 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 shrink-0">
+      <header className="h-14 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 flex items-center justify-between px-6 shrink-0 z-[100] shadow-xl">
+        {/* LEFT: BRAND & MODES */}
         <div className="flex items-center gap-6">
           <div
             onClick={() => setViewState('landing')}
-            className="flex items-center gap-2 text-zinc-100 font-mono tracking-tighter text-lg font-bold cursor-pointer hover:opacity-80 transition-opacity"
+            className="flex items-center gap-3 cursor-pointer hover:opacity-100 transition-all group"
           >
-            LUMINA <span className="px-1.5 py-0.5 rounded-sm bg-zinc-900 text-[10px] text-zinc-500 border border-zinc-800">v2.1</span>
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/40 group-hover:scale-110 transition-transform">
+              <span className="text-white font-black text-xs">L</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-black text-white tracking-[0.2em] leading-tight">LUMINA</span>
+              <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Studio v2.1</span>
+            </div>
+          </div>
+
+          <div className="h-6 w-px bg-zinc-800"></div>
+
+          <div className="flex bg-black/40 p-1 rounded-xl border border-zinc-800/50">
+            <button
+              onClick={() => setViewMode('BUILDER')}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all ${viewMode === 'BUILDER' ? 'bg-zinc-800 text-white shadow-inner' : 'text-zinc-600 hover:text-zinc-400'}`}
+            >
+              BUILD
+            </button>
+            <button
+              onClick={() => setViewMode('PRESENTER')}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all ${viewMode === 'PRESENTER' ? 'bg-blue-600 text-white shadow-lg shadow-blue-950/50' : 'text-zinc-600 hover:text-zinc-400'}`}
+            >
+              PRESENT
+            </button>
+          </div>
+
+          <button
+            onClick={rollbackLastChange}
+            disabled={historyCount === 0}
+            className="px-3 py-1.5 rounded-lg text-[10px] font-bold border border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300 disabled:opacity-20 disabled:grayscale transition-all flex items-center gap-2"
+          >
+            <ArrowLeftIcon className="w-3 h-3" /> ROLLBACK
+          </button>
+        </div>
+
+        {/* MIDDLE: STATUS TELEMETRY */}
+        <div className="hidden lg:flex items-center gap-4 bg-zinc-900/20 px-4 py-1.5 rounded-full border border-zinc-800/30">
+          <div className="flex flex-col items-center">
+            <span className="text-[8px] text-zinc-600 font-black uppercase tracking-widest">Session ID</span>
+            <span className="text-[10px] font-mono text-zinc-400">{liveSessionId}</span>
           </div>
           <div className="h-4 w-px bg-zinc-800"></div>
-          <div className="flex gap-1 hidden md:flex">
-            <button onClick={() => setViewMode('BUILDER')} className={`px-3 py-1 rounded-sm text-xs font-medium border ${viewMode === 'BUILDER' ? 'bg-zinc-900 text-white border-zinc-700' : 'text-zinc-500 border-transparent'}`}>BUILD</button>
-            <button onClick={() => setViewMode('PRESENTER')} className={`px-3 py-1 rounded-sm text-xs font-medium border ${viewMode === 'PRESENTER' ? 'bg-zinc-900 text-white border-zinc-700' : 'text-zinc-500 border-transparent'}`}>PRESENT</button>
-            <button onClick={rollbackLastChange} disabled={historyCount === 0} className="px-3 py-1 rounded-sm text-xs font-medium border border-zinc-700 text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed">ROLLBACK</button>
+          <div className="flex items-center gap-2">
+            <div className={`w-1.5 h-1.5 rounded-full ${navigator.onLine ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+            <span className={`text-[9px] font-black tracking-widest ${navigator.onLine ? 'text-emerald-500/80' : 'text-amber-500/80'}`}>
+              {navigator.onLine ? 'SYSTEM ONLINE' : 'OFFLINE MODE'}
+            </span>
           </div>
-          <div className="hidden lg:flex items-center gap-2 text-[10px]">
-            <span className="px-2 py-0.5 rounded-sm border border-zinc-800 text-zinc-400">SESSION {liveSessionId}</span>
-            <span className={`px-2 py-0.5 rounded-sm border ${navigator.onLine ? 'border-emerald-900 text-emerald-400' : 'border-amber-900 text-amber-400'}`}>{navigator.onLine ? 'ONLINE' : 'OFFLINE'}</span>
-            {syncPendingCount > 0 && <span className="px-2 py-0.5 rounded-sm border border-amber-900 text-amber-400">QUEUED {syncPendingCount}</span>}
-          </div>
+          {syncPendingCount > 0 && (
+            <>
+              <div className="h-4 w-px bg-zinc-800"></div>
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-black text-amber-500 animate-pulse tracking-widest">SYNCING {syncPendingCount}</span>
+              </div>
+            </>
+          )}
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => setIsHelpOpen(true)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-sm"><HelpIcon className="w-4 h-4" /></button>
-          <button onClick={() => setIsProfileOpen(true)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-sm"><Settings className="w-4 h-4" /></button>
-          <button onClick={() => setWorkspaceSettings((prev) => ({ ...prev, machineMode: !prev.machineMode }))} className={`px-3 py-1.5 rounded-sm text-xs font-bold border ${workspaceSettings.machineMode ? 'bg-cyan-950 text-cyan-300 border-cyan-800' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}>MACHINE</button>
-          <button onClick={handleLogout} className="px-3 py-1.5 rounded-sm text-xs font-bold border bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white">LOGOUT</button>
-          <button onClick={() => setIsAIModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 text-zinc-400 border border-zinc-800 hover:border-blue-900 rounded-sm text-xs"><SparklesIcon className="w-3 h-3" />AI ASSIST</button>
-          <button onClick={handleToggleOutput} className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-bold border ${isOutputLive ? 'bg-emerald-950/30 text-emerald-400 border-emerald-900' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}><MonitorIcon className="w-3 h-3" />{isOutputLive ? 'OUTPUT ACTIVE' : 'LAUNCH OUTPUT'}</button>
-          <button onClick={handleToggleStageDisplay} className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-bold border ${isStageDisplayLive ? 'bg-purple-950/30 text-purple-400 border-purple-900' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}>STAGE DISPLAY</button>
-          <button onClick={() => navigator.clipboard?.writeText(remoteControlUrl)} className="px-3 py-1.5 rounded-sm text-xs font-bold border bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white">COPY REMOTE URL</button>
+
+        {/* RIGHT: COMMAND CENTER */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-black/30 p-1 rounded-xl border border-zinc-800/40 gap-1 mr-2">
+            <button onClick={() => setIsConnectOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 rounded-lg text-[10px] font-black tracking-widest transition-all active:scale-95">
+              <QrCodeIcon className="w-3.5 h-3.5" /> CONNECT
+            </button>
+            <button onClick={() => setIsAIModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 text-zinc-300 hover:text-white rounded-lg text-[10px] font-black tracking-widest transition-all">
+              <SparklesIcon className="w-3 h-3 text-purple-400" /> AI ASSIST
+            </button>
+            <button
+              onClick={() => setWorkspaceSettings(prev => ({ ...prev, machineMode: !prev.machineMode }))}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all ${workspaceSettings.machineMode ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-950/50' : 'text-zinc-500 hover:bg-zinc-800'}`}
+            >
+              MACHINE
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleToggleOutput}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all border shadow-lg ${isOutputLive ? 'bg-emerald-600 border-emerald-500 text-white shadow-emerald-950/50' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600'}`}
+            >
+              <MonitorIcon className="w-3.5 h-3.5" /> {isOutputLive ? 'PROJECTION ON' : 'LAUNCH LIVE'}
+            </button>
+            <button
+              onClick={handleToggleStageDisplay}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all border shadow-lg ${isStageDisplayLive ? 'bg-purple-600 border-purple-500 text-white shadow-purple-950/50' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600'}`}
+            >
+              STAGE
+            </button>
+
+            <button
+              onClick={() => {
+                navigator.clipboard?.writeText(remoteControlUrl);
+                alert('Remote Control URL Copied!');
+              }}
+              className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all border border-transparent hover:border-zinc-700"
+              title="Copy Remote URL"
+            >
+              <CopyIcon className="w-4.5 h-4.5" />
+            </button>
+
+            <button onClick={() => setIsProfileOpen(true)} className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all border border-transparent hover:border-zinc-700">
+              <Settings className="w-4.5 h-4.5" />
+            </button>
+
+            <button onClick={() => setIsHelpOpen(true)} className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all mr-2">
+              <HelpIcon className="w-4.5 h-4.5" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -1770,153 +1945,157 @@ function App() {
 
       <div className="flex-1 flex overflow-hidden mb-16 md:mb-0">
         {/* Sidebar with Tabs (Hidden on Mobile unless Builder Mode) */}
-        <div className={`w-full md:w-64 bg-zinc-950 border-r border-zinc-900 flex-col shrink-0 ${viewMode === 'BUILDER' ? 'flex' : 'hidden md:flex'}`}>
-          <div className="flex border-b border-zinc-900 bg-zinc-950">
-            <button onClick={() => setActiveSidebarTab('SCHEDULE')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeSidebarTab === 'SCHEDULE' ? 'text-blue-500 border-blue-600 bg-zinc-900/50' : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>Items</button>
-            <button onClick={() => setActiveSidebarTab('AUDIO')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeSidebarTab === 'AUDIO' ? 'text-blue-500 border-blue-600 bg-zinc-900/50' : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>Audio</button>
-            <button onClick={() => setActiveSidebarTab('BIBLE')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeSidebarTab === 'BIBLE' ? 'text-blue-500 border-blue-600 bg-zinc-900/50' : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>Bible</button>
+        <div className="flex flex-col h-full bg-zinc-900/50 border-r border-zinc-800 shrink-0 w-12 hover:w-48 transition-all group overflow-hidden z-20">
+          <div className="flex flex-col flex-1 p-1 gap-1">
+            <button onClick={() => setActiveSidebarTab('SCHEDULE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'SCHEDULE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="SCHEDULE"><MonitorIcon className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Schedule</span></button>
+            <button onClick={() => setActiveSidebarTab('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIO MIXER"><Volume2Icon className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Audio Mixer</span></button>
+            <button onClick={() => setActiveSidebarTab('BIBLE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'BIBLE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="BIBLE LIBRARY"><BibleIcon className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Bible Hub</span></button>
+            <button onClick={() => setActiveSidebarTab('AUDIENCE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIENCE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIENCE STUDIO"><ChatIcon className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Audience</span></button>
           </div>
-
-          <div className="flex-1 flex flex-col overflow-hidden">
-            {activeSidebarTab === 'SCHEDULE' ? (
-              <>
-                <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950">
-                  <span>Run Sheet</span>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => setIsTemplateOpen(true)} className="px-1.5 py-0.5 text-[9px] border border-zinc-800 rounded-sm hover:text-white hover:border-zinc-600">TPL</button>
-                    <button onClick={() => { setImportModalError(null); setImportDeckStatus(''); setIsLyricsImportOpen(true); }} className="px-1.5 py-0.5 text-[9px] border border-zinc-800 rounded-sm hover:text-white hover:border-zinc-600">LYR</button>
-                    <button onClick={addEmptyItem} className="hover:text-white p-1 hover:bg-zinc-900 rounded-sm"><PlusIcon className="w-3 h-3" /></button>
-                  </div>
-                </div>
-                <ScheduleList />
-              </>
-            ) : activeSidebarTab === 'AUDIO' ? (
-              <AudioLibrary
-                currentTrackId={currentTrack?.id || null}
-                isPlaying={isAudioPlaying}
-                progress={audioProgress}
-                onPlay={handlePlayTrack}
-                onToggle={toggleAudio}
-                onStop={stopAudio}
-                onVolumeChange={setAudioVolume}
-                volume={audioVolume}
-              />
-            ) : (
-              <BibleBrowser
-                onAddRequest={(item: ServiceItem) => {
-                  addItem(item);
-                  setActiveSidebarTab('SCHEDULE');
-                }}
-                onProjectRequest={(item: ServiceItem) => {
-                  addItem(item);
-                  goLive(item, 0);
-                  setActiveSidebarTab('SCHEDULE');
-                }}
-              />
-            )}
+          <div className="p-1 border-t border-zinc-800">
+            <button onClick={() => setIsProfileOpen(true)} className="w-full p-2.5 rounded-sm flex items-center gap-3 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors" title="SETTINGS"><Settings className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Settings</span></button>
           </div>
         </div>
 
+        {/* SIDEBAR PANEL */}
+        <div className="flex flex-col bg-zinc-950 border-r border-zinc-900 w-80 shrink-0">
+          {activeSidebarTab === 'SCHEDULE' && (
+            <>
+              <div className="p-3 border-b border-zinc-900 flex items-center justify-between shrink-0">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Run Sheet</h3>
+                <div className="flex gap-1">
+                  <button onClick={() => setIsTemplateOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">TPL</button>
+                  <button onClick={() => setIsLyricsImportOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">LYR</button>
+                  <button onClick={addEmptyItem} className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-sm transition-colors"><PlusIcon className="w-3.5 h-3.5" /></button>
+                </div>
+              </div>
+              <ScheduleList />
+            </>
+          )}
+          {activeSidebarTab === 'AUDIO' && <AudioLibrary currentTrackId={currentTrack?.id} isPlaying={isAudioPlaying} progress={audioProgress} onPlay={handlePlayTrack} onToggle={() => setIsAudioPlaying(!isAudioPlaying)} onStop={stopAudio} onVolumeChange={setAudioVolume} volume={audioVolume} />}
+          {activeSidebarTab === 'BIBLE' && (
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="p-3 border-b border-zinc-900 shrink-0"><h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Bible Hub</h3></div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-3"><BibleBrowser onProjectRequest={(item) => goLive(item)} onAddRequest={addItem} /></div>
+            </div>
+          )}
+          {activeSidebarTab === 'AUDIENCE' && (
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="p-3 border-b border-zinc-900 shrink-0"><h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Audience Studio</h3></div>
+              <AudienceStudio
+                workspaceId={workspaceId}
+                user={user}
+                onProjectRequest={(text, label) => {
+                  handleProjectAudienceMessage(text, label);
+                  setActiveSidebarTab('SCHEDULE');
+                }}
+              />
+            </div>
+          )}
+        </div>
+
         {/* ... (Existing Builder/Presenter Logic) ... */}
-        {viewMode === 'BUILDER' ? (
-          <div className="flex-1 flex bg-zinc-950 hidden md:flex">
-            <div className="w-56 bg-zinc-900/30 border-r border-zinc-900 flex flex-col hidden lg:flex">
-              <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex items-center">Library</div>
-              <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                {MOCK_SONGS.map((song, i) => (<div key={i} className="p-2 bg-zinc-900 rounded-sm cursor-pointer hover:bg-zinc-800 border border-zinc-800/50" onClick={() => setIsAIModalOpen(true)}><div className="font-bold text-xs text-zinc-300">{song.title}</div></div>))}
+        {
+          viewMode === 'BUILDER' ? (
+            <div className="flex-1 flex bg-zinc-950 hidden md:flex">
+              <div className="w-56 bg-zinc-900/30 border-r border-zinc-900 flex flex-col hidden lg:flex">
+                <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex items-center">Library</div>
+                <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                  {MOCK_SONGS.map((song, i) => (<div key={i} className="p-2 bg-zinc-900 rounded-sm cursor-pointer hover:bg-zinc-800 border border-zinc-800/50" onClick={() => setIsAIModalOpen(true)}><div className="font-bold text-xs text-zinc-300">{song.title}</div></div>))}
+                </div>
               </div>
-            </div>
-            <div className="flex-1 bg-zinc-950 flex flex-col overflow-hidden">
-              {selectedItem ? (
-                <>
-                  <ItemEditorPanel
-                    item={selectedItem}
-                    onUpdate={updateItem}
-                    onOpenLibrary={() => setIsMotionLibOpen(true)}
-                  />
-                  <div className="flex-1 overflow-y-auto p-6 bg-zinc-950">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {selectedItem.slides.map((slide, idx) => (
-                        <div key={slide.id} className="group relative">
-                          <div className="aspect-video bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 group-hover:border-blue-500/50 transition-all"><SlideRenderer slide={slide} item={selectedItem} fitContainer={true} isThumbnail={true} /></div>
-                          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1"><button onClick={() => handleEditSlide(slide)} className="p-1 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-blue-400 text-zinc-400"><EditIcon className="w-3 h-3" /></button><button onClick={(e) => handleDeleteSlide(slide.id, e)} className="p-1 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-red-400 text-zinc-400"><TrashIcon className="w-3 h-3" /></button></div>
-                        </div>
-                      ))}
-                      <button onClick={() => { setEditingSlide(null); setIsSlideEditorOpen(true); }} className="aspect-video border border-dashed border-zinc-800 rounded-sm flex flex-col items-center justify-center text-zinc-600 hover:text-zinc-400 bg-zinc-900/20"><PlusIcon className="w-6 h-6 mb-2" /><span className="text-xs font-medium uppercase tracking-wide">Add Slide</span></button>
+              <div className="flex-1 bg-zinc-950 flex flex-col overflow-hidden">
+                {selectedItem ? (
+                  <>
+                    <ItemEditorPanel
+                      item={selectedItem}
+                      onUpdate={updateItem}
+                      onOpenLibrary={() => setIsMotionLibOpen(true)}
+                    />
+                    <div className="flex-1 overflow-y-auto p-6 bg-zinc-950">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {selectedItem.slides.map((slide, idx) => (
+                          <div key={slide.id} className="group relative">
+                            <div className="aspect-video bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 group-hover:border-blue-500/50 transition-all"><SlideRenderer slide={slide} item={selectedItem} fitContainer={true} isThumbnail={true} /></div>
+                            <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1"><button onClick={() => handleEditSlide(slide)} className="p-1 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-blue-400 text-zinc-400"><EditIcon className="w-3 h-3" /></button><button onClick={(e) => handleDeleteSlide(slide.id, e)} className="p-1 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-red-400 text-zinc-400"><TrashIcon className="w-3 h-3" /></button></div>
+                          </div>
+                        ))}
+                        <button onClick={() => { setEditingSlide(null); setIsSlideEditorOpen(true); }} className="aspect-video border border-dashed border-zinc-800 rounded-sm flex flex-col items-center justify-center text-zinc-600 hover:text-zinc-400 bg-zinc-900/20"><PlusIcon className="w-6 h-6 mb-2" /><span className="text-xs font-medium uppercase tracking-wide">Add Slide</span></button>
+                      </div>
                     </div>
-                  </div>
-                </>
-              ) : <div className="flex-1 flex items-center justify-center text-zinc-600 font-mono text-xs uppercase">SELECT_ITEM_TO_EDIT</div>}
-            </div>
-          </div>
-        ) : (
-          <div className="flex-1 flex flex-col lg:flex-row bg-black">
-            <div className="flex-1 flex flex-col relative">
-              <div className="flex-1 relative flex items-center justify-center bg-zinc-950 overflow-hidden border-r border-zinc-900">
-                <div className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group">
-                  {blackout ? (<div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em]">BLACKOUT</div>) : (
-                    <SlideRenderer slide={activeSlide} item={activeItem} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={isPreviewMuted} lowerThirds={lowerThirdsEnabled} />
-                  )}
-                  <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-500 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">PREVIEW <button onClick={() => setIsPreviewMuted(!isPreviewMuted)} className={`ml-2 hover:text-white transition-colors ${isPreviewMuted ? 'text-red-400' : 'text-green-400'}`}>{isPreviewMuted ? <VolumeXIcon className="w-3 h-3" /> : <Volume2Icon className="w-3 h-3" />}</button></div>
-                </div>
+                  </>
+                ) : <div className="flex-1 flex items-center justify-center text-zinc-600 font-mono text-xs uppercase">SELECT_ITEM_TO_EDIT</div>}
               </div>
-              <div className="h-16 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between px-6 gap-4">
-                <div className="flex items-center gap-2"><button onClick={prevSlide} className="h-12 w-14 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center border border-zinc-700 active:scale-95 transition-transform"><ArrowLeftIcon className="w-5 h-5" /></button><button onClick={nextSlide} className="h-12 w-28 rounded-sm bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-bold text-sm tracking-wide active:scale-95 transition-transform"><ArrowRightIcon className="w-5 h-5 mr-1" /> NEXT</button></div>
-                {isActiveVideo && (<div className="flex items-center gap-2 bg-zinc-950 rounded-sm p-1 border border-zinc-800"><button onClick={() => triggerSeek(-10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><RewindIcon className="w-4 h-4" /></button><button onClick={() => setIsPlaying(!isPlaying)} className={`p-2.5 rounded-sm ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-green-900/50 text-green-400'}`}>{isPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4 fill-current" />}</button><button onClick={() => triggerSeek(10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><ForwardIcon className="w-4 h-4" /></button></div>)}
-                <div className="flex items-center gap-2">
-                  <button onClick={() => { if (routingMode !== 'PROJECTOR') setLowerThirdsEnabled((prev) => !prev); }} title={routingMode === 'PROJECTOR' ? 'Projector mode keeps full-screen text (lower thirds disabled).' : 'Toggle lower thirds overlay'} className={`h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border ${lowerThirdsEnabled ? 'bg-blue-950 text-blue-400 border-blue-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800'} ${routingMode === 'PROJECTOR' ? 'opacity-60 cursor-not-allowed' : ''}`}>LOWER THIRDS</button>
-                  <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} className="h-12 px-2 bg-zinc-950 border border-zinc-800 text-zinc-300 text-xs rounded-sm">
-                    <option value="PROJECTOR">Projector</option>
-                    <option value="STREAM">Stream</option>
-                    <option value="LOBBY">Lobby</option>
-                  </select>
-                  <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
-                    <select value={timerMode} onChange={(e) => {
-                      const mode = e.target.value as 'COUNTDOWN' | 'ELAPSED';
-                      setTimerMode(mode);
-                      setTimerRunning(false);
-                      setTimerSeconds(mode === 'COUNTDOWN' ? timerDurationMin * 60 : 0);
-                    }} className="bg-transparent text-zinc-300 text-[10px]">
-                      <option value="COUNTDOWN">Countdown</option>
-                      <option value="ELAPSED">Elapsed</option>
-                    </select>
-                    {timerMode === 'COUNTDOWN' && (
-                      <input type="number" min={1} max={180} value={timerDurationMin} onChange={(e) => {
-                        const value = Math.max(1, Math.min(180, Number(e.target.value) || 1));
-                        setTimerDurationMin(value);
-                        if (!timerRunning) setTimerSeconds(value * 60);
-                      }} className="w-14 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col lg:flex-row bg-black">
+              <div className="flex-1 flex flex-col relative">
+                <div className="flex-1 relative flex items-center justify-center bg-zinc-950 overflow-hidden border-r border-zinc-900">
+                  <div className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group">
+                    {blackout ? (<div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em]">BLACKOUT</div>) : (
+                      <SlideRenderer slide={activeSlide} item={activeItem} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={isPreviewMuted} lowerThirds={lowerThirdsEnabled} />
                     )}
-                    <div className={`text-[11px] font-mono w-14 text-center ${isTimerOvertime ? 'text-red-400 animate-pulse' : 'text-cyan-300'}`}>{formatTimer(timerSeconds)}</div>
-                    <button onClick={() => setTimerRunning((p) => !p)} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">{timerRunning ? 'Pause' : 'Start'}</button>
-                    <button onClick={() => {
-                      setTimerRunning(false);
-                      setTimerSeconds(timerMode === 'COUNTDOWN' ? timerDurationMin * 60 : 0);
-                    }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">Reset</button>
+                    <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-500 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">PREVIEW <button onClick={() => setIsPreviewMuted(!isPreviewMuted)} className={`ml-2 hover:text-white transition-colors ${isPreviewMuted ? 'text-red-400' : 'text-green-400'}`}>{isPreviewMuted ? <VolumeXIcon className="w-3 h-3" /> : <Volume2Icon className="w-3 h-3" />}</button></div>
                   </div>
-                  <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
-                    <span className="text-[10px] text-zinc-400">Cue</span>
-                    <input type="number" min={2} max={120} value={autoCueSeconds} onChange={(e) => {
-                      const value = Math.max(2, Math.min(120, Number(e.target.value) || 2));
-                      setAutoCueSeconds(value);
-                      setAutoCueRemaining(value);
-                    }} className="w-12 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
-                    <button onClick={() => setAutoCueEnabled((p) => !p)} className={`text-[10px] px-2 py-1 rounded ${autoCueEnabled ? 'bg-cyan-900/40 text-cyan-300' : 'bg-zinc-800 text-zinc-300'}`}>{autoCueEnabled ? `On ${autoCueRemaining}s` : 'Off'}</button>
+                </div>
+                <div className="h-16 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between px-6 gap-4">
+                  <div className="flex items-center gap-2"><button onClick={prevSlide} className="h-12 w-14 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center border border-zinc-700 active:scale-95 transition-transform"><ArrowLeftIcon className="w-5 h-5" /></button><button onClick={nextSlide} className="h-12 w-28 rounded-sm bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-bold text-sm tracking-wide active:scale-95 transition-transform"><ArrowRightIcon className="w-5 h-5 mr-1" /> NEXT</button></div>
+                  {isActiveVideo && (<div className="flex items-center gap-2 bg-zinc-950 rounded-sm p-1 border border-zinc-800"><button onClick={() => triggerSeek(-10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><RewindIcon className="w-4 h-4" /></button><button onClick={() => setIsPlaying(!isPlaying)} className={`p-2.5 rounded-sm ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-green-900/50 text-green-400'}`}>{isPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4 fill-current" />}</button><button onClick={() => triggerSeek(10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><ForwardIcon className="w-4 h-4" /></button></div>)}
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => { if (routingMode !== 'PROJECTOR') setLowerThirdsEnabled((prev) => !prev); }} title={routingMode === 'PROJECTOR' ? 'Projector mode keeps full-screen text (lower thirds disabled).' : 'Toggle lower thirds overlay'} className={`h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border ${lowerThirdsEnabled ? 'bg-blue-950 text-blue-400 border-blue-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800'} ${routingMode === 'PROJECTOR' ? 'opacity-60 cursor-not-allowed' : ''}`}>LOWER THIRDS</button>
+                    <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} className="h-12 px-2 bg-zinc-950 border border-zinc-800 text-zinc-300 text-xs rounded-sm">
+                      <option value="PROJECTOR">Projector</option>
+                      <option value="STREAM">Stream</option>
+                      <option value="LOBBY">Lobby</option>
+                    </select>
+                    <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
+                      <select value={timerMode} onChange={(e) => {
+                        const mode = e.target.value as 'COUNTDOWN' | 'ELAPSED';
+                        setTimerMode(mode);
+                        setTimerRunning(false);
+                        setTimerSeconds(mode === 'COUNTDOWN' ? timerDurationMin * 60 : 0);
+                      }} className="bg-transparent text-zinc-300 text-[10px]">
+                        <option value="COUNTDOWN">Countdown</option>
+                        <option value="ELAPSED">Elapsed</option>
+                      </select>
+                      {timerMode === 'COUNTDOWN' && (
+                        <input type="number" min={1} max={180} value={timerDurationMin} onChange={(e) => {
+                          const value = Math.max(1, Math.min(180, Number(e.target.value) || 1));
+                          setTimerDurationMin(value);
+                          if (!timerRunning) setTimerSeconds(value * 60);
+                        }} className="w-14 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
+                      )}
+                      <div className={`text-[11px] font-mono w-14 text-center ${isTimerOvertime ? 'text-red-400 animate-pulse' : 'text-cyan-300'}`}>{formatTimer(timerSeconds)}</div>
+                      <button onClick={() => setTimerRunning((p) => !p)} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">{timerRunning ? 'Pause' : 'Start'}</button>
+                      <button onClick={() => {
+                        setTimerRunning(false);
+                        setTimerSeconds(timerMode === 'COUNTDOWN' ? timerDurationMin * 60 : 0);
+                      }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">Reset</button>
+                    </div>
+                    <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
+                      <span className="text-[10px] text-zinc-400">Cue</span>
+                      <input type="number" min={2} max={120} value={autoCueSeconds} onChange={(e) => {
+                        const value = Math.max(2, Math.min(120, Number(e.target.value) || 2));
+                        setAutoCueSeconds(value);
+                        setAutoCueRemaining(value);
+                      }} className="w-12 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
+                      <button onClick={() => setAutoCueEnabled((p) => !p)} className={`text-[10px] px-2 py-1 rounded ${autoCueEnabled ? 'bg-cyan-900/40 text-cyan-300' : 'bg-zinc-800 text-zinc-300'}`}>{autoCueEnabled ? `On ${autoCueRemaining}s` : 'Off'}</button>
+                    </div>
+                    <button onClick={() => navigator.clipboard?.writeText(obsOutputUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY OBS URL</button>
+                    <button onClick={() => setBlackout(!blackout)} className={`h-12 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button>
                   </div>
-                  <button onClick={() => navigator.clipboard?.writeText(obsOutputUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY OBS URL</button>
-                  <button onClick={() => setBlackout(!blackout)} className={`h-12 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button>
+                </div>
+              </div>
+              <div className={`w-full lg:w-72 bg-zinc-950 border-l border-zinc-900 flex flex-col h-64 lg:h-auto border-t lg:border-t-0 ${workspaceSettings.machineMode ? 'hidden' : 'hidden md:flex'}`}>
+                <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-500 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950"><span>Live Queue</span>{activeItem && <span className="text-red-500 animate-pulse">● LIVE</span>}</div>
+                <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 lg:grid-cols-2 gap-2 content-start scroll-smooth">
+                  {activeItem?.slides.map((slide, idx) => (<div key={slide.id} ref={activeSlideIndex === idx ? activeSlideRef : null} onClick={() => { setActiveSlideIndex(idx); setBlackout(false); setIsPlaying(true); }} className={`cursor-pointer rounded-sm overflow-hidden border transition-all relative aspect-video ${activeSlideIndex === idx ? 'ring-2 ring-red-500 border-red-500 opacity-100' : 'border-zinc-800 opacity-50 hover:opacity-80'}`}><div className="absolute inset-0 pointer-events-none"><SlideRenderer slide={slide} item={activeItem} fitContainer={true} isThumbnail={true} /></div><div className="absolute bottom-0 left-0 right-0 bg-black/80 text-zinc-300 text-[9px] px-1 py-0.5 font-mono truncate border-t border-zinc-800">{idx + 1}. {slide.label}</div></div>))}
+                  {!activeItem && <div className="col-span-3 lg:col-span-2 text-center text-zinc-700 text-xs font-mono py-10 uppercase">NO_ACTIVE_ITEM</div>}
                 </div>
               </div>
             </div>
-            <div className={`w-full lg:w-72 bg-zinc-950 border-l border-zinc-900 flex flex-col h-64 lg:h-auto border-t lg:border-t-0 ${workspaceSettings.machineMode ? 'hidden' : 'hidden md:flex'}`}>
-              <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-500 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950"><span>Live Queue</span>{activeItem && <span className="text-red-500 animate-pulse">● LIVE</span>}</div>
-              <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 lg:grid-cols-2 gap-2 content-start scroll-smooth">
-                {activeItem?.slides.map((slide, idx) => (<div key={slide.id} ref={activeSlideIndex === idx ? activeSlideRef : null} onClick={() => { setActiveSlideIndex(idx); setBlackout(false); setIsPlaying(true); }} className={`cursor-pointer rounded-sm overflow-hidden border transition-all relative aspect-video ${activeSlideIndex === idx ? 'ring-2 ring-red-500 border-red-500 opacity-100' : 'border-zinc-800 opacity-50 hover:opacity-80'}`}><div className="absolute inset-0 pointer-events-none"><SlideRenderer slide={slide} item={activeItem} fitContainer={true} isThumbnail={true} /></div><div className="absolute bottom-0 left-0 right-0 bg-black/80 text-zinc-300 text-[9px] px-1 py-0.5 font-mono truncate border-t border-zinc-800">{idx + 1}. {slide.label}</div></div>))}
-                {!activeItem && <div className="col-span-3 lg:col-span-2 text-center text-zinc-700 text-xs font-mono py-10 uppercase">NO_ACTIVE_ITEM</div>}
-              </div>
-            </div>
-          </div>
-        )}
+          )
+        }
       </div>
 
       {
@@ -1998,6 +2177,7 @@ function App() {
       }
 
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      <ConnectModal isOpen={isConnectOpen} onClose={() => setIsConnectOpen(false)} audienceUrl={audienceUrl} />
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
       {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={(settings) => setWorkspaceSettings((prev) => ({ ...prev, ...settings }))} onLogout={handleLogout} currentSettings={workspaceSettings} currentUser={user} />}
       {

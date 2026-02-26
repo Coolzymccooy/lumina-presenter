@@ -43,9 +43,16 @@ export const DEFAULT_BACKGROUNDS = [
 ];
 
 export const VIDEO_BACKGROUNDS = [
-  "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
-  "https://www.w3schools.com/html/mov_bbb.mp4",
-  "https://samplelib.com/lib/preview/mp4/sample-5s.mp4"
+  "https://player.vimeo.com/external/370331493.hd.mp4?s=383057e1d5225f543dc5364177265a9530fc976a&profile_id=175&oauth2_token_id=57447761", // Abstract Blue Flow
+  "https://player.vimeo.com/external/403209224.hd.mp4?s=97cf46a06660600126a117b07096d2719f96213a&profile_id=175&oauth2_token_id=57447761", // Purple Particles
+  "https://player.vimeo.com/external/394336066.hd.mp4?s=d01f99c1d683786194da94fc54f392dd55e94b15&profile_id=175&oauth2_token_id=57447761", // Slow Clouds
+  "https://player.vimeo.com/external/432049182.hd.mp4?s=f52ed6e6e22c71048450f38b25f9b48c4ae8f349&profile_id=175&oauth2_token_id=57447761", // Bokeh Lights
+  "https://player.vimeo.com/external/481961474.hd.mp4?s=7b0185915d654203e05139c820f46c37341fe7d1&profile_id=175&oauth2_token_id=57447761", // Abstract Mesh
+  "https://player.vimeo.com/external/403758256.hd.mp4?s=0f97576571587a808f9725f463a8a38c207d5781&profile_id=175&oauth2_token_id=57447761", // Deep Space Sparkles
+  "https://player.vimeo.com/external/431988899.hd.mp4?s=d994e6377e8be5a0c9a419799f2425516a5d736a&profile_id=175&oauth2_token_id=57447761", // Forest Sunbeams
+  "https://player.vimeo.com/external/448201205.hd.mp4?s=f048e918c5e0de0459c5d19d6a36f7311746726c&profile_id=175&oauth2_token_id=57447761", // Soft Ocean Waves
+  "https://player.vimeo.com/external/394333635.hd.mp4?s=98da698270ca81f4404746d84128537a4c0a525f&profile_id=175&oauth2_token_id=57447761", // Golden Hour Glow
+  "https://player.vimeo.com/external/403210332.hd.mp4?s=98da698270ca81f4404746d84128537a4c0a525f&profile_id=175&oauth2_token_id=57447761", // Abstract Geometry
 ];
 
 export const SOLID_COLORS = [
