@@ -13,8 +13,8 @@ interface LandingPageProps {
   hasSavedSession?: boolean;
 }
 
-const INSTALLER_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases/download/v2.1.0/Lumina-Presenter-Setup-2.1.0.exe';
-const PORTABLE_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases/download/v2.1.0/Lumina-Presenter-2.1.0.exe';
+const INSTALLER_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases/download/v2.1.1/Lumina-Presenter-Setup-2.1.1.exe';
+const PORTABLE_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases/download/v2.1.1/Lumina-Presenter-2.1.1.exe';
 const RELEASES_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases';
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isAuthenticated, hasSavedSession = false }) => {
