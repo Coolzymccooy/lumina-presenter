@@ -244,7 +244,7 @@ export const OutputRoute: React.FC = () => {
           isMuted={display.outputMuted}
           isProjector={true}
           lowerThirds={display.lowerThirdsEnabled}
-          showSlideLabel={false}
+          showSlideLabel={true}
           showProjectorHelper={false}
         />
       )}
