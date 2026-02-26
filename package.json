@@ -8,7 +8,8 @@
     "server": "node server/index.js",
     "start": "node server/index.js",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron:dev": "electron ."
   },
   "dependencies": {
     "@google/genai": "^1.33.0",
@@ -22,15 +23,21 @@
     "react-player": "^3.4.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.2.1",
     "@types/node": "^22.19.3",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.4.20",
+    "electron": "^40.6.1",
+    "electron-is-dev": "^3.0.1",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
     "typescript": "~5.8.2",
     "vite": "^6.4.1"
   },
   "description": "<div align=\"center\"> <img width=\"1200\" height=\"475\" alt=\"GHBanner\" src=\"https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6\" /> </div>",
-  "main": "index.js",
+  "main": "electron/main.js",
   "keywords": [],
   "author": "",
   "license": "ISC"

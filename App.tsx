@@ -110,27 +110,31 @@ const PauseIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
 );
 const RewindIcon = ({ className }: { className?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>
 );
 const ForwardIcon = ({ className }: { className?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>
 );
 
 function App() {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [viewState, setViewState] = useState<'landing' | 'studio'>('landing'); // NEW: Top-level routing
-  
+  const [viewState, setViewState] = useState<'landing' | 'studio'>(() => {
+    // @ts-ignore
+    if (window.electron?.isElectron) return 'studio';
+    return 'landing';
+  });
+
   const [saveError, setSaveError] = useState<boolean>(false);
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [syncIssue, setSyncIssue] = useState<string | null>(null);
-  
+
   // ✅ Projector popout window handle (opened in click handler to avoid popup blockers)
   const [outputWin, setOutputWin] = useState<Window | null>(null);
   const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'AUDIO' | 'BIBLE'>('SCHEDULE');
 
   const parseJson = <T,>(raw: string | null, fallback: T): T => {
-    if (!raw) return fallback;
+    if (raw === null) return fallback;
     try {
       return JSON.parse(raw) as T;
     } catch {
@@ -418,17 +422,21 @@ function App() {
         setUser(u);
         setAuthLoading(false);
         // Auto-enter workspace if authenticated
-        if (u) setViewState('studio'); 
+        if (u) {
+          setViewState('studio');
+        } else {
+          // Skip landing page in Electron
+          // @ts-ignore
+          if (window.electron?.isElectron) {
+            setViewState('studio');
+          } else {
+            setViewState('landing');
+          }
+        }
       });
       return () => unsub();
     }
 
-    // demo mode fallback
-    const demoUser = localStorage.getItem("lumina_demo_user");
-    if (demoUser) {
-        setUser(JSON.parse(demoUser));
-        setViewState('studio');
-    }
     setAuthLoading(false);
   }, []);
 
@@ -541,85 +549,85 @@ function App() {
 
   useEffect(() => {
     if (viewMode === 'PRESENTER' && antiSleepAudioRef.current) {
-        antiSleepAudioRef.current.play().catch(e => console.log("Anti-sleep audio needs interaction", e));
+      antiSleepAudioRef.current.play().catch(e => console.log("Anti-sleep audio needs interaction", e));
     } else if (antiSleepAudioRef.current) {
-        antiSleepAudioRef.current.pause();
+      antiSleepAudioRef.current.pause();
     }
   }, [viewMode]);
 
   // --- AUDIO PLAYER EFFECT ---
   useEffect(() => {
     if (!audioRef.current) {
-        audioRef.current = new Audio();
+      audioRef.current = new Audio();
     }
-    
+
     const audio = audioRef.current;
-    
+
     const handleTimeUpdate = () => {
-        if (audio.duration) {
-            setAudioProgress((audio.currentTime / audio.duration) * 100);
-        }
+      if (audio.duration) {
+        setAudioProgress((audio.currentTime / audio.duration) * 100);
+      }
     };
 
     const handleEnded = () => {
-        setIsAudioPlaying(false);
-        setAudioProgress(0);
+      setIsAudioPlaying(false);
+      setAudioProgress(0);
     };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('ended', handleEnded);
 
     return () => {
-        audio.removeEventListener('timeupdate', handleTimeUpdate);
-        audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
     };
   }, []);
 
   useEffect(() => {
-      if (audioRef.current) {
-          audioRef.current.volume = audioVolume;
-      }
+    if (audioRef.current) {
+      audioRef.current.volume = audioVolume;
+    }
   }, [audioVolume]);
 
   const handlePlayTrack = (track: GospelTrack) => {
-      if (audioRef.current) {
-          if (currentTrack?.id === track.id) {
-              toggleAudio();
-          } else {
-              audioRef.current.src = track.url;
-              audioRef.current.play().catch(e => console.error("Audio playback error", e));
-              setCurrentTrack(track);
-              setIsAudioPlaying(true);
-              logActivity(user?.uid, 'ERROR', { type: 'AUDIO_PLAY', track: track.title }); 
-          }
+    if (audioRef.current) {
+      if (currentTrack?.id === track.id) {
+        toggleAudio();
+      } else {
+        audioRef.current.src = track.url;
+        audioRef.current.play().catch(e => console.error("Audio playback error", e));
+        setCurrentTrack(track);
+        setIsAudioPlaying(true);
+        logActivity(user?.uid, 'ERROR', { type: 'AUDIO_PLAY', track: track.title });
       }
+    }
   };
 
   const toggleAudio = () => {
-      if (audioRef.current && currentTrack) {
-          if (isAudioPlaying) {
-              audioRef.current.pause();
-          } else {
-              audioRef.current.play();
-          }
-          setIsAudioPlaying(!isAudioPlaying);
+    if (audioRef.current && currentTrack) {
+      if (isAudioPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
       }
+      setIsAudioPlaying(!isAudioPlaying);
+    }
   };
 
   const stopAudio = () => {
-      if (audioRef.current) {
-          audioRef.current.pause();
-          audioRef.current.currentTime = 0;
-          setIsAudioPlaying(false);
-          setAudioProgress(0);
-          setCurrentTrack(null);
-      }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      setIsAudioPlaying(false);
+      setAudioProgress(0);
+      setCurrentTrack(null);
+    }
   };
 
   const handleLoginSuccess = (loggedInUser: any) => {
     setUser(loggedInUser);
     if (!isFirebaseConfigured()) {
-        localStorage.setItem('lumina_demo_user', JSON.stringify(loggedInUser));
+      localStorage.setItem('lumina_demo_user', JSON.stringify(loggedInUser));
     }
     logActivity(loggedInUser.uid, 'SESSION_START');
     setViewState('studio'); // Transition to app
@@ -711,7 +719,7 @@ function App() {
 
   useEffect(() => {
     if (viewMode === 'PRESENTER' && activeSlideRef.current) {
-        activeSlideRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      activeSlideRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
   }, [activeSlideIndex, activeItemId, viewMode]);
 
@@ -945,9 +953,9 @@ function App() {
   };
 
   const handleAIItemGenerated = (item: ServiceItem) => {
-      const sentiment = analyzeSentimentContext(item.title + ' ' + (item.slides[0]?.content || ''));
-      logActivity(user?.uid, 'AI_GENERATION', { sentiment, slideCount: item.slides.length, type: item.type });
-      addItem(item);
+    const sentiment = analyzeSentimentContext(item.title + ' ' + (item.slides[0]?.content || ''));
+    logActivity(user?.uid, 'AI_GENERATION', { sentiment, slideCount: item.slides.length, type: item.type });
+    addItem(item);
   };
 
   const updateItem = (updatedItem: ServiceItem) => {
@@ -1019,8 +1027,8 @@ function App() {
   }, [activeItem, activeSlideIndex, schedule]);
 
   const triggerSeek = (seconds: number) => {
-     setSeekAmount(seconds);
-     setSeekCommand(Date.now());
+    setSeekAmount(seconds);
+    setSeekCommand(Date.now());
   };
 
   const stopProgramVideo = useCallback(() => {
@@ -1065,7 +1073,7 @@ function App() {
       if (isTypingTarget) return;
       if (isAIModalOpen || isSlideEditorOpen || isHelpOpen || isProfileOpen || isMotionLibOpen || isTemplateOpen || isLyricsImportOpen) return;
       if (viewMode !== 'PRESENTER') return;
-      switch(e.key) {
+      switch (e.key) {
         case 'ArrowRight': case ' ': case 'PageDown': e.preventDefault(); nextSlide(); break;
         case 'ArrowLeft': case 'PageUp': e.preventDefault(); prevSlide(); break;
         case 'b': setBlackout(prev => !prev); break;
@@ -1081,7 +1089,7 @@ function App() {
   useEffect(() => {
     if (!isFirebaseConfigured() || !user?.uid) return;
 
-    let unsubPlaylists = () => {};
+    let unsubPlaylists = () => { };
     try {
       unsubPlaylists = subscribeToTeamPlaylists(
         user.uid,
@@ -1312,7 +1320,7 @@ function App() {
 
     if (isOutputLive) {
       setIsOutputLive(false);
-      try { outputWin?.close(); } catch {}
+      try { outputWin?.close(); } catch { }
       setOutputWin(null);
       return;
     }
@@ -1339,11 +1347,11 @@ function App() {
       w.focus();
       w.moveTo?.(0, 0);
       w.resizeTo?.(width, height);
-    } catch {}
+    } catch { }
     try {
       const fsAttempt = w.document?.documentElement?.requestFullscreen?.();
-      fsAttempt?.catch(() => {});
-    } catch {}
+      fsAttempt?.catch(() => { });
+    } catch { }
   };
 
   useEffect(() => {
@@ -1361,7 +1369,7 @@ function App() {
   const handleToggleStageDisplay = () => {
     if (isStageDisplayLive) {
       setIsStageDisplayLive(false);
-      try { stageWin?.close(); } catch {}
+      try { stageWin?.close(); } catch { }
       setStageWin(null);
       return;
     }
@@ -1406,59 +1414,59 @@ function App() {
     setPopupBlocked(false);
     setStageWin(w);
     setIsStageDisplayLive(true);
-    try { w.focus(); } catch {}
+    try { w.focus(); } catch { }
   };
 
   if (authLoading) return <div className="h-screen w-screen bg-black flex items-center justify-center text-zinc-500 font-mono text-xs animate-pulse">LOADING NEURAL HUB...</div>;
 
   // ROUTING: LANDING PAGE
   if (viewState === 'landing') {
-      return <LandingPage onEnter={() => setViewState('studio')} onLogout={user ? handleLogout : undefined} isAuthenticated={!!user} hasSavedSession={hasSavedSession} />;
+    return <LandingPage onEnter={() => setViewState('studio')} onLogout={user ? handleLogout : undefined} isAuthenticated={!!user} hasSavedSession={hasSavedSession} />;
   }
 
-  // ROUTING: LOGIN (If not authenticated and trying to enter)
+  // ROUTING: LOGIN (If not authenticated, force login for studio)
   if (!user && viewState === 'studio') {
-      return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
-  
+
   const ScheduleList = () => (
     <div className="flex-1 overflow-y-auto bg-zinc-950">
       {teamPlaylists.length > 0 && (<div className="px-3 py-2 text-[10px] text-emerald-400 border-b border-zinc-900">Cloud Playlists Synced: {teamPlaylists.length}</div>)}
       {schedule.map((item, idx) => (
         <div key={item.id} className="flex flex-col border-b border-zinc-900">
-            <div onClick={() => {
-              setSelectedItemId(item.id);
-              if (viewMode === 'PRESENTER') {
-                setBlackout(false);
-                if (Array.isArray(item.slides) && item.slides.length > 0) {
-                  const currentIdx = activeItemId === item.id && activeSlideIndex >= 0 ? activeSlideIndex : 0;
-                  goLive(item, currentIdx);
-                }
+          <div onClick={() => {
+            setSelectedItemId(item.id);
+            if (viewMode === 'PRESENTER') {
+              setBlackout(false);
+              if (Array.isArray(item.slides) && item.slides.length > 0) {
+                const currentIdx = activeItemId === item.id && activeSlideIndex >= 0 ? activeSlideIndex : 0;
+                goLive(item, currentIdx);
               }
-            }} className={`px-3 py-3 cursor-pointer flex items-center justify-between group transition-colors ${selectedItemId === item.id ? 'bg-zinc-900 border-l-2 border-l-blue-600' : 'hover:bg-zinc-900/50 border-l-2 border-l-transparent'} ${activeItemId === item.id ? 'bg-red-950/20' : ''}`}>
-              <div className="flex flex-col truncate flex-1 min-w-0 pr-2">
-                <span className={`font-medium text-sm truncate ${activeItemId === item.id ? 'text-red-500' : 'text-zinc-300'}`}>{item.title}</span>
-                <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mt-1 flex items-center gap-1">{item.type}</span>
-              </div>
-              <div className="flex gap-1 items-center">
-                {activeItemId === item.id && <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse mr-2"></div>}
-                {viewMode === 'BUILDER' ? (
-                    <button onClick={(e) => { e.stopPropagation(); removeItem(item.id); }} className="p-1 hover:text-red-400 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity"><TrashIcon className="w-4 h-4" /></button>
-                ) : (
-                    <button onClick={(e) => { e.stopPropagation(); goLive(item); }} className={`p-1 transition-colors ${activeItemId === item.id ? 'text-red-500' : 'text-zinc-600 hover:text-white'}`}><PlayIcon className="w-4 h-4 fill-current" /></button>
-                )}
-              </div>
+            }
+          }} className={`px-3 py-3 cursor-pointer flex items-center justify-between group transition-colors ${selectedItemId === item.id ? 'bg-zinc-900 border-l-2 border-l-blue-600' : 'hover:bg-zinc-900/50 border-l-2 border-l-transparent'} ${activeItemId === item.id ? 'bg-red-950/20' : ''}`}>
+            <div className="flex flex-col truncate flex-1 min-w-0 pr-2">
+              <span className={`font-medium text-sm truncate ${activeItemId === item.id ? 'text-red-500' : 'text-zinc-300'}`}>{item.title}</span>
+              <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mt-1 flex items-center gap-1">{item.type}</span>
             </div>
-            {selectedItemId === item.id && item.slides.length > 0 && (
-                <div className="bg-zinc-950 border-b border-zinc-900">
-                    {item.slides.map((slide, sIdx) => (
-                        <div key={slide.id} className={`pl-8 pr-3 py-2 text-xs text-zinc-500 hover:text-zinc-200 cursor-pointer border-l-2 ${activeItemId === item.id && activeSlideIndex === sIdx ? 'text-red-400 font-bold border-l-red-600 bg-red-950/10' : 'border-l-transparent hover:bg-zinc-900/30'}`} onClick={(e) => { e.stopPropagation(); if (viewMode === 'PRESENTER') goLive(item, sIdx); }}>
-                            <div className="flex justify-between items-center"><span className="truncate flex-1 font-mono text-[10px] opacity-80">{slide.label || `SLIDE ${sIdx + 1}`}</span>{activeItemId === item.id && activeSlideIndex === sIdx && <span className="text-[9px] uppercase tracking-widest text-red-600 font-bold">LIVE</span>}</div>
-                            <div className="truncate opacity-70 mt-0.5 font-sans">{slide.content.substring(0,40)}</div>
-                        </div>
-                    ))}
+            <div className="flex gap-1 items-center">
+              {activeItemId === item.id && <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse mr-2"></div>}
+              {viewMode === 'BUILDER' ? (
+                <button onClick={(e) => { e.stopPropagation(); removeItem(item.id); }} className="p-1 hover:text-red-400 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity"><TrashIcon className="w-4 h-4" /></button>
+              ) : (
+                <button onClick={(e) => { e.stopPropagation(); goLive(item); }} className={`p-1 transition-colors ${activeItemId === item.id ? 'text-red-500' : 'text-zinc-600 hover:text-white'}`}><PlayIcon className="w-4 h-4 fill-current" /></button>
+              )}
+            </div>
+          </div>
+          {selectedItemId === item.id && item.slides.length > 0 && (
+            <div className="bg-zinc-950 border-b border-zinc-900">
+              {item.slides.map((slide, sIdx) => (
+                <div key={slide.id} className={`pl-8 pr-3 py-2 text-xs text-zinc-500 hover:text-zinc-200 cursor-pointer border-l-2 ${activeItemId === item.id && activeSlideIndex === sIdx ? 'text-red-400 font-bold border-l-red-600 bg-red-950/10' : 'border-l-transparent hover:bg-zinc-900/30'}`} onClick={(e) => { e.stopPropagation(); if (viewMode === 'PRESENTER') goLive(item, sIdx); }}>
+                  <div className="flex justify-between items-center"><span className="truncate flex-1 font-mono text-[10px] opacity-80">{slide.label || `SLIDE ${sIdx + 1}`}</span>{activeItemId === item.id && activeSlideIndex === sIdx && <span className="text-[9px] uppercase tracking-widest text-red-600 font-bold">LIVE</span>}</div>
+                  <div className="truncate opacity-70 mt-0.5 font-sans">{slide.content.substring(0, 40)}</div>
                 </div>
-            )}
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -1474,7 +1482,7 @@ function App() {
 
       <header className="h-12 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center gap-6">
-          <div 
+          <div
             onClick={() => setViewState('landing')}
             className="flex items-center gap-2 text-zinc-100 font-mono tracking-tighter text-lg font-bold cursor-pointer hover:opacity-80 transition-opacity"
           >
@@ -1493,36 +1501,36 @@ function App() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-           <button onClick={() => setIsHelpOpen(true)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-sm"><HelpIcon className="w-4 h-4" /></button>
-           <button onClick={() => setIsProfileOpen(true)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-sm"><Settings className="w-4 h-4" /></button>
-           <button onClick={() => setWorkspaceSettings((prev) => ({ ...prev, machineMode: !prev.machineMode }))} className={`px-3 py-1.5 rounded-sm text-xs font-bold border ${workspaceSettings.machineMode ? 'bg-cyan-950 text-cyan-300 border-cyan-800' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}>MACHINE</button>
-           <button onClick={handleLogout} className="px-3 py-1.5 rounded-sm text-xs font-bold border bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white">LOGOUT</button>
-           <button onClick={() => setIsAIModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 text-zinc-400 border border-zinc-800 hover:border-blue-900 rounded-sm text-xs"><SparklesIcon className="w-3 h-3" />AI ASSIST</button>
-           <button onClick={handleToggleOutput} className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-bold border ${isOutputLive ? 'bg-emerald-950/30 text-emerald-400 border-emerald-900' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}><MonitorIcon className="w-3 h-3" />{isOutputLive ? 'OUTPUT ACTIVE' : 'LAUNCH OUTPUT'}</button>
-           <button onClick={handleToggleStageDisplay} className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-bold border ${isStageDisplayLive ? 'bg-purple-950/30 text-purple-400 border-purple-900' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}>STAGE DISPLAY</button>
-           <button onClick={() => navigator.clipboard?.writeText(remoteControlUrl)} className="px-3 py-1.5 rounded-sm text-xs font-bold border bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white">COPY REMOTE URL</button>
+          <button onClick={() => setIsHelpOpen(true)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-sm"><HelpIcon className="w-4 h-4" /></button>
+          <button onClick={() => setIsProfileOpen(true)} className="p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 rounded-sm"><Settings className="w-4 h-4" /></button>
+          <button onClick={() => setWorkspaceSettings((prev) => ({ ...prev, machineMode: !prev.machineMode }))} className={`px-3 py-1.5 rounded-sm text-xs font-bold border ${workspaceSettings.machineMode ? 'bg-cyan-950 text-cyan-300 border-cyan-800' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}>MACHINE</button>
+          <button onClick={handleLogout} className="px-3 py-1.5 rounded-sm text-xs font-bold border bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white">LOGOUT</button>
+          <button onClick={() => setIsAIModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900 text-zinc-400 border border-zinc-800 hover:border-blue-900 rounded-sm text-xs"><SparklesIcon className="w-3 h-3" />AI ASSIST</button>
+          <button onClick={handleToggleOutput} className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-bold border ${isOutputLive ? 'bg-emerald-950/30 text-emerald-400 border-emerald-900' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}><MonitorIcon className="w-3 h-3" />{isOutputLive ? 'OUTPUT ACTIVE' : 'LAUNCH OUTPUT'}</button>
+          <button onClick={handleToggleStageDisplay} className={`flex items-center gap-2 px-3 py-1.5 rounded-sm text-xs font-bold border ${isStageDisplayLive ? 'bg-purple-950/30 text-purple-400 border-purple-900' : 'bg-zinc-900 text-zinc-400 border-zinc-800'}`}>STAGE DISPLAY</button>
+          <button onClick={() => navigator.clipboard?.writeText(remoteControlUrl)} className="px-3 py-1.5 rounded-sm text-xs font-bold border bg-zinc-900 text-zinc-300 border-zinc-800 hover:text-white">COPY REMOTE URL</button>
         </div>
       </header>
 
       {/* MOBILE NAV BAR (Visible only on small screens) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 flex justify-around p-3 z-50">
-         <button onClick={() => setViewMode('BUILDER')} className={`flex flex-col items-center gap-1 ${viewMode === 'BUILDER' ? 'text-white' : 'text-zinc-500'}`}><EditIcon className="w-5 h-5"/> <span className="text-[10px] font-bold">BUILD</span></button>
-         <button onClick={() => setViewMode('PRESENTER')} className={`flex flex-col items-center gap-1 ${viewMode === 'PRESENTER' ? 'text-white' : 'text-zinc-500'}`}><PlayIcon className="w-5 h-5"/> <span className="text-[10px] font-bold">PRESENT</span></button>
-         <button onClick={handleToggleOutput} className={`flex flex-col items-center gap-1 ${isOutputLive ? 'text-emerald-400' : 'text-zinc-500'}`}><MonitorIcon className="w-5 h-5"/> <span className="text-[10px] font-bold">OUTPUT</span></button>
+        <button onClick={() => setViewMode('BUILDER')} className={`flex flex-col items-center gap-1 ${viewMode === 'BUILDER' ? 'text-white' : 'text-zinc-500'}`}><EditIcon className="w-5 h-5" /> <span className="text-[10px] font-bold">BUILD</span></button>
+        <button onClick={() => setViewMode('PRESENTER')} className={`flex flex-col items-center gap-1 ${viewMode === 'PRESENTER' ? 'text-white' : 'text-zinc-500'}`}><PlayIcon className="w-5 h-5" /> <span className="text-[10px] font-bold">PRESENT</span></button>
+        <button onClick={handleToggleOutput} className={`flex flex-col items-center gap-1 ${isOutputLive ? 'text-emerald-400' : 'text-zinc-500'}`}><MonitorIcon className="w-5 h-5" /> <span className="text-[10px] font-bold">OUTPUT</span></button>
       </div>
 
       <div className="flex-1 flex overflow-hidden mb-16 md:mb-0">
         {/* Sidebar with Tabs (Hidden on Mobile unless Builder Mode) */}
         <div className={`w-full md:w-64 bg-zinc-950 border-r border-zinc-900 flex-col shrink-0 ${viewMode === 'BUILDER' ? 'flex' : 'hidden md:flex'}`}>
           <div className="flex border-b border-zinc-900 bg-zinc-950">
-             <button onClick={() => setActiveSidebarTab('SCHEDULE')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeSidebarTab === 'SCHEDULE' ? 'text-blue-500 border-blue-600 bg-zinc-900/50' : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>Items</button>
-             <button onClick={() => setActiveSidebarTab('AUDIO')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeSidebarTab === 'AUDIO' ? 'text-blue-500 border-blue-600 bg-zinc-900/50' : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>Audio</button>
-             <button onClick={() => setActiveSidebarTab('BIBLE')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeSidebarTab === 'BIBLE' ? 'text-blue-500 border-blue-600 bg-zinc-900/50' : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>Bible</button>
+            <button onClick={() => setActiveSidebarTab('SCHEDULE')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeSidebarTab === 'SCHEDULE' ? 'text-blue-500 border-blue-600 bg-zinc-900/50' : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>Items</button>
+            <button onClick={() => setActiveSidebarTab('AUDIO')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeSidebarTab === 'AUDIO' ? 'text-blue-500 border-blue-600 bg-zinc-900/50' : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>Audio</button>
+            <button onClick={() => setActiveSidebarTab('BIBLE')} className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition-colors border-b-2 ${activeSidebarTab === 'BIBLE' ? 'text-blue-500 border-blue-600 bg-zinc-900/50' : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>Bible</button>
           </div>
-          
+
           <div className="flex-1 flex flex-col overflow-hidden">
             {activeSidebarTab === 'SCHEDULE' ? (
-               <>
+              <>
                 <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950">
                   <span>Run Sheet</span>
                   <div className="flex items-center gap-1">
@@ -1532,30 +1540,30 @@ function App() {
                   </div>
                 </div>
                 <ScheduleList />
-               </>
+              </>
             ) : activeSidebarTab === 'AUDIO' ? (
-                <AudioLibrary 
-                    currentTrackId={currentTrack?.id || null}
-                    isPlaying={isAudioPlaying}
-                    progress={audioProgress}
-                    onPlay={handlePlayTrack}
-                    onToggle={toggleAudio}
-                    onStop={stopAudio}
-                    onVolumeChange={setAudioVolume}
-                    volume={audioVolume}
-                />
+              <AudioLibrary
+                currentTrackId={currentTrack?.id || null}
+                isPlaying={isAudioPlaying}
+                progress={audioProgress}
+                onPlay={handlePlayTrack}
+                onToggle={toggleAudio}
+                onStop={stopAudio}
+                onVolumeChange={setAudioVolume}
+                volume={audioVolume}
+              />
             ) : (
-                <BibleBrowser 
-                  onAddRequest={(item: ServiceItem) => {
-                    addItem(item);
-                    setActiveSidebarTab('SCHEDULE');
-                  }}
-                  onProjectRequest={(item: ServiceItem) => {
-                    addItem(item);
-                    goLive(item, 0);
-                    setActiveSidebarTab('SCHEDULE');
-                  }}
-                />
+              <BibleBrowser
+                onAddRequest={(item: ServiceItem) => {
+                  addItem(item);
+                  setActiveSidebarTab('SCHEDULE');
+                }}
+                onProjectRequest={(item: ServiceItem) => {
+                  addItem(item);
+                  goLive(item, 0);
+                  setActiveSidebarTab('SCHEDULE');
+                }}
+              />
             )}
           </div>
         </div>
@@ -1563,116 +1571,116 @@ function App() {
         {/* ... (Existing Builder/Presenter Logic) ... */}
         {viewMode === 'BUILDER' ? (
           <div className="flex-1 flex bg-zinc-950 hidden md:flex">
-             <div className="w-56 bg-zinc-900/30 border-r border-zinc-900 flex flex-col hidden lg:flex">
-                <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex items-center">Library</div>
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                    {MOCK_SONGS.map((song, i) => (<div key={i} className="p-2 bg-zinc-900 rounded-sm cursor-pointer hover:bg-zinc-800 border border-zinc-800/50" onClick={() => setIsAIModalOpen(true)}><div className="font-bold text-xs text-zinc-300">{song.title}</div></div>))}
-                </div>
-             </div>
-             <div className="flex-1 bg-zinc-950 flex flex-col overflow-hidden">
-               {selectedItem ? (
-                 <>
-                   <ItemEditorPanel 
-                      item={selectedItem} 
-                      onUpdate={updateItem} 
-                      onOpenLibrary={() => setIsMotionLibOpen(true)}
-                   />
-                   <div className="flex-1 overflow-y-auto p-6 bg-zinc-950">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {selectedItem.slides.map((slide, idx) => (
-                              <div key={slide.id} className="group relative">
-                                  <div className="aspect-video bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 group-hover:border-blue-500/50 transition-all"><SlideRenderer slide={slide} item={selectedItem} fitContainer={true} isThumbnail={true} /></div>
-                                  <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1"><button onClick={() => handleEditSlide(slide)} className="p-1 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-blue-400 text-zinc-400"><EditIcon className="w-3 h-3"/></button><button onClick={(e) => handleDeleteSlide(slide.id, e)} className="p-1 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-red-400 text-zinc-400"><TrashIcon className="w-3 h-3"/></button></div>
-                              </div>
-                          ))}
-                           <button onClick={() => { setEditingSlide(null); setIsSlideEditorOpen(true); }} className="aspect-video border border-dashed border-zinc-800 rounded-sm flex flex-col items-center justify-center text-zinc-600 hover:text-zinc-400 bg-zinc-900/20"><PlusIcon className="w-6 h-6 mb-2" /><span className="text-xs font-medium uppercase tracking-wide">Add Slide</span></button>
-                      </div>
-                   </div>
-                 </>
-               ) : <div className="flex-1 flex items-center justify-center text-zinc-600 font-mono text-xs uppercase">SELECT_ITEM_TO_EDIT</div>}
-             </div>
+            <div className="w-56 bg-zinc-900/30 border-r border-zinc-900 flex flex-col hidden lg:flex">
+              <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex items-center">Library</div>
+              <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                {MOCK_SONGS.map((song, i) => (<div key={i} className="p-2 bg-zinc-900 rounded-sm cursor-pointer hover:bg-zinc-800 border border-zinc-800/50" onClick={() => setIsAIModalOpen(true)}><div className="font-bold text-xs text-zinc-300">{song.title}</div></div>))}
+              </div>
+            </div>
+            <div className="flex-1 bg-zinc-950 flex flex-col overflow-hidden">
+              {selectedItem ? (
+                <>
+                  <ItemEditorPanel
+                    item={selectedItem}
+                    onUpdate={updateItem}
+                    onOpenLibrary={() => setIsMotionLibOpen(true)}
+                  />
+                  <div className="flex-1 overflow-y-auto p-6 bg-zinc-950">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {selectedItem.slides.map((slide, idx) => (
+                        <div key={slide.id} className="group relative">
+                          <div className="aspect-video bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 group-hover:border-blue-500/50 transition-all"><SlideRenderer slide={slide} item={selectedItem} fitContainer={true} isThumbnail={true} /></div>
+                          <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1"><button onClick={() => handleEditSlide(slide)} className="p-1 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-blue-400 text-zinc-400"><EditIcon className="w-3 h-3" /></button><button onClick={(e) => handleDeleteSlide(slide.id, e)} className="p-1 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-red-400 text-zinc-400"><TrashIcon className="w-3 h-3" /></button></div>
+                        </div>
+                      ))}
+                      <button onClick={() => { setEditingSlide(null); setIsSlideEditorOpen(true); }} className="aspect-video border border-dashed border-zinc-800 rounded-sm flex flex-col items-center justify-center text-zinc-600 hover:text-zinc-400 bg-zinc-900/20"><PlusIcon className="w-6 h-6 mb-2" /><span className="text-xs font-medium uppercase tracking-wide">Add Slide</span></button>
+                    </div>
+                  </div>
+                </>
+              ) : <div className="flex-1 flex items-center justify-center text-zinc-600 font-mono text-xs uppercase">SELECT_ITEM_TO_EDIT</div>}
+            </div>
           </div>
         ) : (
           <div className="flex-1 flex flex-col lg:flex-row bg-black">
             <div className="flex-1 flex flex-col relative">
-                <div className="flex-1 relative flex items-center justify-center bg-zinc-950 overflow-hidden border-r border-zinc-900">
-                    <div className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group">
-                         {blackout ? (<div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em]">BLACKOUT</div>) : (
-                             <SlideRenderer slide={activeSlide} item={activeItem} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={isPreviewMuted} lowerThirds={lowerThirdsEnabled} />
-                         )}
-                         <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-500 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">PREVIEW <button onClick={() => setIsPreviewMuted(!isPreviewMuted)} className={`ml-2 hover:text-white transition-colors ${isPreviewMuted ? 'text-red-400' : 'text-green-400'}`}>{isPreviewMuted ? <VolumeXIcon className="w-3 h-3" /> : <Volume2Icon className="w-3 h-3" />}</button></div>
-                    </div>
+              <div className="flex-1 relative flex items-center justify-center bg-zinc-950 overflow-hidden border-r border-zinc-900">
+                <div className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group">
+                  {blackout ? (<div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em]">BLACKOUT</div>) : (
+                    <SlideRenderer slide={activeSlide} item={activeItem} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={isPreviewMuted} lowerThirds={lowerThirdsEnabled} />
+                  )}
+                  <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-500 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">PREVIEW <button onClick={() => setIsPreviewMuted(!isPreviewMuted)} className={`ml-2 hover:text-white transition-colors ${isPreviewMuted ? 'text-red-400' : 'text-green-400'}`}>{isPreviewMuted ? <VolumeXIcon className="w-3 h-3" /> : <Volume2Icon className="w-3 h-3" />}</button></div>
                 </div>
-                <div className="h-16 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between px-6 gap-4">
-                    <div className="flex items-center gap-2"><button onClick={prevSlide} className="h-12 w-14 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center border border-zinc-700 active:scale-95 transition-transform"><ArrowLeftIcon className="w-5 h-5" /></button><button onClick={nextSlide} className="h-12 w-28 rounded-sm bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-bold text-sm tracking-wide active:scale-95 transition-transform"><ArrowRightIcon className="w-5 h-5 mr-1" /> NEXT</button></div>
-                    {isActiveVideo && (<div className="flex items-center gap-2 bg-zinc-950 rounded-sm p-1 border border-zinc-800"><button onClick={() => triggerSeek(-10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><RewindIcon className="w-4 h-4"/></button><button onClick={() => setIsPlaying(!isPlaying)} className={`p-2.5 rounded-sm ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-green-900/50 text-green-400'}`}>{isPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4 fill-current" />}</button><button onClick={() => triggerSeek(10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><ForwardIcon className="w-4 h-4"/></button></div>)}
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => setLowerThirdsEnabled((prev) => !prev)} className={`h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border ${lowerThirdsEnabled ? 'bg-blue-950 text-blue-400 border-blue-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800'}`}>LOWER THIRDS</button>
-                      <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} className="h-12 px-2 bg-zinc-950 border border-zinc-800 text-zinc-300 text-xs rounded-sm">
-                        <option value="PROJECTOR">Projector</option>
-                        <option value="STREAM">Stream</option>
-                        <option value="LOBBY">Lobby</option>
-                      </select>
-                      <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
-                        <select value={timerMode} onChange={(e) => {
-                          const mode = e.target.value as 'COUNTDOWN' | 'ELAPSED';
-                          setTimerMode(mode);
-                          setTimerRunning(false);
-                          setTimerSeconds(mode === 'COUNTDOWN' ? timerDurationMin * 60 : 0);
-                        }} className="bg-transparent text-zinc-300 text-[10px]">
-                          <option value="COUNTDOWN">Countdown</option>
-                          <option value="ELAPSED">Elapsed</option>
-                        </select>
-                        {timerMode === 'COUNTDOWN' && (
-                          <input type="number" min={1} max={180} value={timerDurationMin} onChange={(e) => {
-                            const value = Math.max(1, Math.min(180, Number(e.target.value) || 1));
-                            setTimerDurationMin(value);
-                            if (!timerRunning) setTimerSeconds(value * 60);
-                          }} className="w-14 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
-                        )}
-                        <div className={`text-[11px] font-mono w-14 text-center ${isTimerOvertime ? 'text-red-400 animate-pulse' : 'text-cyan-300'}`}>{formatTimer(timerSeconds)}</div>
-                        <button onClick={() => setTimerRunning((p) => !p)} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">{timerRunning ? 'Pause' : 'Start'}</button>
-                        <button onClick={() => {
-                          setTimerRunning(false);
-                          setTimerSeconds(timerMode === 'COUNTDOWN' ? timerDurationMin * 60 : 0);
-                        }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">Reset</button>
-                      </div>
-                      <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
-                        <span className="text-[10px] text-zinc-400">Cue</span>
-                        <input type="number" min={2} max={120} value={autoCueSeconds} onChange={(e) => {
-                          const value = Math.max(2, Math.min(120, Number(e.target.value) || 2));
-                          setAutoCueSeconds(value);
-                          setAutoCueRemaining(value);
-                        }} className="w-12 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
-                        <button onClick={() => setAutoCueEnabled((p) => !p)} className={`text-[10px] px-2 py-1 rounded ${autoCueEnabled ? 'bg-cyan-900/40 text-cyan-300' : 'bg-zinc-800 text-zinc-300'}`}>{autoCueEnabled ? `On ${autoCueRemaining}s` : 'Off'}</button>
-                      </div>
-                      <button onClick={() => navigator.clipboard?.writeText(obsOutputUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY OBS URL</button>
-                      <button onClick={() => setBlackout(!blackout)} className={`h-12 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button>
-                    </div>
+              </div>
+              <div className="h-16 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between px-6 gap-4">
+                <div className="flex items-center gap-2"><button onClick={prevSlide} className="h-12 w-14 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center border border-zinc-700 active:scale-95 transition-transform"><ArrowLeftIcon className="w-5 h-5" /></button><button onClick={nextSlide} className="h-12 w-28 rounded-sm bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-bold text-sm tracking-wide active:scale-95 transition-transform"><ArrowRightIcon className="w-5 h-5 mr-1" /> NEXT</button></div>
+                {isActiveVideo && (<div className="flex items-center gap-2 bg-zinc-950 rounded-sm p-1 border border-zinc-800"><button onClick={() => triggerSeek(-10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><RewindIcon className="w-4 h-4" /></button><button onClick={() => setIsPlaying(!isPlaying)} className={`p-2.5 rounded-sm ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-green-900/50 text-green-400'}`}>{isPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4 fill-current" />}</button><button onClick={() => triggerSeek(10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><ForwardIcon className="w-4 h-4" /></button></div>)}
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setLowerThirdsEnabled((prev) => !prev)} className={`h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border ${lowerThirdsEnabled ? 'bg-blue-950 text-blue-400 border-blue-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800'}`}>LOWER THIRDS</button>
+                  <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} className="h-12 px-2 bg-zinc-950 border border-zinc-800 text-zinc-300 text-xs rounded-sm">
+                    <option value="PROJECTOR">Projector</option>
+                    <option value="STREAM">Stream</option>
+                    <option value="LOBBY">Lobby</option>
+                  </select>
+                  <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
+                    <select value={timerMode} onChange={(e) => {
+                      const mode = e.target.value as 'COUNTDOWN' | 'ELAPSED';
+                      setTimerMode(mode);
+                      setTimerRunning(false);
+                      setTimerSeconds(mode === 'COUNTDOWN' ? timerDurationMin * 60 : 0);
+                    }} className="bg-transparent text-zinc-300 text-[10px]">
+                      <option value="COUNTDOWN">Countdown</option>
+                      <option value="ELAPSED">Elapsed</option>
+                    </select>
+                    {timerMode === 'COUNTDOWN' && (
+                      <input type="number" min={1} max={180} value={timerDurationMin} onChange={(e) => {
+                        const value = Math.max(1, Math.min(180, Number(e.target.value) || 1));
+                        setTimerDurationMin(value);
+                        if (!timerRunning) setTimerSeconds(value * 60);
+                      }} className="w-14 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
+                    )}
+                    <div className={`text-[11px] font-mono w-14 text-center ${isTimerOvertime ? 'text-red-400 animate-pulse' : 'text-cyan-300'}`}>{formatTimer(timerSeconds)}</div>
+                    <button onClick={() => setTimerRunning((p) => !p)} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">{timerRunning ? 'Pause' : 'Start'}</button>
+                    <button onClick={() => {
+                      setTimerRunning(false);
+                      setTimerSeconds(timerMode === 'COUNTDOWN' ? timerDurationMin * 60 : 0);
+                    }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">Reset</button>
+                  </div>
+                  <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
+                    <span className="text-[10px] text-zinc-400">Cue</span>
+                    <input type="number" min={2} max={120} value={autoCueSeconds} onChange={(e) => {
+                      const value = Math.max(2, Math.min(120, Number(e.target.value) || 2));
+                      setAutoCueSeconds(value);
+                      setAutoCueRemaining(value);
+                    }} className="w-12 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
+                    <button onClick={() => setAutoCueEnabled((p) => !p)} className={`text-[10px] px-2 py-1 rounded ${autoCueEnabled ? 'bg-cyan-900/40 text-cyan-300' : 'bg-zinc-800 text-zinc-300'}`}>{autoCueEnabled ? `On ${autoCueRemaining}s` : 'Off'}</button>
+                  </div>
+                  <button onClick={() => navigator.clipboard?.writeText(obsOutputUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY OBS URL</button>
+                  <button onClick={() => setBlackout(!blackout)} className={`h-12 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button>
                 </div>
+              </div>
             </div>
             <div className={`w-full lg:w-72 bg-zinc-950 border-l border-zinc-900 flex flex-col h-64 lg:h-auto border-t lg:border-t-0 ${workspaceSettings.machineMode ? 'hidden' : 'hidden md:flex'}`}>
-                <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-500 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950"><span>Live Queue</span>{activeItem && <span className="text-red-500 animate-pulse">● LIVE</span>}</div>
-                <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 lg:grid-cols-2 gap-2 content-start scroll-smooth">
-                    {activeItem?.slides.map((slide, idx) => (<div key={slide.id} ref={activeSlideIndex === idx ? activeSlideRef : null} onClick={() => { setActiveSlideIndex(idx); setBlackout(false); setIsPlaying(true); }} className={`cursor-pointer rounded-sm overflow-hidden border transition-all relative aspect-video ${activeSlideIndex === idx ? 'ring-2 ring-red-500 border-red-500 opacity-100' : 'border-zinc-800 opacity-50 hover:opacity-80'}`}><div className="absolute inset-0 pointer-events-none"><SlideRenderer slide={slide} item={activeItem} fitContainer={true} isThumbnail={true} /></div><div className="absolute bottom-0 left-0 right-0 bg-black/80 text-zinc-300 text-[9px] px-1 py-0.5 font-mono truncate border-t border-zinc-800">{idx + 1}. {slide.label}</div></div>))}
-                    {!activeItem && <div className="col-span-3 lg:col-span-2 text-center text-zinc-700 text-xs font-mono py-10 uppercase">NO_ACTIVE_ITEM</div>}
-                </div>
+              <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-500 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950"><span>Live Queue</span>{activeItem && <span className="text-red-500 animate-pulse">● LIVE</span>}</div>
+              <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 lg:grid-cols-2 gap-2 content-start scroll-smooth">
+                {activeItem?.slides.map((slide, idx) => (<div key={slide.id} ref={activeSlideIndex === idx ? activeSlideRef : null} onClick={() => { setActiveSlideIndex(idx); setBlackout(false); setIsPlaying(true); }} className={`cursor-pointer rounded-sm overflow-hidden border transition-all relative aspect-video ${activeSlideIndex === idx ? 'ring-2 ring-red-500 border-red-500 opacity-100' : 'border-zinc-800 opacity-50 hover:opacity-80'}`}><div className="absolute inset-0 pointer-events-none"><SlideRenderer slide={slide} item={activeItem} fitContainer={true} isThumbnail={true} /></div><div className="absolute bottom-0 left-0 right-0 bg-black/80 text-zinc-300 text-[9px] px-1 py-0.5 font-mono truncate border-t border-zinc-800">{idx + 1}. {slide.label}</div></div>))}
+                {!activeItem && <div className="col-span-3 lg:col-span-2 text-center text-zinc-700 text-xs font-mono py-10 uppercase">NO_ACTIVE_ITEM</div>}
+              </div>
             </div>
           </div>
         )}
       </div>
 
       {isStageDisplayLive && (<OutputWindow
-          externalWindow={stageWin}
-          onClose={() => {
-            setIsStageDisplayLive(false);
-            setStageWin(null);
-          }}
-          onBlock={() => {
-            setPopupBlocked(true);
-            setIsStageDisplayLive(false);
-            setStageWin(null);
-          }}><StageDisplay currentSlide={activeSlide} nextSlide={nextSlidePreview} activeItem={activeItem} timerLabel="Pastor Timer" timerDisplay={formatTimer(timerSeconds)} timerMode={timerMode} isTimerOvertime={isTimerOvertime} profile={workspaceSettings.stageProfile} /></OutputWindow>)}
+        externalWindow={stageWin}
+        onClose={() => {
+          setIsStageDisplayLive(false);
+          setStageWin(null);
+        }}
+        onBlock={() => {
+          setPopupBlocked(true);
+          setIsStageDisplayLive(false);
+          setStageWin(null);
+        }}><StageDisplay currentSlide={activeSlide} nextSlide={nextSlidePreview} activeItem={activeItem} timerLabel="Pastor Timer" timerDisplay={formatTimer(timerSeconds)} timerMode={timerMode} isTimerOvertime={isTimerOvertime} profile={workspaceSettings.stageProfile} /></OutputWindow>)}
       {isTemplateOpen && (
         <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm p-4 flex items-center justify-center">
           <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-lg p-5">
@@ -1707,15 +1715,15 @@ function App() {
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
       {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={(settings) => setWorkspaceSettings((prev) => ({ ...prev, ...settings }))} onLogout={handleLogout} currentSettings={workspaceSettings} currentUser={user} />} {/* NEW */}
       {isMotionLibOpen && (
-        <MotionLibrary 
-            onClose={() => setIsMotionLibOpen(false)} 
-            onSelect={(url, mediaType = 'video') => { 
-                if (selectedItem) {
-                    updateItem({ ...selectedItem, theme: { ...selectedItem.theme, backgroundUrl: url, mediaType } });
-                    logActivity(user?.uid, 'UPDATE_THEME', { type: 'MOTION_BG', itemId: selectedItem.id, mediaType });
-                }
-                setIsMotionLibOpen(false); 
-            }} 
+        <MotionLibrary
+          onClose={() => setIsMotionLibOpen(false)}
+          onSelect={(url, mediaType = 'video') => {
+            if (selectedItem) {
+              updateItem({ ...selectedItem, theme: { ...selectedItem.theme, backgroundUrl: url, mediaType } });
+              logActivity(user?.uid, 'UPDATE_THEME', { type: 'MOTION_BG', itemId: selectedItem.id, mediaType });
+            }
+            setIsMotionLibOpen(false);
+          }}
         />
       )}
       <SlideEditorModal isOpen={isSlideEditorOpen} onClose={() => setIsSlideEditorOpen(false)} slide={editingSlide} onSave={(slide) => { if (!selectedItem) return; const slideExists = selectedItem.slides.find(s => s.id === slide.id); let newSlides = slideExists ? selectedItem.slides.map(s => s.id === slide.id ? slide : s) : [...selectedItem.slides, slide]; updateItem({ ...selectedItem, slides: newSlides }); setIsSlideEditorOpen(false); }} />
