@@ -22,3 +22,5 @@ services:
         value: "120"
       - key: LUMINA_VIS_RASTER_ENGINE
         value: auto
+      - key: LUMINA_KEEP_ALIVE_URL
+        value: https://lumina-presenter-api.onrender.com
