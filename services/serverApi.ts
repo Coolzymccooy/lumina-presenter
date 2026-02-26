@@ -327,3 +327,63 @@ export const fetchWorkspaceReportSummary = async (workspaceId: string, user: Act
     timeoutMs: 7000,
   });
 };
+
+// ── Settings (server is source of truth) ─────────────────────────────────────
+export const fetchWorkspaceSettings = async (workspaceId: string, user: ActorLike) => {
+  return await requestJson<{ ok: boolean; settings: Record<string, any>; updatedAt: number }>(
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/settings`,
+    { method: 'GET', user, timeoutMs: 6000 }
+  );
+};
+
+// ── Audience Studio ───────────────────────────────────────────────────────────
+export type AudienceCategory = 'qa' | 'prayer' | 'testimony' | 'poll' | 'welcome';
+export type AudienceStatus = 'pending' | 'approved' | 'dismissed' | 'projected';
+
+export interface AudienceMessage {
+  id: number;
+  workspace_id: string;
+  category: AudienceCategory;
+  text: string;
+  submitter_name: string | null;
+  status: AudienceStatus;
+  created_at: number;
+  updated_at: number;
+}
+
+export const submitAudienceMessage = async (
+  workspaceId: string,
+  payload: { category: AudienceCategory; text: string; name?: string }
+) => {
+  return await requestJson<{ ok: boolean; id: number; createdAt: number }>(
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/audience/messages`,
+    { method: 'POST', body: payload, allowAnonymous: true, timeoutMs: 6000 }
+  );
+};
+
+export const fetchAudienceMessages = async (workspaceId: string, user: ActorLike, status?: string) => {
+  const q = status ? `?status=${encodeURIComponent(status)}` : '';
+  return await requestJson<{ ok: boolean; messages: AudienceMessage[] }>(
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/audience/messages${q}`,
+    { method: 'GET', user, timeoutMs: 6000 }
+  );
+};
+
+export const updateAudienceMessageStatus = async (
+  workspaceId: string,
+  msgId: number,
+  status: AudienceStatus,
+  user: ActorLike
+) => {
+  return await requestJson<{ ok: boolean; message: AudienceMessage }>(
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/audience/messages/${msgId}`,
+    { method: 'PATCH', body: { status }, user, timeoutMs: 6000 }
+  );
+};
+
+export const deleteAudienceMessage = async (workspaceId: string, msgId: number, user: ActorLike) => {
+  return await requestJson<{ ok: boolean }>(
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/audience/messages/${msgId}`,
+    { method: 'PATCH', body: { status: 'dismissed' }, user, timeoutMs: 6000 }
+  );
+};

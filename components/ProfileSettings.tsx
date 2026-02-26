@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { UserIcon, Settings, X, Save, Church, ShieldCheck } from 'lucide-react';
+import { UserIcon, Settings, X, Save, Church, ShieldCheck, ChevronDown, ChevronUp, CreditCard, Palette, Globe, Lock } from 'lucide-react';
 
 interface ProfileSettingsProps {
   onClose: () => void;
@@ -28,8 +28,12 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
   const [sessionId, setSessionId] = useState(currentSettings?.sessionId || 'live');
   const [stageProfile, setStageProfile] = useState(currentSettings?.stageProfile || 'classic');
   const [machineMode, setMachineMode] = useState(!!currentSettings?.machineMode);
+
+  const [activeTab, setActiveTab] = useState<string | null>('account');
+
   const accountName = currentUser?.displayName || currentUser?.email || 'Authenticated User';
   const accountInitials = accountName.trim().slice(0, 1).toUpperCase();
+
   const formatAuthDate = (value?: string | null) => {
     if (!value) return 'Not available';
     const parsed = new Date(value);
@@ -42,191 +46,240 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
     onClose();
   };
 
+  const toggleTab = (tab: string) => {
+    setActiveTab(activeTab === tab ? null : tab);
+  };
+
+  const SectionHeader = ({ id, icon: Icon, title, description }: { id: string, icon: any, title: string, description: string }) => (
+    <div
+      onClick={() => toggleTab(id)}
+      className={`p-4 flex items-center justify-between cursor-pointer transition-all border-b border-zinc-800/50 ${activeTab === id ? 'bg-zinc-800/30' : 'hover:bg-zinc-800/10'}`}
+    >
+      <div className="flex items-center gap-4">
+        <div className={`p-2 rounded-lg ${activeTab === id ? 'bg-blue-600/20 text-blue-400' : 'bg-zinc-800 text-zinc-500'}`}>
+          <Icon size={18} />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-white tracking-tight">{title}</h3>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-medium mt-0.5">{description}</p>
+        </div>
+      </div>
+      {activeTab === id ? <ChevronUp size={16} className="text-zinc-600" /> : <ChevronDown size={16} className="text-zinc-600" />}
+    </div>
+  );
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-lg shadow-2xl overflow-hidden">
-        <div className="p-6 border-b border-zinc-800 flex justify-between items-center bg-zinc-950">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-900/30 rounded-lg text-purple-400">
-              <Settings size={20} />
+    <div className="fixed inset-0 z-[150] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-xl shadow-3xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
+        {/* Header */}
+        <div className="p-6 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/50">
+          <div className="flex items-center gap-4">
+            <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl text-white shadow-lg shadow-blue-900/20">
+              <Settings size={22} className="animate-spin-slow" />
             </div>
-            <h2 className="text-lg font-bold text-white tracking-wide">Workspace Settings</h2>
+            <div>
+              <h2 className="text-xl font-black text-white tracking-tight leading-none">Studio Workspace</h2>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] font-bold mt-2">Configuration & Intelligence</p>
+            </div>
           </div>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+          <button onClick={onClose} className="p-2 hover:bg-zinc-800 rounded-full text-zinc-500 hover:text-white transition-all transform hover:rotate-90">
             <X size={20} />
           </button>
         </div>
 
-        <div className="p-6 space-y-6 max-h-[72vh] overflow-y-auto">
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-              <UserIcon size={12} /> Account
-            </h3>
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-4">
-              <div className="flex items-center gap-3 mb-4">
-                {currentUser?.photoURL ? (
-                  <img
-                    src={currentUser.photoURL}
-                    alt="Profile avatar"
-                    className="w-11 h-11 rounded-full border border-zinc-700 object-cover"
-                  />
-                ) : (
-                  <div className="w-11 h-11 rounded-full border border-zinc-700 bg-zinc-800 text-zinc-200 flex items-center justify-center font-bold">
-                    {accountInitials || 'U'}
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto bg-zinc-900/40 custom-scrollbar">
+
+          {/* Account Section */}
+          <SectionHeader id="account" icon={UserIcon} title="Account & Security" description="Personal Authentication" />
+          {activeTab === 'account' && (
+            <div className="p-6 bg-zinc-950/30 animate-in slide-in-from-top-4 duration-300">
+              <div className="rounded-2xl border border-zinc-800 bg-black/40 p-6 flex flex-col md:flex-row gap-6 items-start md:items-center">
+                <div className="relative group">
+                  {currentUser?.photoURL ? (
+                    <img src={currentUser.photoURL} alt="Avatar" className="w-20 h-20 rounded-2xl border-2 border-zinc-800 object-cover shadow-2xl" />
+                  ) : (
+                    <div className="w-20 h-20 rounded-2xl border-2 border-zinc-800 bg-zinc-800 text-zinc-400 flex items-center justify-center text-3xl font-black shadow-2xl">
+                      {accountInitials || 'U'}
+                    </div>
+                  )}
+                  <div className="absolute -bottom-2 -right-2 p-1.5 bg-blue-600 rounded-lg text-white shadow-lg">
+                    <ShieldCheck size={14} />
                   </div>
-                )}
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-white truncate">{accountName}</div>
-                  <div className="text-xs text-zinc-400 truncate">{currentUser?.email || 'No email on account'}</div>
                 </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
-                <div className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
-                  <div className="uppercase tracking-wider text-zinc-500 text-[9px]">User ID</div>
-                  <div className="font-mono text-zinc-300 break-all">{currentUser?.uid || 'Not available'}</div>
-                </div>
-                <div className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2">
-                  <div className="uppercase tracking-wider text-zinc-500 text-[9px]">Last Login</div>
-                  <div className="text-zinc-300">{formatAuthDate(currentUser?.metadata?.lastSignInTime)}</div>
-                </div>
-                <div className="rounded border border-zinc-800 bg-zinc-950 px-3 py-2 md:col-span-2">
-                  <div className="uppercase tracking-wider text-zinc-500 text-[9px]">Account Created</div>
-                  <div className="text-zinc-300">{formatAuthDate(currentUser?.metadata?.creationTime)}</div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-lg font-bold text-white truncate">{accountName}</h4>
+                  <p className="text-sm text-zinc-500 truncate mb-4">{currentUser?.email || 'Standalone Local Instance'}</p>
+                  <div className="flex flex-wrap gap-2">
+                    <div className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-400">
+                      <span className="text-zinc-600 font-bold mr-2">LAST LOGIN</span>
+                      {formatAuthDate(currentUser?.metadata?.lastSignInTime)}
+                    </div>
+                    <div className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-400">
+                      <span className="text-zinc-600 font-bold mr-2">INSTANCE ID</span>
+                      {currentUser?.uid?.slice(0, 12) || 'N/A'}...
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          <hr className="border-zinc-800" />
+          )}
 
           {/* Identity Section */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-              <Church size={12} /> Identity
-            </h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Church / Org Name</label>
-                <input 
-                  type="text" 
-                  value={churchName} 
-                  onChange={e => setChurchName(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none transition-all"
-                  placeholder="e.g. Grace Community Church"
+          <SectionHeader id="identity" icon={Church} title="Identity & Brand" description="Church & Licensing" />
+          {activeTab === 'identity' && (
+            <div className="p-6 space-y-5 bg-zinc-950/30 animate-in slide-in-from-top-4 duration-300">
+              <div className="grid grid-cols-1 gap-5">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Church / Organization Name</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-zinc-600 group-focus-within:text-blue-500 transition-colors">
+                      <Church size={16} />
+                    </div>
+                    <input
+                      type="text"
+                      value={churchName}
+                      onChange={e => setChurchName(e.target.value)}
+                      className="w-full bg-black border border-zinc-800 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-all placeholder:text-zinc-800"
+                      placeholder="e.g. Grace Community Church"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">CCLI License Number</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-zinc-600 group-focus-within:text-blue-500 transition-colors">
+                      <CreditCard size={16} />
+                    </div>
+                    <input
+                      type="text"
+                      value={ccli}
+                      onChange={e => setCcli(e.target.value)}
+                      className="w-full bg-black border border-zinc-800 rounded-xl pl-11 pr-4 py-3.5 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-all font-mono placeholder:text-zinc-800"
+                      placeholder="12345678"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Preference Section */}
+          <SectionHeader id="preference" icon={Palette} title="Studio Preferences" description="Defaults & Visuals" />
+          {activeTab === 'preference' && (
+            <div className="p-6 space-y-6 bg-zinc-950/30 animate-in slide-in-from-top-4 duration-300">
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Default Bible Version</label>
+                  <div className="relative">
+                    <select
+                      value={defaultVersion}
+                      onChange={e => setDefaultVersion(e.target.value)}
+                      className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3.5 text-sm text-white focus:border-blue-500 focus:outline-none appearance-none cursor-pointer"
+                    >
+                      <option value="kjv">KJV (King James)</option>
+                      <option value="web">WEB (World English)</option>
+                      <option value="niv">NIV (New International)</option>
+                      <option value="nkjv">NKJV (New King James)</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-zinc-600">
+                      <Globe size={16} />
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Studio UI Theme</label>
+                  <div className="relative">
+                    <select
+                      value={theme}
+                      onChange={e => setTheme(e.target.value)}
+                      className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3.5 text-sm text-white focus:border-blue-500 focus:outline-none appearance-none cursor-pointer"
+                    >
+                      <option value="dark">Pro Obsidian</option>
+                      <option value="light">Solar High-Key</option>
+                      <option value="midnight">Midnight OLED</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-zinc-600">
+                      <Palette size={16} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-5 pt-2">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Stage Profile</label>
+                  <select
+                    value={stageProfile}
+                    onChange={e => setStageProfile(e.target.value)}
+                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3.5 text-sm text-white focus:border-blue-500 focus:outline-none appearance-none cursor-pointer"
+                  >
+                    <option value="classic">Classic Confidence</option>
+                    <option value="compact">Compact Grid</option>
+                    <option value="high_contrast">High Contrast B&W</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Active Session ID</label>
+                  <input
+                    type="text"
+                    value={sessionId}
+                    onChange={e => setSessionId(e.target.value)}
+                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3.5 text-sm text-white focus:border-blue-500 focus:outline-none transition-all font-mono placeholder:text-zinc-800"
+                    placeholder="live"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-zinc-800/50">
+                <label className="flex items-center gap-3 group cursor-pointer">
+                  <div className={`w-10 h-5 rounded-full relative transition-colors border ${machineMode ? 'bg-blue-600 border-blue-500' : 'bg-zinc-800 border-zinc-700'}`}>
+                    <div className={`absolute top-0.5 bottom-0.5 w-3.5 h-3.5 bg-white rounded-full transition-all ${machineMode ? 'right-0.5' : 'left-0.5'}`} />
+                  </div>
+                  <input type="checkbox" className="hidden" checked={machineMode} onChange={(e) => setMachineMode(e.target.checked)} />
+                  <span className="text-[11px] font-bold text-zinc-400 group-hover:text-white transition-colors">AUTOMATE MACHINE MODE ON BOOT</span>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Remote Access Section */}
+          <SectionHeader id="remote" icon={Lock} title="Remote Intelligence" description="Admin & Access Control" />
+          {activeTab === 'remote' && (
+            <div className="p-6 space-y-4 bg-zinc-950/30 animate-in slide-in-from-top-4 duration-300">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Allowed Admin Emails</label>
+                <textarea
+                  value={remoteAdminEmails}
+                  onChange={(e) => setRemoteAdminEmails(e.target.value)}
+                  className="w-full min-h-[140px] bg-black border border-zinc-800 rounded-xl p-5 text-sm text-white font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-all placeholder:text-zinc-800 custom-scrollbar"
+                  placeholder={'pastor@church.org:owner\nmedia@church.org:operator'}
                 />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">CCLI License #</label>
-                <input 
-                  type="text" 
-                  value={ccli} 
-                  onChange={e => setCcli(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none transition-all font-mono"
-                  placeholder="12345678"
-                />
+                <div className="flex items-center gap-2 px-1 py-2">
+                  <div className="w-1 h-1 rounded-full bg-blue-500" />
+                  <p className="text-[10px] text-zinc-500 font-medium">Comma or new-line separated. Suffix with ":role" for granular permissions.</p>
+                </div>
               </div>
             </div>
-          </div>
-
-          <hr className="border-zinc-800" />
-
-          {/* Preferences Section */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-              <UserIcon size={12} /> Preferences
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Default Bible</label>
-                <select 
-                  value={defaultVersion} 
-                  onChange={e => setDefaultVersion(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-3 text-sm text-white focus:border-purple-500 focus:outline-none appearance-none"
-                >
-                  <option value="kjv">KJV (King James)</option>
-                  <option value="web">WEB (World English)</option>
-                  <option value="niv">NIV (New Intl)</option>
-                  <option value="nkjv">NKJV (New King James)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">UI Theme</label>
-                <select 
-                  value={theme} 
-                  onChange={e => setTheme(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-3 text-sm text-white focus:border-purple-500 focus:outline-none appearance-none"
-                >
-                  <option value="dark">Pro Dark</option>
-                  <option value="light">Daylight</option>
-                  <option value="midnight">Midnight OLED</option>
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Session ID</label>
-                <input
-                  type="text"
-                  value={sessionId}
-                  onChange={e => setSessionId(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none transition-all font-mono"
-                  placeholder="live"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Stage Profile</label>
-                <select
-                  value={stageProfile}
-                  onChange={e => setStageProfile(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-3 text-sm text-white focus:border-purple-500 focus:outline-none appearance-none"
-                >
-                  <option value="classic">Classic</option>
-                  <option value="compact">Compact</option>
-                  <option value="high_contrast">High Contrast</option>
-                </select>
-              </div>
-            </div>
-            <label className="flex items-center gap-2 text-xs text-zinc-300">
-              <input type="checkbox" checked={machineMode} onChange={(e) => setMachineMode(e.target.checked)} />
-              Enable Machine Mode by default
-            </label>
-          </div>
-
-          <hr className="border-zinc-800" />
-
-          <div className="space-y-4">
-            <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-              <ShieldCheck size={12} /> Remote Access
-            </h3>
-            <div>
-              <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Allowed Admin Emails</label>
-              <textarea
-                value={remoteAdminEmails}
-                onChange={(e) => setRemoteAdminEmails(e.target.value)}
-                className="w-full min-h-28 bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-sm text-white focus:border-purple-500 focus:outline-none transition-all"
-                placeholder={'pastor@church.org:owner, media@church.org:operator\nadmin2@church.org'}
-              />
-              <p className="mt-2 text-[10px] text-zinc-500">
-                Comma/new-line separated. Optional role suffix (e.g. email:operator) is accepted.
-              </p>
-            </div>
-          </div>
+          )}
         </div>
 
-        <div className="p-6 border-t border-zinc-800 bg-zinc-950/50 flex justify-between gap-3">
+        {/* Footer */}
+        <div className="p-6 border-t border-zinc-800 bg-zinc-950/80 backdrop-blur-md flex justify-between items-center gap-4">
           <div>
             {onLogout && (
-              <button onClick={onLogout} className="px-6 py-2.5 rounded-lg text-xs font-bold text-red-300 border border-red-900/60 bg-red-950/20 hover:bg-red-950/40 transition-colors">
-                LOGOUT
+              <button onClick={onLogout} className="px-5 py-2.5 rounded-xl text-xs font-black text-red-400 border border-red-900/40 bg-red-950/20 hover:bg-red-500 hover:text-white transition-all active:scale-95">
+                TERMINATE SESSION
               </button>
             )}
           </div>
-          <div className="flex gap-3">
-            <button onClick={onClose} className="px-6 py-2.5 rounded-lg text-xs font-bold text-zinc-400 hover:text-white transition-colors">
-              CANCEL
+          <div className="flex gap-4">
+            <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-xs font-bold text-zinc-500 hover:text-white hover:bg-zinc-800 transition-all uppercase tracking-widest">
+              Discard
             </button>
-            <button onClick={handleSave} className="px-6 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-purple-900/20 transition-all flex items-center gap-2">
-              <Save size={14} /> SAVE SETTINGS
+            <button onClick={handleSave} className="px-8 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shadow-xl shadow-blue-900/40 transition-all transform active:scale-95 flex items-center gap-2 group">
+              <Save size={16} className="group-hover:scale-110 transition-transform" />
+              SYNCHRONIZE WORKSPACE
             </button>
           </div>
         </div>

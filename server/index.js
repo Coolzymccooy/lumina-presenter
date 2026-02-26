@@ -196,8 +196,20 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   created_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS audience_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  workspace_id TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'qa',
+  text TEXT NOT NULL,
+  submitter_name TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_audit_workspace_time ON audit_logs(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_snapshots_workspace_time ON workspace_snapshots(workspace_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_audience_workspace_time ON audience_messages(workspace_id, created_at);
 `);
 
 const app = express();
@@ -472,6 +484,25 @@ app.get("/api/workspaces/:workspaceId", requireActor, (req, res) => {
   }
 });
 
+// GET — read current workspace settings (server is source of truth)
+app.get("/api/workspaces/:workspaceId/settings", requireActor, (req, res) => {
+  try {
+    const workspaceId = req.params.workspaceId;
+    const workspace = getWorkspaceRow.get(workspaceId);
+    if (!workspace) {
+      // Return empty settings if workspace doesn't exist yet
+      return res.json({ ok: true, settings: {}, updatedAt: 0 });
+    }
+    if (!canOperateWorkspace(workspace, req.actor)) {
+      return res.status(403).json({ ok: false, error: "FORBIDDEN" });
+    }
+    const settings = parseJson(workspace.settings_json, {});
+    return res.json({ ok: true, settings, updatedAt: workspace.updated_at });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "SETTINGS_READ_FAILED", message: String(error?.message || error) });
+  }
+});
+
 app.patch("/api/workspaces/:workspaceId/settings", requireActor, (req, res) => {
   try {
     const workspaceId = req.params.workspaceId;
@@ -674,6 +705,88 @@ app.post("/api/workspaces/:workspaceId/sessions/:sessionId/commands", requireAct
   } catch (error) {
     if (error?.code === 403) return res.status(403).json({ ok: false, error: "FORBIDDEN" });
     return res.status(500).json({ ok: false, error: "SESSION_COMMAND_FAILED", message: String(error?.message || error) });
+  }
+});
+});
+
+// ── Audience Studio ─────────────────────────────────────────────────────────
+const VALID_CATEGORIES = ["qa", "prayer", "testimony", "poll", "welcome"];
+const VALID_STATUSES = ["pending", "approved", "dismissed", "projected"];
+
+// POST — submit a message (no auth required — anyone with the link can submit)
+app.post("/api/workspaces/:workspaceId/audience/messages", (req, res) => {
+  try {
+    const workspaceId = req.params.workspaceId;
+    const { category, text, name } = req.body || {};
+    const safeCategory = VALID_CATEGORIES.includes(String(category || "").toLowerCase()) ? String(category).toLowerCase() : "qa";
+    const safeText = String(text || "").trim().slice(0, 500);
+    const safeName = String(name || "").trim().slice(0, 80) || null;
+    if (!safeText) return res.status(400).json({ ok: false, error: "TEXT_REQUIRED" });
+    const createdAt = now();
+    const result = db.prepare(`
+      INSERT INTO audience_messages (workspace_id, category, text, submitter_name, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, 'pending', ?, ?)
+    `).run(workspaceId, safeCategory, safeText, safeName, createdAt, createdAt);
+    return res.json({ ok: true, id: result.lastInsertRowid, createdAt });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "SUBMIT_FAILED", message: String(error?.message || error) });
+  }
+});
+
+// GET — list messages for operator panel (auth required)
+app.get("/api/workspaces/:workspaceId/audience/messages", requireActor, (req, res) => {
+  try {
+    const workspaceId = req.params.workspaceId;
+    const workspace = getWorkspaceRow.get(workspaceId);
+    if (workspace && !canOperateWorkspace(workspace, req.actor)) {
+      return res.status(403).json({ ok: false, error: "FORBIDDEN" });
+    }
+    const status = req.query.status ? String(req.query.status) : null;
+    const rows = status
+      ? db.prepare("SELECT * FROM audience_messages WHERE workspace_id = ? AND status = ? ORDER BY created_at DESC LIMIT 200").all(workspaceId, status)
+      : db.prepare("SELECT * FROM audience_messages WHERE workspace_id = ? ORDER BY created_at DESC LIMIT 200").all(workspaceId);
+    return res.json({ ok: true, messages: rows });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "LIST_FAILED", message: String(error?.message || error) });
+  }
+});
+
+// PATCH — update message status (approve / dismiss / projected)
+app.patch("/api/workspaces/:workspaceId/audience/messages/:msgId", requireActor, (req, res) => {
+  try {
+    const workspaceId = req.params.workspaceId;
+    const msgId = Number(req.params.msgId);
+    const workspace = getWorkspaceRow.get(workspaceId);
+    if (workspace && !canOperateWorkspace(workspace, req.actor)) {
+      return res.status(403).json({ ok: false, error: "FORBIDDEN" });
+    }
+    const status = String(req.body?.status || "").toLowerCase();
+    if (!VALID_STATUSES.includes(status)) {
+      return res.status(400).json({ ok: false, error: "INVALID_STATUS" });
+    }
+    const updatedAt = now();
+    db.prepare("UPDATE audience_messages SET status = ?, updated_at = ? WHERE id = ? AND workspace_id = ?")
+      .run(status, updatedAt, msgId, workspaceId);
+    const row = db.prepare("SELECT * FROM audience_messages WHERE id = ?").get(msgId);
+    return res.json({ ok: true, message: row });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "PATCH_FAILED", message: String(error?.message || error) });
+  }
+});
+
+// DELETE — remove a message
+app.delete("/api/workspaces/:workspaceId/audience/messages/:msgId", requireActor, (req, res) => {
+  try {
+    const workspaceId = req.params.workspaceId;
+    const msgId = Number(req.params.msgId);
+    const workspace = getWorkspaceRow.get(workspaceId);
+    if (workspace && !canOperateWorkspace(workspace, req.actor)) {
+      return res.status(403).json({ ok: false, error: "FORBIDDEN" });
+    }
+    db.prepare("DELETE FROM audience_messages WHERE id = ? AND workspace_id = ?").run(msgId, workspaceId);
+    return res.json({ ok: true });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "DELETE_FAILED", message: String(error?.message || error) });
   }
 });
 

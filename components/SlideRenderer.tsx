@@ -73,20 +73,23 @@ const CANVAS_H = 1080;
  */
 function computeTextPx(size: string | undefined, text: string): number {
   const base =
-    size === "small" ? 52
-      : size === "medium" ? 68
-        : size === "xlarge" ? 110
-          : 82; // "large" default
+    size === "small" ? 48
+      : size === "medium" ? 62
+        : size === "xlarge" ? 96
+          : 76; // "large" default
 
   const len = text.length;
-  const lines = Math.max(1, text.split(/\n/).length);
+  const linesCount = Math.max(1, text.split(/\n/).length);
 
+  // More aggressive shrinking for very long text
   const shrinkByLen =
-    len > 900 ? 0.55 : len > 700 ? 0.65 : len > 500 ? 0.75 : len > 350 ? 0.85 : 1.0;
-  const shrinkByLines =
-    lines >= 10 ? 0.62 : lines >= 8 ? 0.72 : lines >= 6 ? 0.82 : lines >= 4 ? 0.92 : 1.0;
+    len > 1200 ? 0.45 : len > 900 ? 0.50 : len > 700 ? 0.60 : len > 500 ? 0.70 : len > 350 ? 0.80 : 1.0;
 
-  return Math.round(Math.max(32, base * Math.min(shrinkByLen, shrinkByLines)));
+  // More aggressive shrinking for many lines
+  const shrinkByLines =
+    linesCount >= 14 ? 0.50 : linesCount >= 11 ? 0.60 : linesCount >= 8 ? 0.70 : linesCount >= 5 ? 0.85 : 1.0;
+
+  return Math.round(Math.max(28, base * Math.min(shrinkByLen, shrinkByLines)));
 }
 
 function getBestOrigin(): string {
