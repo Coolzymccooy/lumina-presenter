@@ -19,17 +19,20 @@ import { StageDisplay } from './components/StageDisplay';
 import { logActivity, analyzeSentimentContext } from './services/analytics';
 import { auth, isFirebaseConfigured, subscribeToState, subscribeToTeamPlaylists, updateLiveState, upsertTeamPlaylist } from './services/firebase';
 import { onAuthStateChanged } from "firebase/auth";
-import { clearMediaCache } from './services/localMedia';
-import { fetchServerSessionState, loadLatestWorkspaceSnapshot, resolveWorkspaceId, saveServerSessionState, saveWorkspaceSettings, saveWorkspaceSnapshot } from './services/serverApi';
+import { clearMediaCache, saveMedia } from './services/localMedia';
+import { fetchServerSessionState, importVisualPptxDeck, loadLatestWorkspaceSnapshot, resolveWorkspaceId, saveServerSessionState, saveWorkspaceSettings, saveWorkspaceSnapshot } from './services/serverApi';
+import { parsePptxFile } from './services/pptxImport';
 import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings } from './components/Icons'; // Added Settings Icon
 
 // --- CONSTANTS ---
 const STORAGE_KEY = 'lumina_session_v1';
 const SETTINGS_KEY = 'lumina_workspace_settings_v1';
+const SETTINGS_UPDATED_AT_KEY = 'lumina_workspace_settings_updated_at_v1';
 const LIVE_STATE_QUEUE_KEY = 'lumina_live_state_queue_v1';
 const CLOUD_PLAYLIST_SUFFIX = 'default-playlist-v2';
 const SYNC_BACKOFF_BASE_MS = 5000;
 const SYNC_BACKOFF_MAX_MS = 60000;
+const MAX_LIVE_QUEUE_SIZE = 40;
 const SILENT_AUDIO_B64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOkiJAAAAAAAAAAAAAAAAAAAAAAA=";
 
 type WorkspaceSettings = {
@@ -205,6 +208,9 @@ function App() {
   const [isLyricsImportOpen, setIsLyricsImportOpen] = useState(false);
   const [importTitle, setImportTitle] = useState('Imported Lyrics');
   const [importLyrics, setImportLyrics] = useState('');
+  const [importModalError, setImportModalError] = useState<string | null>(null);
+  const [isImportingDeck, setIsImportingDeck] = useState(false);
+  const [importDeckStatus, setImportDeckStatus] = useState('');
   const [syncPendingCount, setSyncPendingCount] = useState(0);
   const [autoCueEnabled, setAutoCueEnabled] = useState(false);
   const [autoCueSeconds, setAutoCueSeconds] = useState(7);
@@ -266,6 +272,7 @@ function App() {
   const hasInitializedRemoteSnapshotRef = useRef(false);
   const hasHydratedCloudStateRef = useRef(false);
   const hasHydratedServerSnapshotRef = useRef(false);
+  const workspaceSettingsUpdatedAtRef = useRef<number>(0);
   const lastRemoteCommandAtRef = useRef<number | null>(null);
   const lastServerRemoteCommandAtRef = useRef<number | null>(null);
   const lastSyncErrorRef = useRef<{ key: string; at: number } | null>(null);
@@ -338,9 +345,9 @@ function App() {
   const enqueueLiveState = useCallback((payload: any) => {
     try {
       const existing = parseJson<any[]>(localStorage.getItem(LIVE_STATE_QUEUE_KEY), []);
-      existing.push({ sessionId: liveSessionId, payload, at: Date.now() });
-      localStorage.setItem(LIVE_STATE_QUEUE_KEY, JSON.stringify(existing));
-      setSyncPendingCount(existing.length);
+      const next = [...existing, { sessionId: liveSessionId, payload, at: Date.now() }].slice(-MAX_LIVE_QUEUE_SIZE);
+      localStorage.setItem(LIVE_STATE_QUEUE_KEY, JSON.stringify(next));
+      setSyncPendingCount(next.length);
     } catch (error) {
       console.warn('Failed to queue live state', error);
       reportSyncFailure('queue', error, { queueOp: 'enqueue' });
@@ -466,16 +473,29 @@ function App() {
     try {
       const savedSettings = localStorage.getItem(SETTINGS_KEY);
       if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
+        const parsed = sanitizeWorkspaceSettings(JSON.parse(savedSettings));
         setWorkspaceSettings((prev) => ({ ...prev, ...parsed }));
       }
+      const savedUpdatedAt = Number(localStorage.getItem(SETTINGS_UPDATED_AT_KEY) || '0');
+      workspaceSettingsUpdatedAtRef.current = Number.isFinite(savedUpdatedAt) ? savedUpdatedAt : 0;
     } catch (error) {
       console.warn('Failed to load workspace settings', error);
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(workspaceSettings));
+    const updatedAt = Date.now();
+    workspaceSettingsUpdatedAtRef.current = updatedAt;
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(workspaceSettings));
+      localStorage.setItem(SETTINGS_UPDATED_AT_KEY, String(updatedAt));
+    } catch (error: any) {
+      if (error?.name === 'QuotaExceededError' || error?.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+        setSaveError(true);
+      } else {
+        console.warn('Failed to persist workspace settings', error);
+      }
+    }
     document.documentElement.dataset.theme = workspaceSettings.theme;
   }, [workspaceSettings]);
 
@@ -517,7 +537,14 @@ function App() {
         setActiveSlideIndex(payload.activeSlideIndex);
       }
       if (payload.workspaceSettings && typeof payload.workspaceSettings === 'object') {
-        setWorkspaceSettings((prev) => ({ ...prev, ...payload.workspaceSettings }));
+        const localSettingsUpdatedAt = workspaceSettingsUpdatedAtRef.current;
+        if (snapshot.updatedAt >= localSettingsUpdatedAt) {
+          const snapshotSettings = sanitizeWorkspaceSettings(payload.workspaceSettings);
+          if (Object.keys(snapshotSettings).length > 0) {
+            workspaceSettingsUpdatedAtRef.current = snapshot.updatedAt;
+            setWorkspaceSettings((prev) => ({ ...prev, ...snapshotSettings }));
+          }
+        }
       }
     })();
   }, [workspaceId, user?.uid, user]);
@@ -526,7 +553,15 @@ function App() {
     try {
       const raw = localStorage.getItem(LIVE_STATE_QUEUE_KEY);
       const queued = raw ? JSON.parse(raw) : [];
-      setSyncPendingCount(Array.isArray(queued) ? queued.length : 0);
+      if (Array.isArray(queued)) {
+        const trimmed = queued.slice(-MAX_LIVE_QUEUE_SIZE);
+        if (trimmed.length !== queued.length) {
+          localStorage.setItem(LIVE_STATE_QUEUE_KEY, JSON.stringify(trimmed));
+        }
+        setSyncPendingCount(trimmed.length);
+      } else {
+        setSyncPendingCount(0);
+      }
     } catch {
       setSyncPendingCount(0);
     }
@@ -643,27 +678,30 @@ function App() {
 
   useEffect(() => {
     if (!user) return;
-    const saveData = {
-      schedule,
-      selectedItemId,
-      viewMode,
-      activeItemId,
-      activeSlideIndex,
-      blackout,
-      isPlaying,
-      outputMuted,
-      seekCommand,
-      seekAmount,
-      lowerThirdsEnabled,
-      routingMode,
-      updatedAt: Date.now(),
-    };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
-      setSaveError(false);
-    } catch (e: any) {
-      if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') setSaveError(true);
-    }
+    const id = window.setTimeout(() => {
+      const saveData = {
+        schedule,
+        selectedItemId,
+        viewMode,
+        activeItemId,
+        activeSlideIndex,
+        blackout,
+        isPlaying,
+        outputMuted,
+        seekCommand,
+        seekAmount,
+        lowerThirdsEnabled,
+        routingMode,
+        updatedAt: Date.now(),
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(saveData));
+        setSaveError(false);
+      } catch (e: any) {
+        if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') setSaveError(true);
+      }
+    }, 180);
+    return () => window.clearTimeout(id);
   }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, user]);
 
 
@@ -734,6 +772,7 @@ function App() {
   const selectedItem = schedule.find(i => i.id === selectedItemId) || null;
   const activeItem = schedule.find(i => i.id === activeItemId) || null;
   const activeSlide = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex] : null;
+  const previewLowerThirds = lowerThirdsEnabled && routingMode !== 'PROJECTOR';
   const nextSlidePreview = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex + 1] || null : null;
   const lobbyItem = schedule.find((item) => item.type === ItemType.ANNOUNCEMENT) || activeItem;
   const activeBackgroundUrl = (activeSlide?.backgroundUrl || activeItem?.theme?.backgroundUrl || '').trim();
@@ -911,6 +950,7 @@ function App() {
   };
 
   const importLyricsAsItem = () => {
+    setImportModalError(null);
     const raw = importLyrics.trim();
     if (!raw) return;
     const chunks = raw
@@ -942,6 +982,176 @@ function App() {
     setImportTitle('Imported Lyrics');
     setImportLyrics('');
     setIsLyricsImportOpen(false);
+  };
+
+  const resolveImportedDeckTitle = (fallbackTitle: string) => {
+    const customTitle = importTitle.trim();
+    if (customTitle && customTitle.toLowerCase() !== 'imported lyrics') return customTitle;
+    return fallbackTitle || 'Imported Presentation';
+  };
+
+  const base64ToFile = (base64: string, filename: string, mimeType = 'image/png') => {
+    const raw = (base64 || '').trim();
+    const clean = raw.includes(',') ? raw.slice(raw.indexOf(',') + 1) : raw;
+    const binary = atob(clean);
+    const bytes = new Uint8Array(binary.length);
+    for (let idx = 0; idx < binary.length; idx += 1) {
+      bytes[idx] = binary.charCodeAt(idx);
+    }
+    return new File([bytes], filename, { type: mimeType });
+  };
+
+  const buildTextSlidesFromPptx = async (file: File) => {
+    const parsed = await parsePptxFile(file);
+    const now = Date.now();
+    const slides: Slide[] = parsed.slides.map((entry, idx) => ({
+      id: `${now}-pptx-text-${idx + 1}`,
+      label: entry.label || `Slide ${idx + 1}`,
+      content: entry.content,
+      notes: entry.notes,
+    }));
+    return {
+      suggestedTitle: parsed.title,
+      slides,
+    };
+  };
+
+  const buildVisualSlidesFromPptx = async (
+    file: File,
+    onProgress?: (message: string) => void
+  ) => {
+    if (!user?.uid) {
+      throw new Error('Please sign in before importing PowerPoint visuals.');
+    }
+    const converted = await importVisualPptxDeck(workspaceId, user, file);
+    if (!converted?.ok || !Array.isArray(converted.slides) || !converted.slides.length) {
+      throw new Error(converted?.message || 'Visual PowerPoint import failed.');
+    }
+
+    const now = Date.now();
+    const slides: Slide[] = [];
+    for (let idx = 0; idx < converted.slides.length; idx += 1) {
+      const entry = converted.slides[idx];
+      onProgress?.(`Saving slide ${idx + 1} of ${converted.slides.length}...`);
+      const fileName = entry?.name || `slide-${idx + 1}.png`;
+      const remoteUrl = String(entry?.imageUrl || '').trim();
+      let backgroundUrl = remoteUrl;
+      if (!backgroundUrl) {
+        if (!entry?.imageBase64) {
+          throw new Error(`Visual import slide ${idx + 1} is missing image data.`);
+        }
+        const imageFile = base64ToFile(entry.imageBase64, fileName, 'image/png');
+        backgroundUrl = await saveMedia(imageFile);
+      }
+      slides.push({
+        id: `${now}-pptx-visual-${idx + 1}`,
+        label: `Slide ${idx + 1}`,
+        content: '',
+        backgroundUrl,
+        mediaType: 'image',
+        notes: '',
+      });
+    }
+    return {
+      suggestedTitle: file.name.replace(/\.[^.]+$/, ''),
+      slides,
+    };
+  };
+
+  const importPowerPointTextAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setImportModalError(null);
+    setIsImportingDeck(true);
+    setImportDeckStatus('Parsing PowerPoint text...');
+    try {
+      const parsed = await buildTextSlidesFromPptx(file);
+      const now = Date.now();
+      const slides = parsed.slides;
+
+      const importedItem: ServiceItem = {
+        id: `${now}`,
+        title: resolveImportedDeckTitle(parsed.suggestedTitle),
+        type: ItemType.ANNOUNCEMENT,
+        slides,
+        theme: {
+          backgroundUrl: DEFAULT_BACKGROUNDS[0],
+          mediaType: 'image',
+          fontFamily: 'sans-serif',
+          textColor: '#ffffff',
+          shadow: true,
+          fontSize: 'large',
+        },
+      };
+
+      addItem(importedItem);
+      logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: slides.length, mode: 'text' });
+      setImportTitle('Imported Lyrics');
+      setImportLyrics('');
+      setIsLyricsImportOpen(false);
+    } catch (error: any) {
+      const message = error?.message || 'PowerPoint import failed.';
+      setImportModalError(message);
+    } finally {
+      setIsImportingDeck(false);
+      setImportDeckStatus('');
+    }
+  };
+
+  const importPowerPointVisualAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setImportModalError(null);
+    setIsImportingDeck(true);
+    setImportDeckStatus('Rendering slide visuals...');
+    try {
+      const converted = await buildVisualSlidesFromPptx(file, (status) => setImportDeckStatus(status));
+      const now = Date.now();
+      const slides = converted.slides;
+
+      const importedItem: ServiceItem = {
+        id: `${now}`,
+        title: resolveImportedDeckTitle(converted.suggestedTitle),
+        type: ItemType.MEDIA,
+        slides,
+        theme: {
+          backgroundUrl: '',
+          mediaType: 'image',
+          fontFamily: 'sans-serif',
+          textColor: '#ffffff',
+          shadow: false,
+          fontSize: 'medium',
+        },
+      };
+
+      addItem(importedItem);
+      logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: slides.length, mode: 'visual' });
+      setImportTitle('Imported Lyrics');
+      setImportLyrics('');
+      setIsLyricsImportOpen(false);
+    } catch (error: any) {
+      const message = error?.message || 'Visual PowerPoint import failed.';
+      setImportModalError(message);
+    } finally {
+      setIsImportingDeck(false);
+      setImportDeckStatus('');
+    }
+  };
+
+  const importPowerPointVisualSlidesForSlideEditor = async (file: File): Promise<Slide[]> => {
+    const visual = await buildVisualSlidesFromPptx(file);
+    logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: visual.slides.length, mode: 'visual_slide_editor' });
+    return visual.slides;
+  };
+
+  const importPowerPointTextSlidesForSlideEditor = async (file: File): Promise<Slide[]> => {
+    const text = await buildTextSlidesFromPptx(file);
+    logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: text.slides.length, mode: 'text_slide_editor' });
+    return text.slides;
   };
 
 
@@ -1049,6 +1259,41 @@ function App() {
     if (command === 'UNMUTE') setOutputMuted(false);
   }, [nextSlide, prevSlide, stopProgramVideo]);
 
+  const handleSaveSlideFromEditor = (slideToSave: Slide) => {
+    if (!selectedItem) return;
+    const slideExists = selectedItem.slides.find((entry) => entry.id === slideToSave.id);
+    const nextSlides = slideExists
+      ? selectedItem.slides.map((entry) => (entry.id === slideToSave.id ? slideToSave : entry))
+      : [...selectedItem.slides, slideToSave];
+    updateItem({ ...selectedItem, slides: nextSlides });
+    setIsSlideEditorOpen(false);
+  };
+
+  const handleInsertSlidesFromEditor = (slidesToInsert: Slide[], replaceCurrentId?: string | null) => {
+    if (!selectedItem || !slidesToInsert.length) return;
+    const incoming = slidesToInsert.map((entry, idx) => ({
+      ...entry,
+      id: entry.id || `${Date.now()}-import-${idx + 1}`,
+    }));
+
+    const nextSlides = [...selectedItem.slides];
+    if (replaceCurrentId) {
+      const targetIndex = nextSlides.findIndex((entry) => entry.id === replaceCurrentId);
+      if (targetIndex >= 0) {
+        const [first, ...rest] = incoming;
+        const replacement = { ...first, id: replaceCurrentId };
+        nextSlides.splice(targetIndex, 1, replacement, ...rest);
+      } else {
+        nextSlides.push(...incoming);
+      }
+    } else {
+      nextSlides.push(...incoming);
+    }
+
+    updateItem({ ...selectedItem, slides: nextSlides });
+    setIsSlideEditorOpen(false);
+  };
+
   const handleEditSlide = (slide: Slide) => {
     setEditingSlide(slide);
     setIsSlideEditorOpen(true);
@@ -1135,7 +1380,9 @@ function App() {
           }
 
           const cloudSettings = sanitizeWorkspaceSettings(preferred.workspaceSettings);
-          if (Object.keys(cloudSettings).length > 0) {
+          const localSettingsUpdatedAt = workspaceSettingsUpdatedAtRef.current;
+          if (Object.keys(cloudSettings).length > 0 && cloudUpdatedAt >= localSettingsUpdatedAt) {
+            workspaceSettingsUpdatedAtRef.current = cloudUpdatedAt;
             setWorkspaceSettings((prev) => ({ ...prev, ...cloudSettings }));
           }
         },
@@ -1314,8 +1561,10 @@ function App() {
 
   // ✅ Launch Output handler (opens window synchronously from user gesture — popup-safe)
   const handleToggleOutput = () => {
-    if (!activeSlide && selectedItem && selectedItem.slides.length > 0) {
+    if (!activeItem && selectedItem && selectedItem.slides.length > 0) {
       goLive(selectedItem, 0);
+    } else if (activeItem && !activeSlide && activeItem.slides.length > 0) {
+      goLive(activeItem, 0);
     }
 
     if (isOutputLive) {
@@ -1535,7 +1784,7 @@ function App() {
                   <span>Run Sheet</span>
                   <div className="flex items-center gap-1">
                     <button onClick={() => setIsTemplateOpen(true)} className="px-1.5 py-0.5 text-[9px] border border-zinc-800 rounded-sm hover:text-white hover:border-zinc-600">TPL</button>
-                    <button onClick={() => setIsLyricsImportOpen(true)} className="px-1.5 py-0.5 text-[9px] border border-zinc-800 rounded-sm hover:text-white hover:border-zinc-600">LYR</button>
+                    <button onClick={() => { setImportModalError(null); setImportDeckStatus(''); setIsLyricsImportOpen(true); }} className="px-1.5 py-0.5 text-[9px] border border-zinc-800 rounded-sm hover:text-white hover:border-zinc-600">LYR</button>
                     <button onClick={addEmptyItem} className="hover:text-white p-1 hover:bg-zinc-900 rounded-sm"><PlusIcon className="w-3 h-3" /></button>
                   </div>
                 </div>
@@ -1615,7 +1864,7 @@ function App() {
                 <div className="flex items-center gap-2"><button onClick={prevSlide} className="h-12 w-14 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center border border-zinc-700 active:scale-95 transition-transform"><ArrowLeftIcon className="w-5 h-5" /></button><button onClick={nextSlide} className="h-12 w-28 rounded-sm bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-bold text-sm tracking-wide active:scale-95 transition-transform"><ArrowRightIcon className="w-5 h-5 mr-1" /> NEXT</button></div>
                 {isActiveVideo && (<div className="flex items-center gap-2 bg-zinc-950 rounded-sm p-1 border border-zinc-800"><button onClick={() => triggerSeek(-10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><RewindIcon className="w-4 h-4" /></button><button onClick={() => setIsPlaying(!isPlaying)} className={`p-2.5 rounded-sm ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-green-900/50 text-green-400'}`}>{isPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4 fill-current" />}</button><button onClick={() => triggerSeek(10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><ForwardIcon className="w-4 h-4" /></button></div>)}
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setLowerThirdsEnabled((prev) => !prev)} className={`h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border ${lowerThirdsEnabled ? 'bg-blue-950 text-blue-400 border-blue-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800'}`}>LOWER THIRDS</button>
+                  <button onClick={() => { if (routingMode !== 'PROJECTOR') setLowerThirdsEnabled((prev) => !prev); }} title={routingMode === 'PROJECTOR' ? 'Projector mode keeps full-screen text (lower thirds disabled).' : 'Toggle lower thirds overlay'} className={`h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border ${lowerThirdsEnabled ? 'bg-blue-950 text-blue-400 border-blue-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800'} ${routingMode === 'PROJECTOR' ? 'opacity-60 cursor-not-allowed' : ''}`}>LOWER THIRDS</button>
                   <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} className="h-12 px-2 bg-zinc-950 border border-zinc-800 text-zinc-300 text-xs rounded-sm">
                     <option value="PROJECTOR">Projector</option>
                     <option value="STREAM">Stream</option>
@@ -1670,64 +1919,111 @@ function App() {
         )}
       </div>
 
-      {isStageDisplayLive && (<OutputWindow
-        externalWindow={stageWin}
-        onClose={() => {
-          setIsStageDisplayLive(false);
-          setStageWin(null);
-        }}
-        onBlock={() => {
-          setPopupBlocked(true);
-          setIsStageDisplayLive(false);
-          setStageWin(null);
-        }}><StageDisplay currentSlide={activeSlide} nextSlide={nextSlidePreview} activeItem={activeItem} timerLabel="Pastor Timer" timerDisplay={formatTimer(timerSeconds)} timerMode={timerMode} isTimerOvertime={isTimerOvertime} profile={workspaceSettings.stageProfile} /></OutputWindow>)}
-      {isTemplateOpen && (
-        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm p-4 flex items-center justify-center">
-          <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-lg p-5">
-            <h3 className="text-sm font-bold text-zinc-200 mb-1">Apply Service Template</h3>
-            <p className="text-xs text-zinc-500 mb-4">Replaces the current run sheet.</p>
-            <div className="grid grid-cols-1 gap-2 mb-4">
-              <button onClick={() => applyTemplate('CLASSIC')} className="text-left px-3 py-2 border border-zinc-800 rounded hover:border-zinc-600"><div className="text-sm font-semibold">Classic Sunday</div><div className="text-[11px] text-zinc-500">Welcome + Worship + Message</div></button>
-              <button onClick={() => applyTemplate('YOUTH')} className="text-left px-3 py-2 border border-zinc-800 rounded hover:border-zinc-600"><div className="text-sm font-semibold">Youth Night</div><div className="text-[11px] text-zinc-500">Countdown + Hype + Response</div></button>
-              <button onClick={() => applyTemplate('PRAYER')} className="text-left px-3 py-2 border border-zinc-800 rounded hover:border-zinc-600"><div className="text-sm font-semibold">Prayer Service</div><div className="text-[11px] text-zinc-500">Reflection + Intercession</div></button>
-            </div>
-            <div className="flex justify-end">
-              <button onClick={() => setIsTemplateOpen(false)} className="px-3 py-1.5 text-xs border border-zinc-700 rounded">Close</button>
+      {
+        isStageDisplayLive && (
+          <OutputWindow
+            externalWindow={stageWin}
+            onClose={() => {
+              setIsStageDisplayLive(false);
+              setStageWin(null);
+            }}
+            onBlock={() => {
+              setPopupBlocked(true);
+              setIsStageDisplayLive(false);
+              setStageWin(null);
+            }}
+          >
+            <StageDisplay
+              currentSlide={activeSlide}
+              nextSlide={nextSlidePreview}
+              activeItem={activeItem}
+              timerLabel="Pastor Timer"
+              timerDisplay={formatTimer(timerSeconds)}
+              timerMode={timerMode}
+              isTimerOvertime={isTimerOvertime}
+              profile={workspaceSettings.stageProfile}
+            />
+          </OutputWindow>
+        )
+      }
+
+      {
+        isTemplateOpen && (
+          <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm p-4 flex items-center justify-center">
+            <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-lg p-5">
+              <h3 className="text-sm font-bold text-zinc-200 mb-1">Apply Service Template</h3>
+              <p className="text-xs text-zinc-500 mb-4">Replaces the current run sheet.</p>
+              <div className="grid grid-cols-1 gap-2 mb-4">
+                <button onClick={() => applyTemplate('CLASSIC')} className="text-left px-3 py-2 border border-zinc-800 rounded hover:border-zinc-600"><div className="text-sm font-semibold">Classic Sunday</div><div className="text-[11px] text-zinc-500">Welcome + Worship + Message</div></button>
+                <button onClick={() => applyTemplate('YOUTH')} className="text-left px-3 py-2 border border-zinc-800 rounded hover:border-zinc-600"><div className="text-sm font-semibold">Youth Night</div><div className="text-[11px] text-zinc-500">Countdown + Hype + Response</div></button>
+                <button onClick={() => applyTemplate('PRAYER')} className="text-left px-3 py-2 border border-zinc-800 rounded hover:border-zinc-600"><div className="text-sm font-semibold">Prayer Service</div><div className="text-[11px] text-zinc-500">Reflection + Intercession</div></button>
+              </div>
+              <div className="flex justify-end">
+                <button onClick={() => setIsTemplateOpen(false)} className="px-3 py-1.5 text-xs border border-zinc-700 rounded">Close</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-      {isLyricsImportOpen && (
-        <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm p-4 flex items-center justify-center">
-          <div className="w-full max-w-2xl bg-zinc-900 border border-zinc-800 rounded-lg p-5">
-            <h3 className="text-sm font-bold text-zinc-200 mb-1">Import Lyrics</h3>
-            <p className="text-xs text-zinc-500 mb-4">Separate slide chunks with a blank line.</p>
-            <input value={importTitle} onChange={(e) => setImportTitle(e.target.value)} className="w-full mb-3 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm" placeholder="Song title" />
-            <textarea value={importLyrics} onChange={(e) => setImportLyrics(e.target.value)} className="w-full h-56 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm font-mono" placeholder={'Verse 1 line 1\nVerse 1 line 2\n\nChorus line 1\nChorus line 2'} />
-            <div className="flex justify-between mt-4">
-              <button onClick={() => setIsLyricsImportOpen(false)} className="px-3 py-1.5 text-xs border border-zinc-700 rounded">Cancel</button>
-              <button onClick={importLyricsAsItem} className="px-4 py-1.5 text-xs font-bold bg-blue-600 rounded">Import</button>
+        )
+      }
+
+      {
+        isLyricsImportOpen && (
+          <div className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm p-4 flex items-center justify-center">
+            <div className="w-full max-w-2xl bg-zinc-900 border border-zinc-800 rounded-lg p-5">
+              <h3 className="text-sm font-bold text-zinc-200 mb-1">Import Lyrics</h3>
+              <p className="text-xs text-zinc-500 mb-4">Paste lyrics with blank lines or import a PowerPoint/PDF deck as visual slides.</p>
+              <input value={importTitle} onChange={(e) => setImportTitle(e.target.value)} className="w-full mb-3 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm" placeholder="Song title" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                <label className="block border border-zinc-800 rounded px-3 py-2 bg-zinc-950 text-xs text-zinc-300 cursor-pointer hover:border-zinc-600 transition-colors">
+                  <span className="font-semibold">Retain Exact Layout (.pptx/.pdf Visual)</span>
+                  <input type="file" accept=".pptx,.ppt,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint" className="hidden" onChange={importPowerPointVisualAsItem} disabled={isImportingDeck} />
+                  <div className="text-[10px] text-zinc-500 mt-1">Keeps original design/background exactly. PDF is a strong fallback when PPTX fonts mismatch.</div>
+                </label>
+                <label className="block border border-zinc-800 rounded px-3 py-2 bg-zinc-950 text-xs text-zinc-300 cursor-pointer hover:border-zinc-600 transition-colors">
+                  <span className="font-semibold">Use Lumina Theme (.pptx Text)</span>
+                  <input type="file" accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint" className="hidden" onChange={importPowerPointTextAsItem} disabled={isImportingDeck} />
+                  <div className="text-[10px] text-zinc-500 mt-1">Imports text/notes so you can style with Lumina backgrounds.</div>
+                </label>
+              </div>
+              {importDeckStatus && <div className="mb-2 text-[11px] text-cyan-300 border border-cyan-900/60 bg-cyan-950/20 rounded px-3 py-2">{importDeckStatus}</div>}
+              <textarea value={importLyrics} onChange={(e) => setImportLyrics(e.target.value)} className="w-full h-56 bg-zinc-950 border border-zinc-800 rounded px-3 py-2 text-sm font-mono" placeholder={'Verse 1 line 1\nVerse 1 line 2\n\nChorus line 1\nChorus line 2'} />
+              {importModalError && <div className="mt-2 text-xs text-red-400 border border-red-900/60 bg-red-950/30 rounded px-3 py-2">{importModalError}</div>}
+              <div className="flex justify-between mt-4">
+                <button onClick={() => { setIsLyricsImportOpen(false); setImportModalError(null); setImportDeckStatus(''); }} className="px-3 py-1.5 text-xs border border-zinc-700 rounded" disabled={isImportingDeck}>Cancel</button>
+                <button onClick={importLyricsAsItem} className="px-4 py-1.5 text-xs font-bold bg-blue-600 rounded" disabled={isImportingDeck}>Import Lyrics</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
+
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
-      {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={(settings) => setWorkspaceSettings((prev) => ({ ...prev, ...settings }))} onLogout={handleLogout} currentSettings={workspaceSettings} currentUser={user} />} {/* NEW */}
-      {isMotionLibOpen && (
-        <MotionLibrary
-          onClose={() => setIsMotionLibOpen(false)}
-          onSelect={(url, mediaType = 'video') => {
-            if (selectedItem) {
-              updateItem({ ...selectedItem, theme: { ...selectedItem.theme, backgroundUrl: url, mediaType } });
-              logActivity(user?.uid, 'UPDATE_THEME', { type: 'MOTION_BG', itemId: selectedItem.id, mediaType });
-            }
-            setIsMotionLibOpen(false);
-          }}
-        />
-      )}
-      <SlideEditorModal isOpen={isSlideEditorOpen} onClose={() => setIsSlideEditorOpen(false)} slide={editingSlide} onSave={(slide) => { if (!selectedItem) return; const slideExists = selectedItem.slides.find(s => s.id === slide.id); let newSlides = slideExists ? selectedItem.slides.map(s => s.id === slide.id ? slide : s) : [...selectedItem.slides, slide]; updateItem({ ...selectedItem, slides: newSlides }); setIsSlideEditorOpen(false); }} />
-    </div>
+      {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={(settings) => setWorkspaceSettings((prev) => ({ ...prev, ...settings }))} onLogout={handleLogout} currentSettings={workspaceSettings} currentUser={user} />}
+      {
+        isMotionLibOpen && (
+          <MotionLibrary
+            onClose={() => setIsMotionLibOpen(false)}
+            onSelect={(url, mediaType = 'video') => {
+              if (selectedItem) {
+                updateItem({ ...selectedItem, theme: { ...selectedItem.theme, backgroundUrl: url, mediaType } });
+                logActivity(user?.uid, 'UPDATE_THEME', { type: 'MOTION_BG', itemId: selectedItem.id, mediaType });
+              }
+              setIsMotionLibOpen(false);
+            }}
+          />
+        )
+      }
+      <SlideEditorModal
+        isOpen={isSlideEditorOpen}
+        onClose={() => setIsSlideEditorOpen(false)}
+        slide={editingSlide}
+        onSave={handleSaveSlideFromEditor}
+        onImportPowerPointVisual={importPowerPointVisualSlidesForSlideEditor}
+        onImportPowerPointText={importPowerPointTextSlidesForSlideEditor}
+        onInsertSlides={handleInsertSlidesFromEditor}
+      />
+    </div >
   );
 }
 

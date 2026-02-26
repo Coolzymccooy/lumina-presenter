@@ -11,6 +11,7 @@ export type EventType =
   | 'DELETE_ITEM'
   | 'UPDATE_THEME'
   | 'AI_GENERATION'
+  | 'IMPORT_PPTX'
   | 'PRESENTATION_START'
   | 'SLIDE_CHANGE'
   | 'ERROR';

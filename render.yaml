@@ -1,14 +1,26 @@
 services:
   - type: web
     name: lumina-presenter-api
-    runtime: node
+    runtime: docker
     plan: free
     region: ohio
-    buildCommand: npm ci
-    startCommand: npm start
+    dockerfilePath: ./Dockerfile.api
+    dockerContext: .
     healthCheckPath: /api/health
     envVars:
-      - key: NODE_VERSION
-        value: 20
       - key: LUMINA_DATA_DIR
-        value: /var/data
+        value: /tmp/lumina-data
+      - key: LUMINA_SOFFICE_BIN
+        value: /usr/bin/soffice
+      - key: LUMINA_VIS_CACHE_VERSION
+        value: v4
+      - key: LUMINA_VIS_FONTSET_VERSION
+        value: f2
+      - key: LUMINA_PPTX_VIS_VIEWPORT_SCALE
+        value: "1.0"
+      - key: LUMINA_PDF_RASTER_DPI
+        value: "120"
+      - key: LUMINA_VIS_RASTER_ENGINE
+        value: auto
+      - key: LUMINA_KEEP_ALIVE_URL
+        value: https://lumina-presenter-api.onrender.com

@@ -30,6 +30,8 @@ coverage/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+playwright-report/
+test-results/
 package-lock.json
 pnpm-lock.yaml
 

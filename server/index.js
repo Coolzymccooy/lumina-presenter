@@ -1,21 +1,152 @@
 import express from "express";
 import cors from "cors";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import Database from "better-sqlite3";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = process.env.LUMINA_DATA_DIR
+const requestedDataDir = process.env.LUMINA_DATA_DIR
   ? path.resolve(process.env.LUMINA_DATA_DIR)
   : path.join(__dirname, "data");
-const DB_PATH = process.env.LUMINA_DB_PATH
+const requestedDbPath = process.env.LUMINA_DB_PATH
   ? path.resolve(process.env.LUMINA_DB_PATH)
-  : path.join(DATA_DIR, "lumina.sqlite");
+  : path.join(requestedDataDir, "lumina.sqlite");
 const PORT = Number(process.env.PORT || process.env.LUMINA_API_PORT || 8787);
+const JSON_LIMIT = process.env.LUMINA_JSON_LIMIT || "100mb";
+const SOFFICE_BIN = String(process.env.LUMINA_SOFFICE_BIN || "soffice").trim() || "soffice";
+const PDFTOCAIRO_BIN = String(process.env.LUMINA_PDFTOCAIRO_BIN || "pdftocairo").trim() || "pdftocairo";
+const PPTX_CONVERT_TIMEOUT_MS = Number(process.env.LUMINA_PPTX_CONVERT_TIMEOUT_MS || 180000);
+const MAX_PPTX_IMPORT_BYTES = Number(process.env.LUMINA_MAX_PPTX_IMPORT_BYTES || 80 * 1024 * 1024);
+const PPTX_VIS_VIEWPORT_SCALE = Math.max(1, Number(process.env.LUMINA_PPTX_VIS_VIEWPORT_SCALE || 1.0) || 1.0);
+const PPTX_VIS_PARALLEL = String(process.env.LUMINA_PPTX_VIS_PARALLEL || "true").toLowerCase() !== "false";
+const PPTX_VIS_INCLUDE_BASE64_DEFAULT =
+  String(process.env.LUMINA_PPTX_VIS_INCLUDE_BASE64 || "false").toLowerCase() === "true";
+const PPTX_VIS_FONTSET_VERSION = String(process.env.LUMINA_VIS_FONTSET_VERSION || "f1").trim() || "f1";
+const PPTX_VIS_RASTER_ENGINE = (() => {
+  const raw = String(process.env.LUMINA_VIS_RASTER_ENGINE || "auto").trim().toLowerCase();
+  if (raw === "poppler" || raw === "pdfjs" || raw === "auto") return raw;
+  return "auto";
+})();
+const PPTX_VIS_RENDERER_DEFAULT = PPTX_VIS_RASTER_ENGINE === "pdfjs" ? "pdfjs-fallback" : "poppler";
+const PPTX_PDF_RASTER_DPI = Math.max(72, Number(process.env.LUMINA_PDF_RASTER_DPI || 120) || 120);
+const PPTX_VIS_CACHE_VERSION = (() => {
+  const safe = String(process.env.LUMINA_VIS_CACHE_VERSION || "v4").replace(/[^a-zA-Z0-9._-]/g, "_");
+  return safe || "v4";
+})();
+const execFileAsync = promisify(execFile);
+let sofficeVersionLine = "unknown";
+let pdftocairoVersionLine = "unknown";
+let cachedPdfToPng = null;
+let cachedPdfToPngLoadError = null;
 
-fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+const loadPdfToPngConverter = async () => {
+  if (typeof cachedPdfToPng === "function") return cachedPdfToPng;
+  if (cachedPdfToPngLoadError) throw cachedPdfToPngLoadError;
+  try {
+    const mod = await import("pdf-to-png-converter");
+    if (typeof mod?.pdfToPng !== "function") {
+      throw new Error("pdf-to-png-converter did not export pdfToPng.");
+    }
+    cachedPdfToPng = mod.pdfToPng;
+    return cachedPdfToPng;
+  } catch (error) {
+    cachedPdfToPngLoadError = error;
+    throw error;
+  }
+};
+
+const firstNonEmptyLine = (input) =>
+  String(input || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean) || "";
+
+const logSofficeAvailability = async () => {
+  try {
+    const result = await execFileAsync(SOFFICE_BIN, ["--version"], {
+      timeout: 7000,
+      windowsHide: true,
+      maxBuffer: 1024 * 1024,
+    });
+    sofficeVersionLine = firstNonEmptyLine(result?.stdout || result?.stderr) || "version unknown";
+    console.log(`[lumina-server-api] soffice: available (${sofficeVersionLine})`);
+  } catch (error) {
+    sofficeVersionLine = "missing";
+    console.warn(`[lumina-server-api] warning: soffice not found at '${SOFFICE_BIN}'. Visual PPTX import will return 503.`);
+    if (error?.code && error?.code !== "ENOENT") {
+      console.warn(`[lumina-server-api] warning: soffice version probe failed (${String(error.code)})`);
+    }
+  }
+};
+
+const logPdftocairoAvailability = async () => {
+  try {
+    const result = await execFileAsync(PDFTOCAIRO_BIN, ["-v"], {
+      timeout: 7000,
+      windowsHide: true,
+      maxBuffer: 1024 * 1024,
+    });
+    pdftocairoVersionLine = firstNonEmptyLine(result?.stdout || result?.stderr) || "version unknown";
+    console.log(`[lumina-server-api] pdftocairo: available (${pdftocairoVersionLine})`);
+  } catch (error) {
+    pdftocairoVersionLine = "missing";
+    console.warn(`[lumina-server-api] warning: pdftocairo not found at '${PDFTOCAIRO_BIN}'. Falling back to pdfjs renderer for VIS.`);
+    if (error?.code && error?.code !== "ENOENT") {
+      console.warn(`[lumina-server-api] warning: pdftocairo version probe failed (${String(error.code)})`);
+    }
+  }
+};
+
+const logFontDiagnostics = async () => {
+  try {
+    const result = await execFileAsync("fc-list", [":", "family"], {
+      timeout: 10000,
+      windowsHide: true,
+      maxBuffer: 10 * 1024 * 1024,
+    });
+    const haystack = String(result?.stdout || "").toLowerCase();
+    const families = ["carlito", "caladea", "liberation", "noto", "unifont", "dejavu"];
+    const statuses = families.map((family) => `${family}:${haystack.includes(family) ? "yes" : "no"}`);
+    console.log(`[lumina-server-api] fonts: ${statuses.join(" ")}`);
+  } catch (error) {
+    console.warn(`[lumina-server-api] warning: font probe skipped (fc-list unavailable: ${String(error?.code || error?.message || "unknown")})`);
+  }
+};
+
+const resolveWritableDbPath = (candidatePath) => {
+  const filename = path.basename(candidatePath) || "lumina.sqlite";
+  try {
+    const dir = path.dirname(candidatePath);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.accessSync(dir, fs.constants.W_OK);
+    return { dbPath: candidatePath, usedFallback: false };
+  } catch {
+    const fallbackDir = path.join(os.tmpdir(), "lumina-data");
+    fs.mkdirSync(fallbackDir, { recursive: true });
+    return { dbPath: path.join(fallbackDir, filename), usedFallback: true };
+  }
+};
+
+const { dbPath: DB_PATH, usedFallback: USED_EPHEMERAL_FALLBACK } = resolveWritableDbPath(requestedDbPath);
+const DATA_DIR = path.dirname(DB_PATH);
+const VIS_MEDIA_DIR = process.env.LUMINA_VIS_MEDIA_DIR
+  ? path.resolve(process.env.LUMINA_VIS_MEDIA_DIR)
+  : path.join(DATA_DIR, "vis-media");
+const VIS_MEDIA_BASE_PATH = (() => {
+  const raw = String(process.env.LUMINA_VIS_MEDIA_BASE_PATH || "/media/vis").trim();
+  const normalized = `/${raw.replace(/^\/+|\/+$/g, "")}`;
+  return normalized === "/" ? "/media/vis" : normalized;
+})();
+const VIS_MEDIA_KEEP_IMPORTS_PER_WORKSPACE = Math.max(
+  1,
+  Number(process.env.LUMINA_VIS_MEDIA_KEEP_IMPORTS_PER_WORKSPACE || 20) || 20,
+);
 
 const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
@@ -71,7 +202,12 @@ CREATE INDEX IF NOT EXISTS idx_snapshots_workspace_time ON workspace_snapshots(w
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: "25mb" }));
+app.use(express.json({ limit: JSON_LIMIT }));
+fs.mkdirSync(VIS_MEDIA_DIR, { recursive: true });
+app.use(
+  VIS_MEDIA_BASE_PATH,
+  express.static(VIS_MEDIA_DIR, { index: false, fallthrough: false }),
+);
 
 const now = () => Date.now();
 const parseJson = (raw, fallback) => {
@@ -83,6 +219,144 @@ const parseJson = (raw, fallback) => {
   }
 };
 const toJson = (value) => JSON.stringify(value ?? {});
+const cleanupDir = (dirPath) => {
+  try {
+    fs.rmSync(dirPath, { recursive: true, force: true });
+  } catch {
+    // best effort cleanup
+  }
+};
+const sanitizeFilename = (name, fallback = "import.pptx") => {
+  const safe = String(name || "").replace(/[^a-zA-Z0-9._-]/g, "_");
+  return safe || fallback;
+};
+const sanitizePathSegment = (name, fallback = "item") => {
+  const safe = String(name || "").replace(/[^a-zA-Z0-9._-]/g, "_");
+  return safe || fallback;
+};
+const decodeBase64 = (raw) => {
+  if (!raw || typeof raw !== "string") return Buffer.alloc(0);
+  const clean = raw.includes(",") ? raw.slice(raw.indexOf(",") + 1) : raw;
+  return Buffer.from(clean, "base64");
+};
+const getRequestOrigin = (req) => {
+  const forwardedProto = String(req.headers["x-forwarded-proto"] || "")
+    .split(",")[0]
+    .trim();
+  const forwardedHost = String(req.headers["x-forwarded-host"] || "")
+    .split(",")[0]
+    .trim();
+  const proto = forwardedProto || req.protocol || "http";
+  const host = forwardedHost || String(req.get("host") || "").trim();
+  if (!host) return `http://localhost:${PORT}`;
+  return `${proto}://${host}`;
+};
+const parseBool = (value, fallback = false) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return fallback;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return fallback;
+  return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+};
+const formatExecErrorDetails = (error) => {
+  const code = error?.code ? `code=${String(error.code)}` : "";
+  const signal = error?.signal ? `signal=${String(error.signal)}` : "";
+  const stdout = firstNonEmptyLine(error?.stdout || "");
+  const stderr = firstNonEmptyLine(error?.stderr || "");
+  const msg = firstNonEmptyLine(error?.message || "");
+  return [code, signal, stderr && `stderr=${stderr}`, stdout && `stdout=${stdout}`, msg && `msg=${msg}`]
+    .filter(Boolean)
+    .join(" ");
+};
+const parsePngDimensions = (content) => {
+  if (!Buffer.isBuffer(content) || content.length < 24) return { width: 0, height: 0 };
+  const isPng = content.readUInt32BE(0) === 0x89504e47 && content.readUInt32BE(4) === 0x0d0a1a0a;
+  if (!isPng) return { width: 0, height: 0 };
+  return {
+    width: Number(content.readUInt32BE(16) || 0),
+    height: Number(content.readUInt32BE(20) || 0),
+  };
+};
+const renderPdfToPngWithPoppler = async (pdfPath, outDir, dpi) => {
+  const prefix = path.join(outDir, "slide");
+  await execFileAsync(
+    PDFTOCAIRO_BIN,
+    ["-png", "-r", String(dpi), pdfPath, prefix],
+    {
+      timeout: PPTX_CONVERT_TIMEOUT_MS,
+      windowsHide: true,
+      maxBuffer: 20 * 1024 * 1024,
+    },
+  );
+  const prefixBase = path.basename(prefix);
+  const pages = fs
+    .readdirSync(outDir)
+    .filter((entry) => entry.startsWith(`${prefixBase}-`) && entry.toLowerCase().endsWith(".png"))
+    .map((entry) => {
+      const match = entry.match(/-(\d+)\.png$/i);
+      const pageNumber = Number(match?.[1] || 0);
+      return { entry, pageNumber };
+    })
+    .filter((entry) => entry.pageNumber > 0)
+    .sort((left, right) => left.pageNumber - right.pageNumber)
+    .map(({ entry, pageNumber }) => {
+      const content = fs.readFileSync(path.join(outDir, entry));
+      const dims = parsePngDimensions(content);
+      return {
+        pageNumber,
+        name: entry,
+        content,
+        width: dims.width,
+        height: dims.height,
+      };
+    });
+  return pages;
+};
+const renderPdfToPngWithPdfJs = async (pdfPath) => {
+  const convertPdfToPng = await loadPdfToPngConverter();
+  return await convertPdfToPng(pdfPath, {
+    viewportScale: PPTX_VIS_VIEWPORT_SCALE,
+    disableFontFace: false,
+    useSystemFonts: true,
+    returnPageContent: true,
+    processPagesInParallel: PPTX_VIS_PARALLEL,
+    verbosityLevel: 0,
+  });
+};
+const getVisualRenderSignature = () => {
+  const raw = [
+    `cache=${PPTX_VIS_CACHE_VERSION}`,
+    `fontset=${PPTX_VIS_FONTSET_VERSION}`,
+    `soffice=${sofficeVersionLine || "unknown"}`,
+    `pdftocairo=${pdftocairoVersionLine || "unknown"}`,
+    `engine=${PPTX_VIS_RASTER_ENGINE}`,
+    `dpi=${PPTX_PDF_RASTER_DPI}`,
+    `scale=${PPTX_VIS_VIEWPORT_SCALE}`,
+  ].join("|");
+  const hash = createHash("sha256").update(raw).digest("hex").slice(0, 12);
+  return { raw, hash };
+};
+const pruneWorkspaceVisualImports = (workspaceSegment) => {
+  try {
+    const workspaceDir = path.join(VIS_MEDIA_DIR, workspaceSegment);
+    if (!fs.existsSync(workspaceDir)) return;
+    const folders = fs
+      .readdirSync(workspaceDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => {
+        const fullPath = path.join(workspaceDir, entry.name);
+        const stats = fs.statSync(fullPath);
+        return { name: entry.name, fullPath, mtimeMs: Number(stats.mtimeMs || 0) };
+      })
+      .sort((left, right) => right.mtimeMs - left.mtimeMs);
+
+    folders
+      .slice(VIS_MEDIA_KEEP_IMPORTS_PER_WORKSPACE)
+      .forEach((entry) => cleanupDir(entry.fullPath));
+  } catch {
+    // best effort cleanup
+  }
+};
 
 const normalizeEmails = (raw = "") =>
   String(raw)
@@ -186,10 +460,10 @@ app.get("/api/workspaces/:workspaceId", requireActor, (req, res) => {
       },
       latestSnapshot: latestSnapshot
         ? {
-            version: latestSnapshot.version,
-            payload: parseJson(latestSnapshot.payload_json, {}),
-            createdAt: latestSnapshot.created_at,
-          }
+          version: latestSnapshot.version,
+          payload: parseJson(latestSnapshot.payload_json, {}),
+          createdAt: latestSnapshot.created_at,
+        }
         : null,
     });
   } catch (error) {
@@ -304,15 +578,17 @@ app.post("/api/workspaces/:workspaceId/sessions/:sessionId/state", requireActor,
     const actor = req.actor;
     const workspace = ensureWorkspaceForWrite(workspaceId, actor, { allowOperator: true });
     const current = db
-      .prepare("SELECT version FROM sessions WHERE workspace_id = ? AND session_id = ?")
+      .prepare("SELECT version, state_json FROM sessions WHERE workspace_id = ? AND session_id = ?")
       .get(workspaceId, sessionId);
     const nextVersion = Number(current?.version || 0) + 1;
     const updatedAt = now();
     const payloadState = req.body?.state || {};
+    const currentState = parseJson(current?.state_json, {});
     const state = {
+      ...currentState,
       ...payloadState,
       updatedAt,
-      controllerOwnerUid: payloadState.controllerOwnerUid || workspace.owner_uid,
+      controllerOwnerUid: payloadState.controllerOwnerUid || currentState.controllerOwnerUid || workspace.owner_uid,
     };
     db.prepare(`
       INSERT INTO sessions (workspace_id, session_id, owner_uid, version, state_json, updated_at)
@@ -482,4 +758,315 @@ app.get("/api/workspaces/:workspaceId/reports/audit", requireActor, (req, res) =
 app.listen(PORT, () => {
   console.log(`[lumina-server-api] listening on http://localhost:${PORT}`);
   console.log(`[lumina-server-api] sqlite: ${DB_PATH}`);
+  if (USED_EPHEMERAL_FALLBACK) {
+    console.warn("[lumina-server-api] warning: requested data path was not writable; using ephemeral /tmp fallback.");
+  }
+  void (async () => {
+    await logSofficeAvailability();
+    await logPdftocairoAvailability();
+    await logFontDiagnostics();
+  })();
+
+  // Keep-alive: ping /api/health every 14 minutes so Render free tier doesn't spin down.
+  // Set LUMINA_KEEP_ALIVE_URL to the public URL of this service (e.g. https://lumina-presenter-api.onrender.com).
+  const keepAliveUrl = process.env.LUMINA_KEEP_ALIVE_URL
+    ? `${String(process.env.LUMINA_KEEP_ALIVE_URL).replace(/\/+$/, "")}/api/health`
+    : null;
+  if (keepAliveUrl) {
+    const KEEP_ALIVE_INTERVAL_MS = 14 * 60 * 1000; // 14 minutes
+    console.log(`[lumina-server-api] keep-alive: pinging ${keepAliveUrl} every 14 min`);
+    setInterval(async () => {
+      try {
+        const res = await fetch(keepAliveUrl, { signal: AbortSignal.timeout(10000) });
+        console.log(`[lumina-server-api] keep-alive: ping ${res.ok ? "ok" : `failed (${res.status})`}`);
+      } catch (err) {
+        console.warn(`[lumina-server-api] keep-alive: ping error — ${String(err?.message || err)}`);
+      }
+    }, KEEP_ALIVE_INTERVAL_MS);
+  }
+});
+
+app.post("/api/workspaces/:workspaceId/imports/pptx-visual", requireActor, async (req, res) => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "lumina-pptx-"));
+  try {
+    const workspaceId = req.params.workspaceId;
+    const actor = req.actor;
+    ensureWorkspaceForWrite(workspaceId, actor, { allowOperator: true });
+    const workspaceSegment = sanitizePathSegment(workspaceId, "workspace");
+    const requestOrigin = getRequestOrigin(req);
+    const includeBase64 =
+      parseBool(req.body?.includeBase64, PPTX_VIS_INCLUDE_BASE64_DEFAULT)
+      || parseBool(req.query?.includeBase64, false);
+
+    const filename = sanitizeFilename(req.body?.filename, "import.pptx");
+    const lowerFilename = filename.toLowerCase();
+    const isPptx = lowerFilename.endsWith(".pptx");
+    const isPdf = lowerFilename.endsWith(".pdf");
+    if (!isPptx && !isPdf) {
+      return res.status(400).json({
+        ok: false,
+        error: "INVALID_FILE",
+        message: "Only .pptx or .pdf files are supported for visual import.",
+      });
+    }
+
+    const bytes = decodeBase64(req.body?.fileBase64);
+    if (!bytes.length) {
+      return res.status(400).json({ ok: false, error: "INVALID_PAYLOAD", message: "Missing PowerPoint file bytes." });
+    }
+    if (bytes.length > MAX_PPTX_IMPORT_BYTES) {
+      return res.status(413).json({
+        ok: false,
+        error: "FILE_TOO_LARGE",
+        message: `PowerPoint file is too large. Max supported size is ${Math.floor(MAX_PPTX_IMPORT_BYTES / (1024 * 1024))}MB.`,
+      });
+    }
+
+    const fileHash = createHash("sha256").update(bytes).digest("hex");
+    const { hash: renderSignatureHash } = getVisualRenderSignature();
+    const importSegment = sanitizePathSegment(
+      `${renderSignatureHash}_${fileHash.slice(0, 20)}_${bytes.length}`,
+      "import",
+    );
+    const importDir = path.join(VIS_MEDIA_DIR, workspaceSegment, importSegment);
+    const metaPath = path.join(importDir, "meta.json");
+    if (fs.existsSync(metaPath)) {
+      try {
+        const rawMeta = fs.readFileSync(metaPath, "utf8");
+        const parsed = JSON.parse(rawMeta);
+        const cachedRenderer = String(parsed?.renderer || PPTX_VIS_RENDERER_DEFAULT);
+        const cachedRenderSignature = String(parsed?.renderSignature || renderSignatureHash);
+        const cachedSlides = Array.isArray(parsed?.slides) ? parsed.slides : [];
+        const slides = cachedSlides
+          .filter((entry) => entry?.fileName)
+          .map((entry) => {
+            const imagePath = `${VIS_MEDIA_BASE_PATH}/${encodeURIComponent(workspaceSegment)}/${encodeURIComponent(importSegment)}/${encodeURIComponent(entry.fileName)}`;
+            const out = {
+              pageNumber: Number(entry.pageNumber || 0),
+              name: String(entry.name || entry.fileName),
+              width: Number(entry.width || 0),
+              height: Number(entry.height || 0),
+              imageUrl: `${requestOrigin}${imagePath}`,
+            };
+            if (includeBase64) {
+              const filePath = path.join(importDir, entry.fileName);
+              if (fs.existsSync(filePath)) {
+                out.imageBase64 = fs.readFileSync(filePath).toString("base64");
+              }
+            }
+            return out;
+          });
+        if (slides.length) {
+          try {
+            const nowDate = new Date();
+            fs.utimesSync(importDir, nowDate, nowDate);
+          } catch {
+            // best effort touch
+          }
+          return res.json({
+            ok: true,
+            slideCount: slides.length,
+            slides,
+            cached: true,
+            renderer: cachedRenderer,
+            renderSignature: cachedRenderSignature,
+          });
+        }
+      } catch {
+        // fall through to full re-render if metadata is unreadable
+      }
+    }
+    fs.mkdirSync(importDir, { recursive: true });
+
+    const inputPath = path.join(tempDir, filename);
+    fs.writeFileSync(inputPath, bytes);
+
+    if (isPptx) {
+      const loProfileDir = path.join(tempDir, "lo-profile");
+      fs.mkdirSync(loProfileDir, { recursive: true });
+      const normalizedProfilePath = loProfileDir
+        .replace(/\\/g, "/")
+        .replace(/^([A-Za-z]):/, "/$1:");
+      const profileUri = `file://${normalizedProfilePath}`;
+      try {
+        await execFileAsync(SOFFICE_BIN, [
+          "--headless",
+          "--nologo",
+          "--nodefault",
+          "--nolockcheck",
+          "--norestore",
+          "--invisible",
+          `-env:UserInstallation=${profileUri}`,
+          "--convert-to",
+          "pdf:impress_pdf_Export",
+          "--outdir",
+          tempDir,
+          inputPath,
+        ], {
+          timeout: PPTX_CONVERT_TIMEOUT_MS,
+          windowsHide: true,
+          maxBuffer: 20 * 1024 * 1024,
+        });
+      } catch (error) {
+        const missing = error?.code === "ENOENT";
+        const details = formatExecErrorDetails(error);
+        return res.status(missing ? 503 : 422).json({
+          ok: false,
+          error: missing ? "PPTX_RENDERER_UNAVAILABLE" : "PPTX_CONVERT_FAILED",
+          message: missing
+            ? "Visual PowerPoint import requires LibreOffice (`soffice`) installed on the server."
+            : `Failed to convert PowerPoint to PDF for visual import.${details ? ` ${details}` : ""}`,
+        });
+      }
+    }
+
+    const pdfFile = isPdf
+      ? path.basename(inputPath)
+      : fs.readdirSync(tempDir).find((entry) => entry.toLowerCase().endsWith(".pdf"));
+    if (!pdfFile) {
+      return res.status(422).json({
+        ok: false,
+        error: "PDF_NOT_FOUND",
+        message: isPdf
+          ? "Uploaded PDF could not be read for visual import."
+          : "PowerPoint conversion did not produce a PDF output.",
+      });
+    }
+
+    const pdfPath = path.join(tempDir, pdfFile);
+    const popplerOutputDir = path.join(tempDir, "poppler-png");
+    fs.mkdirSync(popplerOutputDir, { recursive: true });
+    let pages = [];
+    let renderer = "pdfjs-fallback";
+    let popplerError = null;
+    const tryPoppler = PPTX_VIS_RASTER_ENGINE === "auto" || PPTX_VIS_RASTER_ENGINE === "poppler";
+    if (tryPoppler) {
+      try {
+        pages = await renderPdfToPngWithPoppler(pdfPath, popplerOutputDir, PPTX_PDF_RASTER_DPI);
+        renderer = "poppler";
+      } catch (error) {
+        popplerError = error;
+        if (PPTX_VIS_RASTER_ENGINE === "poppler") {
+          const details = formatExecErrorDetails(error);
+          return res.status(422).json({
+            ok: false,
+            error: "PNG_RENDER_FAILED",
+            message: `Failed to render PDF pages with pdftocairo.${details ? ` ${details}` : ""}`,
+          });
+        }
+      }
+    }
+
+    if (!pages.length) {
+      try {
+        pages = await renderPdfToPngWithPdfJs(pdfPath);
+        renderer = "pdfjs-fallback";
+      } catch (error) {
+        const dependencyMissing =
+          error?.code === "ERR_MODULE_NOT_FOUND"
+          || String(error?.message || "").toLowerCase().includes("pdf-to-png-converter");
+        if (dependencyMissing) {
+          return res.status(503).json({
+            ok: false,
+            error: "PPTX_VISUAL_DEPENDENCY_MISSING",
+            message: "Visual PowerPoint import dependency is missing on the server. Ensure `pdf-to-png-converter` is installed and redeploy.",
+          });
+        }
+        const details = formatExecErrorDetails(error);
+        const popplerDetails = popplerError ? formatExecErrorDetails(popplerError) : "";
+        return res.status(422).json({
+          ok: false,
+          error: "PNG_RENDER_FAILED",
+          message: `Failed to render converted PDF pages as PNG slides.${details ? ` ${details}` : ""}${popplerDetails ? ` popplerFallback=${popplerDetails}` : ""}`,
+        });
+      }
+    }
+
+    if (!pages.length) {
+      return res.status(422).json({
+        ok: false,
+        error: "NO_SLIDES",
+        message: "No slides were rendered from this PowerPoint/PDF file.",
+      });
+    }
+
+    const slideMeta = pages
+      .filter((page) => page?.content)
+      .map((page, idx) => {
+        const pageNumber = Number(page.pageNumber || idx + 1);
+        const fileName = `slide-${String(pageNumber).padStart(3, "0")}.png`;
+        const outputPath = path.join(importDir, fileName);
+        fs.writeFileSync(outputPath, page.content);
+        return {
+          pageNumber,
+          fileName,
+          name: page.name || fileName,
+          width: Number(page.width || 0),
+          height: Number(page.height || 0),
+        };
+      });
+
+    const slides = pages
+      .filter((page) => page?.content)
+      .map((page, idx) => {
+        const pageNumber = Number(page.pageNumber || idx + 1);
+        const fileName = `slide-${String(pageNumber).padStart(3, "0")}.png`;
+        const imagePath = `${VIS_MEDIA_BASE_PATH}/${encodeURIComponent(workspaceSegment)}/${encodeURIComponent(importSegment)}/${encodeURIComponent(fileName)}`;
+        const out = {
+          pageNumber,
+          name: page.name || fileName,
+          width: Number(page.width || 0),
+          height: Number(page.height || 0),
+          imageUrl: `${requestOrigin}${imagePath}`,
+        };
+        if (includeBase64) {
+          out.imageBase64 = page.content.toString("base64");
+        }
+        return out;
+      });
+
+    if (!slides.length) {
+      return res.status(422).json({
+        ok: false,
+        error: "NO_SLIDES",
+        message: "No slides were rendered from this PowerPoint/PDF file.",
+      });
+    }
+
+    fs.writeFileSync(
+      metaPath,
+      JSON.stringify(
+        {
+          workspaceId,
+          fileHash,
+          renderSignature: renderSignatureHash,
+          renderer,
+          importedAt: now(),
+          sourceFilename: filename,
+          slides: slideMeta,
+        },
+        null,
+        2,
+      ),
+      "utf8",
+    );
+
+    logAudit.run({
+      workspace_id: workspaceId,
+      session_id: null,
+      actor_uid: actor.uid,
+      actor_email: actor.email || null,
+      action: "PPTX_VISUAL_IMPORT",
+      details_json: toJson({ filename, slideCount: slides.length, cached: false, renderer, renderSignature: renderSignatureHash }),
+      created_at: now(),
+    });
+    pruneWorkspaceVisualImports(workspaceSegment);
+
+    return res.json({ ok: true, slideCount: slides.length, slides, cached: false, renderer, renderSignature: renderSignatureHash });
+  } catch (error) {
+    if (error?.code === 403) return res.status(403).json({ ok: false, error: "FORBIDDEN" });
+    return res.status(500).json({ ok: false, error: "PPTX_IMPORT_FAILED", message: String(error?.message || error) });
+  } finally {
+    cleanupDir(tempDir);
+  }
 });
