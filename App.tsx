@@ -126,7 +126,7 @@ function App() {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [viewState, setViewState] = useState<'landing' | 'studio' | 'audience'>(() => {
-    if (window.location.pathname === '/audience') return 'audience';
+    if (window.location.pathname === '/audience' || window.location.hash.startsWith('#/audience')) return 'audience';
     // @ts-ignore
     if (window.electron?.isElectron) return 'studio';
     return 'landing';
@@ -205,8 +205,19 @@ function App() {
       .filter(Boolean);
     return Array.from(new Set(parsed));
   }, [workspaceSettings.remoteAdminEmails]);
-  const liveSessionId = useMemo(() => (workspaceSettings.sessionId || 'live').trim() || 'live', [workspaceSettings.sessionId]);
-  const workspaceId = useMemo(() => resolveWorkspaceId(user), [user?.uid]);
+  const liveSessionId = useMemo(() => {
+    const params = new URLSearchParams(window.location.search || window.location.hash.split('?')[1] || '');
+    const urlSession = params.get('session');
+    if (urlSession && viewState === 'audience') return urlSession.trim();
+    return (workspaceSettings.sessionId || 'live').trim() || 'live';
+  }, [workspaceSettings.sessionId, viewState]);
+
+  const workspaceId = useMemo(() => {
+    const params = new URLSearchParams(window.location.search || window.location.hash.split('?')[1] || '');
+    const urlWorkspace = params.get('workspace');
+    if (urlWorkspace && viewState === 'audience') return urlWorkspace.trim();
+    return resolveWorkspaceId(user);
+  }, [user?.uid, viewState]);
   const [isMotionLibOpen, setIsMotionLibOpen] = useState(false); // NEW
   const [isTemplateOpen, setIsTemplateOpen] = useState(false);
   const [isLyricsImportOpen, setIsLyricsImportOpen] = useState(false);
@@ -251,6 +262,21 @@ function App() {
     const saved = initialSavedState;
     return typeof saved?.isPlaying === 'boolean' ? saved.isPlaying : true;
   });
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const h = window.location.hash;
+      if (h.startsWith('#/audience')) {
+        setViewState('audience');
+      } else if (h === '#/studio') {
+        setViewState('studio');
+      } else if (h === '#/landing' || !h) {
+        setViewState('landing');
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
   const [outputMuted, setOutputMuted] = useState(() => {
     const saved = initialSavedState;
     return !!saved?.outputMuted;
