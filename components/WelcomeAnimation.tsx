@@ -47,11 +47,11 @@ export const WelcomeAnimation: React.FC<WelcomeAnimationProps> = ({ onFinish }) 
                 ))}
             </div>
 
-            {/* Content */}
-            <div className="relative z-10 text-center px-6">
+            {/* Content Container with backdrop blur for legibility */}
+            <div className="relative z-10 text-center px-6 py-12 rounded-3xl backdrop-blur-sm bg-black/20 border border-white/5">
                 <div className="mb-6 inline-block">
                     <div className="px-4 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 backdrop-blur-md">
-                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] font-mono">NEURAL HUB // INITIALIZED</span>
+                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] font-mono">SYSTEM READY</span>
                     </div>
                 </div>
 
