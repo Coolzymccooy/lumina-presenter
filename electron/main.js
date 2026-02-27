@@ -1,10 +1,13 @@
 import { app, BrowserWindow, screen, session } from 'electron';
-import { autoUpdater } from 'electron-updater';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const DIST_INDEX_PATH = path.join(__dirname, '../dist/index.html');
+const DEV_SERVER_URL = process.env.ELECTRON_RENDERER_URL || 'http://localhost:5173';
+const SHOULD_OPEN_DEVTOOLS = process.env.LUMINA_OPEN_DEVTOOLS === '1';
 
 // Content Security Policy — allows Firebase, Google APIs, and the Lumina API.
 const CSP = [
@@ -51,21 +54,58 @@ function createWindow() {
     });
   }
 
-  if (isProd) {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
-  } else {
-    mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
-  }
+  void loadMainContent(mainWindow, isProd).catch((error) => {
+    console.error('Failed to load renderer entry:', error);
+  });
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     // Check for updates on launch
     if (isProd) {
-      autoUpdater.checkForUpdatesAndNotify();
+      void checkForUpdatesSafely();
     }
   });
   mainWindow.on('closed', () => { app.quit(); });
+}
+
+async function loadMainContent(mainWindow, isProd) {
+  if (!isProd) {
+    try {
+      await mainWindow.loadURL(DEV_SERVER_URL);
+      if (SHOULD_OPEN_DEVTOOLS) {
+        mainWindow.webContents.openDevTools();
+      }
+      return;
+    } catch (error) {
+      console.warn(`Dev URL failed (${DEV_SERVER_URL}); falling back to packaged dist.`, error);
+    }
+  }
+
+  if (fs.existsSync(DIST_INDEX_PATH)) {
+    await mainWindow.loadFile(DIST_INDEX_PATH);
+    return;
+  }
+
+  throw new Error(`Renderer entry not found: ${DIST_INDEX_PATH}`);
+}
+
+async function checkForUpdatesSafely() {
+  try {
+    // `electron-updater` is CommonJS. In ESM mode, resolve from either shape.
+    const updaterModule = await import('electron-updater');
+    const updater =
+      updaterModule.autoUpdater ??
+      updaterModule.default?.autoUpdater ??
+      updaterModule.default;
+
+    if (updater?.checkForUpdatesAndNotify) {
+      await updater.checkForUpdatesAndNotify();
+    } else {
+      console.warn('Auto-update is unavailable: invalid electron-updater export shape.');
+    }
+  } catch (error) {
+    console.error('Auto-update initialization failed:', error);
+  }
 }
 
 app.whenReady().then(() => {
