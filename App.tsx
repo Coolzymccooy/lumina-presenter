@@ -24,7 +24,7 @@ import { logActivity, analyzeSentimentContext } from './services/analytics';
 import { auth, isFirebaseConfigured, subscribeToState, subscribeToTeamPlaylists, updateLiveState, upsertTeamPlaylist } from './services/firebase';
 import { onAuthStateChanged } from "firebase/auth";
 import { clearMediaCache, saveMedia } from './services/localMedia';
-import { fetchServerSessionState, fetchWorkspaceSettings, importVisualPptxDeck, loadLatestWorkspaceSnapshot, resolveWorkspaceId, saveServerSessionState, saveWorkspaceSettings, saveWorkspaceSnapshot } from './services/serverApi';
+import { fetchServerSessionState, fetchWorkspaceSettings, getServerApiBaseUrl, importVisualPptxDeck, loadLatestWorkspaceSnapshot, resolveWorkspaceId, saveServerSessionState, saveWorkspaceSettings, saveWorkspaceSnapshot } from './services/serverApi';
 import { parsePptxFile } from './services/pptxImport';
 import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon
 
@@ -875,8 +875,8 @@ function App() {
   const isTimerOvertime = timerMode === 'COUNTDOWN' && timerSeconds < 0;
   const buildSharedRouteUrl = (route: 'output' | 'remote') => (
     typeof window !== 'undefined'
-      ? `${window.location.origin}/#/${route}?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&fullscreen=1`
-      : `/#/${route}?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&fullscreen=1`
+      ? `${window.location.origin}/#/${route}?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&api=${encodeURIComponent(getServerApiBaseUrl())}&fullscreen=1`
+      : `/#/${route}?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&api=${encodeURIComponent(getServerApiBaseUrl())}&fullscreen=1`
   );
   const obsOutputUrl = typeof window !== 'undefined'
     ? buildSharedRouteUrl('output')
@@ -886,7 +886,7 @@ function App() {
     : `/#/remote?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&fullscreen=1`;
 
   const audienceUrl = useMemo(() => {
-    return `${window.location.origin}/#/audience?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}`;
+    return `${window.location.origin}/#/audience?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&api=${encodeURIComponent(getServerApiBaseUrl())}`;
   }, [liveSessionId, workspaceId]);
 
   const cloneSchedule = (value: ServiceItem[]) => JSON.parse(JSON.stringify(value)) as ServiceItem[];

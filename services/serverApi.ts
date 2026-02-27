@@ -1,5 +1,13 @@
-const rawBaseUrl = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787').trim();
-const API_BASE_URL = rawBaseUrl.replace(/\/+$/, '');
+const getInitialApiBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    const params = new URLSearchParams(window.location.search || window.location.hash.split('?')[1] || '');
+    const urlApi = params.get('api');
+    if (urlApi) return urlApi.trim();
+  }
+  return (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787').trim();
+};
+
+const API_BASE_URL = getInitialApiBaseUrl().replace(/\/+$/, '');
 
 type ActorLike = {
   uid?: string | null;
