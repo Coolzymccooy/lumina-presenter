@@ -1,4 +1,5 @@
 import { app, BrowserWindow, screen, session } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -57,7 +58,13 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
-  mainWindow.once('ready-to-show', () => { mainWindow.show(); });
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    // Check for updates on launch
+    if (isProd) {
+      autoUpdater.checkForUpdatesAndNotify();
+    }
+  });
   mainWindow.on('closed', () => { app.quit(); });
 }
 
