@@ -15,6 +15,7 @@ import { BibleBrowser } from './components/BibleBrowser';
 import { LandingPage } from './components/LandingPage';
 import { ProfileSettings } from './components/ProfileSettings';
 import { MotionLibrary } from './components/MotionLibrary';
+import { WelcomeAnimation } from './components/WelcomeAnimation';
 import { AudienceSubmit } from './components/AudienceSubmit'; // NEW
 import { AudienceStudio } from './components/AudienceStudio'; // NEW
 import { ConnectModal } from './components/ConnectModal'; // NEW
@@ -138,6 +139,11 @@ function App() {
 
   // ✅ Projector popout window handle (opened in click handler to avoid popup blockers)
   const [outputWin, setOutputWin] = useState<Window | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    // Only show onboarding in the studio view for new users
+    const hasSeen = localStorage.getItem('lumina_onboarding_v2.2.0');
+    return !hasSeen;
+  });
   const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'AUDIO' | 'BIBLE' | 'AUDIENCE'>('SCHEDULE');
   const isSettingsHydratedRef = useRef(false);
 
@@ -1807,6 +1813,16 @@ function App() {
 
   // ROUTING: LOGIN (If not authenticated, force login for studio)
   if (!user && viewState === 'studio') {
+    if (showOnboarding) {
+      return (
+        <WelcomeAnimation
+          onFinish={() => {
+            localStorage.setItem('lumina_onboarding_v2.2.0', 'true');
+            setShowOnboarding(false);
+          }}
+        />
+      );
+    }
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
 
