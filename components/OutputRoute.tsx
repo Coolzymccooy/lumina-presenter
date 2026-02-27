@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState } from '../services/firebase';
 import { fetchServerSessionState } from '../services/serverApi';
-import { ItemType, ServiceItem } from '../types';
+import { AudienceDisplayState, AudienceMessage, ItemType, ServiceItem } from '../types';
 import { LoginScreen } from './LoginScreen';
 import { SlideRenderer } from './SlideRenderer';
 
@@ -20,6 +20,7 @@ type LocalPresenterState = {
   seekAmount?: number;
   lowerThirdsEnabled?: boolean;
   routingMode?: RoutingMode;
+  audienceDisplay?: AudienceDisplayState;
   updatedAt?: number;
 };
 
@@ -32,8 +33,43 @@ type EffectiveOutputState = {
   seekCommand: number | null;
   seekAmount: number;
   lowerThirdsEnabled: boolean;
+  audienceOverlay: AudienceDisplayState | null;
   updatedAt: number;
   hasRenderable: boolean;
+};
+
+const sanitizeAudienceMessage = (value: unknown): AudienceMessage | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  if (typeof raw.id !== 'number' || typeof raw.text !== 'string' || typeof raw.category !== 'string') return null;
+  return {
+    id: raw.id,
+    workspace_id: typeof raw.workspace_id === 'string' ? raw.workspace_id : '',
+    category: raw.category as AudienceMessage['category'],
+    text: raw.text,
+    submitter_name: typeof raw.submitter_name === 'string' ? raw.submitter_name : null,
+    status: (typeof raw.status === 'string' ? raw.status : 'approved') as AudienceMessage['status'],
+    created_at: typeof raw.created_at === 'number' ? raw.created_at : Date.now(),
+    updated_at: typeof raw.updated_at === 'number' ? raw.updated_at : Date.now(),
+  };
+};
+
+const sanitizeAudienceOverlay = (value: unknown): AudienceDisplayState | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  const queue = Array.isArray(raw.queue)
+    ? raw.queue.map(sanitizeAudienceMessage).filter((entry): entry is AudienceMessage => !!entry)
+    : [];
+  return {
+    queue,
+    autoRotate: !!raw.autoRotate,
+    rotateSeconds: typeof raw.rotateSeconds === 'number' && Number.isFinite(raw.rotateSeconds)
+      ? Math.max(3, Math.min(120, Math.round(raw.rotateSeconds)))
+      : 8,
+    pinnedMessageId: typeof raw.pinnedMessageId === 'number' && Number.isFinite(raw.pinnedMessageId) ? raw.pinnedMessageId : null,
+    tickerEnabled: !!raw.tickerEnabled,
+    activeMessageId: typeof raw.activeMessageId === 'number' && Number.isFinite(raw.activeMessageId) ? raw.activeMessageId : null,
+  };
 };
 
 const readLocalPresenterState = (): LocalPresenterState => {
@@ -172,6 +208,7 @@ export const OutputRoute: React.FC = () => {
     const seekAmount = typeof source?.seekAmount === 'number' ? source.seekAmount : 0;
     const lowerThirdsEnabled = !!source?.lowerThirdsEnabled;
     const lowerThirdsForRoute = lowerThirdsEnabled && routingMode !== 'PROJECTOR';
+    const audienceOverlay = sanitizeAudienceOverlay(source?.audienceDisplay);
     const updatedAt = typeof source?.updatedAt === 'number' ? source.updatedAt : 0;
 
     const activeItem = activeItemId
@@ -191,13 +228,26 @@ export const OutputRoute: React.FC = () => {
         seekCommand,
         seekAmount,
         lowerThirdsEnabled: lowerThirdsForRoute,
+        audienceOverlay,
         updatedAt,
         hasRenderable,
       };
     }
 
     const hasRenderable = !!(activeItem && activeSlide);
-    return { item: activeItem, slide: activeSlide, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled: lowerThirdsForRoute, updatedAt, hasRenderable };
+    return {
+      item: activeItem,
+      slide: activeSlide,
+      blackout,
+      isPlaying,
+      outputMuted,
+      seekCommand,
+      seekAmount,
+      lowerThirdsEnabled: lowerThirdsForRoute,
+      audienceOverlay,
+      updatedAt,
+      hasRenderable,
+    };
   }, []);
 
   const effective = useMemo(() => {
@@ -246,6 +296,7 @@ export const OutputRoute: React.FC = () => {
           lowerThirds={display.lowerThirdsEnabled}
           showSlideLabel={true}
           showProjectorHelper={false}
+          audienceOverlay={display.audienceOverlay || undefined}
         />
       )}
     </div>

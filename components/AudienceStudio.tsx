@@ -117,15 +117,15 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
     return (
         <div className="flex flex-col h-full bg-zinc-950 text-zinc-300 font-sans">
             {/* Header */}
-            <header className="p-4 border-b border-zinc-900 flex items-center justify-between bg-zinc-900/30 backdrop-blur-md">
-                <div className="flex items-center gap-2">
+            <header className="p-3 sm:p-4 border-b border-zinc-900 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between bg-zinc-900/30 backdrop-blur-md">
+                <div className="flex items-center gap-2 min-w-0">
                     <ChatIcon className="w-5 h-5 text-blue-500" />
-                    <h2 className="text-sm font-black uppercase tracking-widest text-white">Audience Studio</h2>
+                    <h2 className="text-sm font-black uppercase tracking-widest text-white truncate">Audience Studio</h2>
                     <span className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full border border-blue-500/20 ml-2">
                         LIVE
                     </span>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 sm:gap-4 justify-between sm:justify-end">
                     <div className="text-[9px] text-zinc-500 font-mono">
                         LAST UPDATE: {new Date(lastRefresh).toLocaleTimeString()}
                     </div>
@@ -139,12 +139,13 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
             </header>
 
             {/* Filters */}
-            <div className="p-4 flex gap-2 overflow-x-auto pb-0">
+            <div className="p-3 sm:p-4 pb-0">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {(['all', 'pending', 'approved', 'projected', 'dismissed'] as const).map(f => (
                     <button
                         key={f}
                         onClick={() => setFilter(f)}
-                        className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${filter === f
+                        className={`w-full px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border truncate ${filter === f
                             ? 'bg-blue-600 text-white border-transparent shadow-lg shadow-blue-900/20'
                             : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'
                             }`}
@@ -152,36 +153,37 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
                         {f}
                     </button>
                 ))}
+                </div>
             </div>
 
             {/* Advanced Controls */}
-            <div className="px-4 py-3 border-b border-zinc-900 bg-zinc-900/10 space-y-3">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+            <div className="px-3 sm:px-4 py-3 border-b border-zinc-900 bg-zinc-900/10 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="flex items-center justify-between gap-2 min-w-0">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 truncate">Pin Visible</span>
                         <div className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${displayState.pinnedMessageId ? 'bg-blue-600' : 'bg-zinc-800'}`}
                             onClick={() => onUpdateDisplay({ pinnedMessageId: displayState.pinnedMessageId ? null : displayState.activeMessageId })}>
-                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${displayState.pinnedMessageId ? 'left-4.5' : 'left-0.5'}`} />
+                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${displayState.pinnedMessageId ? 'left-4' : 'left-0.5'}`} />
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Pin Visible</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between gap-2 min-w-0">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 truncate">Ticker Running</span>
                         <div className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${displayState.tickerEnabled ? 'bg-blue-600' : 'bg-zinc-800'}`}
                             onClick={() => onUpdateDisplay({ tickerEnabled: !displayState.tickerEnabled })}>
-                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${displayState.tickerEnabled ? 'left-4.5' : 'left-0.5'}`} />
+                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${displayState.tickerEnabled ? 'left-4' : 'left-0.5'}`} />
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Ticker Running</span>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center justify-between gap-2 min-w-[180px] flex-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Auto-Rotate</span>
                         <div className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${displayState.autoRotate ? 'bg-blue-600' : 'bg-zinc-800'}`}
                             onClick={() => onUpdateDisplay({ autoRotate: !displayState.autoRotate })}>
-                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${displayState.autoRotate ? 'left-4.5' : 'left-0.5'}`} />
+                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${displayState.autoRotate ? 'left-4' : 'left-0.5'}`} />
                         </div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Auto-Rotate</span>
                     </div>
-                    <div className="flex items-center gap-1.5 ml-auto">
+                    <div className="flex items-center gap-1.5 sm:ml-auto">
                         <input
                             type="number"
                             value={displayState.rotateSeconds}
@@ -222,7 +224,7 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
             </div>
 
             {/* Message List */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-24 md:pb-4 space-y-3 custom-scrollbar">
                 {messages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 opacity-20">
                         <ChatIcon className="w-12 h-12 mb-4" />
@@ -270,8 +272,8 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
                                         "{msg.text}"
                                     </p>
 
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex gap-2">
+                                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                                        <div className="flex gap-2 flex-wrap">
                                             {msg.status === 'pending' && (
                                                 <button
                                                     onClick={() => handleStatusUpdate(msg.id, 'approved')}

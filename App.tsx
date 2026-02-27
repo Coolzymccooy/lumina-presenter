@@ -20,6 +20,7 @@ import { AudienceSubmit } from './components/AudienceSubmit'; // NEW
 import { AudienceStudio } from './components/AudienceStudio'; // NEW
 import { ConnectModal } from './components/ConnectModal'; // NEW
 import { StageDisplay } from './components/StageDisplay';
+import { RemoteControl } from './components/RemoteControl';
 import { logActivity, analyzeSentimentContext } from './services/analytics';
 import { auth, isFirebaseConfigured, subscribeToState, subscribeToTeamPlaylists, updateLiveState, upsertTeamPlaylist } from './services/firebase';
 import { onAuthStateChanged } from "firebase/auth";
@@ -38,6 +39,7 @@ const SYNC_BACKOFF_BASE_MS = 5000;
 const SYNC_BACKOFF_MAX_MS = 60000;
 const MAX_LIVE_QUEUE_SIZE = 40;
 const SILENT_AUDIO_B64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOkiJAAAAAAAAAAAAAAAAAAAAAAA=";
+const PUBLIC_WEB_APP_ORIGIN = 'https://lumina-presenter.vercel.app';
 
 type WorkspaceSettings = {
   churchName: string;
@@ -102,6 +104,38 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
   return safe;
 };
 
+const DEFAULT_AUDIENCE_DISPLAY: AudienceDisplayState = {
+  queue: [],
+  autoRotate: false,
+  rotateSeconds: 8,
+  pinnedMessageId: null,
+  tickerEnabled: false,
+  activeMessageId: null,
+};
+
+const sanitizeAudienceDisplayState = (value: unknown): AudienceDisplayState => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return DEFAULT_AUDIENCE_DISPLAY;
+  }
+  const raw = value as Record<string, unknown>;
+  const queue = Array.isArray(raw.queue) ? (raw.queue as AudienceMessage[]).filter((msg) => {
+    return !!msg && typeof msg === 'object' && typeof msg.id === 'number' && typeof msg.text === 'string';
+  }) : [];
+  const rotateSeconds = typeof raw.rotateSeconds === 'number' && Number.isFinite(raw.rotateSeconds)
+    ? Math.min(120, Math.max(3, Math.round(raw.rotateSeconds)))
+    : DEFAULT_AUDIENCE_DISPLAY.rotateSeconds;
+  const toNullableNumber = (input: unknown) => (typeof input === 'number' && Number.isFinite(input) ? input : null);
+
+  return {
+    queue,
+    autoRotate: !!raw.autoRotate,
+    rotateSeconds,
+    pinnedMessageId: toNullableNumber(raw.pinnedMessageId),
+    tickerEnabled: !!raw.tickerEnabled,
+    activeMessageId: toNullableNumber(raw.activeMessageId),
+  };
+};
+
 declare global {
   interface Window {
     luminaSmokeTest?: () => {
@@ -124,6 +158,8 @@ const ForwardIcon = ({ className }: { className?: string }) => (
 );
 
 function App() {
+  // @ts-ignore
+  const isElectronShell = !!window.electron?.isElectron;
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [viewState, setViewState] = useState<'landing' | 'studio' | 'audience' | 'output' | 'remote'>(() => {
@@ -253,13 +289,9 @@ function App() {
   const [timerDurationMin, setTimerDurationMin] = useState(35);
   const [timerSeconds, setTimerSeconds] = useState(35 * 60);
 
-  const [audienceDisplay, setAudienceDisplay] = useState<AudienceDisplayState>({
-    queue: [],
-    autoRotate: false,
-    rotateSeconds: 8,
-    pinnedMessageId: null,
-    tickerEnabled: false,
-    activeMessageId: null
+  const [audienceDisplay, setAudienceDisplay] = useState<AudienceDisplayState>(() => {
+    const saved = initialSavedState;
+    return sanitizeAudienceDisplayState(saved?.audienceDisplay);
   });
 
   // Handle Auto-Rotate Logic
@@ -318,15 +350,25 @@ function App() {
       const h = window.location.hash;
       if (h.startsWith('#/audience')) {
         setViewState('audience');
+      } else if (h.startsWith('#/output')) {
+        setViewState('output');
+      } else if (h.startsWith('#/remote')) {
+        setViewState('remote');
       } else if (h === '#/studio') {
         setViewState('studio');
       } else if (h === '#/landing' || !h) {
-        setViewState('landing');
+        setViewState(isElectronShell ? 'studio' : 'landing');
       }
     };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
+  }, [isElectronShell]);
+
+  useEffect(() => {
+    if (isElectronShell && viewState === 'landing') {
+      setViewState('studio');
+    }
+  }, [isElectronShell, viewState]);
   const [outputMuted, setOutputMuted] = useState(() => {
     const saved = initialSavedState;
     return !!saved?.outputMuted;
@@ -800,7 +842,7 @@ function App() {
     if (isFirebaseConfigured() && auth) auth.signOut();
     else localStorage.removeItem('lumina_demo_user');
     setUser(null);
-    setViewState('landing'); // Return to home
+    setViewState(isElectronShell ? 'studio' : 'landing');
   };
 
   useEffect(() => {
@@ -819,6 +861,7 @@ function App() {
         seekAmount,
         lowerThirdsEnabled,
         routingMode,
+        audienceDisplay,
         updatedAt: Date.now(),
       };
       try {
@@ -829,7 +872,7 @@ function App() {
       }
     }, 180);
     return () => window.clearTimeout(id);
-  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, user]);
+  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, audienceDisplay, user]);
 
 
 
@@ -916,20 +959,36 @@ function App() {
     return `${negative ? '-' : ''}${mm}:${ss}`;
   };
   const isTimerOvertime = timerMode === 'COUNTDOWN' && timerSeconds < 0;
-  const buildSharedRouteUrl = (route: 'output' | 'remote') => (
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/#/${route}?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&api=${encodeURIComponent(getServerApiBaseUrl())}&fullscreen=1`
-      : `/#/${route}?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&api=${encodeURIComponent(getServerApiBaseUrl())}&fullscreen=1`
-  );
+  const getShareBaseOrigin = () => {
+    if (typeof window === 'undefined') return PUBLIC_WEB_APP_ORIGIN;
+    const origin = window.location.origin || '';
+    if (/^https?:\/\//i.test(origin)) return origin;
+    return PUBLIC_WEB_APP_ORIGIN;
+  };
+  const buildSharedRouteUrl = (route: 'output' | 'remote') => {
+    const base = getShareBaseOrigin();
+    const root = base ? `${base}/#/${route}` : `/#/${route}`;
+    const params = new URLSearchParams({
+      session: liveSessionId,
+      workspace: workspaceId,
+    });
+
+    if (route === 'output') {
+      params.set('api', getServerApiBaseUrl());
+      params.set('fullscreen', '1');
+    }
+
+    return `${root}?${params.toString()}`;
+  };
   const obsOutputUrl = typeof window !== 'undefined'
     ? buildSharedRouteUrl('output')
     : `/#/output?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&fullscreen=1`;
   const remoteControlUrl = typeof window !== 'undefined'
     ? buildSharedRouteUrl('remote')
-    : `/#/remote?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&fullscreen=1`;
+    : `/#/remote?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}`;
 
   const audienceUrl = useMemo(() => {
-    return `${window.location.origin}/#/audience?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&api=${encodeURIComponent(getServerApiBaseUrl())}`;
+    return `${getShareBaseOrigin()}/#/audience?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&api=${encodeURIComponent(getServerApiBaseUrl())}`;
   }, [liveSessionId, workspaceId]);
 
   const cloneSchedule = (value: ServiceItem[]) => JSON.parse(JSON.stringify(value)) as ServiceItem[];
@@ -1190,6 +1249,14 @@ function App() {
     };
   };
 
+  const isVisualRendererUnavailable = (message: string) => {
+    const normalized = (message || '').toLowerCase();
+    return normalized.includes('soffice')
+      || normalized.includes('libreoffice')
+      || normalized.includes('renderer is unavailable')
+      || normalized.includes('visual powerpoint import endpoint is not available');
+  };
+
   const importPowerPointTextAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -1241,33 +1308,72 @@ function App() {
     setIsImportingDeck(true);
     setImportDeckStatus('Rendering slide visuals...');
     try {
-      const converted = await buildVisualSlidesFromPptx(file, (status) => setImportDeckStatus(status));
+      let converted = await buildVisualSlidesFromPptx(file, (status) => setImportDeckStatus(status));
+      let fallbackToText = false;
+      if (!converted.slides.length) {
+        throw new Error('Visual PowerPoint import returned no slides.');
+      }
+      if (isElectronShell && converted.slides.every((entry) => !entry.backgroundUrl)) {
+        setImportDeckStatus('Visual render unavailable. Falling back to PPTX text import...');
+        converted = await buildTextSlidesFromPptx(file);
+        fallbackToText = true;
+      }
       const now = Date.now();
       const slides = converted.slides;
 
       const importedItem: ServiceItem = {
         id: `${now}`,
         title: resolveImportedDeckTitle(converted.suggestedTitle),
-        type: ItemType.MEDIA,
+        type: fallbackToText ? ItemType.ANNOUNCEMENT : ItemType.MEDIA,
         slides,
         theme: {
-          backgroundUrl: '',
+          backgroundUrl: fallbackToText ? DEFAULT_BACKGROUNDS[0] : '',
           mediaType: 'image',
           fontFamily: 'sans-serif',
           textColor: '#ffffff',
-          shadow: false,
-          fontSize: 'medium',
+          shadow: fallbackToText ? true : false,
+          fontSize: fallbackToText ? 'large' : 'medium',
         },
       };
 
       addItem(importedItem);
-      logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: slides.length, mode: 'visual' });
+      logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: slides.length, mode: fallbackToText ? 'visual_fallback_text' : 'visual' });
       setImportTitle('Imported Lyrics');
       setImportLyrics('');
       setIsLyricsImportOpen(false);
     } catch (error: any) {
       const message = error?.message || 'Visual PowerPoint import failed.';
-      setImportModalError(message);
+      if (isElectronShell && isVisualRendererUnavailable(message)) {
+        try {
+          setImportDeckStatus('Visual renderer unavailable. Falling back to PPTX text import...');
+          const parsed = await buildTextSlidesFromPptx(file);
+          const now = Date.now();
+          const importedItem: ServiceItem = {
+            id: `${now}`,
+            title: resolveImportedDeckTitle(parsed.suggestedTitle),
+            type: ItemType.ANNOUNCEMENT,
+            slides: parsed.slides,
+            theme: {
+              backgroundUrl: DEFAULT_BACKGROUNDS[0],
+              mediaType: 'image',
+              fontFamily: 'sans-serif',
+              textColor: '#ffffff',
+              shadow: true,
+              fontSize: 'large',
+            },
+          };
+          addItem(importedItem);
+          logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: parsed.slides.length, mode: 'visual_server_unavailable_fallback_text' });
+          setImportTitle('Imported Lyrics');
+          setImportLyrics('');
+          setIsLyricsImportOpen(false);
+          alert('Visual PPTX renderer is unavailable on the server. Lumina imported this deck as text slides so you can continue.');
+        } catch (fallbackError: any) {
+          setImportModalError(fallbackError?.message || message);
+        }
+      } else {
+        setImportModalError(message);
+      }
     } finally {
       setIsImportingDeck(false);
       setImportDeckStatus('');
@@ -1275,9 +1381,24 @@ function App() {
   };
 
   const importPowerPointVisualSlidesForSlideEditor = async (file: File): Promise<Slide[]> => {
-    const visual = await buildVisualSlidesFromPptx(file);
-    logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: visual.slides.length, mode: 'visual_slide_editor' });
-    return visual.slides;
+    try {
+      const visual = await buildVisualSlidesFromPptx(file);
+      logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: visual.slides.length, mode: 'visual_slide_editor' });
+      return visual.slides;
+    } catch (error: any) {
+      const message = error?.message || 'Visual PowerPoint import failed.';
+      if (isElectronShell && isVisualRendererUnavailable(message)) {
+        const parsed = await buildTextSlidesFromPptx(file);
+        logActivity(user?.uid, 'IMPORT_PPTX', {
+          filename: file.name,
+          slideCount: parsed.slides.length,
+          mode: 'visual_slide_editor_server_unavailable_fallback_text',
+        });
+        alert('Visual PPTX renderer is unavailable on the server. Lumina imported this deck as text slides.');
+        return parsed.slides;
+      }
+      throw error;
+    }
   };
 
   const importPowerPointTextSlidesForSlideEditor = async (file: File): Promise<Slide[]> => {
@@ -1649,11 +1770,12 @@ function App() {
       seekAmount,
       lowerThirdsEnabled,
       routingMode,
+      audienceDisplay,
       controllerOwnerUid: user.uid,
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
-  }, [activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
+  }, [activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, audienceDisplay, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
 
   useEffect(() => {
     if (user?.uid && cloudBootstrapComplete && workspaceSettings.machineMode) {
@@ -1752,8 +1874,22 @@ function App() {
 
     const width = window.screen?.availWidth || 1280;
     const height = window.screen?.availHeight || 720;
+    const initialHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Lumina Output (Projector)</title>
+    <style>
+      body { margin: 0; padding: 0; background-color: black; overflow: hidden; }
+      #output-root { width: 100vw; height: 100vh; }
+    </style>
+  </head>
+  <body>
+    <div id="output-root"></div>
+  </body>
+</html>`;
     const w = window.open(
-      obsOutputUrl,
+      "",
       "LuminaOutput",
       `popup=yes,width=${width},height=${height},left=0,top=0,menubar=no,toolbar=no,location=no,status=no,scrollbars=no,resizable=yes`
     );
@@ -1763,6 +1899,15 @@ function App() {
       setIsOutputLive(false);
       setOutputWin(null);
       return;
+    }
+
+    try {
+      w.document.open();
+      w.document.write(initialHtml);
+      w.document.close();
+      w.document.title = "Lumina Output (Projector)";
+    } catch (e) {
+      console.error("Failed to initialize output window", e);
     }
 
     setPopupBlocked(false);
@@ -1846,6 +1991,9 @@ function App() {
 
   // ROUTING: LANDING PAGE
   if (viewState === 'landing') {
+    if (isElectronShell) {
+      return null;
+    }
     return <LandingPage onEnter={() => setViewState('studio')} onLogout={user ? handleLogout : undefined} isAuthenticated={!!user} hasSavedSession={hasSavedSession} />;
   }
 
@@ -1879,14 +2027,7 @@ function App() {
 
   // ROUTING: REMOTE CONTROL
   if (viewState === 'remote') {
-    return (
-      <div className="h-screen w-screen bg-zinc-950 flex items-center justify-center p-4">
-        <div className="text-center space-y-4">
-          <div className="text-zinc-500 font-mono text-xs uppercase tracking-widest animate-pulse">Remote Control Interface</div>
-          <p className="text-zinc-600 text-[10px]">Lumina Remote is in legacy/maintenance mode. Use the main studio for advanced features.</p>
-        </div>
-      </div>
-    );
+    return <RemoteControl />;
   }
 
   // ROUTING: LOGIN (If not authenticated, force login for studio)
@@ -1959,7 +2100,7 @@ function App() {
         {/* LEFT: BRAND & MODES */}
         <div className="flex items-center gap-6">
           <div
-            onClick={() => setViewState('landing')}
+            onClick={() => setViewState(isElectronShell ? 'studio' : 'landing')}
             className="flex items-center gap-3 cursor-pointer hover:opacity-100 transition-all group"
           >
             <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/40 group-hover:scale-110 transition-transform">
@@ -2074,15 +2215,17 @@ function App() {
       </header>
 
       {/* MOBILE NAV BAR (Visible only on small screens) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 flex justify-around p-3 z-50">
-        <button onClick={() => setViewMode('BUILDER')} className={`flex flex-col items-center gap-1 ${viewMode === 'BUILDER' ? 'text-white' : 'text-zinc-500'}`}><EditIcon className="w-5 h-5" /> <span className="text-[10px] font-bold">BUILD</span></button>
-        <button onClick={() => setViewMode('PRESENTER')} className={`flex flex-col items-center gap-1 ${viewMode === 'PRESENTER' ? 'text-white' : 'text-zinc-500'}`}><PlayIcon className="w-5 h-5" /> <span className="text-[10px] font-bold">PRESENT</span></button>
-        <button onClick={handleToggleOutput} className={`flex flex-col items-center gap-1 ${isOutputLive ? 'text-emerald-400' : 'text-zinc-500'}`}><MonitorIcon className="w-5 h-5" /> <span className="text-[10px] font-bold">OUTPUT</span></button>
-      </div>
+      {!isElectronShell && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 flex justify-around p-3 z-50">
+          <button onClick={() => setViewMode('BUILDER')} className={`flex flex-col items-center gap-1 ${viewMode === 'BUILDER' ? 'text-white' : 'text-zinc-500'}`}><EditIcon className="w-5 h-5" /> <span className="text-[10px] font-bold">BUILD</span></button>
+          <button onClick={() => setViewMode('PRESENTER')} className={`flex flex-col items-center gap-1 ${viewMode === 'PRESENTER' ? 'text-white' : 'text-zinc-500'}`}><PlayIcon className="w-5 h-5" /> <span className="text-[10px] font-bold">PRESENT</span></button>
+          <button onClick={handleToggleOutput} className={`flex flex-col items-center gap-1 ${isOutputLive ? 'text-emerald-400' : 'text-zinc-500'}`}><MonitorIcon className="w-5 h-5" /> <span className="text-[10px] font-bold">OUTPUT</span></button>
+        </div>
+      )}
 
-      <div className="flex-1 flex overflow-hidden mb-16 md:mb-0">
+      <div className={`flex-1 flex overflow-hidden min-w-0 ${isElectronShell ? '' : 'mb-16 md:mb-0'}`}>
         {/* Sidebar with Tabs (Hidden on Mobile unless Builder Mode) */}
-        <div className="flex flex-col h-full bg-zinc-900/50 border-r border-zinc-800 shrink-0 w-12 hover:w-48 transition-all group overflow-hidden z-20">
+        <div className={`group flex flex-col h-full bg-zinc-900/50 border-r border-zinc-800 shrink-0 overflow-hidden z-20 ${isElectronShell ? 'w-12' : 'w-12 hover:w-48 transition-all'}`}>
           <div className="flex flex-col flex-1 p-1 gap-1">
             <button onClick={() => setActiveSidebarTab('SCHEDULE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'SCHEDULE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="SCHEDULE"><MonitorIcon className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Schedule</span></button>
             <button onClick={() => setActiveSidebarTab('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIO MIXER"><Volume2Icon className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Audio Mixer</span></button>
@@ -2095,7 +2238,7 @@ function App() {
         </div>
 
         {/* SIDEBAR PANEL */}
-        <div className="flex flex-col bg-zinc-950 border-r border-zinc-900 w-80 shrink-0">
+        <div className={`flex flex-col bg-zinc-950 border-r border-zinc-900 shrink-0 ${isElectronShell ? 'w-80 min-w-[20rem]' : 'w-[calc(100vw-3rem)] max-w-80 md:w-80'}`}>
           {activeSidebarTab === 'SCHEDULE' && (
             <>
               <div className="p-3 border-b border-zinc-900 flex items-center justify-between shrink-0">
@@ -2136,7 +2279,7 @@ function App() {
         {/* ... (Existing Builder/Presenter Logic) ... */}
         {
           viewMode === 'BUILDER' ? (
-            <div className="flex-1 flex bg-zinc-950 hidden md:flex">
+            <div className={`flex-1 flex bg-zinc-950 min-w-0 ${isElectronShell ? '' : 'hidden md:flex'}`}>
               <div className="w-56 bg-zinc-900/30 border-r border-zinc-900 flex flex-col hidden lg:flex">
                 <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex items-center">Library</div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
@@ -2167,9 +2310,9 @@ function App() {
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex flex-col lg:flex-row bg-black">
-              <div className="flex-1 flex flex-col relative">
-                <div className="flex-1 relative flex items-center justify-center bg-zinc-950 overflow-hidden border-r border-zinc-900">
+            <div className="flex-1 flex flex-col lg:flex-row bg-black min-w-0">
+              <div className="flex-1 flex flex-col relative min-w-0">
+                <div className={`flex-1 relative flex items-center bg-zinc-950 overflow-hidden border-r border-zinc-900 ${isElectronShell ? 'justify-start px-4' : 'justify-center'}`}>
                   <div className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group">
                     {blackout ? (<div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em]">BLACKOUT</div>) : (
                       <SlideRenderer
@@ -2234,7 +2377,7 @@ function App() {
                   </div>
                 </div>
               </div>
-              <div className={`w-full lg:w-72 bg-zinc-950 border-l border-zinc-900 flex flex-col h-64 lg:h-auto border-t lg:border-t-0 ${workspaceSettings.machineMode ? 'hidden' : 'hidden md:flex'}`}>
+              <div className={`w-full lg:w-72 bg-zinc-950 border-l border-zinc-900 flex flex-col h-64 lg:h-auto border-t lg:border-t-0 ${workspaceSettings.machineMode ? 'hidden' : (isElectronShell ? 'flex' : 'hidden md:flex')}`}>
                 <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-500 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950"><span>Live Queue</span>{activeItem && <span className="text-red-500 animate-pulse">● LIVE</span>}</div>
                 <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 lg:grid-cols-2 gap-2 content-start scroll-smooth">
                   {activeItem?.slides.map((slide, idx) => (<div key={slide.id} ref={activeSlideIndex === idx ? activeSlideRef : null} onClick={() => { setActiveSlideIndex(idx); setBlackout(false); setIsPlaying(true); }} className={`cursor-pointer rounded-sm overflow-hidden border transition-all relative aspect-video ${activeSlideIndex === idx ? 'ring-2 ring-red-500 border-red-500 opacity-100' : 'border-zinc-800 opacity-50 hover:opacity-80'}`}><div className="absolute inset-0 pointer-events-none"><SlideRenderer slide={slide} item={activeItem} fitContainer={true} isThumbnail={true} /></div><div className="absolute bottom-0 left-0 right-0 bg-black/80 text-zinc-300 text-[9px] px-1 py-0.5 font-mono truncate border-t border-zinc-800">{idx + 1}. {slide.label}</div></div>))}
@@ -2245,6 +2388,44 @@ function App() {
           )
         }
       </div>
+
+      {
+        isOutputLive && (
+          <OutputWindow
+            externalWindow={outputWin}
+            onClose={() => {
+              setIsOutputLive(false);
+              setOutputWin(null);
+            }}
+            onBlock={() => {
+              setPopupBlocked(true);
+              setIsOutputLive(false);
+              setOutputWin(null);
+            }}
+          >
+            <div className="h-screen w-screen bg-black overflow-hidden relative">
+              {blackout ? (
+                <div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em]">BLACKOUT</div>
+              ) : (
+                <SlideRenderer
+                  slide={activeSlide}
+                  item={activeItem}
+                  fitContainer={true}
+                  isPlaying={isPlaying}
+                  seekCommand={seekCommand}
+                  seekAmount={seekAmount}
+                  isMuted={outputMuted}
+                  isProjector={true}
+                  lowerThirds={routingMode !== 'PROJECTOR'}
+                  showSlideLabel={true}
+                  showProjectorHelper={false}
+                  audienceOverlay={audienceDisplay}
+                />
+              )}
+            </div>
+          </OutputWindow>
+        )
+      }
 
       {
         isStageDisplayLive && (
