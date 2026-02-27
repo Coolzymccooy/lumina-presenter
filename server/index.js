@@ -707,7 +707,6 @@ app.post("/api/workspaces/:workspaceId/sessions/:sessionId/commands", requireAct
     return res.status(500).json({ ok: false, error: "SESSION_COMMAND_FAILED", message: String(error?.message || error) });
   }
 });
-});
 
 // ── Audience Studio ─────────────────────────────────────────────────────────
 const VALID_CATEGORIES = ["qa", "prayer", "testimony", "poll", "welcome"];
