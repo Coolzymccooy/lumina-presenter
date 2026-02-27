@@ -52,7 +52,7 @@
     "appId": "com.luminapresenter.app",
     "productName": "Lumina Presenter",
     "directories": {
-      "output": "release"
+      "output": "C:\\lumina-build"
     },
     "files": [
       "dist/**/*",
@@ -87,9 +87,10 @@
       "provider": "github",
       "owner": "Coolzymccooy",
       "repo": "lumina-presenter"
-    }
+    },
+    "copyright": "Copyright (c) 2026 Lumina Presenter"
   },
-  "description": "<div align=\"center\"> <img width=\"1200\" height=\"475\" alt=\"GHBanner\" src=\"https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6\" /> </div>",
+  "description": "Lumina Presenter: Native presentation software for churches.",
   "main": "electron/main.js",
   "keywords": [],
   "author": "",
