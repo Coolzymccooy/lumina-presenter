@@ -13,8 +13,8 @@ interface LandingPageProps {
   hasSavedSession?: boolean;
 }
 
-const INSTALLER_URL = "https://github.com/Coolzymccooy/lumina-presenter/releases/download/v2.2.1/Lumina-Presenter-Setup-2.2.1.exe";
-const PORTABLE_URL = "https://github.com/Coolzymccooy/lumina-presenter/releases/download/v2.2.1/Lumina-Presenter-2.2.1.exe";
+const INSTALLER_URL = "https://github.com/Coolzymccooy/lumina-presenter/releases/download/v2.2.2/Lumina-Presenter-Setup-2.2.2.exe";
+const PORTABLE_URL = "https://github.com/Coolzymccooy/lumina-presenter/releases/download/v2.2.2/Lumina-Presenter-2.2.2.exe";
 const RELEASES_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases';
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isAuthenticated, hasSavedSession = false }) => {
@@ -118,7 +118,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
               {isAuthenticated && hasSavedSession ? 'Resume Session' : 'Use in Browser'} <ArrowRight size={18} />
             </button>
           </div>
-          <p className="text-xs text-gray-600 mt-4">Windows 10/11 · x64 · v2.2.0 · Free</p>
+          <p className="text-xs text-gray-600 mt-4">Windows 10/11 · x64 · v2.2.2 · Free</p>
         </div>
 
         {/* Hero Image */}
@@ -132,7 +132,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
                   <div className="w-3 h-3 rounded-full bg-yellow-500/40" />
                   <div className="w-3 h-3 rounded-full bg-green-500/40" />
                 </div>
-                <span className="text-[10px] text-white/30 ml-2 font-mono">Lumina Presenter v2.2.0</span>
+                <span className="text-[10px] text-white/30 ml-2 font-mono">Lumina Presenter v2.2.2</span>
               </div>
               <div className="flex-1 flex">
                 <div className="w-64 border-r border-white/5 p-4 space-y-4">
@@ -402,7 +402,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
               <Download size={20} /> Download for Windows
             </a>
             <button onClick={onEnter} className="px-8 py-4 bg-white/5 border border-white/10 text-white rounded-xl font-bold text-lg hover:bg-white/10 transition-all flex items-center gap-2">
-              Latest Version 2.2.1
+              Latest Version 2.2.2
               <ArrowRight size={18} />
             </button>
           </div>
