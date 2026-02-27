@@ -139,6 +139,7 @@ function App() {
   // ✅ Projector popout window handle (opened in click handler to avoid popup blockers)
   const [outputWin, setOutputWin] = useState<Window | null>(null);
   const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'AUDIO' | 'BIBLE' | 'AUDIENCE'>('SCHEDULE');
+  const isSettingsHydratedRef = useRef(false);
 
   const parseJson = <T,>(raw: string | null, fallback: T): T => {
     if (raw === null) return fallback;
@@ -459,16 +460,16 @@ function App() {
       const unsub = onAuthStateChanged(auth, (u) => {
         setUser(u);
         setAuthLoading(false);
-        // Auto-enter workspace if authenticated
+        // Auto-enter workspace if authenticated, but stay in audience if scanning
         if (u) {
-          setViewState('studio');
+          setViewState(prev => prev === 'audience' ? 'audience' : 'studio');
         } else {
           // Skip landing page in Electron
           // @ts-ignore
           if (window.electron?.isElectron) {
-            setViewState('studio');
+            setViewState(prev => prev === 'audience' ? 'audience' : 'studio');
           } else {
-            setViewState('landing');
+            setViewState(prev => prev === 'audience' ? 'audience' : 'landing');
           }
         }
       });
@@ -507,6 +508,7 @@ function App() {
       if (savedSettings) {
         const parsed = sanitizeWorkspaceSettings(JSON.parse(savedSettings));
         setWorkspaceSettings((prev) => ({ ...prev, ...parsed }));
+        isSettingsHydratedRef.current = true;
       }
       const savedUpdatedAt = Number(localStorage.getItem(SETTINGS_UPDATED_AT_KEY) || '0');
       workspaceSettingsUpdatedAtRef.current = Number.isFinite(savedUpdatedAt) ? savedUpdatedAt : 0;
@@ -533,6 +535,7 @@ function App() {
             localStorage.setItem(SETTINGS_UPDATED_AT_KEY, String(res.updatedAt || Date.now()));
             workspaceSettingsUpdatedAtRef.current = res.updatedAt || Date.now();
 
+            isSettingsHydratedRef.current = true;
             return merged;
           });
         }
@@ -559,8 +562,8 @@ function App() {
         setSaveError(true);
       }
 
-      // 2. Save to server if logged in
-      if (user && !isRecentServerLoad) {
+      // 2. Save to server if logged in and settings are hydrated (never wipe with defaults)
+      if (user && !isRecentServerLoad && isSettingsHydratedRef.current) {
         try {
           await saveWorkspaceSettings(workspaceId, user, workspaceSettings);
           workspaceSettingsUpdatedAtRef.current = updatedAt;
@@ -1602,6 +1605,20 @@ function App() {
       controllerAllowedEmails: allowedAdminEmails,
     });
   }, [activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
+
+  useEffect(() => {
+    if (user?.uid && cloudBootstrapComplete && workspaceSettings.machineMode) {
+      const hasAutoLaunched = (window as any)._luminaAutoLaunched;
+      if (!hasAutoLaunched) {
+        (window as any)._luminaAutoLaunched = true;
+        // Small delay to ensure browser has settled
+        window.setTimeout(() => {
+          if (!isOutputLive) handleToggleOutput();
+          if (!isStageDisplayLive) handleToggleStageDisplay();
+        }, 3000);
+      }
+    }
+  }, [user?.uid, cloudBootstrapComplete, workspaceSettings.machineMode, isOutputLive, isStageDisplayLive]);
 
   useEffect(() => {
     if (!user?.uid || !cloudBootstrapComplete) return;
