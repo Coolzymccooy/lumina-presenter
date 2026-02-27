@@ -11,9 +11,10 @@ interface StageDisplayProps {
   timerMode?: 'COUNTDOWN' | 'ELAPSED';
   isTimerOvertime?: boolean;
   profile?: 'classic' | 'compact' | 'high_contrast';
+  audienceOverlay?: any;
 }
 
-export const StageDisplay: React.FC<StageDisplayProps> = ({ currentSlide, nextSlide, activeItem, timerLabel = 'Service Timer', timerDisplay = '00:00', timerMode = 'COUNTDOWN', isTimerOvertime = false, profile = 'classic' }) => {
+export const StageDisplay: React.FC<StageDisplayProps> = ({ currentSlide, nextSlide, activeItem, timerLabel = 'Service Timer', timerDisplay = '00:00', timerMode = 'COUNTDOWN', isTimerOvertime = false, profile = 'classic', audienceOverlay }) => {
   const [time, setTime] = useState(new Date());
   const clockFormatter = useMemo(
     () => new Intl.DateTimeFormat([], { hour: '2-digit', minute: '2-digit' }),
@@ -66,6 +67,15 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({ currentSlide, nextSl
           {nextText}
         </div>
       </div>
+
+      {audienceOverlay && (
+        <div className="absolute top-4 right-4 bg-blue-600/20 border border-blue-500/30 rounded-lg p-3 max-w-xs backdrop-blur-sm">
+          <div className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-1">Audience Active</div>
+          <div className="text-sm font-medium leading-tight">
+            {audienceOverlay.pinnedMessageId || audienceOverlay.activeMessageId ? "Message Displaying..." : "Ticker Running..."}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

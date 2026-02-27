@@ -345,19 +345,17 @@ export const fetchWorkspaceSettings = async (workspaceId: string, user: ActorLik
 };
 
 // ── Audience Studio ───────────────────────────────────────────────────────────
-export type AudienceCategory = 'qa' | 'prayer' | 'testimony' | 'poll' | 'welcome';
-export type AudienceStatus = 'pending' | 'approved' | 'dismissed' | 'projected';
+import type {
+  AudienceCategory,
+  AudienceStatus,
+  AudienceMessage
+} from '../types';
 
-export interface AudienceMessage {
-  id: number;
-  workspace_id: string;
-  category: AudienceCategory;
-  text: string;
-  submitter_name: string | null;
-  status: AudienceStatus;
-  created_at: number;
-  updated_at: number;
-}
+export type {
+  AudienceCategory,
+  AudienceStatus,
+  AudienceMessage
+};
 
 export const submitAudienceMessage = async (
   workspaceId: string,

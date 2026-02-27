@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { AudienceCategory, submitAudienceMessage } from '../services/serverApi';
+import React, { useState, useEffect } from 'react';
+import { submitAudienceMessage } from '../services/serverApi';
+import { AudienceCategory } from '../types';
 import {
     ChatIcon,
     SparklesIcon,
@@ -101,8 +102,8 @@ export const AudienceSubmit: React.FC<AudienceSubmitProps> = ({ workspaceId }) =
                                         type="button"
                                         onClick={() => setCategory(cat.id)}
                                         className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${isSelected
-                                                ? `${cat.color} border-transparent shadow-lg scale-[1.02]`
-                                                : 'bg-zinc-900/50 border-zinc-800 hover:border-zinc-700'
+                                            ? `${cat.color} border-transparent shadow-lg scale-[1.02]`
+                                            : 'bg-zinc-900/50 border-zinc-800 hover:border-zinc-700'
                                             }`}
                                     >
                                         <div className={`p-2 rounded-lg ${isSelected ? 'bg-white/20' : 'bg-zinc-800'}`}>
@@ -162,8 +163,8 @@ export const AudienceSubmit: React.FC<AudienceSubmitProps> = ({ workspaceId }) =
                         type="submit"
                         disabled={loading || !text.trim()}
                         className={`w-full py-5 rounded-2xl text-xl font-black uppercase tracking-tight transition-all active:scale-95 shadow-2xl ${loading
-                                ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
-                                : 'bg-gradient-to-br from-blue-600 to-blue-700 text-white hover:shadow-blue-900/20'
+                            ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
+                            : 'bg-gradient-to-br from-blue-600 to-blue-700 text-white hover:shadow-blue-900/20'
                             }`}
                     >
                         {loading ? 'Sending...' : 'Submit Message'}

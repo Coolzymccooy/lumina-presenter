@@ -49,3 +49,26 @@ export interface GeneratedSlideData {
     content: string;
   }[];
 }
+
+export type AudienceCategory = 'qa' | 'prayer' | 'testimony' | 'poll' | 'welcome';
+export type AudienceStatus = 'pending' | 'approved' | 'dismissed' | 'projected';
+
+export interface AudienceMessage {
+  id: number;
+  workspace_id: string;
+  category: AudienceCategory;
+  text: string;
+  submitter_name: string | null;
+  status: AudienceStatus;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface AudienceDisplayState {
+  queue: AudienceMessage[];
+  autoRotate: boolean;
+  rotateSeconds: number;
+  pinnedMessageId: number | null;
+  tickerEnabled: boolean;
+  activeMessageId: number | null;
+}
