@@ -13,8 +13,8 @@ interface LandingPageProps {
   hasSavedSession?: boolean;
 }
 
-const INSTALLER_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases/download/v2.2.0/Lumina-Presenter-Setup-2.2.0.exe';
-const PORTABLE_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases/download/v2.2.0/Lumina-Presenter-2.2.0.exe';
+const INSTALLER_URL = "https://github.com/Coolzymccooy/lumina-presenter/releases/download/v2.2.1/Lumina-Presenter-Setup-2.2.1.exe";
+const PORTABLE_URL = "https://github.com/Coolzymccooy/lumina-presenter/releases/download/v2.2.1/Lumina-Presenter-2.2.1.exe";
 const RELEASES_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases';
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isAuthenticated, hasSavedSession = false }) => {
@@ -402,7 +402,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
               <Download size={20} /> Download for Windows
             </a>
             <button onClick={onEnter} className="px-8 py-4 bg-white/5 border border-white/10 text-white rounded-xl font-bold text-lg hover:bg-white/10 transition-all flex items-center gap-2">
-              Use Web Version <ArrowRight size={18} />
+              Latest Version 2.2.1
+              <ArrowRight size={18} />
             </button>
           </div>
         </div>
