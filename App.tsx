@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { INITIAL_SCHEDULE, MOCK_SONGS, DEFAULT_BACKGROUNDS, GOSPEL_TRACKS, GospelTrack } from './constants';
-import { ServiceItem, Slide, ItemType } from './types';
+import { ServiceItem, Slide, ItemType, AudienceDisplayState, AudienceMessage } from './types';
 import { SlideRenderer } from './components/SlideRenderer';
 import { AIModal } from './components/AIModal';
 import { SlideEditorModal } from './components/SlideEditorModal';
@@ -126,8 +126,12 @@ const ForwardIcon = ({ className }: { className?: string }) => (
 function App() {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [viewState, setViewState] = useState<'landing' | 'studio' | 'audience'>(() => {
-    if (window.location.pathname === '/audience' || window.location.hash.startsWith('#/audience')) return 'audience';
+  const [viewState, setViewState] = useState<'landing' | 'studio' | 'audience' | 'output' | 'remote'>(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#/audience')) return 'audience';
+    if (hash.startsWith('#/output')) return 'output';
+    if (hash.startsWith('#/remote')) return 'remote';
+    if (window.location.pathname === '/audience') return 'audience';
     // @ts-ignore
     if (window.electron?.isElectron) return 'studio';
     return 'landing';
@@ -248,6 +252,45 @@ function App() {
   const [timerMode, setTimerMode] = useState<'COUNTDOWN' | 'ELAPSED'>('COUNTDOWN');
   const [timerDurationMin, setTimerDurationMin] = useState(35);
   const [timerSeconds, setTimerSeconds] = useState(35 * 60);
+
+  const [audienceDisplay, setAudienceDisplay] = useState<AudienceDisplayState>({
+    queue: [],
+    autoRotate: false,
+    rotateSeconds: 8,
+    pinnedMessageId: null,
+    tickerEnabled: false,
+    activeMessageId: null
+  });
+
+  // Handle Auto-Rotate Logic
+  useEffect(() => {
+    if (!audienceDisplay.autoRotate || audienceDisplay.queue.length === 0) return;
+
+    const interval = setInterval(() => {
+      setAudienceDisplay(prev => {
+        if (prev.queue.length === 0) return prev;
+        const currentIndex = prev.queue.findIndex(m => m.id === prev.activeMessageId);
+        const nextIndex = (currentIndex + 1) % prev.queue.length;
+        return {
+          ...prev,
+          activeMessageId: prev.queue[nextIndex].id
+        };
+      });
+    }, audienceDisplay.rotateSeconds * 1000);
+
+    return () => clearInterval(interval);
+  }, [audienceDisplay.autoRotate, audienceDisplay.queue.length, audienceDisplay.rotateSeconds, audienceDisplay.activeMessageId]);
+
+  const handleUpdateAudienceDisplay = (patch: Partial<AudienceDisplayState>) => {
+    setAudienceDisplay(prev => {
+      const next = { ...prev, ...patch };
+      // If we just enabled auto-rotate and have a queue but no active message, set the first one
+      if (patch.autoRotate && next.queue.length > 0 && !next.activeMessageId) {
+        next.activeMessageId = next.queue[0].id;
+      }
+      return next;
+    });
+  };
   const [timerRunning, setTimerRunning] = useState(false);
   const [isConnectOpen, setIsConnectOpen] = useState(false);
 
@@ -1811,6 +1854,41 @@ function App() {
     return <AudienceSubmit workspaceId={workspaceId} />;
   }
 
+  // ROUTING: PROJECTOR / OBS OUTPUT
+  if (viewState === 'output') {
+    return (
+      <div className="h-screen w-screen bg-black overflow-hidden relative">
+        {blackout ? (
+          <div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em]">BLACKOUT</div>
+        ) : (
+          <SlideRenderer
+            slide={activeSlide}
+            item={activeItem}
+            isPlaying={isPlaying}
+            seekCommand={seekCommand}
+            seekAmount={seekAmount}
+            isMuted={outputMuted}
+            isProjector={true}
+            lowerThirds={routingMode !== 'PROJECTOR'}
+            audienceOverlay={audienceDisplay}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // ROUTING: REMOTE CONTROL
+  if (viewState === 'remote') {
+    return (
+      <div className="h-screen w-screen bg-zinc-950 flex items-center justify-center p-4">
+        <div className="text-center space-y-4">
+          <div className="text-zinc-500 font-mono text-xs uppercase tracking-widest animate-pulse">Remote Control Interface</div>
+          <p className="text-zinc-600 text-[10px]">Lumina Remote is in legacy/maintenance mode. Use the main studio for advanced features.</p>
+        </div>
+      </div>
+    );
+  }
+
   // ROUTING: LOGIN (If not authenticated, force login for studio)
   if (!user && viewState === 'studio') {
     if (showOnboarding) {
@@ -2048,6 +2126,8 @@ function App() {
                   handleProjectAudienceMessage(text, label);
                   setActiveSidebarTab('SCHEDULE');
                 }}
+                displayState={audienceDisplay}
+                onUpdateDisplay={handleUpdateAudienceDisplay}
               />
             </div>
           )}
@@ -2092,7 +2172,16 @@ function App() {
                 <div className="flex-1 relative flex items-center justify-center bg-zinc-950 overflow-hidden border-r border-zinc-900">
                   <div className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group">
                     {blackout ? (<div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em]">BLACKOUT</div>) : (
-                      <SlideRenderer slide={activeSlide} item={activeItem} isPlaying={isPlaying} seekCommand={seekCommand} seekAmount={seekAmount} isMuted={isPreviewMuted} lowerThirds={lowerThirdsEnabled} />
+                      <SlideRenderer
+                        slide={activeSlide}
+                        item={activeItem}
+                        isPlaying={isPlaying}
+                        seekCommand={seekCommand}
+                        seekAmount={seekAmount}
+                        isMuted={isPreviewMuted}
+                        lowerThirds={lowerThirdsEnabled}
+                        audienceOverlay={audienceDisplay}
+                      />
                     )}
                     <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-500 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">PREVIEW <button onClick={() => setIsPreviewMuted(!isPreviewMuted)} className={`ml-2 hover:text-white transition-colors ${isPreviewMuted ? 'text-red-400' : 'text-green-400'}`}>{isPreviewMuted ? <VolumeXIcon className="w-3 h-3" /> : <Volume2Icon className="w-3 h-3" />}</button></div>
                   </div>
@@ -2180,6 +2269,7 @@ function App() {
               timerMode={timerMode}
               isTimerOvertime={isTimerOvertime}
               profile={workspaceSettings.stageProfile}
+              audienceOverlay={audienceDisplay}
             />
           </OutputWindow>
         )

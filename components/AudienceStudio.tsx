@@ -4,9 +4,12 @@ import {
     fetchAudienceMessages,
     updateAudienceMessageStatus,
     deleteAudienceMessage,
-    AudienceCategory,
-    AudienceStatus
 } from '../services/serverApi';
+import {
+    AudienceCategory,
+    AudienceStatus,
+    AudienceDisplayState
+} from '../types';
 import {
     ChatIcon,
     SparklesIcon,
@@ -24,6 +27,8 @@ interface AudienceStudioProps {
     workspaceId: string;
     user: any;
     onProjectRequest: (text: string, label?: string) => void;
+    displayState: AudienceDisplayState;
+    onUpdateDisplay: (patch: Partial<AudienceDisplayState>) => void;
 }
 
 const CAT_CONFIG: Record<AudienceCategory, { label: string; icon: any; color: string; border: string; bg: string }> = {
@@ -34,7 +39,13 @@ const CAT_CONFIG: Record<AudienceCategory, { label: string; icon: any; color: st
     poll: { label: 'Poll', icon: ChatIcon, color: 'text-amber-400', border: 'border-amber-900/30', bg: 'bg-amber-950/20' },
 };
 
-export const AudienceStudio: React.FC<AudienceStudioProps> = ({ workspaceId, user, onProjectRequest }) => {
+export const AudienceStudio: React.FC<AudienceStudioProps> = ({
+    workspaceId,
+    user,
+    onProjectRequest,
+    displayState,
+    onUpdateDisplay
+}) => {
     const [messages, setMessages] = useState<AudienceMessage[]>([]);
     const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState<AudienceStatus | 'all'>('pending');
@@ -71,6 +82,18 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({ workspaceId, use
                 if (status === 'projected') {
                     const msg = res.message;
                     const label = msg.submitter_name ? `${CAT_CONFIG[msg.category].label} from ${msg.submitter_name}` : CAT_CONFIG[msg.category].label;
+
+                    // Add to display queue if not already there
+                    const inQueue = displayState.queue.some(m => m.id === msg.id);
+                    if (!inQueue) {
+                        onUpdateDisplay({
+                            queue: [...displayState.queue, msg],
+                            activeMessageId: msg.id
+                        });
+                    } else {
+                        onUpdateDisplay({ activeMessageId: msg.id });
+                    }
+
                     onProjectRequest(msg.text, label);
                 }
             }
@@ -122,13 +145,80 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({ workspaceId, use
                         key={f}
                         onClick={() => setFilter(f)}
                         className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border ${filter === f
-                                ? 'bg-blue-600 text-white border-transparent shadow-lg shadow-blue-900/20'
-                                : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'
+                            ? 'bg-blue-600 text-white border-transparent shadow-lg shadow-blue-900/20'
+                            : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'
                             }`}
                     >
                         {f}
                     </button>
                 ))}
+            </div>
+
+            {/* Advanced Controls */}
+            <div className="px-4 py-3 border-b border-zinc-900 bg-zinc-900/10 space-y-3">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${displayState.pinnedMessageId ? 'bg-blue-600' : 'bg-zinc-800'}`}
+                            onClick={() => onUpdateDisplay({ pinnedMessageId: displayState.pinnedMessageId ? null : displayState.activeMessageId })}>
+                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${displayState.pinnedMessageId ? 'left-4.5' : 'left-0.5'}`} />
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Pin Visible</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${displayState.tickerEnabled ? 'bg-blue-600' : 'bg-zinc-800'}`}
+                            onClick={() => onUpdateDisplay({ tickerEnabled: !displayState.tickerEnabled })}>
+                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${displayState.tickerEnabled ? 'left-4.5' : 'left-0.5'}`} />
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Ticker Running</span>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${displayState.autoRotate ? 'bg-blue-600' : 'bg-zinc-800'}`}
+                            onClick={() => onUpdateDisplay({ autoRotate: !displayState.autoRotate })}>
+                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${displayState.autoRotate ? 'left-4.5' : 'left-0.5'}`} />
+                        </div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Auto-Rotate</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 ml-auto">
+                        <input
+                            type="number"
+                            value={displayState.rotateSeconds}
+                            onChange={(e) => onUpdateDisplay({ rotateSeconds: parseInt(e.target.value) || 5 })}
+                            className="w-10 bg-zinc-800 border border-zinc-700 rounded text-[10px] px-1 py-0.5 text-white font-mono text-center"
+                        />
+                        <span className="text-[9px] text-zinc-600 uppercase">SEC</span>
+                    </div>
+                </div>
+
+                {displayState.queue.length > 0 && (
+                    <div className="bg-black/20 rounded-lg p-2 border border-zinc-800/50">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">{displayState.queue.length} messages in queue</span>
+                            <button
+                                onClick={() => onUpdateDisplay({ queue: [], activeMessageId: null, pinnedMessageId: null })}
+                                className="text-[9px] text-rose-500 hover:text-rose-400 uppercase font-black"
+                            >
+                                Clear
+                            </button>
+                        </div>
+                        <div className="flex gap-1 overflow-x-auto pb-1 custom-scrollbar-h">
+                            {displayState.queue.map(m => (
+                                <div
+                                    key={m.id}
+                                    onClick={() => onUpdateDisplay({ activeMessageId: m.id })}
+                                    className={`shrink-0 w-24 p-1.5 rounded border transition-all cursor-pointer ${displayState.activeMessageId === m.id ? 'bg-blue-600/20 border-blue-500/50' : 'bg-zinc-800/50 border-zinc-700 hover:border-zinc-500'}`}
+                                >
+                                    <div className="text-[8px] font-bold text-zinc-300 truncate mb-1">
+                                        {m.submitter_name || CAT_CONFIG[m.category].label}
+                                    </div>
+                                    <div className="text-[9px] text-zinc-500 leading-tight line-clamp-2 italic">"{m.text}"</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Message List */}
@@ -196,8 +286,8 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({ workspaceId, use
                                                 <button
                                                     onClick={() => handleStatusUpdate(msg.id, 'projected')}
                                                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all active:scale-95 border ${msg.status === 'projected'
-                                                            ? 'bg-amber-600 text-white border-transparent animate-pulse'
-                                                            : 'bg-zinc-800 hover:bg-blue-600/20 text-blue-500 border-zinc-700 hover:border-blue-500/30'
+                                                        ? 'bg-amber-600 text-white border-transparent animate-pulse'
+                                                        : 'bg-zinc-800 hover:bg-blue-600/20 text-blue-500 border-zinc-700 hover:border-blue-500/30'
                                                         }`}
                                                 >
                                                     <PlayIcon className="w-3.5 h-3.5" />

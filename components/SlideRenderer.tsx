@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Slide, ServiceItem, MediaType } from "../types";
+import { Slide, ServiceItem, MediaType, AudienceDisplayState } from "../types";
 
 import { getMedia, getCachedMedia } from "../services/localMedia";
 import { DEFAULT_BACKGROUNDS } from "../constants";
@@ -27,6 +27,7 @@ interface SlideRendererProps {
   lowerThirds?: boolean;
   showSlideLabel?: boolean;
   showProjectorHelper?: boolean;
+  audienceOverlay?: AudienceDisplayState;
 }
 
 function safeString(v: unknown) {
@@ -123,6 +124,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   lowerThirds = false,
   showSlideLabel = true,
   showProjectorHelper = true,
+  audienceOverlay,
 }) => {
   const htmlVideoRef = useRef<HTMLVideoElement>(null);
   const youtubeIframeRef = useRef<HTMLIFrameElement>(null);
@@ -503,6 +505,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       hasBackground={hasBackground}
       mediaError={mediaError}
       isLoading={isLoading}
+      audienceOverlay={audienceOverlay}
     />
   );
 };
@@ -524,11 +527,13 @@ interface ScaledCanvasProps {
   hasBackground: boolean;
   mediaError: boolean;
   isLoading: boolean;
+  audienceOverlay?: AudienceDisplayState;
 }
 
 const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
   fitContainer, slide, item, contentText, hasReadableText, textPx, textLayerStyle,
   lowerThirds, showSlideLabel, renderMedia, mediaType, hasBackground, mediaError, isLoading,
+  audienceOverlay,
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -677,7 +682,94 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
             </div>
           )}
         </div>
+
+        {/* ── Audience Overlays ────────────────────────────────────────────── */}
+        {audienceOverlay && (
+          <div style={{ position: "absolute", inset: 0, pointerEvents: "none", zIndex: 100 }}>
+            {/* Pinned / Active Message Overlay */}
+            {(audienceOverlay.pinnedMessageId || audienceOverlay.activeMessageId) && !audienceOverlay.tickerEnabled && (
+              <div
+                key={audienceOverlay.pinnedMessageId || audienceOverlay.activeMessageId}
+                className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+                style={{
+                  position: "absolute",
+                  bottom: CANVAS_H * 0.05,
+                  left: CANVAS_W * 0.05,
+                  maxWidth: CANVAS_W * 0.45,
+                  background: "rgba(0,0,0,0.75)",
+                  border: "2px solid rgba(59,130,246,0.4)",
+                  borderRadius: 16,
+                  padding: "16px 24px",
+                  backdropFilter: "blur(12px)",
+                  boxShadow: "0 10px 40px rgba(0,0,0,0.5)"
+                }}
+              >
+                {(() => {
+                  const msgId = audienceOverlay.pinnedMessageId || audienceOverlay.activeMessageId;
+                  const msg = audienceOverlay.queue.find(m => m.id === msgId);
+                  if (!msg) return null;
+                  return (
+                    <>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                        <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#3b82f6" }} />
+                        <span style={{ fontSize: 18, fontWeight: 900, color: "#93c5fd", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                          {msg.submitter_name || "AUDIENCE"}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 28, color: "white", fontWeight: 500, lineHeight: 1.3 }}>
+                        {msg.text}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Scrolling Ticker */}
+            {audienceOverlay.tickerEnabled && audienceOverlay.queue.length > 0 && (
+              <div style={{
+                position: "absolute",
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: 64,
+                background: "rgba(0,0,0,0.85)",
+                borderTop: "1px solid rgba(255,255,255,0.1)",
+                backdropFilter: "blur(20px)",
+                display: "flex",
+                alignItems: "center",
+                overflow: "hidden"
+              }}>
+                <div className="flex animate-scroll whitespace-nowrap items-center gap-12" style={{
+                  animation: `scroll ${Math.max(15, audienceOverlay.queue.length * 8)}s linear infinite`
+                }}>
+                  {/* Double the queue for seamless loop */}
+                  {[...audienceOverlay.queue, ...audienceOverlay.queue].map((m, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span style={{ color: "#3b82f6", fontWeight: 900, fontSize: 14 }}>•</span>
+                      <span style={{ color: "white", fontSize: 24, fontWeight: 600 }}>
+                        <span style={{ color: "#93c5fd", marginRight: 8 }}>{m.submitter_name || "AUDIENCE"}:</span>
+                        {m.text}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      <style>{`
+        @keyframes scroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-scroll {
+          display: flex;
+          width: max-content;
+        }
+      `}</style>
     </div>
   );
 };
