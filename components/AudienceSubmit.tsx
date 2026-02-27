@@ -76,23 +76,23 @@ export const AudienceSubmit: React.FC<AudienceSubmitProps> = ({ workspaceId }) =
     }
 
     return (
-        <div className="min-h-screen bg-zinc-950 text-white p-6 pb-12 font-sans selection:bg-blue-500/30">
+        <div className="min-h-screen supports-[height:100dvh]:min-h-[100dvh] bg-zinc-950 text-white p-4 sm:p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] font-sans selection:bg-blue-500/30">
             <div className="max-w-md mx-auto">
-                <header className="mb-10 text-center">
-                    <div className="inline-block p-3 bg-zinc-900 rounded-2xl mb-4 border border-zinc-800 shadow-xl">
-                        <ChatIcon className="w-10 h-10 text-blue-500" />
+                <header className="mb-6 sm:mb-10 text-center">
+                    <div className="inline-block p-2.5 sm:p-3 bg-zinc-900 rounded-2xl mb-3 sm:mb-4 border border-zinc-800 shadow-xl">
+                        <ChatIcon className="w-8 h-8 sm:w-10 sm:h-10 text-blue-500" />
                     </div>
-                    <h1 className="text-3xl font-black tracking-tighter uppercase italic">Audience Studio</h1>
+                    <h1 className="text-2xl sm:text-3xl font-black tracking-tighter uppercase italic">Audience Studio</h1>
                     <p className="text-zinc-500 text-sm mt-1">Submit your message for the screen</p>
                 </header>
 
-                <form onSubmit={handleSubmit} className="space-y-8">
+                <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-8">
                     {/* Category Selector */}
                     <section>
-                        <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4">
+                        <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 sm:mb-4">
                             Select Category
                         </label>
-                        <div className="grid grid-cols-1 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-1 gap-2 sm:gap-3">
                             {CATEGORIES.map((cat) => {
                                 const Icon = cat.icon;
                                 const isSelected = category === cat.id;
@@ -101,20 +101,20 @@ export const AudienceSubmit: React.FC<AudienceSubmitProps> = ({ workspaceId }) =
                                         key={cat.id}
                                         type="button"
                                         onClick={() => setCategory(cat.id)}
-                                        className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${isSelected
+                                        className={`flex items-center gap-2 sm:gap-4 p-2.5 sm:p-4 rounded-xl border transition-all min-h-[52px] sm:min-h-0 ${isSelected
                                             ? `${cat.color} border-transparent shadow-lg scale-[1.02]`
                                             : 'bg-zinc-900/50 border-zinc-800 hover:border-zinc-700'
                                             }`}
                                     >
-                                        <div className={`p-2 rounded-lg ${isSelected ? 'bg-white/20' : 'bg-zinc-800'}`}>
-                                            <Icon className={`w-6 h-6 ${isSelected ? 'text-white' : 'text-zinc-400'}`} />
+                                        <div className={`p-1.5 sm:p-2 rounded-lg ${isSelected ? 'bg-white/20' : 'bg-zinc-800'}`}>
+                                            <Icon className={`w-4 h-4 sm:w-6 sm:h-6 ${isSelected ? 'text-white' : 'text-zinc-400'}`} />
                                         </div>
-                                        <span className={`font-bold text-lg ${isSelected ? 'text-white' : 'text-zinc-300'}`}>
+                                        <span className={`font-bold text-xs sm:text-lg text-left leading-tight ${isSelected ? 'text-white' : 'text-zinc-300'}`}>
                                             {cat.label}
                                         </span>
                                         {isSelected && (
-                                            <div className="ml-auto">
-                                                <CheckCircleIcon className="w-6 h-6 text-white/50" />
+                                            <div className="ml-auto shrink-0">
+                                                <CheckCircleIcon className="w-4 h-4 sm:w-6 sm:h-6 text-white/50" />
                                             </div>
                                         )}
                                     </button>
@@ -131,11 +131,11 @@ export const AudienceSubmit: React.FC<AudienceSubmitProps> = ({ workspaceId }) =
                             </label>
                             <textarea
                                 required
-                                rows={4}
+                                rows={3}
                                 value={text}
                                 onChange={(e) => setText(e.target.value)}
                                 placeholder="What's on your mind?..."
-                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-blue-600 transition-colors resize-none"
+                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 sm:p-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-blue-600 transition-colors resize-none"
                             />
                         </div>
 
@@ -148,7 +148,7 @@ export const AudienceSubmit: React.FC<AudienceSubmitProps> = ({ workspaceId }) =
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 placeholder="Name"
-                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-blue-600 transition-colors"
+                                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 sm:p-4 text-white placeholder:text-zinc-700 focus:outline-none focus:border-blue-600 transition-colors"
                             />
                         </div>
                     </section>
@@ -162,7 +162,7 @@ export const AudienceSubmit: React.FC<AudienceSubmitProps> = ({ workspaceId }) =
                     <button
                         type="submit"
                         disabled={loading || !text.trim()}
-                        className={`w-full py-5 rounded-2xl text-xl font-black uppercase tracking-tight transition-all active:scale-95 shadow-2xl ${loading
+                        className={`w-full py-3.5 sm:py-5 rounded-2xl text-base sm:text-xl font-black uppercase tracking-tight transition-all active:scale-95 shadow-2xl ${loading
                             ? 'bg-zinc-800 text-zinc-600 cursor-not-allowed'
                             : 'bg-gradient-to-br from-blue-600 to-blue-700 text-white hover:shadow-blue-900/20'
                             }`}
@@ -171,7 +171,7 @@ export const AudienceSubmit: React.FC<AudienceSubmitProps> = ({ workspaceId }) =
                     </button>
                 </form>
 
-                <footer className="mt-16 text-center opacity-20 hover:opacity-100 transition-opacity">
+                <footer className="mt-8 sm:mt-16 text-center opacity-20 hover:opacity-100 transition-opacity">
                     <p className="text-[10px] uppercase tracking-[0.2em] font-bold">Powered by Lumina Studio</p>
                 </footer>
             </div>

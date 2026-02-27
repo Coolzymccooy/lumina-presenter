@@ -114,86 +114,89 @@ export const RemoteControl: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-6">
-      <h1 className="text-2xl font-bold mb-2">Lumina Remote</h1>
-      <p className="text-zinc-400 text-sm mb-2">Mobile control surface synced over Firebase.</p>
-      <p className="text-zinc-500 text-xs mb-2">Session: {sessionId}</p>
-      <p className="text-zinc-500 text-xs mb-4">Signed in as: {user?.email || user?.uid}</p>
+    <div className="min-h-screen supports-[height:100dvh]:min-h-[100dvh] bg-zinc-950 text-white p-4 sm:p-6">
+      <h1 className="text-xl sm:text-2xl font-bold mb-1">Lumina Remote</h1>
+      <p className="text-zinc-400 text-xs sm:text-sm mb-3">Mobile control surface synced over Firebase.</p>
+
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3 mb-4 space-y-1.5">
+        <p className="text-zinc-500 text-[11px] sm:text-xs">Session: {sessionId}</p>
+        <p className="text-zinc-500 text-[11px] sm:text-xs truncate">Signed in as: {user?.email || user?.uid}</p>
+      </div>
       {ownerUid && (
-        <p className="text-zinc-500 text-xs mb-4">Session owner UID: {ownerUid}</p>
+        <p className="text-zinc-500 text-[11px] sm:text-xs mb-3 truncate">Session owner UID: {ownerUid}</p>
       )}
       {!ownerUid && (
-        <p className="text-amber-400 text-xs mb-4">No active session owner yet. Open presenter first.</p>
+        <p className="text-amber-400 text-[11px] sm:text-xs mb-3">No active session owner yet. Open presenter first.</p>
       )}
       {!canControl && ownerUid && (
-        <p className="text-red-400 text-xs mb-4">Access denied: use owner account or an allowlisted admin email.</p>
+        <p className="text-red-400 text-[11px] sm:text-xs mb-3">Access denied: use owner account or an allowlisted admin email.</p>
       )}
-      {syncError && <p className="text-red-400 text-xs mb-4">{syncError}</p>}
-      {commandStatus && <p className="text-emerald-400 text-xs mb-4">{commandStatus}</p>}
+      {syncError && <p className="text-red-400 text-[11px] sm:text-xs mb-3">{syncError}</p>}
+      {commandStatus && <p className="text-emerald-400 text-[11px] sm:text-xs mb-3">{commandStatus}</p>}
 
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <button
           disabled={!canControl || sending}
           onClick={() => sendCommand('PREV')}
-          className="p-4 rounded bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-3.5 sm:p-4 rounded bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
         >
           Prev Slide
         </button>
         <button
           disabled={!canControl || sending}
           onClick={() => sendCommand('NEXT')}
-          className="p-4 rounded bg-blue-600 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-3.5 sm:p-4 rounded bg-blue-600 font-bold disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base col-span-2"
         >
           Next Slide
         </button>
         <button
           disabled={!canControl || sending}
           onClick={() => sendCommand('BLACKOUT')}
-          className="p-4 rounded bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-3.5 sm:p-4 rounded bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base col-span-2"
         >
           Blackout
         </button>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-3">
+      <div className="mt-3 sm:mt-4 grid grid-cols-2 gap-2 sm:gap-3">
         <button
           disabled={!canControl || sending}
           onClick={() => sendCommand('PLAY')}
-          className="p-3 rounded bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+          className="p-2.5 sm:p-3 rounded bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-semibold"
         >
           Play Video
         </button>
         <button
           disabled={!canControl || sending}
           onClick={() => sendCommand('PAUSE')}
-          className="p-3 rounded bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+          className="p-2.5 sm:p-3 rounded bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-semibold"
         >
           Pause Video
         </button>
         <button
           disabled={!canControl || sending}
           onClick={() => sendCommand('STOP')}
-          className="p-3 rounded bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+          className="p-2.5 sm:p-3 rounded bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-semibold"
         >
           Stop Video
         </button>
         <button
           disabled={!canControl || sending}
           onClick={() => sendCommand('MUTE')}
-          className="p-3 rounded bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+          className="p-2.5 sm:p-3 rounded bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-semibold"
         >
           Mute Output
         </button>
         <button
           disabled={!canControl || sending}
           onClick={() => sendCommand('UNMUTE')}
-          className="p-3 rounded bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold col-span-2"
+          className="p-2.5 sm:p-3 rounded bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm font-semibold col-span-2"
         >
           Unmute Output
         </button>
       </div>
 
-      <div className="mt-6 text-xs text-zinc-500">
+      <div className="mt-4 sm:mt-6 text-[11px] sm:text-xs text-zinc-500 space-y-1">
         <div>Current Item: {state.activeItemId || 'n/a'}</div>
         <div>Current Slide: {typeof state.activeSlideIndex === 'number' ? state.activeSlideIndex + 1 : 'n/a'}</div>
       </div>

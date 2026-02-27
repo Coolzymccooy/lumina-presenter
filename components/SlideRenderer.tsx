@@ -744,7 +744,7 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
                   animation: `scroll ${Math.max(15, audienceOverlay.queue.length * 8)}s linear infinite`
                 }}>
                   {/* Double the queue for seamless loop */}
-                  {[...audienceOverlay.queue, ...audienceOverlay.queue].map((m, i) => (
+                  {audienceOverlay.queue.map((m, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       <span style={{ color: "#3b82f6", fontWeight: 900, fontSize: 14 }}>•</span>
                       <span style={{ color: "white", fontSize: 24, fontWeight: 600 }}>
@@ -762,8 +762,8 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
 
       <style>{`
         @keyframes scroll {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
         }
         .animate-scroll {
           display: flex;
