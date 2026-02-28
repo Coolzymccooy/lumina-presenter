@@ -442,6 +442,7 @@ function App() {
   const hasHydratedCloudStateRef = useRef(false);
   const hasHydratedServerSnapshotRef = useRef(false);
   const workspaceSettingsUpdatedAtRef = useRef<number>(0);
+  const hasLoadedInitialSettingsRef = useRef(false);
   const lastRemoteCommandAtRef = useRef<number | null>(null);
   const lastServerRemoteCommandAtRef = useRef<number | null>(null);
   const lastSyncErrorRef = useRef<{ key: string; at: number } | null>(null);
@@ -645,16 +646,20 @@ function App() {
       if (savedSettings) {
         const parsed = sanitizeWorkspaceSettings(JSON.parse(savedSettings));
         setWorkspaceSettings((prev) => ({ ...prev, ...parsed }));
-        isSettingsHydratedRef.current = true;
       }
       const savedUpdatedAt = Number(localStorage.getItem(SETTINGS_UPDATED_AT_KEY) || '0');
       workspaceSettingsUpdatedAtRef.current = Number.isFinite(savedUpdatedAt) ? savedUpdatedAt : 0;
     } catch (error) {
       console.warn('Failed to load local workspace settings', error);
+    } finally {
+      // Local settings bootstrap is complete (even if cache is empty/corrupt).
+      hasLoadedInitialSettingsRef.current = true;
+      isSettingsHydratedRef.current = true;
     }
   }, []);
 
-  // 2. Load from server on login (server always wins)
+  // 2. Load from server on login.
+  // Only apply server settings when server payload is at least as fresh as local cache.
   useEffect(() => {
     if (!user || !workspaceId) return;
 
@@ -663,27 +668,39 @@ function App() {
         const res = await fetchWorkspaceSettings(workspaceId, user);
         if (res?.ok && res.settings) {
           const serverSettings = sanitizeWorkspaceSettings(res.settings);
+          const serverUpdatedAt = Number(res.updatedAt || 0);
+          const localUpdatedAt = workspaceSettingsUpdatedAtRef.current;
+          const serverIsFresherOrEqual = serverUpdatedAt >= localUpdatedAt;
+
+          if (!serverIsFresherOrEqual) {
+            isSettingsHydratedRef.current = true;
+            return;
+          }
+
           setWorkspaceSettings((prev) => {
-            // Keep local-only settings (like machineMode optionally), but server owns critical ones
             const merged = { ...prev, ...serverSettings };
-
-            // Immediately update local cache to match server
             localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
-            localStorage.setItem(SETTINGS_UPDATED_AT_KEY, String(res.updatedAt || Date.now()));
-            workspaceSettingsUpdatedAtRef.current = res.updatedAt || Date.now();
-
+            localStorage.setItem(SETTINGS_UPDATED_AT_KEY, String(serverUpdatedAt || Date.now()));
+            workspaceSettingsUpdatedAtRef.current = serverUpdatedAt || Date.now();
             isSettingsHydratedRef.current = true;
             return merged;
           });
+        } else {
+          isSettingsHydratedRef.current = true;
         }
       } catch (err) {
         console.warn('Failed to load remote settings', err);
+        // Keep local values if server read fails.
+        isSettingsHydratedRef.current = true;
       }
     };
     loadRemoteSettings();
   }, [user, workspaceId]);
 
   useEffect(() => {
+    document.documentElement.dataset.theme = workspaceSettings.theme;
+    if (!hasLoadedInitialSettingsRef.current) return;
+
     const updatedAt = Date.now();
     // Only save to server if we're authenticated and it's a "fresh" change 
     // (not just hydrating from server)
@@ -700,7 +717,7 @@ function App() {
       }
 
       // 2. Save to server if logged in and settings are hydrated (never wipe with defaults)
-      if (user && !isRecentServerLoad && isSettingsHydratedRef.current) {
+      if (user?.uid && !isRecentServerLoad && isSettingsHydratedRef.current) {
         try {
           await saveWorkspaceSettings(workspaceId, user, workspaceSettings);
           workspaceSettingsUpdatedAtRef.current = updatedAt;
@@ -711,16 +728,7 @@ function App() {
     };
 
     persistSettings();
-    document.documentElement.dataset.theme = workspaceSettings.theme;
   }, [workspaceSettings, user, workspaceId]);
-
-  useEffect(() => {
-    if (!user?.uid) return;
-    const id = window.setTimeout(() => {
-      saveWorkspaceSettings(workspaceId, user, workspaceSettings);
-    }, 700);
-    return () => window.clearTimeout(id);
-  }, [workspaceId, user, workspaceSettings]);
 
   useEffect(() => {
     if (!user?.uid || hasHydratedServerSnapshotRef.current) return;
@@ -1937,7 +1945,7 @@ function App() {
   </body>
 </html>`;
     const w = window.open(
-      "",
+      "about:blank",
       "LuminaOutput",
       `popup=yes,width=${width},height=${height},left=0,top=0,menubar=no,toolbar=no,location=no,status=no,scrollbars=no,resizable=yes`
     );
@@ -2008,7 +2016,7 @@ function App() {
 </html>`;
 
     const w = window.open(
-      "",
+      "about:blank",
       "LuminaStageDisplay",
       "width=1280,height=720,menubar=no,toolbar=no,location=no,status=no"
     );

@@ -7,12 +7,12 @@ interface OutputWindowProps {
   children: React.ReactNode;
 
   /**
-   * ✅ Pass the Window you opened synchronously inside the Launch Output click.
+   * Pass the Window you opened synchronously inside the Launch Output click.
    * This avoids popup blockers.
    */
   externalWindow?: Window | null;
 
-  /** Optional fallback: if externalWindow isn't provided, OutputWindow can attempt to open one (may be blocked). */
+  /** Optional fallback if externalWindow is not provided. */
   windowName?: string;
   features?: string;
 }
@@ -20,7 +20,7 @@ interface OutputWindowProps {
 /**
  * Projector popout window.
  * - Copies styles into the new window so Tailwind/Vite injected CSS works.
- * - Handles React 18 StrictMode double-invocation (dev) so the window doesn't instantly close.
+ * - Handles React 18 StrictMode double-invocation (dev) so the popout does not close immediately.
  */
 export const OutputWindow: React.FC<OutputWindowProps> = ({
   onClose,
@@ -37,7 +37,7 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
   const onBlockRef = useRef(onBlock);
 
   // React 18 StrictMode (dev): mount/cleanup/mount again.
-  // Ignore the first cleanup so the popout doesn't close immediately.
+  // Ignore the first cleanup so the popout does not close immediately.
   const effectRunIdRef = useRef(0);
 
   const targetWindow = useMemo(() => {
@@ -77,11 +77,10 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
       w = targetWindow;
       createdByMeRef.current = false;
     } else {
-      // Open same-origin blank page to avoid blob: URLs in the address bar.
+      // Use about:blank so a reused named window is always navigated back to same-origin.
       w = winRef.current && !winRef.current.closed
-          ? winRef.current
-          : window.open("", windowName, features);
-      
+        ? winRef.current
+        : window.open("about:blank", windowName, features);
       createdByMeRef.current = true;
     }
 
@@ -92,79 +91,106 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
 
     winRef.current = w;
 
-    // Ensure host document exists, then inject React.
-    const onWindowLoad = () => {
-      if (!w || w.closed) return;
+    let mountRetryTimer: number | null = null;
+    let mountAttempts = 0;
+    const maxMountAttempts = 30;
 
-      if (!w.document.getElementById("output-root")) {
-        try {
-          w.document.open();
-          w.document.write(initialHtml);
-          w.document.close();
-        } catch {
-          // ignore
-        }
-      }
-      
-      // Ensure title is set again just in case
-      w.document.title = "Lumina Output (Projector)";
-      
-      // Find the output root (create if needed)
-      const div = w.document.getElementById("output-root");
-      if (div) {
-        setContainer(div);
-      } else {
-        // Fallback if shell write failed for some reason
-        const newDiv = w.document.createElement("div");
-        newDiv.id = "output-root";
-        w.document.body.appendChild(newDiv);
-        setContainer(newDiv);
-      }
-
-      // Copy styles (Vite dev injects <style> tags, Tailwind compiled CSS is <style>/<link>)
-      const head = w.document.head;
-      const markerName = "lumina-output-styles";
-      
-      if (!head.querySelector(`meta[name="${markerName}"]`)) {
-        const marker = w.document.createElement("meta");
-        marker.name = markerName;
-        marker.content = "1";
-        head.appendChild(marker);
-
-        // Standard link tags
-        Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).forEach(
-          (link) => {
-            const newLink = w!.document.createElement("link");
-            newLink.rel = "stylesheet";
-            newLink.href = link.href;
-            head.appendChild(newLink);
-          }
-        );
-
-        // Style tags
-        Array.from(document.querySelectorAll<HTMLStyleElement>("style")).forEach((style) => {
-          const newStyle = w!.document.createElement("style");
-          newStyle.textContent = style.textContent;
-          head.appendChild(newStyle);
-        });
-        
-        // Font imports (Google Fonts, etc.)
-        Array.from(document.querySelectorAll<HTMLLinkElement>('link[href*="fonts.googleapis.com"]')).forEach(
-          (link) => {
-             const newLink = w!.document.createElement("link");
-             newLink.rel = "stylesheet";
-             newLink.href = link.href;
-             head.appendChild(newLink);
-          }
-        );
+    const stopRetries = () => {
+      if (mountRetryTimer !== null) {
+        window.clearInterval(mountRetryTimer);
+        mountRetryTimer = null;
       }
     };
 
-    // If it's an existing window, it might already be loaded
-    if (w.document.readyState === 'complete') {
-        onWindowLoad();
-    } else {
-        w.addEventListener('load', onWindowLoad);
+    const copyStyles = (hostDocument: Document) => {
+      const head = hostDocument.head;
+      if (!head) return;
+      const markerName = "lumina-output-styles";
+      if (head.querySelector(`meta[name="${markerName}"]`)) return;
+
+      const marker = hostDocument.createElement("meta");
+      marker.name = markerName;
+      marker.content = "1";
+      head.appendChild(marker);
+
+      Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')).forEach((link) => {
+        const newLink = hostDocument.createElement("link");
+        newLink.rel = "stylesheet";
+        newLink.href = link.href;
+        head.appendChild(newLink);
+      });
+
+      Array.from(document.querySelectorAll<HTMLStyleElement>("style")).forEach((style) => {
+        const newStyle = hostDocument.createElement("style");
+        newStyle.textContent = style.textContent;
+        head.appendChild(newStyle);
+      });
+
+      Array.from(document.querySelectorAll<HTMLLinkElement>('link[href*="fonts.googleapis.com"]')).forEach((link) => {
+        const newLink = hostDocument.createElement("link");
+        newLink.rel = "stylesheet";
+        newLink.href = link.href;
+        head.appendChild(newLink);
+      });
+    };
+
+    const ensureHostReady = () => {
+      if (!w || w.closed) return false;
+      try {
+        const hostDocument = w.document;
+
+        if (!hostDocument.getElementById("output-root")) {
+          if (hostDocument.body) {
+            const div = hostDocument.createElement("div");
+            div.id = "output-root";
+            div.style.width = "100vw";
+            div.style.height = "100vh";
+            hostDocument.body.appendChild(div);
+          } else {
+            hostDocument.open();
+            hostDocument.write(initialHtml);
+            hostDocument.close();
+          }
+        }
+
+        hostDocument.title = "Lumina Output (Projector)";
+        const div = hostDocument.getElementById("output-root");
+        if (!div) return false;
+
+        setContainer((prev) => (prev === div ? prev : div));
+        copyStyles(hostDocument);
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    const startRetries = () => {
+      if (mountRetryTimer !== null) return;
+      mountRetryTimer = window.setInterval(() => {
+        mountAttempts += 1;
+        if (ensureHostReady()) {
+          stopRetries();
+          return;
+        }
+        if (mountAttempts >= maxMountAttempts) {
+          stopRetries();
+          onBlockRef.current();
+        }
+      }, 100);
+    };
+
+    const onWindowLoad = () => {
+      if (ensureHostReady()) {
+        stopRetries();
+        return;
+      }
+      startRetries();
+    };
+
+    if (!ensureHostReady()) {
+      w.addEventListener("load", onWindowLoad);
+      startRetries();
     }
 
     try {
@@ -198,13 +224,14 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
     };
 
     return () => {
-      w?.removeEventListener('load', onWindowLoad); // Cleanup listener
+      stopRetries();
+      w?.removeEventListener("load", onWindowLoad);
       window.removeEventListener("unload", handleParentUnload);
       window.removeEventListener("beforeunload", handleParentUnload);
       window.clearInterval(checkClosed);
 
       // StrictMode dev: ignore first cleanup
-      if (runId == 1 && effectRunIdRef.current === 2) return;
+      if (runId === 1 && effectRunIdRef.current === 2) return;
 
       // Close only if we created it
       if (createdByMeRef.current) {
