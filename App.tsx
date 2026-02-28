@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { INITIAL_SCHEDULE, MOCK_SONGS, DEFAULT_BACKGROUNDS, GOSPEL_TRACKS, GospelTrack } from './constants';
-import { ServiceItem, Slide, ItemType, AudienceDisplayState, AudienceMessage, StageAlertState } from './types';
+import { ServiceItem, Slide, ItemType, AudienceDisplayState, AudienceMessage, StageAlertState, StageTimerLayout, StageTimerVariant, ConnectionRole } from './types';
 import { SlideRenderer } from './components/SlideRenderer';
 import { AIModal } from './components/AIModal';
 import { SlideEditorModal } from './components/SlideEditorModal';
@@ -25,7 +25,7 @@ import { logActivity, analyzeSentimentContext } from './services/analytics';
 import { auth, isFirebaseConfigured, subscribeToState, subscribeToTeamPlaylists, updateLiveState, upsertTeamPlaylist } from './services/firebase';
 import { onAuthStateChanged } from "firebase/auth";
 import { clearMediaCache, saveMedia } from './services/localMedia';
-import { fetchServerSessionState, fetchWorkspaceSettings, getServerApiBaseUrl, importVisualPptxDeck, loadLatestWorkspaceSnapshot, resolveWorkspaceId, saveServerSessionState, saveWorkspaceSettings, saveWorkspaceSnapshot } from './services/serverApi';
+import { fetchServerSessionState, fetchSessionConnections, fetchWorkspaceSettings, getOrCreateConnectionClientId, getServerApiBaseUrl, heartbeatSessionConnection, importVisualPptxDeck, loadLatestWorkspaceSnapshot, resolveWorkspaceId, saveServerSessionState, saveWorkspaceSettings, saveWorkspaceSnapshot } from './services/serverApi';
 import { parsePptxFile } from './services/pptxImport';
 import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon
 
@@ -50,6 +50,8 @@ type WorkspaceSettings = {
   sessionId: string;
   stageProfile: 'classic' | 'compact' | 'high_contrast';
   machineMode: boolean;
+  stageTimerLayout: StageTimerLayout;
+  connectionTargetRoles: ConnectionRole[];
 };
 
 type SmokeTestResult = {
@@ -67,7 +69,22 @@ type CloudPlaylistRecord = {
   activeItemId?: string | null;
   activeSlideIndex?: number;
   workspaceSettings?: Partial<WorkspaceSettings>;
+  workspaceSettingsUpdatedAt?: number;
 };
+
+const DEFAULT_STAGE_TIMER_LAYOUT: StageTimerLayout = {
+  x: 24,
+  y: 24,
+  width: 360,
+  height: 150,
+  fontScale: 1,
+  variant: 'top-right',
+  locked: false,
+};
+
+const DEFAULT_CONNECTION_TARGET_ROLES: ConnectionRole[] = ['controller', 'output', 'stage'];
+const VALID_CONNECTION_ROLES: ConnectionRole[] = ['controller', 'output', 'stage', 'remote'];
+const VALID_STAGE_TIMER_VARIANTS: StageTimerVariant[] = ['top-right', 'top-left', 'bottom-right', 'compact-bar'];
 
 const buildCloudPlaylistId = (uid: string) => `${uid}-${CLOUD_PLAYLIST_SUFFIX}`;
 
@@ -87,6 +104,34 @@ const looksLikeVideoUrl = (url: string): boolean => {
     || normalized.startsWith('blob:');
 };
 
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const normalizeStageTimerLayout = (value: unknown): StageTimerLayout => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return DEFAULT_STAGE_TIMER_LAYOUT;
+  const raw = value as Record<string, unknown>;
+  const variant = VALID_STAGE_TIMER_VARIANTS.includes(raw.variant as StageTimerVariant)
+    ? raw.variant as StageTimerVariant
+    : DEFAULT_STAGE_TIMER_LAYOUT.variant;
+  return {
+    x: typeof raw.x === 'number' && Number.isFinite(raw.x) ? raw.x : DEFAULT_STAGE_TIMER_LAYOUT.x,
+    y: typeof raw.y === 'number' && Number.isFinite(raw.y) ? raw.y : DEFAULT_STAGE_TIMER_LAYOUT.y,
+    width: typeof raw.width === 'number' && Number.isFinite(raw.width) ? clamp(raw.width, 220, 900) : DEFAULT_STAGE_TIMER_LAYOUT.width,
+    height: typeof raw.height === 'number' && Number.isFinite(raw.height) ? clamp(raw.height, 72, 420) : DEFAULT_STAGE_TIMER_LAYOUT.height,
+    fontScale: typeof raw.fontScale === 'number' && Number.isFinite(raw.fontScale) ? clamp(raw.fontScale, 0.6, 2.3) : DEFAULT_STAGE_TIMER_LAYOUT.fontScale,
+    variant,
+    locked: !!raw.locked,
+  };
+};
+
+const normalizeConnectionTargetRoles = (value: unknown): ConnectionRole[] => {
+  if (!Array.isArray(value)) return DEFAULT_CONNECTION_TARGET_ROLES;
+  const filtered = value
+    .map((entry) => String(entry || '').trim().toLowerCase())
+    .filter((entry): entry is ConnectionRole => VALID_CONNECTION_ROLES.includes(entry as ConnectionRole));
+  const deduped = Array.from(new Set(filtered));
+  return deduped.length ? deduped : DEFAULT_CONNECTION_TARGET_ROLES;
+};
+
 const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   const raw = value as Record<string, unknown>;
@@ -101,6 +146,12 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
     safe.stageProfile = raw.stageProfile;
   }
   if (typeof raw.machineMode === 'boolean') safe.machineMode = raw.machineMode;
+  if (raw.stageTimerLayout && typeof raw.stageTimerLayout === 'object') {
+    safe.stageTimerLayout = normalizeStageTimerLayout(raw.stageTimerLayout);
+  }
+  if (Array.isArray(raw.connectionTargetRoles)) {
+    safe.connectionTargetRoles = normalizeConnectionTargetRoles(raw.connectionTargetRoles);
+  }
   return safe;
 };
 
@@ -182,12 +233,16 @@ function App() {
   const isElectronShell = !!window.electron?.isElectron;
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [viewState, setViewState] = useState<'landing' | 'studio' | 'audience' | 'output' | 'remote'>(() => {
+  const [viewState, setViewState] = useState<'landing' | 'studio' | 'audience' | 'output' | 'stage' | 'remote'>(() => {
     const hash = window.location.hash;
     if (hash.startsWith('#/audience')) return 'audience';
     if (hash.startsWith('#/output')) return 'output';
+    if (hash.startsWith('#/stage')) return 'stage';
     if (hash.startsWith('#/remote')) return 'remote';
     if (window.location.pathname === '/audience') return 'audience';
+    if (window.location.pathname === '/output') return 'output';
+    if (window.location.pathname === '/stage') return 'stage';
+    if (window.location.pathname === '/remote') return 'remote';
     // @ts-ignore
     if (window.electron?.isElectron) return 'studio';
     return 'landing';
@@ -259,6 +314,8 @@ function App() {
     sessionId: 'live',
     stageProfile: 'classic',
     machineMode: false,
+    stageTimerLayout: DEFAULT_STAGE_TIMER_LAYOUT,
+    connectionTargetRoles: DEFAULT_CONNECTION_TARGET_ROLES,
   });
   const allowedAdminEmails = useMemo(() => {
     const raw = workspaceSettings.remoteAdminEmails || '';
@@ -291,6 +348,22 @@ function App() {
     if (urlWorkspace && viewState === 'audience') return urlWorkspace.trim();
     return resolveWorkspaceId(user);
   }, [user?.uid, viewState]);
+  const controllerClientId = useMemo(
+    () => getOrCreateConnectionClientId(workspaceId, liveSessionId, 'controller'),
+    [workspaceId, liveSessionId]
+  );
+  const outputClientId = useMemo(
+    () => getOrCreateConnectionClientId(workspaceId, liveSessionId, 'output'),
+    [workspaceId, liveSessionId]
+  );
+  const stageClientId = useMemo(
+    () => getOrCreateConnectionClientId(workspaceId, liveSessionId, 'stage'),
+    [workspaceId, liveSessionId]
+  );
+  const targetConnectionRoles = useMemo(
+    () => normalizeConnectionTargetRoles(workspaceSettings.connectionTargetRoles),
+    [workspaceSettings.connectionTargetRoles]
+  );
   const [isMotionLibOpen, setIsMotionLibOpen] = useState(false); // NEW
   const [isTemplateOpen, setIsTemplateOpen] = useState(false);
   const [isLyricsImportOpen, setIsLyricsImportOpen] = useState(false);
@@ -311,9 +384,31 @@ function App() {
   const [teamPlaylists, setTeamPlaylists] = useState<CloudPlaylistRecord[]>([]);
   const [cloudBootstrapComplete, setCloudBootstrapComplete] = useState(!isFirebaseConfigured());
   const [stageWin, setStageWin] = useState<Window | null>(null);
-  const [timerMode, setTimerMode] = useState<'COUNTDOWN' | 'ELAPSED'>('COUNTDOWN');
-  const [timerDurationMin, setTimerDurationMin] = useState(35);
-  const [timerSeconds, setTimerSeconds] = useState(35 * 60);
+  const [timerMode, setTimerMode] = useState<'COUNTDOWN' | 'ELAPSED'>(() => {
+    const saved = initialSavedState;
+    return saved?.timerMode === 'ELAPSED' ? 'ELAPSED' : 'COUNTDOWN';
+  });
+  const [timerDurationMin, setTimerDurationMin] = useState(() => {
+    const saved = initialSavedState;
+    const raw = Number(saved?.timerDurationMin);
+    return Number.isFinite(raw) ? Math.max(1, Math.min(180, Math.round(raw))) : 35;
+  });
+  const [timerSeconds, setTimerSeconds] = useState(() => {
+    const saved = initialSavedState;
+    const raw = Number(saved?.timerSeconds);
+    if (Number.isFinite(raw)) return Math.round(raw);
+    const savedMode = saved?.timerMode === 'ELAPSED' ? 'ELAPSED' : 'COUNTDOWN';
+    const savedDuration = Number(saved?.timerDurationMin);
+    const safeDuration = Number.isFinite(savedDuration) ? Math.max(1, Math.min(180, Math.round(savedDuration))) : 35;
+    return savedMode === 'COUNTDOWN' ? safeDuration * 60 : 0;
+  });
+  const [currentCueItemId, setCurrentCueItemId] = useState<string | null>(() => {
+    const saved = initialSavedState;
+    return typeof saved?.currentCueItemId === 'string' ? saved.currentCueItemId : null;
+  });
+  const [cueZeroHold, setCueZeroHold] = useState(false);
+  const [connectionCountsByRole, setConnectionCountsByRole] = useState<Record<string, number>>({});
+  const [activeTargetConnectionCount, setActiveTargetConnectionCount] = useState(0);
 
   const [audienceDisplay, setAudienceDisplay] = useState<AudienceDisplayState>(() => {
     const saved = initialSavedState;
@@ -398,6 +493,8 @@ function App() {
         setViewState('audience');
       } else if (h.startsWith('#/output')) {
         setViewState('output');
+      } else if (h.startsWith('#/stage')) {
+        setViewState('stage');
       } else if (h.startsWith('#/remote')) {
         setViewState('remote');
       } else if (h === '#/studio') {
@@ -445,6 +542,7 @@ function App() {
   const hasLoadedInitialSettingsRef = useRef(false);
   const lastRemoteCommandAtRef = useRef<number | null>(null);
   const lastServerRemoteCommandAtRef = useRef<number | null>(null);
+  const lastCueAutoAdvanceKeyRef = useRef<string>('');
   const lastSyncErrorRef = useRef<{ key: string; at: number } | null>(null);
   const syncFailureStreakRef = useRef(0);
   const syncBackoffUntilRef = useRef(0);
@@ -719,10 +817,12 @@ function App() {
       // 2. Save to server if logged in and settings are hydrated (never wipe with defaults)
       if (user?.uid && !isRecentServerLoad && isSettingsHydratedRef.current) {
         try {
-          await saveWorkspaceSettings(workspaceId, user, workspaceSettings);
-          workspaceSettingsUpdatedAtRef.current = updatedAt;
+          const result = await saveWorkspaceSettings(workspaceId, user, workspaceSettings);
+          workspaceSettingsUpdatedAtRef.current = Number(result?.updatedAt || updatedAt);
+          setSyncIssue((prev) => (prev && prev.startsWith('Settings sync failed') ? null : prev));
         } catch (err) {
           console.warn('Server settings sync failed', err);
+          setSyncIssue('Settings sync failed (local values preserved). Retry by clicking Synchronize Workspace.');
         }
       }
     };
@@ -760,11 +860,15 @@ function App() {
         setActiveSlideIndex(payload.activeSlideIndex);
       }
       if (payload.workspaceSettings && typeof payload.workspaceSettings === 'object') {
+        const snapshotSettingsUpdatedAt = typeof payload.workspaceSettingsUpdatedAt === 'number'
+          ? payload.workspaceSettingsUpdatedAt
+          : 0;
+        if (!snapshotSettingsUpdatedAt) return;
         const localSettingsUpdatedAt = workspaceSettingsUpdatedAtRef.current;
-        if (snapshot.updatedAt >= localSettingsUpdatedAt) {
+        if (snapshotSettingsUpdatedAt >= localSettingsUpdatedAt) {
           const snapshotSettings = sanitizeWorkspaceSettings(payload.workspaceSettings);
           if (Object.keys(snapshotSettings).length > 0) {
-            workspaceSettingsUpdatedAtRef.current = snapshot.updatedAt;
+            workspaceSettingsUpdatedAtRef.current = snapshotSettingsUpdatedAt;
             setWorkspaceSettings((prev) => ({ ...prev, ...snapshotSettings }));
           }
         }
@@ -915,8 +1019,13 @@ function App() {
         seekAmount,
         lowerThirdsEnabled,
         routingMode,
+        timerMode,
+        timerDurationMin,
+        timerSeconds,
+        currentCueItemId,
         audienceDisplay,
         stageAlert,
+        workspaceSettings,
         updatedAt: Date.now(),
       };
       try {
@@ -927,15 +1036,18 @@ function App() {
       }
     }, 180);
     return () => window.clearTimeout(id);
-  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, audienceDisplay, stageAlert, user]);
+  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, stageAlert, workspaceSettings, user]);
 
 
 
   useEffect(() => {
     if (!user?.uid || !cloudBootstrapComplete) return;
     const updatedAt = Date.now();
+    const settingsUpdatedAt = workspaceSettingsUpdatedAtRef.current || updatedAt;
     syncLiveState({
-      scheduleSnapshot: schedule.slice(0, 20),
+      scheduleSnapshot: schedule,
+      workspaceSettings,
+      workspaceSettingsUpdatedAt: settingsUpdatedAt,
       controllerOwnerUid: user.uid,
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
@@ -949,6 +1061,7 @@ function App() {
           activeItemId,
           activeSlideIndex,
           workspaceSettings,
+          workspaceSettingsUpdatedAt: settingsUpdatedAt,
           updatedAt,
         });
         await saveWorkspaceSnapshot(workspaceId, user, {
@@ -957,6 +1070,7 @@ function App() {
           activeItemId,
           activeSlideIndex,
           workspaceSettings,
+          workspaceSettingsUpdatedAt: settingsUpdatedAt,
           updatedAt,
         });
       } catch (error) {
@@ -1006,6 +1120,60 @@ function App() {
     || (!activeSlide.mediaType && activeItem?.theme.mediaType === 'video')
     || looksLikeVideoUrl(activeBackgroundUrl)
   );
+  const enabledTimerCues = useMemo(() => {
+    return schedule
+      .map((item, idx) => {
+        const cue = item.timerCue;
+        if (!cue?.enabled) return null;
+        const durationSec = Number.isFinite(cue.durationSec) ? Math.max(1, Math.round(cue.durationSec)) : 300;
+        const amberPercent = Number.isFinite(cue.amberPercent) ? clamp(Number(cue.amberPercent), 1, 99) : 25;
+        const redPercent = Number.isFinite(cue.redPercent) ? clamp(Number(cue.redPercent), 1, 99) : 10;
+        return {
+          itemId: item.id,
+          itemTitle: item.title,
+          scheduleIndex: idx,
+          cue: {
+            enabled: true,
+            durationSec,
+            speakerName: typeof cue.speakerName === 'string' ? cue.speakerName : '',
+            autoStartNext: !!cue.autoStartNext,
+            amberPercent,
+            redPercent,
+          },
+        };
+      })
+      .filter((entry): entry is {
+        itemId: string;
+        itemTitle: string;
+        scheduleIndex: number;
+        cue: {
+          enabled: true;
+          durationSec: number;
+          speakerName: string;
+          autoStartNext: boolean;
+          amberPercent: number;
+          redPercent: number;
+        };
+      } => !!entry);
+  }, [schedule]);
+  useEffect(() => {
+    if (!enabledTimerCues.length) {
+      if (currentCueItemId !== null) setCurrentCueItemId(null);
+      return;
+    }
+    if (currentCueItemId && enabledTimerCues.some((entry) => entry.itemId === currentCueItemId)) return;
+    const preferredId = activeItemId && enabledTimerCues.some((entry) => entry.itemId === activeItemId)
+      ? activeItemId
+      : enabledTimerCues[0].itemId;
+    setCurrentCueItemId(preferredId);
+  }, [enabledTimerCues, currentCueItemId, activeItemId]);
+  const currentCueIndex = enabledTimerCues.findIndex((entry) => entry.itemId === currentCueItemId);
+  const currentCue = currentCueIndex >= 0 ? enabledTimerCues[currentCueIndex] : null;
+  const currentCueDurationSec = currentCue?.cue.durationSec || (timerDurationMin * 60);
+  const currentCueSpeaker = (currentCue?.cue.speakerName || '').trim();
+  const currentCueAmberPercent = currentCue?.cue.amberPercent || 25;
+  const currentCueRedPercent = currentCue?.cue.redPercent || 10;
+  const effectiveTimerDurationSec = timerMode === 'COUNTDOWN' ? currentCueDurationSec : Math.max(1, timerDurationMin * 60);
   const formatTimer = (total: number) => {
     const negative = total < 0;
     const abs = Math.abs(total);
@@ -1013,14 +1181,14 @@ function App() {
     const ss = Math.floor(abs % 60).toString().padStart(2, '0');
     return `${negative ? '-' : ''}${mm}:${ss}`;
   };
-  const isTimerOvertime = timerMode === 'COUNTDOWN' && timerSeconds < 0;
+  const isTimerOvertime = timerMode === 'COUNTDOWN' && (timerSeconds < 0 || cueZeroHold);
   const getShareBaseOrigin = () => {
     if (typeof window === 'undefined') return PUBLIC_WEB_APP_ORIGIN;
     const origin = window.location.origin || '';
     if (/^https?:\/\//i.test(origin)) return origin;
     return PUBLIC_WEB_APP_ORIGIN;
   };
-  const buildSharedRouteUrl = (route: 'output' | 'remote') => {
+  const buildSharedRouteUrl = (route: 'output' | 'remote' | 'stage') => {
     const base = getShareBaseOrigin();
     const root = base ? `${base}/#/${route}` : `/#/${route}`;
     const params = new URLSearchParams({
@@ -1031,6 +1199,8 @@ function App() {
     if (route === 'output') {
       params.set('api', getServerApiBaseUrl());
       params.set('fullscreen', '1');
+    } else if (route === 'stage') {
+      params.set('api', getServerApiBaseUrl());
     }
 
     return `${root}?${params.toString()}`;
@@ -1041,6 +1211,9 @@ function App() {
   const remoteControlUrl = typeof window !== 'undefined'
     ? buildSharedRouteUrl('remote')
     : `/#/remote?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}`;
+  const stageDisplayUrl = typeof window !== 'undefined'
+    ? buildSharedRouteUrl('stage')
+    : `/#/stage?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}`;
 
   const audienceUrl = useMemo(() => {
     return `${getShareBaseOrigin()}/#/audience?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&api=${encodeURIComponent(getServerApiBaseUrl())}`;
@@ -1505,6 +1678,16 @@ function App() {
     const boundedIndex = Math.max(0, Math.min(item.slides.length - 1, slideIndex));
     setActiveItemId(item.id);
     setActiveSlideIndex(boundedIndex);
+    if (item.timerCue?.enabled) {
+      const cueDuration = Number.isFinite(item.timerCue.durationSec) ? Math.max(1, Math.round(item.timerCue.durationSec)) : 300;
+      setCurrentCueItemId(item.id);
+      if (!timerRunning) {
+        setTimerMode('COUNTDOWN');
+        setTimerDurationMin(Math.max(1, Math.ceil(cueDuration / 60)));
+        setTimerSeconds(cueDuration);
+        setCueZeroHold(false);
+      }
+    }
     setBlackout(false);
     setIsPlaying(true);
     logActivity(user?.uid, 'PRESENTATION_START', { itemTitle: item.title });
@@ -1573,6 +1756,36 @@ function App() {
       }
     }
   }, [activeItem, activeSlideIndex, schedule]);
+
+  const activateCueByItemId = useCallback((itemId: string, options: { autoStart?: boolean; goLiveItem?: boolean } = {}) => {
+    const cueEntry = enabledTimerCues.find((entry) => entry.itemId === itemId);
+    if (!cueEntry) return;
+    setCurrentCueItemId(cueEntry.itemId);
+    setTimerMode('COUNTDOWN');
+    setTimerDurationMin(Math.max(1, Math.ceil(cueEntry.cue.durationSec / 60)));
+    setTimerSeconds(cueEntry.cue.durationSec);
+    setCueZeroHold(false);
+    setTimerRunning(!!options.autoStart);
+    if (options.goLiveItem) {
+      const cueItem = schedule.find((entry) => entry.id === cueEntry.itemId);
+      if (cueItem && Array.isArray(cueItem.slides) && cueItem.slides.length > 0) {
+        setActiveItemId(cueItem.id);
+        setActiveSlideIndex(0);
+        setBlackout(false);
+        setIsPlaying(true);
+      }
+    }
+  }, [enabledTimerCues, schedule]);
+
+  const moveCueByOffset = useCallback((offset: number, options: { autoStart?: boolean; goLiveItem?: boolean } = {}) => {
+    if (!enabledTimerCues.length) return;
+    const currentIndex = enabledTimerCues.findIndex((entry) => entry.itemId === currentCueItemId);
+    const baseIndex = currentIndex >= 0 ? currentIndex : 0;
+    const nextIndex = clamp(baseIndex + offset, 0, enabledTimerCues.length - 1);
+    const target = enabledTimerCues[nextIndex];
+    if (!target) return;
+    activateCueByItemId(target.itemId, options);
+  }, [enabledTimerCues, currentCueItemId, activateCueByItemId]);
 
   const triggerSeek = (seconds: number) => {
     setSeekAmount(seconds);
@@ -1718,9 +1931,12 @@ function App() {
           }
 
           const cloudSettings = sanitizeWorkspaceSettings(preferred.workspaceSettings);
+          const cloudSettingsUpdatedAt = typeof preferred.workspaceSettingsUpdatedAt === 'number'
+            ? preferred.workspaceSettingsUpdatedAt
+            : 0;
           const localSettingsUpdatedAt = workspaceSettingsUpdatedAtRef.current;
-          if (Object.keys(cloudSettings).length > 0 && cloudUpdatedAt >= localSettingsUpdatedAt) {
-            workspaceSettingsUpdatedAtRef.current = cloudUpdatedAt;
+          if (Object.keys(cloudSettings).length > 0 && cloudSettingsUpdatedAt && cloudSettingsUpdatedAt >= localSettingsUpdatedAt) {
+            workspaceSettingsUpdatedAtRef.current = cloudSettingsUpdatedAt;
             setWorkspaceSettings((prev) => ({ ...prev, ...cloudSettings }));
           }
         },
@@ -1825,13 +2041,22 @@ function App() {
       seekAmount,
       lowerThirdsEnabled,
       routingMode,
+      timerMode,
+      timerSeconds,
+      timerDurationSec: effectiveTimerDurationSec,
+      timerCueSpeaker: currentCueSpeaker,
+      timerCueAmberPercent: currentCueAmberPercent,
+      timerCueRedPercent: currentCueRedPercent,
+      currentCueItemId,
       audienceDisplay,
       stageAlert,
+      workspaceSettings,
+      workspaceSettingsUpdatedAt: workspaceSettingsUpdatedAtRef.current || Date.now(),
       controllerOwnerUid: user.uid,
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
-  }, [activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, audienceDisplay, stageAlert, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
+  }, [activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerSeconds, effectiveTimerDurationSec, currentCueSpeaker, currentCueAmberPercent, currentCueRedPercent, currentCueItemId, audienceDisplay, stageAlert, workspaceSettings, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
 
   useEffect(() => {
     if (user?.uid && cloudBootstrapComplete && workspaceSettings.machineMode) {
@@ -1855,6 +2080,56 @@ function App() {
       controllerAllowedEmails: allowedAdminEmails,
     });
   }, [user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
+
+  useEffect(() => {
+    if (!workspaceId || !liveSessionId) return;
+    let active = true;
+    const pulse = async () => {
+      await heartbeatSessionConnection(workspaceId, liveSessionId, 'controller', controllerClientId, {
+        route: 'studio',
+        viewMode,
+        uid: user?.uid || '',
+      });
+      const response = await fetchSessionConnections(workspaceId, liveSessionId);
+      if (!active) return;
+      const byRole = response?.counts?.byRole || {};
+      setConnectionCountsByRole(byRole);
+      const satisfied = targetConnectionRoles.reduce((sum, role) => (
+        sum + ((Number(byRole[role] || 0) > 0) ? 1 : 0)
+      ), 0);
+      setActiveTargetConnectionCount(satisfied);
+    };
+    pulse();
+    const id = window.setInterval(pulse, 4000);
+    return () => {
+      active = false;
+      window.clearInterval(id);
+    };
+  }, [workspaceId, liveSessionId, controllerClientId, targetConnectionRoles, viewMode, user?.uid]);
+
+  useEffect(() => {
+    if (!isOutputLive) return;
+    const beat = async () => {
+      await heartbeatSessionConnection(workspaceId, liveSessionId, 'output', outputClientId, {
+        route: 'studio-popout',
+      });
+    };
+    beat();
+    const id = window.setInterval(beat, 4000);
+    return () => window.clearInterval(id);
+  }, [isOutputLive, workspaceId, liveSessionId, outputClientId]);
+
+  useEffect(() => {
+    if (!isStageDisplayLive) return;
+    const beat = async () => {
+      await heartbeatSessionConnection(workspaceId, liveSessionId, 'stage', stageClientId, {
+        route: 'studio-popout',
+      });
+    };
+    beat();
+    const id = window.setInterval(beat, 4000);
+    return () => window.clearInterval(id);
+  }, [isStageDisplayLive, workspaceId, liveSessionId, stageClientId]);
 
   useEffect(() => {
     if (!navigator.requestMIDIAccess) return;
@@ -1886,6 +2161,7 @@ function App() {
     const id = window.setInterval(() => {
       setTimerSeconds((prev) => {
         if (timerMode === 'COUNTDOWN') {
+          if (currentCue && prev <= 1) return 0;
           return prev - 1;
         }
         return prev + 1;
@@ -1893,7 +2169,37 @@ function App() {
     }, 1000);
 
     return () => window.clearInterval(id);
-  }, [timerRunning, timerMode]);
+  }, [timerRunning, timerMode, currentCueItemId]);
+
+  useEffect(() => {
+    if (timerMode !== 'COUNTDOWN') return;
+    if (!timerRunning) return;
+    if (!currentCue) return;
+    if (timerSeconds > 0) {
+      lastCueAutoAdvanceKeyRef.current = '';
+      return;
+    }
+    const guardKey = `${currentCue.itemId}:${timerSeconds}`;
+    if (lastCueAutoAdvanceKeyRef.current === guardKey) return;
+    lastCueAutoAdvanceKeyRef.current = guardKey;
+
+    if (currentCue.cue.autoStartNext) {
+      const nextCue = enabledTimerCues[currentCueIndex + 1];
+      if (nextCue) {
+        activateCueByItemId(nextCue.itemId, { autoStart: true, goLiveItem: true });
+        return;
+      }
+    }
+    setTimerRunning(false);
+    setCueZeroHold(true);
+    setTimerSeconds(0);
+  }, [timerMode, timerRunning, timerSeconds, currentCue, currentCueIndex, enabledTimerCues, activateCueByItemId]);
+
+  useEffect(() => {
+    if (timerRunning || timerSeconds > 0) {
+      setCueZeroHold(false);
+    }
+  }, [timerRunning, timerSeconds, currentCueItemId]);
 
   useEffect(() => {
     if (!autoCueEnabled) return;
@@ -2064,6 +2370,8 @@ function App() {
       <div className="h-screen w-screen bg-black overflow-hidden relative">
         {blackout ? (
           <div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em]">BLACKOUT</div>
+        ) : (!activeItem || !activeSlide) ? (
+          <div className="w-full h-full bg-black flex items-center justify-center text-zinc-500 font-mono text-xs font-bold tracking-[0.2em]">WAITING_FOR_LIVE_CONTENT</div>
         ) : (
           <SlideRenderer
             slide={activeSlide}
@@ -2078,6 +2386,34 @@ function App() {
           />
         )}
       </div>
+    );
+  }
+
+  if (viewState === 'stage') {
+    if (blackout) {
+      return <div className="h-screen w-screen bg-black flex items-center justify-center text-zinc-500 text-xs uppercase tracking-[0.25em] font-mono">BLACKOUT ACTIVE</div>;
+    }
+    return (
+      <StageDisplay
+        currentSlide={activeSlide}
+        nextSlide={nextSlidePreview}
+        activeItem={activeItem}
+        timerLabel={currentCueSpeaker ? `${currentCueSpeaker} Timer` : 'Pastor Timer'}
+        timerDisplay={formatTimer(timerSeconds)}
+        timerMode={timerMode}
+        isTimerOvertime={isTimerOvertime}
+        timerRemainingSec={timerSeconds}
+        timerDurationSec={effectiveTimerDurationSec}
+        timerAmberPercent={currentCueAmberPercent}
+        timerRedPercent={currentCueRedPercent}
+        timerLayout={workspaceSettings.stageTimerLayout}
+        onTimerLayoutChange={(layout) => {
+          setWorkspaceSettings((prev) => ({ ...prev, stageTimerLayout: layout }));
+        }}
+        profile={workspaceSettings.stageProfile}
+        audienceOverlay={audienceDisplay}
+        stageAlert={stageAlert}
+      />
     );
   }
 
@@ -2215,6 +2551,12 @@ function App() {
               </div>
             </>
           )}
+          <div className="h-4 w-px bg-zinc-800"></div>
+          <div className="flex items-center gap-2" title={`controller:${connectionCountsByRole.controller || 0} output:${connectionCountsByRole.output || 0} stage:${connectionCountsByRole.stage || 0} remote:${connectionCountsByRole.remote || 0}`}>
+            <span className={`text-[9px] font-black tracking-widest ${activeTargetConnectionCount >= targetConnectionRoles.length ? 'text-emerald-400' : 'text-amber-400'}`}>
+              LIVE CONNECTIONS {activeTargetConnectionCount}/{targetConnectionRoles.length}
+            </span>
+          </div>
         </div>
 
         {/* RIGHT: COMMAND CENTER */}
@@ -2257,6 +2599,16 @@ function App() {
               title="Copy Remote URL"
             >
               <CopyIcon className="w-4.5 h-4.5" />
+            </button>
+            <button
+              onClick={() => {
+                navigator.clipboard?.writeText(stageDisplayUrl);
+                alert('Stage URL Copied!');
+              }}
+              className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all border border-transparent hover:border-zinc-700"
+              title="Copy Stage URL"
+            >
+              <MonitorIcon className="w-4.5 h-4.5" />
             </button>
 
             <button onClick={() => setIsProfileOpen(true)} className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all border border-transparent hover:border-zinc-700">
@@ -2404,27 +2756,62 @@ function App() {
                         const mode = e.target.value as 'COUNTDOWN' | 'ELAPSED';
                         setTimerMode(mode);
                         setTimerRunning(false);
-                        setTimerSeconds(mode === 'COUNTDOWN' ? timerDurationMin * 60 : 0);
+                        setCueZeroHold(false);
+                        setTimerSeconds(mode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0);
                       }} className="bg-transparent text-zinc-300 text-[10px]">
                         <option value="COUNTDOWN">Countdown</option>
                         <option value="ELAPSED">Elapsed</option>
                       </select>
                       {timerMode === 'COUNTDOWN' && (
-                        <input type="number" min={1} max={180} value={timerDurationMin} onChange={(e) => {
+                        <input type="number" min={1} max={180} value={currentCue ? Math.max(1, Math.ceil(currentCueDurationSec / 60)) : timerDurationMin} disabled={!!currentCue} onChange={(e) => {
                           const value = Math.max(1, Math.min(180, Number(e.target.value) || 1));
                           setTimerDurationMin(value);
+                          setCueZeroHold(false);
                           if (!timerRunning) setTimerSeconds(value * 60);
-                        }} className="w-14 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
+                        }} className={`w-14 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] ${currentCue ? 'text-zinc-500 cursor-not-allowed' : 'text-zinc-200'}`} />
                       )}
                       <div className={`text-[11px] font-mono w-14 text-center ${isTimerOvertime ? 'text-red-400 animate-pulse' : 'text-cyan-300'}`}>{formatTimer(timerSeconds)}</div>
-                      <button onClick={() => setTimerRunning((p) => !p)} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">{timerRunning ? 'Pause' : 'Start'}</button>
+                      <button onClick={() => {
+                        setCueZeroHold(false);
+                        setTimerRunning((p) => !p);
+                      }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">{timerRunning ? 'Pause' : 'Start'}</button>
                       <button onClick={() => {
                         setTimerRunning(false);
-                        setTimerSeconds(timerMode === 'COUNTDOWN' ? timerDurationMin * 60 : 0);
+                        setCueZeroHold(false);
+                        setTimerSeconds(timerMode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0);
                       }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">Reset</button>
                     </div>
+                    <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12 max-w-[360px]">
+                      <span className="text-[10px] text-zinc-400">Rundown</span>
+                      <button
+                        onClick={() => moveCueByOffset(-1, { autoStart: false, goLiveItem: true })}
+                        disabled={!enabledTimerCues.length}
+                        className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
+                      >
+                        Prev
+                      </button>
+                      <button
+                        onClick={() => moveCueByOffset(1, { autoStart: false, goLiveItem: true })}
+                        disabled={!enabledTimerCues.length}
+                        className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
+                      >
+                        Next
+                      </button>
+                      <button
+                        onClick={() => currentCue && activateCueByItemId(currentCue.itemId, { autoStart: false, goLiveItem: true })}
+                        disabled={!currentCue}
+                        className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
+                      >
+                        Load
+                      </button>
+                      <div className="text-[10px] text-zinc-300 truncate">
+                        {currentCue
+                          ? `${currentCueIndex + 1}/${enabledTimerCues.length} ${currentCue.itemTitle}${currentCue.cue.autoStartNext ? ' (auto)' : ''}`
+                          : 'No timer cues enabled'}
+                      </div>
+                    </div>
                     <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
-                      <span className="text-[10px] text-zinc-400">Cue</span>
+                      <span className="text-[10px] text-zinc-400">Slide Auto</span>
                       <input type="number" min={2} max={120} value={autoCueSeconds} onChange={(e) => {
                         const value = Math.max(2, Math.min(120, Number(e.target.value) || 2));
                         setAutoCueSeconds(value);
@@ -2433,12 +2820,29 @@ function App() {
                       <button onClick={() => setAutoCueEnabled((p) => !p)} className={`text-[10px] px-2 py-1 rounded ${autoCueEnabled ? 'bg-cyan-900/40 text-cyan-300' : 'bg-zinc-800 text-zinc-300'}`}>{autoCueEnabled ? `On ${autoCueRemaining}s` : 'Off'}</button>
                     </div>
                     <button onClick={() => navigator.clipboard?.writeText(obsOutputUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY OBS URL</button>
+                    <button onClick={() => navigator.clipboard?.writeText(stageDisplayUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY STAGE URL</button>
                     <button onClick={() => setBlackout(!blackout)} className={`h-12 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button>
                   </div>
                 </div>
               </div>
               <div className={`w-full lg:w-72 bg-zinc-950 border-l border-zinc-900 flex flex-col h-64 lg:h-auto border-t lg:border-t-0 ${workspaceSettings.machineMode ? 'hidden' : (isElectronShell ? 'flex' : 'hidden md:flex')}`}>
-                <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-500 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950"><span>Live Queue</span>{activeItem && <span className="text-red-500 animate-pulse">● LIVE</span>}</div>
+                <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-500 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950"><span>Live Queue</span>{activeItem && <span className="text-red-500 animate-pulse">* LIVE</span>}</div>
+                {enabledTimerCues.length > 0 && (
+                  <div className="px-2 py-2 border-b border-zinc-900 bg-zinc-950/60">
+                    <div className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold mb-1">Rundown Cues</div>
+                    <div className="flex gap-1 overflow-x-auto pb-1">
+                      {enabledTimerCues.map((cue, idx) => (
+                        <button
+                          key={cue.itemId}
+                          onClick={() => activateCueByItemId(cue.itemId, { autoStart: false, goLiveItem: true })}
+                          className={`shrink-0 px-2 py-1 rounded border text-[9px] font-bold ${cue.itemId === currentCueItemId ? 'border-cyan-500 bg-cyan-950/40 text-cyan-300' : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-600'}`}
+                        >
+                          {idx + 1}. {cue.itemTitle}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 lg:grid-cols-2 gap-2 content-start scroll-smooth">
                   {activeItem?.slides.map((slide, idx) => (<div key={slide.id} ref={activeSlideIndex === idx ? activeSlideRef : null} onClick={() => { setActiveSlideIndex(idx); setBlackout(false); setIsPlaying(true); }} className={`cursor-pointer rounded-sm overflow-hidden border transition-all relative aspect-video ${activeSlideIndex === idx ? 'ring-2 ring-red-500 border-red-500 opacity-100' : 'border-zinc-800 opacity-50 hover:opacity-80'}`}><div className="absolute inset-0 pointer-events-none"><SlideRenderer slide={slide} item={activeItem} fitContainer={true} isThumbnail={true} /></div><div className="absolute bottom-0 left-0 right-0 bg-black/80 text-zinc-300 text-[9px] px-1 py-0.5 font-mono truncate border-t border-zinc-800">{idx + 1}. {slide.label}</div></div>))}
                   {!activeItem && <div className="col-span-3 lg:col-span-2 text-center text-zinc-700 text-xs font-mono py-10 uppercase">NO_ACTIVE_ITEM</div>}
@@ -2466,6 +2870,8 @@ function App() {
             <div className="h-screen w-screen bg-black overflow-hidden relative">
               {blackout ? (
                 <div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em]">BLACKOUT</div>
+              ) : (!activeItem || !activeSlide) ? (
+                <div className="w-full h-full bg-black flex items-center justify-center text-zinc-500 font-mono text-xs font-bold tracking-[0.2em]">WAITING_FOR_LIVE_CONTENT</div>
               ) : (
                 <SlideRenderer
                   slide={activeSlide}
@@ -2505,10 +2911,18 @@ function App() {
               currentSlide={activeSlide}
               nextSlide={nextSlidePreview}
               activeItem={activeItem}
-              timerLabel="Pastor Timer"
+              timerLabel={currentCueSpeaker ? `${currentCueSpeaker} Timer` : 'Pastor Timer'}
               timerDisplay={formatTimer(timerSeconds)}
               timerMode={timerMode}
               isTimerOvertime={isTimerOvertime}
+              timerRemainingSec={timerSeconds}
+              timerDurationSec={effectiveTimerDurationSec}
+              timerAmberPercent={currentCueAmberPercent}
+              timerRedPercent={currentCueRedPercent}
+              timerLayout={workspaceSettings.stageTimerLayout}
+              onTimerLayoutChange={(layout) => {
+                setWorkspaceSettings((prev) => ({ ...prev, stageTimerLayout: layout }));
+              }}
               profile={workspaceSettings.stageProfile}
               audienceOverlay={audienceDisplay}
               stageAlert={stageAlert}

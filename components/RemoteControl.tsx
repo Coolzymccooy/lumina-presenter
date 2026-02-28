@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState, updateLiveState } from '../services/firebase';
 import { logActivity } from '../services/analytics';
-import { resolveWorkspaceId, sendServerRemoteCommand } from '../services/serverApi';
+import { getOrCreateConnectionClientId, heartbeatSessionConnection, resolveWorkspaceId, sendServerRemoteCommand } from '../services/serverApi';
 import { LoginScreen } from './LoginScreen';
 
 export const RemoteControl: React.FC = () => {
@@ -34,6 +34,10 @@ export const RemoteControl: React.FC = () => {
   const [commandStatus, setCommandStatus] = useState('');
   const [sending, setSending] = useState(false);
   const workspaceId = useMemo(() => resolveWorkspaceId(user, workspaceHint || 'default-workspace'), [user?.uid, workspaceHint]);
+  const remoteClientId = useMemo(
+    () => getOrCreateConnectionClientId(workspaceId, sessionId, 'remote'),
+    [workspaceId, sessionId]
+  );
 
   useEffect(() => {
     if (!auth) {
@@ -62,6 +66,18 @@ export const RemoteControl: React.FC = () => {
       }
     );
   }, [user, sessionId]);
+
+  useEffect(() => {
+    const beat = async () => {
+      await heartbeatSessionConnection(workspaceId, sessionId, 'remote', remoteClientId, {
+        route: 'remote',
+        uid: user?.uid || '',
+      });
+    };
+    beat();
+    const id = window.setInterval(beat, 4000);
+    return () => window.clearInterval(id);
+  }, [workspaceId, sessionId, remoteClientId, user?.uid]);
 
   const ownerUid = state?.controllerOwnerUid || null;
   const allowedUids = Array.isArray(state?.controllerAllowedUids) ? state.controllerAllowedUids : [];

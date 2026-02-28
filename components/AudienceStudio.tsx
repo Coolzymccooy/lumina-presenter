@@ -60,6 +60,7 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
     const [filter, setFilter] = useState<AudienceStatus | 'all'>('pending');
     const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
     const [stageAlertDraft, setStageAlertDraft] = useState('');
+    const quickStageTemplates = ['Wrap up', '2 mins left', '30 seconds'];
 
     const loadMessages = useCallback(async () => {
         if (!user) return;
@@ -244,6 +245,18 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
                         <span className={`text-[9px] font-black uppercase tracking-widest ${canUseStageAlert ? 'text-emerald-400' : 'text-rose-400'}`}>
                             Admin allowlisted: {canUseStageAlert ? 'Yes' : 'No'}
                         </span>
+                    </div>
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                        {quickStageTemplates.map((template) => (
+                            <button
+                                key={template}
+                                onClick={() => setStageAlertDraft(template)}
+                                disabled={!canUseStageAlert}
+                                className="px-2 py-1 rounded-md text-[10px] font-bold border border-zinc-700 text-zinc-300 hover:border-amber-500/60 hover:text-amber-200 disabled:opacity-40"
+                            >
+                                {template}
+                            </button>
+                        ))}
                     </div>
                     <textarea
                         rows={2}

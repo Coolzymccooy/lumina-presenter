@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import { RemoteControl } from './components/RemoteControl';
 import { OutputRoute } from './components/OutputRoute';
+import { StageRoute } from './components/StageRoute';
 import './index.css';
 
 const rootElement = document.getElementById('root');
@@ -24,9 +25,10 @@ const getActiveRoutePath = () => {
 const activeRoutePath = getActiveRoutePath();
 const isRemoteRoute = activeRoutePath.startsWith('/remote');
 const isOutputRoute = activeRoutePath.startsWith('/output');
+const isStageRoute = activeRoutePath.startsWith('/stage');
 
 root.render(
   <React.StrictMode>
-    {isOutputRoute ? <OutputRoute /> : isRemoteRoute ? <RemoteControl /> : <App />}
+    {isOutputRoute ? <OutputRoute /> : isStageRoute ? <StageRoute /> : isRemoteRoute ? <RemoteControl /> : <App />}
   </React.StrictMode>
 );

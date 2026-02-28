@@ -159,7 +159,8 @@ CREATE TABLE IF NOT EXISTS workspaces (
   owner_email TEXT,
   settings_json TEXT NOT NULL DEFAULT '{}',
   created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
+  updated_at INTEGER NOT NULL,
+  settings_updated_at INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS workspace_snapshots (
@@ -182,6 +183,17 @@ CREATE TABLE IF NOT EXISTS sessions (
   state_json TEXT NOT NULL,
   updated_at INTEGER NOT NULL,
   PRIMARY KEY(workspace_id, session_id),
+  FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS session_connections (
+  workspace_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  client_id TEXT NOT NULL,
+  role TEXT NOT NULL,
+  last_seen_at INTEGER NOT NULL,
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  PRIMARY KEY(workspace_id, session_id, client_id),
   FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
 );
 
@@ -210,7 +222,23 @@ CREATE TABLE IF NOT EXISTS audience_messages (
 CREATE INDEX IF NOT EXISTS idx_audit_workspace_time ON audit_logs(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_snapshots_workspace_time ON workspace_snapshots(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_audience_workspace_time ON audience_messages(workspace_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_connections_workspace_session_seen ON session_connections(workspace_id, session_id, last_seen_at);
 `);
+
+const ensureColumnExists = (tableName, columnName, definitionSql, backfillSql = null) => {
+  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all();
+  const exists = columns.some((entry) => String(entry?.name || "").toLowerCase() === columnName.toLowerCase());
+  if (exists) return;
+  db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definitionSql}`);
+  if (backfillSql) db.exec(backfillSql);
+};
+
+ensureColumnExists(
+  "workspaces",
+  "settings_updated_at",
+  "INTEGER NOT NULL DEFAULT 0",
+  "UPDATE workspaces SET settings_updated_at = updated_at WHERE settings_updated_at IS NULL OR settings_updated_at = 0",
+);
 
 const app = express();
 app.use(cors());
@@ -394,11 +422,37 @@ const requireActor = (req, res, next) => {
 
 const getWorkspaceRow = db.prepare("SELECT * FROM workspaces WHERE id = ?");
 const insertWorkspace = db.prepare(`
-  INSERT INTO workspaces (id, owner_uid, owner_email, settings_json, created_at, updated_at)
-  VALUES (@id, @owner_uid, @owner_email, @settings_json, @created_at, @updated_at)
+  INSERT INTO workspaces (id, owner_uid, owner_email, settings_json, created_at, updated_at, settings_updated_at)
+  VALUES (@id, @owner_uid, @owner_email, @settings_json, @created_at, @updated_at, @settings_updated_at)
 `);
 const updateWorkspace = db.prepare(`
-  UPDATE workspaces SET settings_json = @settings_json, updated_at = @updated_at WHERE id = @id
+  UPDATE workspaces
+  SET settings_json = @settings_json,
+      updated_at = @updated_at,
+      settings_updated_at = @settings_updated_at
+  WHERE id = @id
+`);
+
+const CONNECTION_TTL_MS = 12000;
+const ACTIVE_CONNECTION_ROLES = new Set(["controller", "output", "stage", "remote"]);
+
+const upsertSessionConnection = db.prepare(`
+  INSERT INTO session_connections (workspace_id, session_id, client_id, role, last_seen_at, metadata_json)
+  VALUES (@workspace_id, @session_id, @client_id, @role, @last_seen_at, @metadata_json)
+  ON CONFLICT(workspace_id, session_id, client_id) DO UPDATE SET
+    role = excluded.role,
+    last_seen_at = excluded.last_seen_at,
+    metadata_json = excluded.metadata_json
+`);
+const pruneExpiredSessionConnections = db.prepare(`
+  DELETE FROM session_connections
+  WHERE workspace_id = ? AND session_id = ? AND last_seen_at < ?
+`);
+const listActiveSessionConnections = db.prepare(`
+  SELECT client_id, role, last_seen_at, metadata_json
+  FROM session_connections
+  WHERE workspace_id = ? AND session_id = ? AND last_seen_at >= ?
+  ORDER BY last_seen_at DESC
 `);
 
 const logAudit = db.prepare(`
@@ -425,6 +479,7 @@ const ensureWorkspaceForWrite = (workspaceId, actor, { allowOperator = false } =
       settings_json: "{}",
       created_at: createdAt,
       updated_at: createdAt,
+      settings_updated_at: createdAt,
     });
     workspace = getWorkspaceRow.get(workspaceId);
   }
@@ -469,6 +524,7 @@ app.get("/api/workspaces/:workspaceId", requireActor, (req, res) => {
         settings: parseJson(workspace.settings_json, {}),
         createdAt: workspace.created_at,
         updatedAt: workspace.updated_at,
+        settingsUpdatedAt: workspace.settings_updated_at || workspace.updated_at,
       },
       latestSnapshot: latestSnapshot
         ? {
@@ -497,7 +553,8 @@ app.get("/api/workspaces/:workspaceId/settings", requireActor, (req, res) => {
       return res.status(403).json({ ok: false, error: "FORBIDDEN" });
     }
     const settings = parseJson(workspace.settings_json, {});
-    return res.json({ ok: true, settings, updatedAt: workspace.updated_at });
+    const settingsUpdatedAt = Number(workspace.settings_updated_at || workspace.updated_at || 0);
+    return res.json({ ok: true, settings, updatedAt: settingsUpdatedAt });
   } catch (error) {
     return res.status(500).json({ ok: false, error: "SETTINGS_READ_FAILED", message: String(error?.message || error) });
   }
@@ -511,7 +568,12 @@ app.patch("/api/workspaces/:workspaceId/settings", requireActor, (req, res) => {
     const currentSettings = parseJson(workspace.settings_json, {});
     const nextSettings = { ...currentSettings, ...(req.body?.settings || {}) };
     const updatedAt = now();
-    updateWorkspace.run({ id: workspaceId, settings_json: toJson(nextSettings), updated_at: updatedAt });
+    updateWorkspace.run({
+      id: workspaceId,
+      settings_json: toJson(nextSettings),
+      updated_at: updatedAt,
+      settings_updated_at: updatedAt,
+    });
     logAudit.run({
       workspace_id: workspaceId,
       session_id: null,
@@ -803,6 +865,98 @@ app.get("/api/workspaces/:workspaceId/sessions/:sessionId/state", (req, res) => 
     });
   } catch (error) {
     return res.status(500).json({ ok: false, error: "SESSION_READ_FAILED", message: String(error?.message || error) });
+  }
+});
+
+app.post("/api/workspaces/:workspaceId/sessions/:sessionId/connections/heartbeat", (req, res) => {
+  try {
+    const workspaceId = String(req.params.workspaceId || "").trim();
+    const sessionId = String(req.params.sessionId || "").trim();
+    if (!workspaceId || !sessionId) {
+      return res.status(400).json({ ok: false, error: "INVALID_SESSION" });
+    }
+
+    const workspace = getWorkspaceRow.get(workspaceId);
+    if (!workspace) {
+      return res.status(404).json({ ok: false, error: "WORKSPACE_NOT_FOUND" });
+    }
+
+    const clientId = String(req.body?.clientId || "").trim().slice(0, 120);
+    if (!clientId) {
+      return res.status(400).json({ ok: false, error: "CLIENT_ID_REQUIRED" });
+    }
+
+    const requestedRole = String(req.body?.role || "").trim().toLowerCase();
+    const role = ACTIVE_CONNECTION_ROLES.has(requestedRole) ? requestedRole : "output";
+    const heartbeatAt = now();
+    const metadata = req.body?.metadata && typeof req.body.metadata === "object" && !Array.isArray(req.body.metadata)
+      ? req.body.metadata
+      : {};
+    const cutoff = heartbeatAt - CONNECTION_TTL_MS;
+
+    upsertSessionConnection.run({
+      workspace_id: workspaceId,
+      session_id: sessionId,
+      client_id: clientId,
+      role,
+      last_seen_at: heartbeatAt,
+      metadata_json: toJson(metadata),
+    });
+    pruneExpiredSessionConnections.run(workspaceId, sessionId, cutoff);
+
+    const activeRows = listActiveSessionConnections.all(workspaceId, sessionId, cutoff);
+    return res.json({
+      ok: true,
+      asOf: heartbeatAt,
+      ttlMs: CONNECTION_TTL_MS,
+      clientId,
+      role,
+      total: activeRows.length,
+    });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "CONNECTION_HEARTBEAT_FAILED", message: String(error?.message || error) });
+  }
+});
+
+app.get("/api/workspaces/:workspaceId/sessions/:sessionId/connections", (req, res) => {
+  try {
+    const workspaceId = String(req.params.workspaceId || "").trim();
+    const sessionId = String(req.params.sessionId || "").trim();
+    if (!workspaceId || !sessionId) {
+      return res.status(400).json({ ok: false, error: "INVALID_SESSION" });
+    }
+    const workspace = getWorkspaceRow.get(workspaceId);
+    if (!workspace) {
+      return res.status(404).json({ ok: false, error: "WORKSPACE_NOT_FOUND" });
+    }
+
+    const asOf = now();
+    const cutoff = asOf - CONNECTION_TTL_MS;
+    pruneExpiredSessionConnections.run(workspaceId, sessionId, cutoff);
+    const rows = listActiveSessionConnections.all(workspaceId, sessionId, cutoff);
+    const connections = rows.map((row) => ({
+      clientId: row.client_id,
+      role: row.role,
+      lastSeenAt: row.last_seen_at,
+      metadata: parseJson(row.metadata_json, {}),
+    }));
+    const byRole = connections.reduce((acc, entry) => {
+      acc[entry.role] = Number(acc[entry.role] || 0) + 1;
+      return acc;
+    }, {});
+
+    return res.json({
+      ok: true,
+      asOf,
+      ttlMs: CONNECTION_TTL_MS,
+      connections,
+      counts: {
+        total: connections.length,
+        byRole,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "CONNECTION_LIST_FAILED", message: String(error?.message || error) });
   }
 });
 

@@ -8,6 +8,7 @@ const getInitialApiBaseUrl = () => {
 };
 
 const API_BASE_URL = getInitialApiBaseUrl().replace(/\/+$/, '');
+const CONNECTION_CLIENT_ID_PREFIX = 'lumina_conn_client_v1';
 
 type ActorLike = {
   uid?: string | null;
@@ -93,6 +94,7 @@ export type WorkspaceSnapshotPayload = {
   activeItemId: string | null;
   activeSlideIndex: number;
   workspaceSettings: any;
+  workspaceSettingsUpdatedAt?: number;
   updatedAt: number;
 };
 
@@ -341,6 +343,83 @@ export const fetchWorkspaceSettings = async (workspaceId: string, user: ActorLik
   return await requestJson<{ ok: boolean; settings: Record<string, any>; updatedAt: number }>(
     `/api/workspaces/${encodeURIComponent(workspaceId)}/settings`,
     { method: 'GET', user, timeoutMs: 6000 }
+  );
+};
+
+export type ConnectionRole = 'controller' | 'output' | 'stage' | 'remote';
+export type SessionConnectionInfo = {
+  clientId: string;
+  role: ConnectionRole | string;
+  lastSeenAt: number;
+  metadata: Record<string, any>;
+};
+
+const buildConnectionStorageKey = (workspaceId: string, sessionId: string, role: ConnectionRole) =>
+  `${CONNECTION_CLIENT_ID_PREFIX}:${workspaceId}:${sessionId}:${role}`;
+
+export const getOrCreateConnectionClientId = (
+  workspaceId: string,
+  sessionId: string,
+  role: ConnectionRole
+) => {
+  const key = buildConnectionStorageKey(workspaceId, sessionId, role);
+  const fallback = `${role}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const existing = localStorage.getItem(key);
+    if (existing) return existing;
+    const generated = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? `${role}-${crypto.randomUUID()}`
+      : fallback;
+    localStorage.setItem(key, generated);
+    return generated;
+  } catch {
+    return fallback;
+  }
+};
+
+export const heartbeatSessionConnection = async (
+  workspaceId: string,
+  sessionId: string,
+  role: ConnectionRole,
+  clientId: string,
+  metadata: Record<string, any> = {}
+) => {
+  return await requestJson<{
+    ok: boolean;
+    asOf: number;
+    ttlMs: number;
+    total: number;
+    role: string;
+    clientId: string;
+  }>(
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/sessions/${encodeURIComponent(sessionId)}/connections/heartbeat`,
+    {
+      method: 'POST',
+      body: { role, clientId, metadata },
+      allowAnonymous: true,
+      timeoutMs: 5000,
+    }
+  );
+};
+
+export const fetchSessionConnections = async (workspaceId: string, sessionId: string) => {
+  return await requestJson<{
+    ok: boolean;
+    asOf: number;
+    ttlMs: number;
+    connections: SessionConnectionInfo[];
+    counts: {
+      total: number;
+      byRole: Record<string, number>;
+    };
+  }>(
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/sessions/${encodeURIComponent(sessionId)}/connections`,
+    {
+      method: 'GET',
+      allowAnonymous: true,
+      timeoutMs: 5000,
+    }
   );
 };
 
