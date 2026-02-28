@@ -241,9 +241,9 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
                 <div className="bg-black/20 rounded-lg p-2 border border-zinc-800/50">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Pastor Alert (Stage Only)</span>
-                        {!canUseStageAlert && (
-                            <span className="text-[9px] text-amber-500 uppercase font-black">Admin Only</span>
-                        )}
+                        <span className={`text-[9px] font-black uppercase tracking-widest ${canUseStageAlert ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            Admin allowlisted: {canUseStageAlert ? 'Yes' : 'No'}
+                        </span>
                     </div>
                     <textarea
                         rows={2}
