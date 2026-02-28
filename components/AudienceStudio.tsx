@@ -8,7 +8,8 @@ import {
 import {
     AudienceCategory,
     AudienceStatus,
-    AudienceDisplayState
+    AudienceDisplayState,
+    StageAlertState,
 } from '../types';
 import {
     ChatIcon,
@@ -29,6 +30,10 @@ interface AudienceStudioProps {
     onProjectRequest: (text: string, label?: string) => void;
     displayState: AudienceDisplayState;
     onUpdateDisplay: (patch: Partial<AudienceDisplayState>) => void;
+    stageAlert: StageAlertState;
+    onSendStageAlert: (text: string) => void;
+    onClearStageAlert: () => void;
+    canUseStageAlert: boolean;
 }
 
 const CAT_CONFIG: Record<AudienceCategory, { label: string; icon: any; color: string; border: string; bg: string }> = {
@@ -44,12 +49,17 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
     user,
     onProjectRequest,
     displayState,
-    onUpdateDisplay
+    onUpdateDisplay,
+    stageAlert,
+    onSendStageAlert,
+    onClearStageAlert,
+    canUseStageAlert,
 }) => {
     const [messages, setMessages] = useState<AudienceMessage[]>([]);
     const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState<AudienceStatus | 'all'>('pending');
     const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
+    const [stageAlertDraft, setStageAlertDraft] = useState('');
 
     const loadMessages = useCallback(async () => {
         if (!user) return;
@@ -73,6 +83,12 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
         const interval = setInterval(loadMessages, 5000);
         return () => clearInterval(interval);
     }, [loadMessages]);
+
+    useEffect(() => {
+        if (stageAlert?.active && stageAlert?.text) {
+            setStageAlertDraft(stageAlert.text);
+        }
+    }, [stageAlert?.active, stageAlert?.text]);
 
     const handleStatusUpdate = async (msgId: number, status: AudienceStatus) => {
         try {
@@ -221,6 +237,42 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
                         </div>
                     </div>
                 )}
+
+                <div className="bg-black/20 rounded-lg p-2 border border-zinc-800/50">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Pastor Alert (Stage Only)</span>
+                        {!canUseStageAlert && (
+                            <span className="text-[9px] text-amber-500 uppercase font-black">Admin Only</span>
+                        )}
+                    </div>
+                    <textarea
+                        rows={2}
+                        value={stageAlertDraft}
+                        onChange={(e) => setStageAlertDraft(e.target.value)}
+                        placeholder={canUseStageAlert ? "Send private alert to stage display..." : "Only allowlisted admin can send stage alerts."}
+                        disabled={!canUseStageAlert}
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-2 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-amber-600 disabled:opacity-60 resize-none"
+                    />
+                    <div className="mt-2 flex items-center justify-end gap-2">
+                        <button
+                            onClick={() => {
+                                setStageAlertDraft('');
+                                onClearStageAlert();
+                            }}
+                            disabled={!canUseStageAlert || !stageAlert?.active}
+                            className="px-3 py-1.5 rounded-md text-[10px] font-bold border border-zinc-700 text-zinc-400 disabled:opacity-40 hover:border-zinc-600"
+                        >
+                            CLEAR ALERT
+                        </button>
+                        <button
+                            onClick={() => onSendStageAlert(stageAlertDraft)}
+                            disabled={!canUseStageAlert || !stageAlertDraft.trim()}
+                            className="px-3 py-1.5 rounded-md text-[10px] font-bold border border-transparent bg-amber-600 text-white disabled:opacity-40"
+                        >
+                            SEND TO STAGE
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {/* Message List */}

@@ -72,3 +72,10 @@ export interface AudienceDisplayState {
   tickerEnabled: boolean;
   activeMessageId: number | null;
 }
+
+export interface StageAlertState {
+  active: boolean;
+  text: string;
+  updatedAt: number;
+  author: string | null;
+}

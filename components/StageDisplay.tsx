@@ -1,6 +1,6 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ServiceItem, Slide } from '../types';
+import { ServiceItem, Slide, StageAlertState } from '../types';
 import { getCachedMedia, getMedia } from '../services/localMedia';
 
 interface StageDisplayProps {
@@ -13,9 +13,10 @@ interface StageDisplayProps {
   isTimerOvertime?: boolean;
   profile?: 'classic' | 'compact' | 'high_contrast';
   audienceOverlay?: any;
+  stageAlert?: StageAlertState;
 }
 
-export const StageDisplay: React.FC<StageDisplayProps> = ({ currentSlide, nextSlide, activeItem, timerLabel = 'Service Timer', timerDisplay = '00:00', timerMode = 'COUNTDOWN', isTimerOvertime = false, profile = 'classic', audienceOverlay }) => {
+export const StageDisplay: React.FC<StageDisplayProps> = ({ currentSlide, nextSlide, activeItem, timerLabel = 'Service Timer', timerDisplay = '00:00', timerMode = 'COUNTDOWN', isTimerOvertime = false, profile = 'classic', audienceOverlay, stageAlert }) => {
   const [time, setTime] = useState(new Date());
   const getPreferredBackground = (slide: Slide | null) => (
     (typeof slide?.backgroundUrl === 'string' && slide.backgroundUrl.trim())
@@ -112,6 +113,7 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({ currentSlide, nextSl
   const showTicker = !!audienceOverlay?.tickerEnabled && audienceQueue.length > 0;
   const showPinned = !!activeAudienceMessage && !showTicker;
   const showAudienceBadge = showTicker || showPinned;
+  const showStageAlert = !!stageAlert?.active && !!stageAlert?.text?.trim();
 
   return (
     <div className={`relative h-screen w-screen text-white p-8 grid grid-rows-[auto_1fr_1fr] gap-8 font-sans ${highContrast ? 'bg-black' : 'bg-black'}`}>
@@ -169,6 +171,16 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({ currentSlide, nextSl
         )}
       </div>
 
+      {showStageAlert && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 max-w-4xl w-[88%] bg-amber-950/80 border border-amber-500/50 rounded-2xl px-5 py-3 backdrop-blur-md shadow-2xl z-40">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-300 mb-1">Pastor Alert</div>
+          <div className="text-xl font-semibold leading-snug text-amber-50">{stageAlert?.text}</div>
+          {stageAlert?.author && (
+            <div className="text-[10px] uppercase tracking-wider text-amber-200/80 mt-2">From {stageAlert.author}</div>
+          )}
+        </div>
+      )}
+
       {/* Next Slide (Preview) */}
       <div className={`flex flex-col justify-start ${highContrast ? 'bg-black border-white/30' : 'bg-gray-900/50 border-gray-800'} p-6 rounded-xl border`}>
         <span className="text-sm font-bold text-blue-500 uppercase tracking-widest mb-2">NEXT</span>
@@ -210,8 +222,9 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({ currentSlide, nextSl
       {showTicker && (
         <div className="absolute left-0 right-0 bottom-0 h-14 bg-black/85 border-t border-white/15 backdrop-blur-sm overflow-hidden">
           <div
+            key={`stage-ticker-${audienceQueue.map((entry: any) => entry.id).join('-')}-${audienceQueue.length}`}
             className="h-full flex items-center gap-10 whitespace-nowrap px-8"
-            style={{ animation: `stageTicker ${tickerDuration}s linear infinite` }}
+            style={{ transform: 'translateX(100vw)', animation: `stageTicker ${tickerDuration}s linear infinite` }}
           >
             {tickerItems.map((entry: any, idx: number) => (
               <div key={`${entry.id}-${idx}`} className="flex items-center gap-3">
