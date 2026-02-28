@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { INITIAL_SCHEDULE, MOCK_SONGS, DEFAULT_BACKGROUNDS, GOSPEL_TRACKS, GospelTrack } from './constants';
-import { ServiceItem, Slide, ItemType, AudienceDisplayState, AudienceMessage } from './types';
+import { ServiceItem, Slide, ItemType, AudienceDisplayState, AudienceMessage, StageAlertState } from './types';
 import { SlideRenderer } from './components/SlideRenderer';
 import { AIModal } from './components/AIModal';
 import { SlideEditorModal } from './components/SlideEditorModal';
@@ -113,6 +113,13 @@ const DEFAULT_AUDIENCE_DISPLAY: AudienceDisplayState = {
   activeMessageId: null,
 };
 
+const DEFAULT_STAGE_ALERT: StageAlertState = {
+  active: false,
+  text: '',
+  updatedAt: 0,
+  author: null,
+};
+
 const sanitizeAudienceDisplayState = (value: unknown): AudienceDisplayState => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return DEFAULT_AUDIENCE_DISPLAY;
@@ -133,6 +140,19 @@ const sanitizeAudienceDisplayState = (value: unknown): AudienceDisplayState => {
     pinnedMessageId: toNullableNumber(raw.pinnedMessageId),
     tickerEnabled: !!raw.tickerEnabled,
     activeMessageId: toNullableNumber(raw.activeMessageId),
+  };
+};
+
+const sanitizeStageAlertState = (value: unknown): StageAlertState => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return DEFAULT_STAGE_ALERT;
+  }
+  const raw = value as Record<string, unknown>;
+  return {
+    active: !!raw.active,
+    text: typeof raw.text === 'string' ? raw.text : '',
+    updatedAt: typeof raw.updatedAt === 'number' && Number.isFinite(raw.updatedAt) ? raw.updatedAt : 0,
+    author: typeof raw.author === 'string' && raw.author.trim() ? raw.author.trim() : null,
   };
 };
 
@@ -252,6 +272,12 @@ function App() {
       .filter(Boolean);
     return Array.from(new Set(parsed));
   }, [workspaceSettings.remoteAdminEmails]);
+  const canUsePastorAlert = useMemo(() => {
+    if (!user?.uid) return false;
+    if (!allowedAdminEmails.length) return true;
+    const normalizedUserEmail = String(user?.email || '').trim().toLowerCase();
+    return !!normalizedUserEmail && allowedAdminEmails.includes(normalizedUserEmail);
+  }, [user?.uid, user?.email, allowedAdminEmails]);
   const liveSessionId = useMemo(() => {
     const params = new URLSearchParams(window.location.search || window.location.hash.split('?')[1] || '');
     const urlSession = params.get('session');
@@ -293,6 +319,10 @@ function App() {
     const saved = initialSavedState;
     return sanitizeAudienceDisplayState(saved?.audienceDisplay);
   });
+  const [stageAlert, setStageAlert] = useState<StageAlertState>(() => {
+    const saved = initialSavedState;
+    return sanitizeStageAlertState(saved?.stageAlert);
+  });
 
   // Handle Auto-Rotate Logic
   useEffect(() => {
@@ -321,6 +351,22 @@ function App() {
         next.activeMessageId = next.queue[0].id;
       }
       return next;
+    });
+  };
+  const handleSendStageAlert = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setStageAlert({
+      active: true,
+      text: trimmed,
+      updatedAt: Date.now(),
+      author: String(user?.email || user?.uid || '').trim() || null,
+    });
+  };
+  const handleClearStageAlert = () => {
+    setStageAlert({
+      ...DEFAULT_STAGE_ALERT,
+      updatedAt: Date.now(),
     });
   };
   const [timerRunning, setTimerRunning] = useState(false);
@@ -862,6 +908,7 @@ function App() {
         lowerThirdsEnabled,
         routingMode,
         audienceDisplay,
+        stageAlert,
         updatedAt: Date.now(),
       };
       try {
@@ -872,7 +919,7 @@ function App() {
       }
     }, 180);
     return () => window.clearTimeout(id);
-  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, audienceDisplay, user]);
+  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, audienceDisplay, stageAlert, user]);
 
 
 
@@ -1771,11 +1818,12 @@ function App() {
       lowerThirdsEnabled,
       routingMode,
       audienceDisplay,
+      stageAlert,
       controllerOwnerUid: user.uid,
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
-  }, [activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, audienceDisplay, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
+  }, [activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, audienceDisplay, stageAlert, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
 
   useEffect(() => {
     if (user?.uid && cloudBootstrapComplete && workspaceSettings.machineMode) {
@@ -2271,6 +2319,10 @@ function App() {
                 }}
                 displayState={audienceDisplay}
                 onUpdateDisplay={handleUpdateAudienceDisplay}
+                stageAlert={stageAlert}
+                onSendStageAlert={handleSendStageAlert}
+                onClearStageAlert={handleClearStageAlert}
+                canUseStageAlert={canUsePastorAlert}
               />
             </div>
           )}
@@ -2451,6 +2503,7 @@ function App() {
               isTimerOvertime={isTimerOvertime}
               profile={workspaceSettings.stageProfile}
               audienceOverlay={audienceDisplay}
+              stageAlert={stageAlert}
             />
           </OutputWindow>
         )

@@ -740,9 +740,15 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
                 alignItems: "center",
                 overflow: "hidden"
               }}>
-                <div className="flex animate-scroll whitespace-nowrap items-center gap-12" style={{
-                  animation: `scroll ${Math.max(15, audienceOverlay.queue.length * 8)}s linear infinite`
-                }}>
+                <div
+                  key={`ticker-${audienceOverlay.queue.map((entry) => entry.id).join('-')}-${audienceOverlay.queue.length}`}
+                  className="flex whitespace-nowrap items-center gap-12"
+                  style={{
+                    width: "max-content",
+                    transform: `translateX(${CANVAS_W}px)`,
+                    animation: `luminaTickerRtl ${Math.max(15, audienceOverlay.queue.length * 8)}s linear infinite`
+                  }}
+                >
                   {/* Double the queue for seamless loop */}
                   {audienceOverlay.queue.map((m, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -761,13 +767,9 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
       </div>
 
       <style>{`
-        @keyframes scroll {
-          0% { transform: translateX(100%); }
+        @keyframes luminaTickerRtl {
+          0% { transform: translateX(${CANVAS_W}px); }
           100% { transform: translateX(-100%); }
-        }
-        .animate-scroll {
-          display: flex;
-          width: max-content;
         }
       `}</style>
     </div>
