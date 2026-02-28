@@ -11,11 +11,27 @@ interface ItemEditorPanelProps {
 }
 
 export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate, onOpenLibrary }) => {
-  
+  const defaultTimerCue = {
+    enabled: false,
+    durationSec: 300,
+    speakerName: '',
+    autoStartNext: false,
+    amberPercent: 25,
+    redPercent: 10,
+  };
+
   const updateTheme = (updates: Partial<typeof item.theme>) => {
     onUpdate({
       ...item,
       theme: { ...item.theme, ...updates }
+    });
+  };
+
+  const updateTimerCue = (updates: Partial<typeof defaultTimerCue>) => {
+    const merged = { ...defaultTimerCue, ...(item.timerCue || {}), ...updates };
+    onUpdate({
+      ...item,
+      timerCue: merged,
     });
   };
 
@@ -99,6 +115,72 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
            </div>
         </div>
 
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-6 gap-2 border border-zinc-800 rounded-sm p-2 bg-zinc-900/50">
+        <label className="lg:col-span-1 flex items-center gap-2 text-[10px] uppercase tracking-wider text-zinc-400 font-bold">
+          <input
+            type="checkbox"
+            checked={!!item.timerCue?.enabled}
+            onChange={(e) => updateTimerCue({ enabled: e.target.checked })}
+            className="accent-blue-600"
+          />
+          Cue Timer
+        </label>
+        <div className="lg:col-span-1">
+          <div className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Duration (sec)</div>
+          <input
+            type="number"
+            min={10}
+            max={7200}
+            value={Math.max(10, Number(item.timerCue?.durationSec || defaultTimerCue.durationSec))}
+            onChange={(e) => updateTimerCue({ durationSec: Math.max(10, Math.min(7200, Number(e.target.value) || 10)) })}
+            className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-200"
+          />
+        </div>
+        <div className="lg:col-span-2">
+          <div className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Speaker</div>
+          <input
+            type="text"
+            value={item.timerCue?.speakerName || ''}
+            onChange={(e) => updateTimerCue({ speakerName: e.target.value })}
+            placeholder="Optional speaker name"
+            className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-200"
+          />
+        </div>
+        <label className="lg:col-span-1 flex items-center gap-2 text-[10px] uppercase tracking-wider text-zinc-400 font-bold">
+          <input
+            type="checkbox"
+            checked={!!item.timerCue?.autoStartNext}
+            onChange={(e) => updateTimerCue({ autoStartNext: e.target.checked })}
+            className="accent-cyan-600"
+          />
+          Auto Next
+        </label>
+        <div className="lg:col-span-1 flex items-end gap-1">
+          <div className="flex-1">
+            <div className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Amber %</div>
+            <input
+              type="number"
+              min={1}
+              max={99}
+              value={Math.max(1, Math.min(99, Number(item.timerCue?.amberPercent ?? defaultTimerCue.amberPercent)))}
+              onChange={(e) => updateTimerCue({ amberPercent: Math.max(1, Math.min(99, Number(e.target.value) || 25)) })}
+              className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-200"
+            />
+          </div>
+          <div className="flex-1">
+            <div className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Red %</div>
+            <input
+              type="number"
+              min={1}
+              max={99}
+              value={Math.max(1, Math.min(99, Number(item.timerCue?.redPercent ?? defaultTimerCue.redPercent)))}
+              onChange={(e) => updateTimerCue({ redPercent: Math.max(1, Math.min(99, Number(e.target.value) || 10)) })}
+              className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-200"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

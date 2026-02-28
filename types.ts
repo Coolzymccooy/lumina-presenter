@@ -18,11 +18,35 @@ export interface Slide {
   notes?: string; // Presenter notes
 }
 
+export interface TimerCue {
+  enabled: boolean;
+  durationSec: number;
+  speakerName?: string;
+  autoStartNext?: boolean;
+  amberPercent?: number;
+  redPercent?: number;
+}
+
+export type StageTimerVariant = 'top-right' | 'top-left' | 'bottom-right' | 'compact-bar';
+
+export interface StageTimerLayout {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fontScale: number;
+  variant: StageTimerVariant;
+  locked: boolean;
+}
+
+export type ConnectionRole = 'controller' | 'output' | 'stage' | 'remote';
+
 export interface ServiceItem {
   id: string;
   title: string;
   type: ItemType;
   slides: Slide[];
+  timerCue?: TimerCue;
   theme: {
     backgroundUrl: string;
     mediaType?: MediaType;

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState } from '../services/firebase';
-import { fetchServerSessionState } from '../services/serverApi';
+import { fetchServerSessionState, getOrCreateConnectionClientId, heartbeatSessionConnection } from '../services/serverApi';
 import { AudienceDisplayState, AudienceMessage, ItemType, ServiceItem } from '../types';
 import { LoginScreen } from './LoginScreen';
 import { SlideRenderer } from './SlideRenderer';
@@ -110,6 +110,10 @@ export const OutputRoute: React.FC = () => {
     };
   };
   const [{ sessionId, workspaceId, fullscreen }] = useState(getRouteParams);
+  const outputClientId = useMemo(
+    () => getOrCreateConnectionClientId(workspaceId, sessionId, 'output'),
+    [workspaceId, sessionId]
+  );
 
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
@@ -190,6 +194,18 @@ export const OutputRoute: React.FC = () => {
       window.clearInterval(id);
     };
   }, [workspaceId, sessionId]);
+
+  useEffect(() => {
+    const beat = async () => {
+      await heartbeatSessionConnection(workspaceId, sessionId, 'output', outputClientId, {
+        route: 'output',
+        ua: navigator.userAgent || '',
+      });
+    };
+    beat();
+    const id = window.setInterval(beat, 4000);
+    return () => window.clearInterval(id);
+  }, [workspaceId, sessionId, outputClientId]);
 
   const liveSchedule: ServiceItem[] = Array.isArray(liveState?.scheduleSnapshot) ? liveState.scheduleSnapshot : [];
   const localSchedule: ServiceItem[] = Array.isArray(localState?.schedule) ? localState.schedule : [];
@@ -282,7 +298,9 @@ export const OutputRoute: React.FC = () => {
   return (
     <div className="h-screen w-screen bg-black">
       {display.blackout ? (
-        <div className="w-full h-full bg-black" />
+        <div className="w-full h-full bg-black flex items-center justify-center text-zinc-700 text-xs font-mono uppercase tracking-[0.25em]">BLACKOUT ACTIVE</div>
+      ) : !display.hasRenderable ? (
+        <div className="w-full h-full bg-black flex items-center justify-center text-zinc-500 text-xs font-mono uppercase tracking-[0.25em]">WAITING FOR LIVE CONTENT</div>
       ) : (
         <SlideRenderer
           slide={display.slide || null}

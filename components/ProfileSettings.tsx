@@ -25,6 +25,11 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
   const [defaultVersion, setDefaultVersion] = useState(currentSettings?.defaultVersion || 'kjv');
   const [theme, setTheme] = useState(currentSettings?.theme || 'dark');
   const [remoteAdminEmails, setRemoteAdminEmails] = useState(currentSettings?.remoteAdminEmails || '');
+  const [connectionTargetRoles, setConnectionTargetRoles] = useState<string[]>(
+    Array.isArray(currentSettings?.connectionTargetRoles) && currentSettings.connectionTargetRoles.length
+      ? currentSettings.connectionTargetRoles
+      : ['controller', 'output', 'stage']
+  );
   const [sessionId, setSessionId] = useState(currentSettings?.sessionId || 'live');
   const [stageProfile, setStageProfile] = useState(currentSettings?.stageProfile || 'classic');
   const [machineMode, setMachineMode] = useState(!!currentSettings?.machineMode);
@@ -42,7 +47,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
   };
 
   const handleSave = () => {
-    onSave({ churchName, ccli, defaultVersion, theme, remoteAdminEmails, sessionId, stageProfile, machineMode });
+    onSave({ churchName, ccli, defaultVersion, theme, remoteAdminEmails, connectionTargetRoles, sessionId, stageProfile, machineMode });
     onClose();
   };
 
@@ -259,6 +264,29 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
                   <div className="w-1 h-1 rounded-full bg-blue-500" />
                   <p className="text-[10px] text-zinc-500 font-medium">Comma or new-line separated. Suffix with ":role" for granular permissions.</p>
                 </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Connection Target Roles</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['controller', 'output', 'stage', 'remote'].map((role) => (
+                    <label key={role} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-zinc-800 bg-black/40 text-[10px] font-bold uppercase tracking-wider text-zinc-300">
+                      <input
+                        type="checkbox"
+                        checked={connectionTargetRoles.includes(role)}
+                        onChange={(e) => {
+                          setConnectionTargetRoles((prev) => {
+                            if (e.target.checked) return Array.from(new Set([...prev, role]));
+                            const filtered = prev.filter((entry) => entry !== role);
+                            return filtered.length ? filtered : ['controller', 'output', 'stage'];
+                          });
+                        }}
+                        className="accent-blue-600"
+                      />
+                      {role}
+                    </label>
+                  ))}
+                </div>
+                <p className="text-[10px] text-zinc-500 font-medium px-1">Used for the Live Connections X/Y denominator.</p>
               </div>
             </div>
           )}
