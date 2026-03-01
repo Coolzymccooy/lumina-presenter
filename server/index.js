@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import Database from "better-sqlite3";
+import { GoogleGenAI, Type } from "@google/genai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -219,10 +220,25 @@ CREATE TABLE IF NOT EXISTS audience_messages (
   updated_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS workspace_runsheet_files (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  workspace_id TEXT NOT NULL,
+  file_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  payload_json TEXT NOT NULL,
+  created_by_uid TEXT,
+  created_by_email TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  last_used_at INTEGER
+);
+
 CREATE INDEX IF NOT EXISTS idx_audit_workspace_time ON audit_logs(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_snapshots_workspace_time ON workspace_snapshots(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_audience_workspace_time ON audience_messages(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_connections_workspace_session_seen ON session_connections(workspace_id, session_id, last_seen_at);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_runsheet_workspace_file_unique ON workspace_runsheet_files(workspace_id, file_id);
+CREATE INDEX IF NOT EXISTS idx_runsheet_workspace_updated ON workspace_runsheet_files(workspace_id, updated_at DESC);
 `);
 
 const ensureColumnExists = (tableName, columnName, definitionSql, backfillSql = null) => {
@@ -297,6 +313,69 @@ const parseBool = (value, fallback = false) => {
   const normalized = value.trim().toLowerCase();
   if (!normalized) return fallback;
   return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
+};
+let cachedGoogleAiClient = null;
+let cachedGoogleAiKey = "";
+const getGoogleAiClient = () => {
+  const key = String(process.env.GOOGLE_AI_API_KEY || process.env.VITE_GOOGLE_AI_API_KEY || "").trim();
+  if (!key) return null;
+  if (cachedGoogleAiClient && cachedGoogleAiKey === key) return cachedGoogleAiClient;
+  cachedGoogleAiClient = new GoogleGenAI({ apiKey: key });
+  cachedGoogleAiKey = key;
+  return cachedGoogleAiClient;
+};
+const ensureGoogleAiClient = (res) => {
+  const ai = getGoogleAiClient();
+  if (ai) return ai;
+  res.status(503).json({
+    ok: false,
+    error: "AI_KEY_MISSING",
+    message: "Missing GOOGLE_AI_API_KEY on server. Set it in backend environment variables.",
+  });
+  return null;
+};
+const parseAiJson = (response) => {
+  const raw = String(response?.text || "").trim();
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+const sanitizeSlides = (slides) => {
+  if (!Array.isArray(slides)) return [];
+  return slides
+    .map((entry, idx) => ({
+      label: String(entry?.label || `Slide ${idx + 1}`).trim().slice(0, 80) || `Slide ${idx + 1}`,
+      content: String(entry?.content || "").trim().slice(0, 1200),
+    }))
+    .filter((entry) => entry.content.length > 0);
+};
+const fallbackSermonAnalysis = (sermonText) => {
+  const scriptureRegex = /\b(?:[1-3]\s)?[A-Za-z]+\s\d{1,3}:\d{1,3}(?:-\d{1,3})?\b/g;
+  const references = Array.from(new Set((String(sermonText || "").match(scriptureRegex) || []).slice(0, 12)));
+  const paragraphs = String(sermonText || "")
+    .split(/\n{2,}|(?<=[.!?])\s+(?=[A-Z])/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const keyPoints = paragraphs.slice(0, 8).map((part, index) => {
+    const compact = part.replace(/\s+/g, " ").trim();
+    return compact.length > 140 ? `${compact.slice(0, 137)}...` : compact || `Point ${index + 1}`;
+  });
+  const fallbackSlides = Array.from({ length: 20 }).map((_, idx) => ({
+    label: idx === 0 ? "Title" : idx <= references.length ? `Scripture ${idx}` : `Point ${idx}`,
+    content: idx === 0
+      ? "Sermon Overview"
+      : idx <= references.length
+        ? references[idx - 1]
+        : keyPoints[(idx - 1) % Math.max(keyPoints.length, 1)] || `Key takeaway ${idx}`,
+  }));
+  return {
+    scriptureReferences: references,
+    keyPoints,
+    slides: fallbackSlides,
+  };
 };
 const formatExecErrorDetails = (error) => {
   const code = error?.code ? `code=${String(error.code)}` : "";
@@ -405,6 +484,21 @@ const normalizeEmails = (raw = "") =>
     .map((entry) => entry.split(/[:|]/)[0]?.trim())
     .filter(Boolean);
 
+const toRunSheetFileRecord = (row) => ({
+  fileId: row.file_id,
+  title: row.title,
+  payload: parseJson(row.payload_json, { items: [] }),
+  createdByUid: row.created_by_uid || null,
+  createdByEmail: row.created_by_email || null,
+  createdAt: Number(row.created_at || 0),
+  updatedAt: Number(row.updated_at || 0),
+  lastUsedAt: row.last_used_at == null ? null : Number(row.last_used_at),
+});
+
+const createRunSheetFileId = () => {
+  return `rs_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+};
+
 const readActor = (req) => {
   const uid = String(req.header("x-user-uid") || "").trim();
   const email = String(req.header("x-user-email") || "").trim().toLowerCase();
@@ -431,6 +525,40 @@ const updateWorkspace = db.prepare(`
       updated_at = @updated_at,
       settings_updated_at = @settings_updated_at
   WHERE id = @id
+`);
+
+const listRunSheetFilesByWorkspace = db.prepare(`
+  SELECT file_id, title, payload_json, created_by_uid, created_by_email, created_at, updated_at, last_used_at
+  FROM workspace_runsheet_files
+  WHERE workspace_id = ?
+  ORDER BY updated_at DESC
+`);
+const getRunSheetFileById = db.prepare(`
+  SELECT file_id, title, payload_json, created_by_uid, created_by_email, created_at, updated_at, last_used_at
+  FROM workspace_runsheet_files
+  WHERE workspace_id = ? AND file_id = ?
+`);
+const insertRunSheetFile = db.prepare(`
+  INSERT INTO workspace_runsheet_files (
+    workspace_id, file_id, title, payload_json, created_by_uid, created_by_email, created_at, updated_at, last_used_at
+  )
+  VALUES (
+    @workspace_id, @file_id, @title, @payload_json, @created_by_uid, @created_by_email, @created_at, @updated_at, @last_used_at
+  )
+`);
+const updateRunSheetFileTitle = db.prepare(`
+  UPDATE workspace_runsheet_files
+  SET title = @title, updated_at = @updated_at
+  WHERE workspace_id = @workspace_id AND file_id = @file_id
+`);
+const updateRunSheetFileLastUsed = db.prepare(`
+  UPDATE workspace_runsheet_files
+  SET last_used_at = @last_used_at, updated_at = @updated_at
+  WHERE workspace_id = @workspace_id AND file_id = @file_id
+`);
+const deleteRunSheetFileById = db.prepare(`
+  DELETE FROM workspace_runsheet_files
+  WHERE workspace_id = ? AND file_id = ?
 `);
 
 const CONNECTION_TTL_MS = 12000;
@@ -506,6 +634,213 @@ const ensureWorkspaceRead = (workspaceId, actor) => {
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "lumina-server-api", db: DB_PATH, now: now() });
+});
+
+app.post("/api/ai/generate-slides", async (req, res) => {
+  const text = String(req.body?.text || "").trim();
+  if (!text) return res.status(400).json({ ok: false, error: "TEXT_REQUIRED" });
+  const ai = ensureGoogleAiClient(res);
+  if (!ai) return;
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `Break the following text into presentation slides for a church service.
+Identify sections like "Verse", "Chorus", "Bridge", or "Point".
+Keep slide content concise (max 4-6 lines).
+
+Text to process:
+${text}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            slides: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  label: { type: Type.STRING },
+                  content: { type: Type.STRING },
+                },
+                required: ["label", "content"],
+              },
+            },
+          },
+          required: ["slides"],
+        },
+      },
+    });
+    const parsed = parseAiJson(response);
+    const slides = sanitizeSlides(parsed?.slides);
+    if (!slides.length) {
+      return res.status(422).json({ ok: false, error: "INVALID_AI_PAYLOAD", message: "AI did not return valid slides." });
+    }
+    return res.json({ ok: true, data: { slides } });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "AI_GENERATE_SLIDES_FAILED", message: String(error?.message || error) });
+  }
+});
+
+app.post("/api/ai/semantic-bible-search", async (req, res) => {
+  const query = String(req.body?.query || "").trim();
+  if (!query) return res.status(400).json({ ok: false, error: "QUERY_REQUIRED" });
+  const ai = ensureGoogleAiClient(res);
+  if (!ai) return;
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `You are a biblical scholar. Given the user's input (topic, emotion, or situation),
+provide the single best Bible reference (Book Chapter:Verse) to address it.
+
+User Input: "${query}"
+
+Return ONLY the reference (e.g., "Philippians 4:13" or "Psalm 23:1-4").`,
+    });
+    const reference = String(response?.text || "").trim() || "John 3:16";
+    return res.json({ ok: true, reference });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "AI_SEMANTIC_SEARCH_FAILED", message: String(error?.message || error) });
+  }
+});
+
+app.post("/api/ai/suggest-visual-theme", async (req, res) => {
+  const contextText = String(req.body?.contextText || "").trim();
+  if (!contextText) return res.status(400).json({ ok: false, error: "TEXT_REQUIRED" });
+  const ai = ensureGoogleAiClient(res);
+  if (!ai) return;
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `Based on the following lyrics or text, suggest a single visual keyword for a background image search
+(e.g., "mountains", "worship", "cross", "sky", "hands", "city"). Return ONLY the keyword.
+
+Text:
+${contextText.slice(0, 500)}`,
+    });
+    const keyword = String(response?.text || "").trim() || "abstract";
+    return res.json({ ok: true, keyword });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "AI_THEME_FAILED", message: String(error?.message || error) });
+  }
+});
+
+app.post("/api/ai/generate-visionary-backdrop", async (req, res) => {
+  const verseText = String(req.body?.verseText || "").trim();
+  if (!verseText) return res.status(400).json({ ok: false, error: "VERSE_REQUIRED" });
+  const ai = ensureGoogleAiClient(res);
+  if (!ai) return;
+  try {
+    const promptResponse = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `You are a Christian Art Director. Translate the essence and visual imagery of this Bible verse
+into a detailed prompt for a high-quality cinematic background image.
+Focus on atmosphere, lighting, symbolism. Avoid any human faces or text in the image.
+Use a 16:9 cinematic style.
+
+Verse: "${verseText}"
+
+Return ONLY the art prompt.`,
+    });
+
+    const artPrompt =
+      String(promptResponse?.text || "").trim()
+      || "A peaceful, atmospheric background with soft golden light and subtle clouds, cinematic 4k, no text.";
+
+    const imageResponse = await ai.models.generateContent({
+      model: "gemini-2.5-flash-image",
+      contents: {
+        parts: [
+          {
+            text: `High resolution, cinematic church presentation background: ${artPrompt}.
+No text. No people. 16:9. 4k.`,
+          },
+        ],
+      },
+      config: {
+        imageConfig: {
+          aspectRatio: "16:9",
+        },
+      },
+    });
+
+    const parts = imageResponse?.candidates?.[0]?.content?.parts || [];
+    const base64 = parts.find((part) => part?.inlineData?.data)?.inlineData?.data || null;
+    return res.json({ ok: true, imageDataUrl: base64 ? `data:image/png;base64,${base64}` : null });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "AI_BACKDROP_FAILED", message: String(error?.message || error) });
+  }
+});
+
+app.post("/api/ai/analyze-sermon", async (req, res) => {
+  const sermonText = String(req.body?.sermonText || "").trim();
+  if (!sermonText) return res.status(400).json({ ok: false, error: "SERMON_REQUIRED" });
+  const ai = ensureGoogleAiClient(res);
+  if (!ai) return;
+  const fallback = fallbackSermonAnalysis(sermonText);
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `You are a sermon slide architect. Analyze the sermon text and return JSON with:
+1) scriptureReferences: array of references found
+2) keyPoints: concise bullet points
+3) slides: exactly 20 slides with label/content for a preaching deck.
+
+Sermon Text:
+${sermonText}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            scriptureReferences: { type: Type.ARRAY, items: { type: Type.STRING } },
+            keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
+            slides: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  label: { type: Type.STRING },
+                  content: { type: Type.STRING },
+                },
+                required: ["label", "content"],
+              },
+            },
+          },
+          required: ["scriptureReferences", "keyPoints", "slides"],
+        },
+      },
+    });
+
+    const parsed = parseAiJson(response);
+    const slides = sanitizeSlides(parsed?.slides).slice(0, 20);
+    while (slides.length < 20) {
+      const idx = slides.length + 1;
+      slides.push({
+        label: `Application ${idx}`,
+        content: fallback.keyPoints[idx % Math.max(fallback.keyPoints.length, 1)] || `Reflection point ${idx}`,
+      });
+    }
+
+    if (!slides.length) {
+      return res.json({ ok: true, data: fallback });
+    }
+
+    return res.json({
+      ok: true,
+      data: {
+        scriptureReferences: Array.isArray(parsed?.scriptureReferences) && parsed.scriptureReferences.length
+          ? parsed.scriptureReferences
+          : fallback.scriptureReferences,
+        keyPoints: Array.isArray(parsed?.keyPoints) && parsed.keyPoints.length
+          ? parsed.keyPoints
+          : fallback.keyPoints,
+        slides,
+      },
+    });
+  } catch (error) {
+    return res.json({ ok: true, data: fallback, warning: String(error?.message || error) });
+  }
 });
 
 app.get("/api/workspaces/:workspaceId", requireActor, (req, res) => {
@@ -661,6 +996,182 @@ app.get("/api/workspaces/:workspaceId/snapshots/latest", requireActor, (req, res
   } catch (error) {
     if (error?.code === 403) return res.status(403).json({ ok: false, error: "FORBIDDEN" });
     return res.status(500).json({ ok: false, error: "SNAPSHOT_READ_FAILED", message: String(error?.message || error) });
+  }
+});
+
+app.get("/api/workspaces/:workspaceId/runsheets", requireActor, (req, res) => {
+  try {
+    const workspaceId = String(req.params.workspaceId || "").trim();
+    if (!workspaceId) {
+      return res.status(400).json({ ok: false, error: "WORKSPACE_REQUIRED" });
+    }
+    const workspace = getWorkspaceRow.get(workspaceId);
+    if (!workspace) {
+      return res.json({ ok: true, files: [] });
+    }
+    if (!canOperateWorkspace(workspace, req.actor)) {
+      return res.status(403).json({ ok: false, error: "FORBIDDEN" });
+    }
+    const rows = listRunSheetFilesByWorkspace.all(workspaceId);
+    return res.json({
+      ok: true,
+      files: rows.map(toRunSheetFileRecord),
+    });
+  } catch (error) {
+    if (error?.code === 403) return res.status(403).json({ ok: false, error: "FORBIDDEN" });
+    return res.status(500).json({ ok: false, error: "RUNSHEET_LIST_FAILED", message: String(error?.message || error) });
+  }
+});
+
+app.post("/api/workspaces/:workspaceId/runsheets", requireActor, (req, res) => {
+  try {
+    const workspaceId = String(req.params.workspaceId || "").trim();
+    const actor = req.actor;
+    ensureWorkspaceForWrite(workspaceId, actor, { allowOperator: true });
+
+    const titleInput = String(req.body?.title || "").trim();
+    const title = (titleInput || "Run Sheet").slice(0, 120);
+    const rawPayload = req.body?.payload && typeof req.body.payload === "object" && !Array.isArray(req.body.payload)
+      ? req.body.payload
+      : {};
+    const payload = {
+      items: Array.isArray(rawPayload.items) ? rawPayload.items : [],
+      selectedItemId: typeof rawPayload.selectedItemId === "string" ? rawPayload.selectedItemId : null,
+    };
+
+    const createdAt = now();
+    let fileId = createRunSheetFileId();
+    if (getRunSheetFileById.get(workspaceId, fileId)) {
+      fileId = createRunSheetFileId();
+    }
+    insertRunSheetFile.run({
+      workspace_id: workspaceId,
+      file_id: fileId,
+      title,
+      payload_json: toJson(payload),
+      created_by_uid: actor.uid || null,
+      created_by_email: actor.email || null,
+      created_at: createdAt,
+      updated_at: createdAt,
+      last_used_at: null,
+    });
+    db.prepare("UPDATE workspaces SET updated_at = ? WHERE id = ?").run(createdAt, workspaceId);
+    logAudit.run({
+      workspace_id: workspaceId,
+      session_id: null,
+      actor_uid: actor.uid,
+      actor_email: actor.email || null,
+      action: "RUNSHEET_ARCHIVE_CREATE",
+      details_json: toJson({ fileId, title, itemCount: payload.items.length }),
+      created_at: createdAt,
+    });
+    const row = getRunSheetFileById.get(workspaceId, fileId);
+    return res.json({ ok: true, file: toRunSheetFileRecord(row) });
+  } catch (error) {
+    if (error?.code === 403) return res.status(403).json({ ok: false, error: "FORBIDDEN" });
+    return res.status(500).json({ ok: false, error: "RUNSHEET_ARCHIVE_FAILED", message: String(error?.message || error) });
+  }
+});
+
+app.patch("/api/workspaces/:workspaceId/runsheets/:fileId", requireActor, (req, res) => {
+  try {
+    const workspaceId = String(req.params.workspaceId || "").trim();
+    const fileId = String(req.params.fileId || "").trim();
+    const actor = req.actor;
+    ensureWorkspaceForWrite(workspaceId, actor, { allowOperator: true });
+
+    const current = getRunSheetFileById.get(workspaceId, fileId);
+    if (!current) return res.status(404).json({ ok: false, error: "RUNSHEET_NOT_FOUND" });
+
+    const rawTitle = String(req.body?.title || "").trim();
+    if (!rawTitle) return res.status(400).json({ ok: false, error: "TITLE_REQUIRED" });
+    const nextTitle = rawTitle.slice(0, 120);
+    const updatedAt = now();
+    updateRunSheetFileTitle.run({
+      workspace_id: workspaceId,
+      file_id: fileId,
+      title: nextTitle,
+      updated_at: updatedAt,
+    });
+    db.prepare("UPDATE workspaces SET updated_at = ? WHERE id = ?").run(updatedAt, workspaceId);
+    logAudit.run({
+      workspace_id: workspaceId,
+      session_id: null,
+      actor_uid: actor.uid,
+      actor_email: actor.email || null,
+      action: "RUNSHEET_ARCHIVE_RENAME",
+      details_json: toJson({ fileId, title: nextTitle }),
+      created_at: updatedAt,
+    });
+    const row = getRunSheetFileById.get(workspaceId, fileId);
+    return res.json({ ok: true, file: toRunSheetFileRecord(row) });
+  } catch (error) {
+    if (error?.code === 403) return res.status(403).json({ ok: false, error: "FORBIDDEN" });
+    return res.status(500).json({ ok: false, error: "RUNSHEET_RENAME_FAILED", message: String(error?.message || error) });
+  }
+});
+
+app.post("/api/workspaces/:workspaceId/runsheets/:fileId/reuse", requireActor, (req, res) => {
+  try {
+    const workspaceId = String(req.params.workspaceId || "").trim();
+    const fileId = String(req.params.fileId || "").trim();
+    const actor = req.actor;
+    ensureWorkspaceForWrite(workspaceId, actor, { allowOperator: true });
+
+    const current = getRunSheetFileById.get(workspaceId, fileId);
+    if (!current) return res.status(404).json({ ok: false, error: "RUNSHEET_NOT_FOUND" });
+    const updatedAt = now();
+    updateRunSheetFileLastUsed.run({
+      workspace_id: workspaceId,
+      file_id: fileId,
+      last_used_at: updatedAt,
+      updated_at: updatedAt,
+    });
+    db.prepare("UPDATE workspaces SET updated_at = ? WHERE id = ?").run(updatedAt, workspaceId);
+    logAudit.run({
+      workspace_id: workspaceId,
+      session_id: null,
+      actor_uid: actor.uid,
+      actor_email: actor.email || null,
+      action: "RUNSHEET_ARCHIVE_REUSE",
+      details_json: toJson({ fileId }),
+      created_at: updatedAt,
+    });
+    const row = getRunSheetFileById.get(workspaceId, fileId);
+    const file = toRunSheetFileRecord(row);
+    return res.json({ ok: true, file, payload: file.payload });
+  } catch (error) {
+    if (error?.code === 403) return res.status(403).json({ ok: false, error: "FORBIDDEN" });
+    return res.status(500).json({ ok: false, error: "RUNSHEET_REUSE_FAILED", message: String(error?.message || error) });
+  }
+});
+
+app.delete("/api/workspaces/:workspaceId/runsheets/:fileId", requireActor, (req, res) => {
+  try {
+    const workspaceId = String(req.params.workspaceId || "").trim();
+    const fileId = String(req.params.fileId || "").trim();
+    const actor = req.actor;
+    ensureWorkspaceForWrite(workspaceId, actor, { allowOperator: true });
+
+    const removed = deleteRunSheetFileById.run(workspaceId, fileId);
+    if (!removed?.changes) {
+      return res.status(404).json({ ok: false, error: "RUNSHEET_NOT_FOUND" });
+    }
+    const updatedAt = now();
+    db.prepare("UPDATE workspaces SET updated_at = ? WHERE id = ?").run(updatedAt, workspaceId);
+    logAudit.run({
+      workspace_id: workspaceId,
+      session_id: null,
+      actor_uid: actor.uid,
+      actor_email: actor.email || null,
+      action: "RUNSHEET_ARCHIVE_DELETE",
+      details_json: toJson({ fileId }),
+      created_at: updatedAt,
+    });
+    return res.json({ ok: true });
+  } catch (error) {
+    if (error?.code === 403) return res.status(403).json({ ok: false, error: "FORBIDDEN" });
+    return res.status(500).json({ ok: false, error: "RUNSHEET_DELETE_FAILED", message: String(error?.message || error) });
   }
 });
 
