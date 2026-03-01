@@ -13,7 +13,7 @@ Lumina is a church-focused presentation app for lyrics, scripture, announcements
 1. Install dependencies:
    - `npm install`
 2. Configure `.env.local`:
-   - `VITE_GOOGLE_AI_API_KEY=...`
+   - `GOOGLE_AI_API_KEY=...` (backend only; do not prefix with `VITE_`)
    - `VITE_PEXELS_API_KEY=...` (optional)
    - `VITE_PIXABAY_API_KEY=...` (optional)
    - `VITE_API_BASE_URL=http://localhost:8787` (optional; default is already `http://localhost:8787`)

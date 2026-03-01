@@ -24,3 +24,5 @@ services:
         value: auto
       - key: LUMINA_KEEP_ALIVE_URL
         value: https://lumina-presenter-api.onrender.com
+      - key: GOOGLE_AI_API_KEY
+        sync: false
