@@ -5,6 +5,7 @@ interface OutputWindowProps {
   onClose: () => void;
   onBlock: () => void;
   children: React.ReactNode;
+  title?: string;
 
   /**
    * Pass the Window you opened synchronously inside the Launch Output click.
@@ -26,6 +27,7 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
   onClose,
   onBlock,
   children,
+  title = "Lumina Output (Projector)",
   externalWindow = null,
   windowName = "LuminaOutput",
   features = "width=1280,height=720,menubar=no,toolbar=no,location=no,status=no",
@@ -62,7 +64,7 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>Lumina Output (Projector)</title>
+    <title>${title}</title>
     <style>
       body { margin: 0; padding: 0; background-color: black; overflow: hidden; }
       #output-root { width: 100vw; height: 100vh; }
@@ -117,6 +119,7 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
         const newLink = hostDocument.createElement("link");
         newLink.rel = "stylesheet";
         newLink.href = link.href;
+        if (link.crossOrigin) newLink.crossOrigin = link.crossOrigin;
         head.appendChild(newLink);
       });
 
@@ -132,6 +135,37 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
         newLink.href = link.href;
         head.appendChild(newLink);
       });
+
+      // Fallback: inline same-origin CSS rules so popup can still render if linked CSS fails to load.
+      const inlineCss = hostDocument.createElement("style");
+      inlineCss.setAttribute("data-lumina-inline-css", "1");
+      const cssText: string[] = [];
+      for (const sheet of Array.from(document.styleSheets)) {
+        try {
+          const rules = (sheet as CSSStyleSheet).cssRules;
+          if (!rules) continue;
+          for (const rule of Array.from(rules)) {
+            cssText.push(rule.cssText);
+          }
+        } catch {
+          // Cross-origin stylesheets may block cssRules access; skip those.
+        }
+      }
+      inlineCss.textContent = cssText.join("\n");
+      head.appendChild(inlineCss);
+
+      // Safety baseline so the host never appears as a blank black page.
+      const baseline = hostDocument.createElement("style");
+      baseline.setAttribute("data-lumina-baseline", "1");
+      baseline.textContent = `
+        html, body, #output-root {
+          margin: 0;
+          width: 100%;
+          height: 100%;
+          background: #000;
+        }
+      `;
+      head.appendChild(baseline);
     };
 
     const ensureHostReady = () => {
@@ -153,9 +187,12 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
           }
         }
 
-        hostDocument.title = "Lumina Output (Projector)";
+        hostDocument.title = title;
         const div = hostDocument.getElementById("output-root");
         if (!div) return false;
+        div.style.width = "100vw";
+        div.style.height = "100vh";
+        div.style.background = "black";
 
         setContainer((prev) => (prev === div ? prev : div));
         copyStyles(hostDocument);
@@ -219,16 +256,17 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
     window.addEventListener("unload", handleParentUnload);
     window.addEventListener("beforeunload", handleParentUnload);
 
-    w.onbeforeunload = () => {
-      onCloseRef.current();
-    };
-
     return () => {
       stopRetries();
       w?.removeEventListener("load", onWindowLoad);
       window.removeEventListener("unload", handleParentUnload);
       window.removeEventListener("beforeunload", handleParentUnload);
       window.clearInterval(checkClosed);
+      try {
+        if (w) w.onbeforeunload = null;
+      } catch {
+        // ignore
+      }
 
       // StrictMode dev: ignore first cleanup
       if (runId === 1 && effectRunIdRef.current === 2) return;
@@ -242,7 +280,7 @@ export const OutputWindow: React.FC<OutputWindowProps> = ({
         }
       }
     };
-  }, [targetWindow, windowName, features]);
+  }, [targetWindow, windowName, features, title]);
 
   if (!container) return null;
   return createPortal(children, container);
