@@ -32,6 +32,9 @@ yarn-debug.log*
 yarn-error.log*
 playwright-report/
 test-results/
+server/data/*.sqlite
+server/data/*.sqlite-shm
+server/data/*.sqlite-wal
 package-lock.json
 pnpm-lock.yaml
 
