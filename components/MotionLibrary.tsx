@@ -21,14 +21,17 @@ interface MotionLibraryProps {
 }
 
 const CURATED_VIDEO_ASSETS: MotionAsset[] = VIDEO_BACKGROUNDS.map((url, idx) => ({
-  id: `curated-video-${idx + 1}`,
-  name: `Default Loop ${idx + 1}`,
+  id: `curated-video-${idx + 1}-${url.replace(/[^a-z0-9]/gi, '').slice(0, 12)}`,
+  name: url.startsWith('/assets/')
+    ? `Local Motion ${idx + 1}`
+    : `Motion Loop ${idx + 1}`,
   thumb: DEFAULT_BACKGROUNDS[idx % DEFAULT_BACKGROUNDS.length],
   url,
   mediaType: 'video',
   provider: 'curated',
-  attribution: 'Built-in',
-}));
+  attribution: url.startsWith('/assets/') ? 'Local library' : 'Built-in',
+}))
+  .filter((asset) => /\.(mp4|webm|mov)(\?|$)/i.test(asset.url));
 
 const CURATED_STILL_ASSETS: MotionAsset[] = DEFAULT_BACKGROUNDS.map((url, idx) => ({
   id: `curated-still-${idx + 1}`,
@@ -160,14 +163,20 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
   }, [activeTab, query, pexelsKey, pixabayKey]);
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 p-6">
-      <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-full overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black/85 z-[140] p-3 md:p-6 overflow-hidden">
+      <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-full max-h-full overflow-hidden flex flex-col">
         <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
           <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-widest">Motion Library</h3>
-          <button onClick={onClose} className="text-zinc-500 hover:text-white">X</button>
+          <button
+            onClick={onClose}
+            className="h-8 px-3 text-xs font-bold rounded border border-zinc-700 bg-zinc-900 text-zinc-300 hover:text-white hover:border-zinc-500"
+            aria-label="Close motion library"
+          >
+            Close
+          </button>
         </div>
 
-        <div className="p-4 border-b border-zinc-900 flex flex-wrap gap-2">
+        <div className="p-4 border-b border-zinc-900 flex flex-wrap items-center gap-2">
           <button onClick={() => setActiveTab('curated')} className={`px-3 py-1 text-xs rounded ${activeTab === 'curated' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Default Loops</button>
           <button onClick={() => setActiveTab('stills')} className={`px-3 py-1 text-xs rounded ${activeTab === 'stills' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Safe Stills</button>
           <button onClick={() => setActiveTab('pexels')} className={`px-3 py-1 text-xs rounded ${activeTab === 'pexels' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Pexels</button>
@@ -176,7 +185,7 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search worship, sunrise, abstract..."
-            className="ml-auto min-w-72 bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-200"
+            className="w-full md:w-80 md:ml-auto bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-200"
           />
         </div>
 
@@ -187,14 +196,27 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
           {loading ? (
             <div className="text-zinc-400 text-xs">Loading assets...</div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {assets.map((motion) => (
                 <div
                   key={motion.id}
                   className="group relative aspect-video bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800 hover:border-blue-500 transition-all cursor-pointer"
                   onClick={() => onSelect(motion.url, motion.mediaType)}
                 >
-                  <img src={motion.thumb} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                  {motion.mediaType === 'video' ? (
+                    <video
+                      src={motion.url}
+                      poster={motion.thumb}
+                      className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : (
+                    <img src={motion.thumb} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" />
+                  )}
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
                     <PlayIcon className="w-8 h-8 text-white drop-shadow-lg" />
                   </div>

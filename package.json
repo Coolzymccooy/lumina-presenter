@@ -12,8 +12,10 @@
     "electron:dev": "node scripts/electron-dev.mjs",
     "electron:dev:raw": "electron .",
     "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:win:ci": "npm run build && electron-builder --win --publish never --config.directories.output=release",
     "dist:win:publish": "npm run build && electron-builder --win --publish always",
     "test:e2e": "node scripts/run-e2e.mjs",
+    "test:e2e:smoke": "node scripts/run-e2e.mjs --grep @smoke",
     "test:e2e:headed": "node scripts/run-e2e.mjs --headed",
     "test:e2e:ui": "node scripts/run-e2e.mjs --ui",
     "test:e2e:install": "playwright install chromium"

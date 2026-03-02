@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState } from '../services/firebase';
 import { fetchServerSessionState, getOrCreateConnectionClientId, heartbeatSessionConnection } from '../services/serverApi';
-import { AudienceDisplayState, ServiceItem, StageAlertState, StageTimerLayout } from '../types';
+import { AudienceDisplayState, ServiceItem, StageAlertState, StageFlowLayout, StageMessageCenterState, StageTimerLayout } from '../types';
 import { LoginScreen } from './LoginScreen';
 import { StageDisplay } from './StageDisplay';
 
@@ -15,6 +15,7 @@ type LocalStageState = {
   blackout?: boolean;
   audienceDisplay?: AudienceDisplayState;
   stageAlert?: StageAlertState;
+  stageMessageCenter?: StageMessageCenterState;
   timerMode?: 'COUNTDOWN' | 'ELAPSED';
   timerSeconds?: number;
   timerDurationSec?: number;
@@ -24,6 +25,7 @@ type LocalStageState = {
   workspaceSettings?: {
     stageProfile?: 'classic' | 'compact' | 'high_contrast';
     stageTimerLayout?: StageTimerLayout;
+    stageFlowLayout?: StageFlowLayout;
   };
   updatedAt?: number;
 };
@@ -34,6 +36,7 @@ type EffectiveStageState = {
   nextSlide: ServiceItem['slides'][number] | null;
   audienceOverlay?: AudienceDisplayState;
   stageAlert?: StageAlertState;
+  stageMessageCenter?: StageMessageCenterState;
   blackout: boolean;
   timerMode: 'COUNTDOWN' | 'ELAPSED';
   timerSeconds: number;
@@ -43,6 +46,7 @@ type EffectiveStageState = {
   timerCueRedPercent: number;
   stageProfile: 'classic' | 'compact' | 'high_contrast';
   stageTimerLayout?: StageTimerLayout;
+  stageFlowLayout: StageFlowLayout;
   updatedAt: number;
   hasRenderable: boolean;
 };
@@ -57,6 +61,42 @@ const readLocalState = (): LocalStageState => {
   } catch {
     return {};
   }
+};
+
+const sanitizeStageMessageCenter = (value: unknown): StageMessageCenterState | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const raw = value as Record<string, unknown>;
+  const queue = Array.isArray(raw.queue)
+    ? raw.queue
+      .map((entry) => {
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+        const msg = entry as Record<string, unknown>;
+        const text = typeof msg.text === 'string' ? msg.text.trim() : '';
+        if (!text) return null;
+        return {
+          id: typeof msg.id === 'string' && msg.id.trim() ? msg.id.trim() : `msg-${Date.now().toString(36)}`,
+          category: msg.category === 'timing' || msg.category === 'logistics' ? msg.category : 'urgent',
+          text,
+          priority: msg.priority === 'high' ? 'high' : 'normal',
+          target: 'stage_only' as const,
+          createdAt: typeof msg.createdAt === 'number' && Number.isFinite(msg.createdAt) ? msg.createdAt : Date.now(),
+          author: typeof msg.author === 'string' && msg.author.trim() ? msg.author.trim() : null,
+          templateKey: typeof msg.templateKey === 'string' && msg.templateKey.trim() ? msg.templateKey.trim() : undefined,
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => !!entry)
+    : [];
+  const activeMessageId = typeof raw.activeMessageId === 'string' && queue.some((entry) => entry.id === raw.activeMessageId)
+    ? raw.activeMessageId
+    : (queue[0]?.id || null);
+  const lastSentAt = typeof raw.lastSentAt === 'number' && Number.isFinite(raw.lastSentAt)
+    ? raw.lastSentAt
+    : (queue[0]?.createdAt || 0);
+  return {
+    queue,
+    activeMessageId,
+    lastSentAt,
+  };
 };
 
 export const StageRoute: React.FC = () => {
@@ -195,8 +235,14 @@ export const StageRoute: React.FC = () => {
         ? 'high_contrast'
         : 'classic';
     const stageTimerLayout = source?.workspaceSettings?.stageTimerLayout;
+    const stageFlowLayout = source?.workspaceSettings?.stageFlowLayout === 'speaker_focus'
+      || source?.workspaceSettings?.stageFlowLayout === 'preview_focus'
+      || source?.workspaceSettings?.stageFlowLayout === 'minimal_next'
+      ? source.workspaceSettings.stageFlowLayout
+      : 'balanced';
     const audienceOverlay = source?.audienceDisplay;
     const stageAlert = source?.stageAlert;
+    const stageMessageCenter = sanitizeStageMessageCenter(source?.stageMessageCenter);
     const updatedAt = Number.isFinite(source?.updatedAt) ? Number(source.updatedAt) : 0;
 
     return {
@@ -205,6 +251,7 @@ export const StageRoute: React.FC = () => {
       nextSlide,
       audienceOverlay,
       stageAlert,
+      stageMessageCenter,
       blackout: !!source?.blackout,
       timerMode,
       timerSeconds,
@@ -214,6 +261,7 @@ export const StageRoute: React.FC = () => {
       timerCueRedPercent,
       stageProfile,
       stageTimerLayout,
+      stageFlowLayout,
       updatedAt,
       hasRenderable: !!(activeItem && activeSlide),
     };
@@ -277,9 +325,11 @@ export const StageRoute: React.FC = () => {
       timerAmberPercent={display.timerCueAmberPercent}
       timerRedPercent={display.timerCueRedPercent}
       timerLayout={display.stageTimerLayout}
+      flowLayout={display.stageFlowLayout}
       profile={display.stageProfile}
       audienceOverlay={display.audienceOverlay}
       stageAlert={display.stageAlert}
+      stageMessageCenter={display.stageMessageCenter}
     />
   );
 };

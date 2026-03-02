@@ -10,6 +10,8 @@ import {
     AudienceStatus,
     AudienceDisplayState,
     StageAlertState,
+    StageMessageCenterState,
+    StageMessageCategory,
 } from '../types';
 import {
     ChatIcon,
@@ -31,6 +33,11 @@ interface AudienceStudioProps {
     displayState: AudienceDisplayState;
     onUpdateDisplay: (patch: Partial<AudienceDisplayState>) => void;
     stageAlert: StageAlertState;
+    stageMessageCenter: StageMessageCenterState;
+    onQueueStageMessage: (payload: { text: string; category: StageMessageCategory; priority?: 'normal' | 'high'; templateKey?: string }) => void;
+    onSendStageMessageNow: (payload: { text: string; category: StageMessageCategory; priority?: 'normal' | 'high'; templateKey?: string }) => void;
+    onPromoteStageMessage: (messageId: string) => void;
+    onRemoveQueuedStageMessage: (messageId: string) => void;
     onSendStageAlert: (text: string) => void;
     onClearStageAlert: () => void;
     canUseStageAlert: boolean;
@@ -51,6 +58,11 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
     displayState,
     onUpdateDisplay,
     stageAlert,
+    stageMessageCenter,
+    onQueueStageMessage,
+    onSendStageMessageNow,
+    onPromoteStageMessage,
+    onRemoveQueuedStageMessage,
     onSendStageAlert,
     onClearStageAlert,
     canUseStageAlert,
@@ -60,7 +72,24 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
     const [filter, setFilter] = useState<AudienceStatus | 'all'>('pending');
     const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
     const [stageAlertDraft, setStageAlertDraft] = useState('');
-    const quickStageTemplates = ['Wrap up', '2 mins left', '30 seconds'];
+    const [stageCategory, setStageCategory] = useState<StageMessageCategory>('urgent');
+    const stageTemplates: Record<StageMessageCategory, Array<{ key: string; label: string }>> = {
+        urgent: [
+            { key: 'wrap_up_now', label: 'Wrap up now' },
+            { key: 'hold_position', label: 'Please hold' },
+            { key: 'mic_issue', label: 'Mic issue' },
+        ],
+        timing: [
+            { key: 'two_mins_left', label: '2 mins left' },
+            { key: 'thirty_seconds', label: '30 seconds' },
+            { key: 'overtime', label: 'Overtime' },
+        ],
+        logistics: [
+            { key: 'move_stage_left', label: 'Move stage left' },
+            { key: 'handheld_mic', label: 'Take handheld mic' },
+            { key: 'close_in_prayer', label: 'Close in prayer' },
+        ],
+    };
 
     const loadMessages = useCallback(async () => {
         if (!user) return;
@@ -85,11 +114,17 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
         return () => clearInterval(interval);
     }, [loadMessages]);
 
+    const activeStageMessage = stageMessageCenter?.queue?.find((entry) => entry.id === stageMessageCenter?.activeMessageId) || null;
+
     useEffect(() => {
+        if (activeStageMessage?.text) {
+            setStageAlertDraft(activeStageMessage.text);
+            return;
+        }
         if (stageAlert?.active && stageAlert?.text) {
             setStageAlertDraft(stageAlert.text);
         }
-    }, [stageAlert?.active, stageAlert?.text]);
+    }, [activeStageMessage?.id, activeStageMessage?.text, stageAlert?.active, stageAlert?.text]);
 
     const handleStatusUpdate = async (msgId: number, status: AudienceStatus) => {
         try {
@@ -129,6 +164,14 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
         } catch (err) {
             console.error('Failed to delete message', err);
         }
+    };
+
+    const stageQueue = Array.isArray(stageMessageCenter?.queue) ? stageMessageCenter.queue : [];
+    const activeStageId = stageMessageCenter?.activeMessageId || null;
+    const activeStageIdx = activeStageId ? stageQueue.findIndex((entry) => entry.id === activeStageId) : -1;
+
+    const handleStageTemplate = (label: string) => {
+        setStageAlertDraft(label);
     };
 
     return (
@@ -241,20 +284,31 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
 
                 <div className="bg-black/20 rounded-lg p-2 border border-zinc-800/50">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Pastor Alert (Stage Only)</span>
+                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Pastor Message Center (Stage Only)</span>
                         <span className={`text-[9px] font-black uppercase tracking-widest ${canUseStageAlert ? 'text-emerald-400' : 'text-rose-400'}`}>
                             Admin allowlisted: {canUseStageAlert ? 'Yes' : 'No'}
                         </span>
                     </div>
-                    <div className="mb-2 flex flex-wrap gap-1.5">
-                        {quickStageTemplates.map((template) => (
+                    <div className="mb-2 grid grid-cols-3 gap-1">
+                        {(['urgent', 'timing', 'logistics'] as StageMessageCategory[]).map((cat) => (
                             <button
-                                key={template}
-                                onClick={() => setStageAlertDraft(template)}
+                                key={cat}
+                                onClick={() => setStageCategory(cat)}
+                                className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${stageCategory === cat ? 'bg-blue-600/20 border-blue-500/40 text-blue-300' : 'bg-zinc-900 border-zinc-800 text-zinc-400'}`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                        {stageTemplates[stageCategory].map((template) => (
+                            <button
+                                key={template.key}
+                                onClick={() => handleStageTemplate(template.label)}
                                 disabled={!canUseStageAlert}
                                 className="px-2 py-1 rounded-md text-[10px] font-bold border border-zinc-700 text-zinc-300 hover:border-amber-500/60 hover:text-amber-200 disabled:opacity-40"
                             >
-                                {template}
+                                {template.label}
                             </button>
                         ))}
                     </div>
@@ -266,6 +320,32 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
                         disabled={!canUseStageAlert}
                         className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-2 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-amber-600 disabled:opacity-60 resize-none"
                     />
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                        <button
+                            onClick={() => {
+                                const text = stageAlertDraft.trim();
+                                if (!text) return;
+                                onQueueStageMessage({ text, category: stageCategory, priority: stageCategory === 'urgent' ? 'high' : 'normal' });
+                                setStageAlertDraft('');
+                            }}
+                            disabled={!canUseStageAlert || !stageAlertDraft.trim()}
+                            className="px-3 py-1.5 rounded-md text-[10px] font-bold border border-zinc-700 text-zinc-200 disabled:opacity-40 hover:border-zinc-600"
+                        >
+                            QUEUE
+                        </button>
+                        <button
+                            onClick={() => {
+                                const text = stageAlertDraft.trim();
+                                if (!text) return;
+                                onSendStageMessageNow({ text, category: stageCategory, priority: stageCategory === 'urgent' ? 'high' : 'normal' });
+                                setStageAlertDraft('');
+                            }}
+                            disabled={!canUseStageAlert || !stageAlertDraft.trim()}
+                            className="px-3 py-1.5 rounded-md text-[10px] font-bold border border-transparent bg-amber-600 text-white disabled:opacity-40"
+                        >
+                            SEND NOW
+                        </button>
+                    </div>
                     <div className="mt-2 flex items-center justify-end gap-2">
                         <button
                             onClick={() => {
@@ -275,16 +355,55 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
                             disabled={!canUseStageAlert || !stageAlert?.active}
                             className="px-3 py-1.5 rounded-md text-[10px] font-bold border border-zinc-700 text-zinc-400 disabled:opacity-40 hover:border-zinc-600"
                         >
-                            CLEAR ALERT
+                            CLEAR ACTIVE
                         </button>
                         <button
                             onClick={() => onSendStageAlert(stageAlertDraft)}
                             disabled={!canUseStageAlert || !stageAlertDraft.trim()}
-                            className="px-3 py-1.5 rounded-md text-[10px] font-bold border border-transparent bg-amber-600 text-white disabled:opacity-40"
+                            className="px-3 py-1.5 rounded-md text-[10px] font-bold border border-zinc-700 text-zinc-300 disabled:opacity-40"
                         >
-                            SEND TO STAGE
+                            LEGACY SEND
                         </button>
                     </div>
+                    {stageQueue.length > 0 && (
+                        <div className="mt-2 border border-zinc-800 rounded-md p-2 bg-zinc-900/40">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+                                    Queue {activeStageIdx >= 0 ? `${activeStageIdx + 1}/${stageQueue.length}` : `0/${stageQueue.length}`}
+                                </span>
+                            </div>
+                            <div className="space-y-1.5 max-h-28 overflow-y-auto custom-scrollbar">
+                                {stageQueue.map((entry) => (
+                                    <div key={entry.id} className={`p-1.5 rounded border ${entry.id === activeStageId ? 'border-amber-500/60 bg-amber-900/20' : 'border-zinc-800 bg-zinc-950/60'}`}>
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <div className="text-[9px] uppercase tracking-wider font-bold text-zinc-400">
+                                                    {entry.category} {entry.priority === 'high' ? '• HIGH' : ''}
+                                                </div>
+                                                <div className="text-[11px] text-zinc-200 truncate">{entry.text}</div>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                {entry.id !== activeStageId && (
+                                                    <button
+                                                        onClick={() => onPromoteStageMessage(entry.id)}
+                                                        className="px-1.5 py-0.5 text-[9px] font-bold border border-zinc-700 rounded text-zinc-200"
+                                                    >
+                                                        Promote
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => onRemoveQueuedStageMessage(entry.id)}
+                                                    className="px-1.5 py-0.5 text-[9px] font-bold border border-rose-900/70 rounded text-rose-300"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

@@ -3,6 +3,10 @@ const getInitialApiBaseUrl = () => {
     const params = new URLSearchParams(window.location.search || window.location.hash.split('?')[1] || '');
     const urlApi = params.get('api');
     if (urlApi) return urlApi.trim();
+    const host = String(window.location.hostname || '').toLowerCase();
+    const isLocalHost = host === 'localhost' || host === '127.0.0.1';
+    // In local/dev sessions prefer local API unless caller explicitly overrides via ?api=
+    if (isLocalHost) return 'http://localhost:8787';
   }
   return (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787').trim();
 };
@@ -17,7 +21,7 @@ type ActorLike = {
 } | null | undefined;
 
 type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PATCH';
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   user?: ActorLike;
   body?: unknown;
   allowAnonymous?: boolean;
@@ -74,8 +78,27 @@ const requestJson = async <T,>(path: string, options: RequestOptions = {}): Prom
       headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     }), timeoutMs);
-    if (!response.ok) return null;
-    return await response.json() as T;
+    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+    const canParseJson = contentType.includes('application/json');
+    const payload = canParseJson ? await response.json().catch(() => null) : null;
+    if (!response.ok) {
+      if (payload && typeof payload === 'object') {
+        return {
+          ...(payload as Record<string, unknown>),
+          ok: false,
+          status: response.status,
+          path,
+        } as T;
+      }
+      return {
+        ok: false,
+        status: response.status,
+        error: `HTTP_${response.status}`,
+        path,
+      } as unknown as T;
+    }
+    if (payload && typeof payload === 'object') return payload as T;
+    return null;
   } catch {
     return null;
   }
@@ -352,6 +375,90 @@ export type SessionConnectionInfo = {
   role: ConnectionRole | string;
   lastSeenAt: number;
   metadata: Record<string, any>;
+};
+
+export type RunSheetFileRecord = {
+  fileId: string;
+  title: string;
+  payload: {
+    items: any[];
+    selectedItemId?: string | null;
+  };
+  createdByUid: string | null;
+  createdByEmail: string | null;
+  createdAt: number;
+  updatedAt: number;
+  lastUsedAt: number | null;
+};
+
+export const fetchRunSheetFiles = async (workspaceId: string, user: ActorLike) => {
+  return await requestJson<{ ok: boolean; files: RunSheetFileRecord[] }>(
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/runsheets`,
+    {
+      method: 'GET',
+      user,
+      timeoutMs: 7000,
+    }
+  );
+};
+
+export const archiveRunSheetFile = async (
+  workspaceId: string,
+  user: ActorLike,
+  payload: { title: string; payload: { items: any[]; selectedItemId?: string | null } }
+) => {
+  return await requestJson<{ ok: boolean; file: RunSheetFileRecord }>(
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/runsheets`,
+    {
+      method: 'POST',
+      user,
+      body: payload,
+      timeoutMs: 7000,
+    }
+  );
+};
+
+export const renameRunSheetFile = async (
+  workspaceId: string,
+  fileId: string,
+  title: string,
+  user: ActorLike
+) => {
+  return await requestJson<{ ok: boolean; file: RunSheetFileRecord }>(
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/runsheets/${encodeURIComponent(fileId)}`,
+    {
+      method: 'PATCH',
+      user,
+      body: { title },
+      timeoutMs: 7000,
+    }
+  );
+};
+
+export const reuseRunSheetFile = async (workspaceId: string, fileId: string, user: ActorLike) => {
+  return await requestJson<{
+    ok: boolean;
+    file: RunSheetFileRecord;
+    payload: { items: any[]; selectedItemId?: string | null };
+  }>(
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/runsheets/${encodeURIComponent(fileId)}/reuse`,
+    {
+      method: 'POST',
+      user,
+      timeoutMs: 7000,
+    }
+  );
+};
+
+export const deleteRunSheetFile = async (workspaceId: string, fileId: string, user: ActorLike) => {
+  return await requestJson<{ ok: boolean }>(
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/runsheets/${encodeURIComponent(fileId)}`,
+    {
+      method: 'DELETE',
+      user,
+      timeoutMs: 7000,
+    }
+  );
 };
 
 const buildConnectionStorageKey = (workspaceId: string, sessionId: string, role: ConnectionRole) =>

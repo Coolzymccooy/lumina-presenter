@@ -53,6 +53,33 @@ const sanitizeSlides = (slides: any[]): { label: string; content: string }[] => 
     .filter((entry) => entry.content.length > 0);
 };
 
+const BIBLE_REFERENCE_PATTERN = /\b(?:[1-3]\s*)?[A-Za-z]+(?:\s+[A-Za-z]+)*\s+\d{1,3}:\d{1,3}(?:-\d{1,3})?\b/i;
+const JOHN_316_PATTERN = /^john\s+3:16$/i;
+
+const extractBibleReference = (value: unknown): string | null => {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  const match = text.match(BIBLE_REFERENCE_PATTERN);
+  return match ? match[0].replace(/\s+/g, " ").trim() : null;
+};
+
+const inferSemanticFallbackReference = (query: string): string => {
+  const text = query.toLowerCase();
+  const includesAny = (keywords: string[]) => keywords.some((keyword) => text.includes(keyword));
+
+  if (includesAny(["peace", "comfort", "anx", "worry", "stress", "trouble"])) return "Philippians 4:6-7";
+  if (includesAny(["grief", "mourning", "loss", "broken", "sad"])) return "Psalm 34:18";
+  if (includesAny(["fear", "afraid", "panic"])) return "Isaiah 41:10";
+  if (includesAny(["strength", "weak", "tired", "weary"])) return "Isaiah 40:31";
+  if (includesAny(["guidance", "direction", "decision", "wisdom"])) return "Proverbs 3:5-6";
+  if (includesAny(["healing", "sick", "pain", "disease"])) return "Jeremiah 30:17";
+  if (includesAny(["forgive", "forgiveness", "guilt", "sin", "shame"])) return "1 John 1:9";
+  if (includesAny(["marriage", "family", "relationship", "love"])) return "1 Corinthians 13:4-7";
+  if (includesAny(["hope", "future", "discourage", "depress"])) return "Romans 15:13";
+  if (includesAny(["protection", "danger", "battle", "war"])) return "Psalm 91:1-2";
+  return "Psalm 23:1-4";
+};
+
 export const generateSlidesFromText = async (text: string): Promise<GeneratedSlideData | null> => {
   const response = await postAi("/api/ai/generate-slides", { text }, 30000);
   if (!response?.ok || !response?.data?.slides) return null;
@@ -61,9 +88,19 @@ export const generateSlidesFromText = async (text: string): Promise<GeneratedSli
 };
 
 export const semanticBibleSearch = async (query: string): Promise<string> => {
-  const response = await postAi("/api/ai/semantic-bible-search", { query }, 20000);
-  if (!response?.ok) return "John 3:16";
-  return String(response.reference || "").trim() || "John 3:16";
+  const sanitizedQuery = String(query || "").trim();
+  if (!sanitizedQuery) return "Psalm 23:1-4";
+
+  const response = await postAi("/api/ai/semantic-bible-search", { query: sanitizedQuery }, 20000);
+  const reference = extractBibleReference(response?.reference);
+  const looksLikeDefaultJohn = reference ? JOHN_316_PATTERN.test(reference) : false;
+  const userAskedForJohn316 = /john\s*3:16|for god so loved|eternal life|believe/i.test(sanitizedQuery);
+
+  if (response?.ok && reference && (!looksLikeDefaultJohn || userAskedForJohn316)) {
+    return reference;
+  }
+
+  return inferSemanticFallbackReference(sanitizedQuery);
 };
 
 export const generateVisionaryBackdrop = async (verseText: string): Promise<string | null> => {

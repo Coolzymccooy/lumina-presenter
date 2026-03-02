@@ -32,6 +32,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
   );
   const [sessionId, setSessionId] = useState(currentSettings?.sessionId || 'live');
   const [stageProfile, setStageProfile] = useState(currentSettings?.stageProfile || 'classic');
+  const [stageFlowLayout, setStageFlowLayout] = useState(currentSettings?.stageFlowLayout || 'balanced');
   const [machineMode, setMachineMode] = useState(!!currentSettings?.machineMode);
 
   const [activeTab, setActiveTab] = useState<string | null>('account');
@@ -47,7 +48,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
   };
 
   const handleSave = () => {
-    onSave({ churchName, ccli, defaultVersion, theme, remoteAdminEmails, connectionTargetRoles, sessionId, stageProfile, machineMode });
+    onSave({ churchName, ccli, defaultVersion, theme, remoteAdminEmails, connectionTargetRoles, sessionId, stageProfile, stageFlowLayout, machineMode });
     onClose();
   };
 
@@ -234,6 +235,21 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
                     placeholder="live"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Stage Flow Layout</label>
+                <select
+                  value={stageFlowLayout}
+                  onChange={e => setStageFlowLayout(e.target.value)}
+                  className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3.5 text-sm text-white focus:border-blue-500 focus:outline-none appearance-none cursor-pointer"
+                >
+                  <option value="balanced">Balanced</option>
+                  <option value="speaker_focus">Speaker Focus</option>
+                  <option value="preview_focus">Preview Focus</option>
+                  <option value="minimal_next">Minimal Next</option>
+                </select>
+                <p className="text-[10px] text-zinc-500 font-medium px-1">Controls how much space stage gives to current vs next content.</p>
               </div>
 
               <div className="pt-2 border-t border-zinc-800/50">

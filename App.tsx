@@ -1,7 +1,22 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { INITIAL_SCHEDULE, MOCK_SONGS, DEFAULT_BACKGROUNDS, GOSPEL_TRACKS, GospelTrack } from './constants';
-import { ServiceItem, Slide, ItemType, AudienceDisplayState, AudienceMessage, StageAlertState, StageTimerLayout, StageTimerVariant, ConnectionRole } from './types';
+import {
+  ServiceItem,
+  Slide,
+  ItemType,
+  AudienceDisplayState,
+  AudienceMessage,
+  StageAlertState,
+  StageTimerLayout,
+  StageTimerVariant,
+  ConnectionRole,
+  StageMessage,
+  StageMessageCategory,
+  StageMessageCenterState,
+  SpeakerTimerPreset,
+  StageFlowLayout,
+} from './types';
 import { SlideRenderer } from './components/SlideRenderer';
 import { AIModal } from './components/AIModal';
 import { SlideEditorModal } from './components/SlideEditorModal';
@@ -25,7 +40,25 @@ import { logActivity, analyzeSentimentContext } from './services/analytics';
 import { auth, isFirebaseConfigured, subscribeToState, subscribeToTeamPlaylists, updateLiveState, upsertTeamPlaylist } from './services/firebase';
 import { onAuthStateChanged } from "firebase/auth";
 import { clearMediaCache, saveMedia } from './services/localMedia';
-import { fetchServerSessionState, fetchSessionConnections, fetchWorkspaceSettings, getOrCreateConnectionClientId, getServerApiBaseUrl, heartbeatSessionConnection, importVisualPptxDeck, loadLatestWorkspaceSnapshot, resolveWorkspaceId, saveServerSessionState, saveWorkspaceSettings, saveWorkspaceSnapshot } from './services/serverApi';
+import {
+  archiveRunSheetFile,
+  deleteRunSheetFile,
+  fetchRunSheetFiles,
+  fetchServerSessionState,
+  fetchSessionConnections,
+  fetchWorkspaceSettings,
+  getOrCreateConnectionClientId,
+  getServerApiBaseUrl,
+  heartbeatSessionConnection,
+  importVisualPptxDeck,
+  loadLatestWorkspaceSnapshot,
+  renameRunSheetFile,
+  resolveWorkspaceId,
+  reuseRunSheetFile,
+  saveServerSessionState,
+  saveWorkspaceSettings,
+  saveWorkspaceSnapshot
+} from './services/serverApi';
 import { parsePptxFile } from './services/pptxImport';
 import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon
 
@@ -34,12 +67,16 @@ const STORAGE_KEY = 'lumina_session_v1';
 const SETTINGS_KEY = 'lumina_workspace_settings_v1';
 const SETTINGS_UPDATED_AT_KEY = 'lumina_workspace_settings_updated_at_v1';
 const LIVE_STATE_QUEUE_KEY = 'lumina_live_state_queue_v1';
+const RUNSHEET_FILES_LOCAL_KEY_PREFIX = 'lumina_runsheet_files_local_v1';
+const PRESENTER_TOOLBAR_HINT_KEY = 'lumina_presenter_toolbar_hint_v1';
 const CLOUD_PLAYLIST_SUFFIX = 'default-playlist-v2';
 const SYNC_BACKOFF_BASE_MS = 5000;
 const SYNC_BACKOFF_MAX_MS = 60000;
 const MAX_LIVE_QUEUE_SIZE = 40;
 const SILENT_AUDIO_B64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOkiJAAAAAAAAAAAAAAAAAAAAAAA=";
 const PUBLIC_WEB_APP_ORIGIN = 'https://lumina-presenter.vercel.app';
+const getWorkspaceSettingsKey = (workspace: string) => `${SETTINGS_KEY}:${workspace || 'default-workspace'}`;
+const getWorkspaceSettingsUpdatedAtKey = (workspace: string) => `${SETTINGS_UPDATED_AT_KEY}:${workspace || 'default-workspace'}`;
 
 type WorkspaceSettings = {
   churchName: string;
@@ -49,9 +86,11 @@ type WorkspaceSettings = {
   remoteAdminEmails: string;
   sessionId: string;
   stageProfile: 'classic' | 'compact' | 'high_contrast';
+  stageFlowLayout: StageFlowLayout;
   machineMode: boolean;
   stageTimerLayout: StageTimerLayout;
   connectionTargetRoles: ConnectionRole[];
+  speakerTimerPresets: SpeakerTimerPreset[];
 };
 
 type SmokeTestResult = {
@@ -68,8 +107,24 @@ type CloudPlaylistRecord = {
   selectedItemId?: string;
   activeItemId?: string | null;
   activeSlideIndex?: number;
+  stageAlert?: StageAlertState;
+  stageMessageCenter?: StageMessageCenterState;
   workspaceSettings?: Partial<WorkspaceSettings>;
   workspaceSettingsUpdatedAt?: number;
+};
+
+type RunSheetFileRecord = {
+  fileId: string;
+  title: string;
+  payload: {
+    items: ServiceItem[];
+    selectedItemId?: string | null;
+  };
+  createdByUid: string | null;
+  createdByEmail: string | null;
+  createdAt: number;
+  updatedAt: number;
+  lastUsedAt: number | null;
 };
 
 const DEFAULT_STAGE_TIMER_LAYOUT: StageTimerLayout = {
@@ -85,6 +140,48 @@ const DEFAULT_STAGE_TIMER_LAYOUT: StageTimerLayout = {
 const DEFAULT_CONNECTION_TARGET_ROLES: ConnectionRole[] = ['controller', 'output', 'stage'];
 const VALID_CONNECTION_ROLES: ConnectionRole[] = ['controller', 'output', 'stage', 'remote'];
 const VALID_STAGE_TIMER_VARIANTS: StageTimerVariant[] = ['top-right', 'top-left', 'bottom-right', 'compact-bar'];
+const VALID_STAGE_MESSAGE_CATEGORIES: StageMessageCategory[] = ['urgent', 'timing', 'logistics'];
+const VALID_STAGE_FLOW_LAYOUTS: StageFlowLayout[] = ['balanced', 'speaker_focus', 'preview_focus', 'minimal_next'];
+
+const DEFAULT_SPEAKER_TIMER_PRESETS: SpeakerTimerPreset[] = [
+  {
+    id: 'preset-pastor-main',
+    name: 'Pastor Main',
+    durationSec: 35 * 60,
+    amberPercent: 25,
+    redPercent: 10,
+    autoStartNextDefault: false,
+    speakerName: 'Pastor',
+  },
+  {
+    id: 'preset-assistant-brief',
+    name: 'Assistant Brief',
+    durationSec: 10 * 60,
+    amberPercent: 25,
+    redPercent: 10,
+    autoStartNextDefault: false,
+    speakerName: 'Assistant Pastor',
+  },
+  {
+    id: 'preset-announcement',
+    name: 'Announcement',
+    durationSec: 5 * 60,
+    amberPercent: 25,
+    redPercent: 10,
+    autoStartNextDefault: true,
+    speakerName: 'Host',
+  },
+];
+
+const createSpeakerPresetDraft = (): SpeakerTimerPreset => ({
+  id: `preset-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+  name: 'New Preset',
+  durationSec: 300,
+  amberPercent: 25,
+  redPercent: 10,
+  autoStartNextDefault: false,
+  speakerName: '',
+});
 
 const buildCloudPlaylistId = (uid: string) => `${uid}-${CLOUD_PLAYLIST_SUFFIX}`;
 
@@ -115,9 +212,9 @@ const normalizeStageTimerLayout = (value: unknown): StageTimerLayout => {
   return {
     x: typeof raw.x === 'number' && Number.isFinite(raw.x) ? raw.x : DEFAULT_STAGE_TIMER_LAYOUT.x,
     y: typeof raw.y === 'number' && Number.isFinite(raw.y) ? raw.y : DEFAULT_STAGE_TIMER_LAYOUT.y,
-    width: typeof raw.width === 'number' && Number.isFinite(raw.width) ? clamp(raw.width, 220, 900) : DEFAULT_STAGE_TIMER_LAYOUT.width,
-    height: typeof raw.height === 'number' && Number.isFinite(raw.height) ? clamp(raw.height, 72, 420) : DEFAULT_STAGE_TIMER_LAYOUT.height,
-    fontScale: typeof raw.fontScale === 'number' && Number.isFinite(raw.fontScale) ? clamp(raw.fontScale, 0.6, 2.3) : DEFAULT_STAGE_TIMER_LAYOUT.fontScale,
+    width: typeof raw.width === 'number' && Number.isFinite(raw.width) ? clamp(raw.width, 220, 1600) : DEFAULT_STAGE_TIMER_LAYOUT.width,
+    height: typeof raw.height === 'number' && Number.isFinite(raw.height) ? clamp(raw.height, 72, 900) : DEFAULT_STAGE_TIMER_LAYOUT.height,
+    fontScale: typeof raw.fontScale === 'number' && Number.isFinite(raw.fontScale) ? clamp(raw.fontScale, 0.6, 3.4) : DEFAULT_STAGE_TIMER_LAYOUT.fontScale,
     variant,
     locked: !!raw.locked,
   };
@@ -130,6 +227,46 @@ const normalizeConnectionTargetRoles = (value: unknown): ConnectionRole[] => {
     .filter((entry): entry is ConnectionRole => VALID_CONNECTION_ROLES.includes(entry as ConnectionRole));
   const deduped = Array.from(new Set(filtered));
   return deduped.length ? deduped : DEFAULT_CONNECTION_TARGET_ROLES;
+};
+
+const sanitizeSpeakerTimerPreset = (value: unknown): SpeakerTimerPreset | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  const id = typeof raw.id === 'string' && raw.id.trim() ? raw.id.trim() : `preset-${Date.now().toString(36)}`;
+  const name = typeof raw.name === 'string' && raw.name.trim() ? raw.name.trim() : 'Preset';
+  const durationSec = typeof raw.durationSec === 'number' && Number.isFinite(raw.durationSec)
+    ? clamp(Math.round(raw.durationSec), 10, 7200)
+    : 300;
+  const amberPercent = typeof raw.amberPercent === 'number' && Number.isFinite(raw.amberPercent)
+    ? clamp(Math.round(raw.amberPercent), 1, 99)
+    : 25;
+  const redPercent = typeof raw.redPercent === 'number' && Number.isFinite(raw.redPercent)
+    ? clamp(Math.round(raw.redPercent), 1, 99)
+    : 10;
+  const speakerName = typeof raw.speakerName === 'string' ? raw.speakerName.trim() : '';
+  return {
+    id,
+    name,
+    durationSec,
+    amberPercent,
+    redPercent,
+    autoStartNextDefault: !!raw.autoStartNextDefault,
+    speakerName: speakerName || undefined,
+  };
+};
+
+const sanitizeSpeakerTimerPresets = (value: unknown): SpeakerTimerPreset[] => {
+  if (!Array.isArray(value)) return DEFAULT_SPEAKER_TIMER_PRESETS;
+  const next: SpeakerTimerPreset[] = [];
+  const seen = new Set<string>();
+  value.forEach((entry) => {
+    const preset = sanitizeSpeakerTimerPreset(entry);
+    if (!preset) return;
+    if (seen.has(preset.id)) return;
+    seen.add(preset.id);
+    next.push(preset);
+  });
+  return next.length ? next : DEFAULT_SPEAKER_TIMER_PRESETS;
 };
 
 const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> => {
@@ -145,12 +282,18 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
   if (raw.stageProfile === 'classic' || raw.stageProfile === 'compact' || raw.stageProfile === 'high_contrast') {
     safe.stageProfile = raw.stageProfile;
   }
+  if (typeof raw.stageFlowLayout === 'string' && VALID_STAGE_FLOW_LAYOUTS.includes(raw.stageFlowLayout as WorkspaceSettings['stageFlowLayout'])) {
+    safe.stageFlowLayout = raw.stageFlowLayout as WorkspaceSettings['stageFlowLayout'];
+  }
   if (typeof raw.machineMode === 'boolean') safe.machineMode = raw.machineMode;
   if (raw.stageTimerLayout && typeof raw.stageTimerLayout === 'object') {
     safe.stageTimerLayout = normalizeStageTimerLayout(raw.stageTimerLayout);
   }
   if (Array.isArray(raw.connectionTargetRoles)) {
     safe.connectionTargetRoles = normalizeConnectionTargetRoles(raw.connectionTargetRoles);
+  }
+  if (Array.isArray(raw.speakerTimerPresets)) {
+    safe.speakerTimerPresets = sanitizeSpeakerTimerPresets(raw.speakerTimerPresets);
   }
   return safe;
 };
@@ -169,6 +312,12 @@ const DEFAULT_STAGE_ALERT: StageAlertState = {
   text: '',
   updatedAt: 0,
   author: null,
+};
+
+const DEFAULT_STAGE_MESSAGE_CENTER: StageMessageCenterState = {
+  queue: [],
+  activeMessageId: null,
+  lastSentAt: 0,
 };
 
 const sanitizeAudienceDisplayState = (value: unknown): AudienceDisplayState => {
@@ -204,6 +353,79 @@ const sanitizeStageAlertState = (value: unknown): StageAlertState => {
     text: typeof raw.text === 'string' ? raw.text : '',
     updatedAt: typeof raw.updatedAt === 'number' && Number.isFinite(raw.updatedAt) ? raw.updatedAt : 0,
     author: typeof raw.author === 'string' && raw.author.trim() ? raw.author.trim() : null,
+  };
+};
+
+const sanitizeStageMessage = (value: unknown): StageMessage | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  const text = typeof raw.text === 'string' ? raw.text.trim() : '';
+  if (!text) return null;
+  const category = VALID_STAGE_MESSAGE_CATEGORIES.includes(raw.category as StageMessageCategory)
+    ? raw.category as StageMessageCategory
+    : 'urgent';
+  const id = typeof raw.id === 'string' && raw.id.trim()
+    ? raw.id.trim()
+    : `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const priority = raw.priority === 'high' ? 'high' : 'normal';
+  const createdAt = typeof raw.createdAt === 'number' && Number.isFinite(raw.createdAt) ? raw.createdAt : Date.now();
+  const author = typeof raw.author === 'string' && raw.author.trim() ? raw.author.trim() : null;
+  const templateKey = typeof raw.templateKey === 'string' && raw.templateKey.trim() ? raw.templateKey.trim() : undefined;
+  return {
+    id,
+    category,
+    text,
+    priority,
+    target: 'stage_only',
+    createdAt,
+    author,
+    templateKey,
+  };
+};
+
+const sanitizeStageMessageCenterState = (value: unknown): StageMessageCenterState => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return DEFAULT_STAGE_MESSAGE_CENTER;
+  const raw = value as Record<string, unknown>;
+  const queue = Array.isArray(raw.queue)
+    ? raw.queue.map(sanitizeStageMessage).filter((entry): entry is StageMessage => !!entry)
+    : [];
+  const activeMessageIdRaw = typeof raw.activeMessageId === 'string' ? raw.activeMessageId.trim() : '';
+  const activeMessageId = activeMessageIdRaw && queue.some((entry) => entry.id === activeMessageIdRaw)
+    ? activeMessageIdRaw
+    : (queue[0]?.id || null);
+  const lastSentAt = typeof raw.lastSentAt === 'number' && Number.isFinite(raw.lastSentAt)
+    ? raw.lastSentAt
+    : (queue[0]?.createdAt || 0);
+  return {
+    queue,
+    activeMessageId,
+    lastSentAt,
+  };
+};
+
+const stageMessageFromLegacyAlert = (alert: StageAlertState): StageMessage | null => {
+  const text = String(alert?.text || '').trim();
+  if (!alert?.active || !text) return null;
+  return {
+    id: `legacy-${Math.max(1, Number(alert.updatedAt || Date.now()))}`,
+    category: 'urgent',
+    text,
+    priority: 'high',
+    target: 'stage_only',
+    createdAt: Number(alert.updatedAt || Date.now()),
+    author: alert.author || null,
+    templateKey: 'legacy',
+  };
+};
+
+const legacyAlertFromMessageCenter = (center: StageMessageCenterState): StageAlertState => {
+  const active = center.queue.find((entry) => entry.id === center.activeMessageId) || null;
+  if (!active) return { ...DEFAULT_STAGE_ALERT, updatedAt: Number(center.lastSentAt || Date.now()) };
+  return {
+    active: true,
+    text: active.text,
+    updatedAt: Number(active.createdAt || Date.now()),
+    author: active.author || null,
   };
 };
 
@@ -259,7 +481,7 @@ function App() {
     const hasSeen = localStorage.getItem('lumina_onboarding_v2.2.0');
     return !hasSeen;
   });
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'AUDIO' | 'BIBLE' | 'AUDIENCE'>('SCHEDULE');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES'>('SCHEDULE');
   const isSettingsHydratedRef = useRef(false);
 
   const parseJson = <T,>(raw: string | null, fallback: T): T => {
@@ -313,9 +535,11 @@ function App() {
     remoteAdminEmails: '',
     sessionId: 'live',
     stageProfile: 'classic',
+    stageFlowLayout: 'balanced',
     machineMode: false,
     stageTimerLayout: DEFAULT_STAGE_TIMER_LAYOUT,
     connectionTargetRoles: DEFAULT_CONNECTION_TARGET_ROLES,
+    speakerTimerPresets: DEFAULT_SPEAKER_TIMER_PRESETS,
   });
   const allowedAdminEmails = useMemo(() => {
     const raw = workspaceSettings.remoteAdminEmails || '';
@@ -416,8 +640,88 @@ function App() {
   });
   const [stageAlert, setStageAlert] = useState<StageAlertState>(() => {
     const saved = initialSavedState;
-    return sanitizeStageAlertState(saved?.stageAlert);
+    const direct = sanitizeStageAlertState(saved?.stageAlert);
+    if (direct.active && direct.text.trim()) return direct;
+    const center = sanitizeStageMessageCenterState(saved?.stageMessageCenter);
+    return legacyAlertFromMessageCenter(center);
   });
+  const [stageMessageCenter, setStageMessageCenter] = useState<StageMessageCenterState>(() => {
+    const saved = initialSavedState;
+    const center = sanitizeStageMessageCenterState(saved?.stageMessageCenter);
+    if (center.queue.length > 0) return center;
+    const legacy = stageMessageFromLegacyAlert(sanitizeStageAlertState(saved?.stageAlert));
+    if (!legacy) return center;
+    return {
+      queue: [legacy],
+      activeMessageId: legacy.id,
+      lastSentAt: legacy.createdAt,
+    };
+  });
+  const [runSheetFiles, setRunSheetFiles] = useState<RunSheetFileRecord[]>([]);
+  const [runSheetFilesLoading, setRunSheetFilesLoading] = useState(false);
+  const [runSheetFilesError, setRunSheetFilesError] = useState<string | null>(null);
+  const [runSheetFileQuery, setRunSheetFileQuery] = useState('');
+  const [runSheetArchiveTitle, setRunSheetArchiveTitle] = useState('');
+  const [selectedSpeakerPresetId, setSelectedSpeakerPresetId] = useState('');
+  const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
+  const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
+  const [presetDraft, setPresetDraft] = useState<SpeakerTimerPreset>(() => createSpeakerPresetDraft());
+  const presenterControlsRef = useRef<HTMLDivElement | null>(null);
+  const [presenterControlsHasOverflow, setPresenterControlsHasOverflow] = useState(false);
+  const [presenterControlsCanScrollLeft, setPresenterControlsCanScrollLeft] = useState(false);
+  const [presenterControlsCanScrollRight, setPresenterControlsCanScrollRight] = useState(false);
+  const [presenterControlsScrollPercent, setPresenterControlsScrollPercent] = useState(0);
+  const [presenterControlsShowHint, setPresenterControlsShowHint] = useState(false);
+  const [isPresenterControlsHelpOpen, setIsPresenterControlsHelpOpen] = useState(false);
+
+  const updatePresenterControlsScrollState = useCallback(() => {
+    const node = presenterControlsRef.current;
+    if (!node) {
+      setPresenterControlsHasOverflow(false);
+      setPresenterControlsCanScrollLeft(false);
+      setPresenterControlsCanScrollRight(false);
+      setPresenterControlsScrollPercent(0);
+      return;
+    }
+    const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
+    const hasOverflow = maxScrollLeft > 8;
+    const clampedLeft = clamp(node.scrollLeft, 0, maxScrollLeft);
+    const percent = hasOverflow && maxScrollLeft > 0 ? (clampedLeft / maxScrollLeft) * 100 : 0;
+    setPresenterControlsHasOverflow(hasOverflow);
+    setPresenterControlsCanScrollLeft(hasOverflow && clampedLeft > 4);
+    setPresenterControlsCanScrollRight(hasOverflow && clampedLeft < maxScrollLeft - 4);
+    setPresenterControlsScrollPercent(percent);
+  }, []);
+
+  const markPresenterControlsHintSeen = useCallback(() => {
+    try {
+      localStorage.setItem(PRESENTER_TOOLBAR_HINT_KEY, '1');
+    } catch {}
+  }, []);
+
+  const dismissPresenterControlsHint = useCallback(() => {
+    setPresenterControlsShowHint(false);
+    markPresenterControlsHintSeen();
+  }, [markPresenterControlsHintSeen]);
+
+  const openPresenterControlsHelp = useCallback(() => {
+    setIsPresenterControlsHelpOpen(true);
+    dismissPresenterControlsHint();
+  }, [dismissPresenterControlsHint]);
+
+  const scrollPresenterControlsBy = useCallback((delta: number) => {
+    const node = presenterControlsRef.current;
+    if (!node) return;
+    node.scrollBy({ left: delta, behavior: 'smooth' });
+  }, []);
+
+  const handlePresenterControlsSliderChange = useCallback((value: number) => {
+    const node = presenterControlsRef.current;
+    if (!node) return;
+    const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
+    node.scrollTo({ left: (maxScrollLeft * clamp(value, 0, 100)) / 100, behavior: 'auto' });
+    updatePresenterControlsScrollState();
+  }, [updatePresenterControlsScrollState]);
 
   // Handle Auto-Rotate Logic
   useEffect(() => {
@@ -448,22 +752,120 @@ function App() {
       return next;
     });
   };
-  const handleSendStageAlert = (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-    setStageAlert({
-      active: true,
-      text: trimmed,
-      updatedAt: Date.now(),
+  const nextStageMessageId = () => `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const handleQueueStageMessage = (input: {
+    text: string;
+    category: StageMessageCategory;
+    priority?: 'normal' | 'high';
+    templateKey?: string;
+  }) => {
+    const text = String(input.text || '').trim();
+    if (!text) return;
+    const createdAt = Date.now();
+    const message: StageMessage = {
+      id: nextStageMessageId(),
+      category: input.category,
+      text,
+      priority: input.priority === 'high' ? 'high' : 'normal',
+      target: 'stage_only',
+      createdAt,
       author: String(user?.email || user?.uid || '').trim() || null,
+      templateKey: input.templateKey,
+    };
+    setStageMessageCenter((prev) => {
+      const queue = [...prev.queue, message];
+      return {
+        queue,
+        activeMessageId: prev.activeMessageId || message.id,
+        lastSentAt: createdAt,
+      };
+    });
+  };
+  const handlePromoteStageMessage = (messageId: string) => {
+    setStageMessageCenter((prev) => {
+      if (!prev.queue.some((entry) => entry.id === messageId)) return prev;
+      return {
+        ...prev,
+        activeMessageId: messageId,
+        lastSentAt: Date.now(),
+      };
+    });
+  };
+  const handleRemoveQueuedStageMessage = (messageId: string) => {
+    setStageMessageCenter((prev) => {
+      const queue = prev.queue.filter((entry) => entry.id !== messageId);
+      const activeMessageId = prev.activeMessageId === messageId
+        ? (queue[0]?.id || null)
+        : prev.activeMessageId;
+      return {
+        ...prev,
+        queue,
+        activeMessageId,
+      };
     });
   };
   const handleClearStageAlert = () => {
-    setStageAlert({
-      ...DEFAULT_STAGE_ALERT,
-      updatedAt: Date.now(),
+    setStageMessageCenter((prev) => ({
+      ...prev,
+      activeMessageId: null,
+      lastSentAt: Date.now(),
+    }));
+  };
+  const handleSendStageMessageNow = (input: {
+    text: string;
+    category: StageMessageCategory;
+    priority?: 'normal' | 'high';
+    templateKey?: string;
+  }) => {
+    const trimmed = String(input.text || '').trim();
+    if (!trimmed) return;
+    const now = Date.now();
+    const message: StageMessage = {
+      id: nextStageMessageId(),
+      category: input.category,
+      text: trimmed,
+      priority: input.priority === 'high' ? 'high' : 'normal',
+      target: 'stage_only',
+      createdAt: now,
+      author: String(user?.email || user?.uid || '').trim() || null,
+      templateKey: input.templateKey,
+    };
+    setStageMessageCenter((prev) => ({
+      queue: [message, ...prev.queue.filter((entry) => entry.id !== message.id)],
+      activeMessageId: message.id,
+      lastSentAt: now,
+    }));
+  };
+  const handleSendStageAlert = (text: string) => {
+    handleSendStageMessageNow({
+      text,
+      category: 'urgent',
+      priority: 'high',
+      templateKey: 'legacy',
     });
   };
+  useEffect(() => {
+    setStageAlert(legacyAlertFromMessageCenter(stageMessageCenter));
+  }, [stageMessageCenter]);
+  useEffect(() => {
+    const presets = workspaceSettings.speakerTimerPresets || [];
+    if (!presets.length) {
+      setSelectedSpeakerPresetId('');
+      return;
+    }
+    if (!selectedSpeakerPresetId || !presets.some((entry) => entry.id === selectedSpeakerPresetId)) {
+      setSelectedSpeakerPresetId(presets[0].id);
+    }
+  }, [workspaceSettings.speakerTimerPresets, selectedSpeakerPresetId]);
+
+  const filteredRunSheetFiles = useMemo(() => {
+    const query = runSheetFileQuery.trim().toLowerCase();
+    if (!query) return runSheetFiles;
+    return runSheetFiles.filter((entry) => {
+      return entry.title.toLowerCase().includes(query)
+        || String(entry.createdByEmail || '').toLowerCase().includes(query);
+    });
+  }, [runSheetFiles, runSheetFileQuery]);
   const [timerRunning, setTimerRunning] = useState(false);
   const [isConnectOpen, setIsConnectOpen] = useState(false);
 
@@ -690,6 +1092,42 @@ function App() {
     }
   }, [user?.uid, user, workspaceId, liveSessionId, enqueueLiveState, applySyncBackoff, resetSyncBackoff, buildSyncPausedMessage]);
 
+  const refreshRunSheetFiles = useCallback(async () => {
+    if (!workspaceId) {
+      setRunSheetFiles([]);
+      return;
+    }
+    setRunSheetFilesLoading(true);
+    setRunSheetFilesError(null);
+    try {
+      const response = user?.uid ? await fetchRunSheetFiles(workspaceId, user) : null;
+      if (response?.ok && Array.isArray(response.files)) {
+        const next = response.files as RunSheetFileRecord[];
+        setRunSheetFiles(next);
+        writeLocalRunSheetFiles(workspaceId, next);
+      } else {
+        const localFiles = readLocalRunSheetFiles(workspaceId);
+        setRunSheetFiles(localFiles);
+        if (!localFiles.length && user?.uid) {
+          setRunSheetFilesError(`Archive API unavailable at ${getServerApiBaseUrl()} (server offline or auth missing). Using local backup.`);
+        }
+      }
+    } catch (error) {
+      const localFiles = readLocalRunSheetFiles(workspaceId);
+      setRunSheetFiles(localFiles);
+      setRunSheetFilesError(localFiles.length
+        ? `Loaded local archive backup (API unavailable at ${getServerApiBaseUrl()}).`
+        : `Unable to load archived run sheets from ${getServerApiBaseUrl()}. Start/restart API server.`);
+      reportSyncFailure('runsheet-files-list', error);
+    } finally {
+      setRunSheetFilesLoading(false);
+    }
+  }, [workspaceId, user, user?.uid, reportSyncFailure]);
+
+  useEffect(() => {
+    refreshRunSheetFiles();
+  }, [refreshRunSheetFiles]);
+
   // --- SESSION PERSISTENCE LOGIC ---
   useEffect(() => {
     if (isFirebaseConfigured() && auth) {
@@ -756,6 +1194,23 @@ function App() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!workspaceId) return;
+    try {
+      const scopedSettings = localStorage.getItem(getWorkspaceSettingsKey(workspaceId));
+      if (scopedSettings) {
+        const parsed = sanitizeWorkspaceSettings(JSON.parse(scopedSettings));
+        setWorkspaceSettings((prev) => ({ ...prev, ...parsed }));
+      }
+      const scopedUpdatedAt = Number(localStorage.getItem(getWorkspaceSettingsUpdatedAtKey(workspaceId)) || '0');
+      if (Number.isFinite(scopedUpdatedAt) && scopedUpdatedAt > workspaceSettingsUpdatedAtRef.current) {
+        workspaceSettingsUpdatedAtRef.current = scopedUpdatedAt;
+      }
+    } catch (error) {
+      console.warn('Failed to load workspace-scoped settings cache', error);
+    }
+  }, [workspaceId]);
+
   // 2. Load from server on login.
   // Only apply server settings when server payload is at least as fresh as local cache.
   useEffect(() => {
@@ -779,6 +1234,8 @@ function App() {
             const merged = { ...prev, ...serverSettings };
             localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
             localStorage.setItem(SETTINGS_UPDATED_AT_KEY, String(serverUpdatedAt || Date.now()));
+            localStorage.setItem(getWorkspaceSettingsKey(workspaceId), JSON.stringify(merged));
+            localStorage.setItem(getWorkspaceSettingsUpdatedAtKey(workspaceId), String(serverUpdatedAt || Date.now()));
             workspaceSettingsUpdatedAtRef.current = serverUpdatedAt || Date.now();
             isSettingsHydratedRef.current = true;
             return merged;
@@ -810,6 +1267,8 @@ function App() {
       try {
         localStorage.setItem(SETTINGS_KEY, JSON.stringify(workspaceSettings));
         localStorage.setItem(SETTINGS_UPDATED_AT_KEY, String(updatedAt));
+        localStorage.setItem(getWorkspaceSettingsKey(workspaceId), JSON.stringify(workspaceSettings));
+        localStorage.setItem(getWorkspaceSettingsUpdatedAtKey(workspaceId), String(updatedAt));
       } catch (e) {
         setSaveError(true);
       }
@@ -818,8 +1277,20 @@ function App() {
       if (user?.uid && !isRecentServerLoad && isSettingsHydratedRef.current) {
         try {
           const result = await saveWorkspaceSettings(workspaceId, user, workspaceSettings);
-          workspaceSettingsUpdatedAtRef.current = Number(result?.updatedAt || updatedAt);
-          setSyncIssue((prev) => (prev && prev.startsWith('Settings sync failed') ? null : prev));
+          if (result?.ok) {
+            const remoteUpdatedAt = Number(result.updatedAt || updatedAt);
+            workspaceSettingsUpdatedAtRef.current = remoteUpdatedAt;
+            try {
+              localStorage.setItem(getWorkspaceSettingsUpdatedAtKey(workspaceId), String(remoteUpdatedAt));
+              localStorage.setItem(SETTINGS_UPDATED_AT_KEY, String(remoteUpdatedAt));
+            } catch {
+              // ignore local metadata write error
+            }
+            setSyncIssue((prev) => (prev && prev.startsWith('Settings sync failed') ? null : prev));
+          } else {
+            const reason = extractApiFailureMessage(result, `Settings sync failed at ${getServerApiBaseUrl()}`);
+            setSyncIssue(`${reason} (local values preserved).`);
+          }
         } catch (err) {
           console.warn('Server settings sync failed', err);
           setSyncIssue('Settings sync failed (local values preserved). Retry by clicking Synchronize Workspace.');
@@ -859,13 +1330,27 @@ function App() {
       if (typeof payload.activeSlideIndex === 'number') {
         setActiveSlideIndex(payload.activeSlideIndex);
       }
+      if (payload.stageMessageCenter && typeof payload.stageMessageCenter === 'object') {
+        const incomingCenter = sanitizeStageMessageCenterState(payload.stageMessageCenter);
+        if (incomingCenter.queue.length || incomingCenter.activeMessageId || incomingCenter.lastSentAt) {
+          setStageMessageCenter(incomingCenter);
+        }
+      } else if (payload.stageAlert && typeof payload.stageAlert === 'object') {
+        const legacy = stageMessageFromLegacyAlert(sanitizeStageAlertState(payload.stageAlert));
+        if (legacy) {
+          setStageMessageCenter({
+            queue: [legacy],
+            activeMessageId: legacy.id,
+            lastSentAt: legacy.createdAt,
+          });
+        }
+      }
       if (payload.workspaceSettings && typeof payload.workspaceSettings === 'object') {
         const snapshotSettingsUpdatedAt = typeof payload.workspaceSettingsUpdatedAt === 'number'
           ? payload.workspaceSettingsUpdatedAt
           : 0;
-        if (!snapshotSettingsUpdatedAt) return;
         const localSettingsUpdatedAt = workspaceSettingsUpdatedAtRef.current;
-        if (snapshotSettingsUpdatedAt >= localSettingsUpdatedAt) {
+        if (snapshotSettingsUpdatedAt && snapshotSettingsUpdatedAt >= localSettingsUpdatedAt) {
           const snapshotSettings = sanitizeWorkspaceSettings(payload.workspaceSettings);
           if (Object.keys(snapshotSettings).length > 0) {
             workspaceSettingsUpdatedAtRef.current = snapshotSettingsUpdatedAt;
@@ -916,6 +1401,12 @@ function App() {
       antiSleepAudioRef.current.pause();
     }
   }, [viewMode]);
+
+  useEffect(() => {
+    if (viewMode === 'PRESENTER' && activeSidebarTab !== 'SCHEDULE') {
+      setActiveSidebarTab('SCHEDULE');
+    }
+  }, [viewMode, activeSidebarTab]);
 
   // --- AUDIO PLAYER EFFECT ---
   useEffect(() => {
@@ -1025,6 +1516,7 @@ function App() {
         currentCueItemId,
         audienceDisplay,
         stageAlert,
+        stageMessageCenter,
         workspaceSettings,
         updatedAt: Date.now(),
       };
@@ -1036,7 +1528,7 @@ function App() {
       }
     }, 180);
     return () => window.clearTimeout(id);
-  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, stageAlert, workspaceSettings, user]);
+  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, stageAlert, stageMessageCenter, workspaceSettings, user]);
 
 
 
@@ -1048,6 +1540,8 @@ function App() {
       scheduleSnapshot: schedule,
       workspaceSettings,
       workspaceSettingsUpdatedAt: settingsUpdatedAt,
+      stageMessageCenter,
+      stageAlert: legacyAlertFromMessageCenter(stageMessageCenter),
       controllerOwnerUid: user.uid,
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
@@ -1062,6 +1556,7 @@ function App() {
           activeSlideIndex,
           workspaceSettings,
           workspaceSettingsUpdatedAt: settingsUpdatedAt,
+          stageMessageCenter,
           updatedAt,
         });
         await saveWorkspaceSnapshot(workspaceId, user, {
@@ -1071,6 +1566,7 @@ function App() {
           activeSlideIndex,
           workspaceSettings,
           workspaceSettingsUpdatedAt: settingsUpdatedAt,
+          stageMessageCenter,
           updatedAt,
         });
       } catch (error) {
@@ -1083,6 +1579,7 @@ function App() {
     activeItemId,
     activeSlideIndex,
     workspaceSettings,
+    stageMessageCenter,
     user?.uid,
     user?.email,
     allowedAdminEmails,
@@ -1174,6 +1671,36 @@ function App() {
   const currentCueAmberPercent = currentCue?.cue.amberPercent || 25;
   const currentCueRedPercent = currentCue?.cue.redPercent || 10;
   const effectiveTimerDurationSec = timerMode === 'COUNTDOWN' ? currentCueDurationSec : Math.max(1, timerDurationMin * 60);
+  const applyManualCountdownMinutes = (nextMinutesRaw: number) => {
+    const nextMinutes = Math.max(1, Math.min(180, Number(nextMinutesRaw) || 1));
+    const nextDurationSec = nextMinutes * 60;
+    setTimerDurationMin(nextMinutes);
+    setCueZeroHold(false);
+    if (currentCueItemId) {
+      setSchedule((prev) => prev.map((item) => {
+        if (item.id !== currentCueItemId) return item;
+        const existingCue = item.timerCue || {
+          enabled: true,
+          durationSec: nextDurationSec,
+          speakerName: '',
+          autoStartNext: false,
+          amberPercent: 25,
+          redPercent: 10,
+        };
+        return {
+          ...item,
+          timerCue: {
+            ...existingCue,
+            enabled: existingCue.enabled ?? true,
+            durationSec: nextDurationSec,
+          },
+        };
+      }));
+    }
+    if (!timerRunning) {
+      setTimerSeconds(nextDurationSec);
+    }
+  };
   const formatTimer = (total: number) => {
     const negative = total < 0;
     const abs = Math.abs(total);
@@ -1366,6 +1893,396 @@ function App() {
     setActiveItemId(null);
     setActiveSlideIndex(-1);
     setIsTemplateOpen(false);
+  };
+
+  const getRunSheetLocalStorageKey = (workspace: string) => `${RUNSHEET_FILES_LOCAL_KEY_PREFIX}:${workspace || 'default-workspace'}`;
+
+  const readLocalRunSheetFiles = (workspace: string): RunSheetFileRecord[] => {
+    try {
+      const key = getRunSheetLocalStorageKey(workspace);
+      const parsed = parseJson<RunSheetFileRecord[]>(localStorage.getItem(key), []);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter((entry) => entry && typeof entry === 'object' && typeof entry.fileId === 'string')
+        .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+    } catch {
+      return [];
+    }
+  };
+
+  const writeLocalRunSheetFiles = (workspace: string, files: RunSheetFileRecord[]) => {
+    try {
+      const key = getRunSheetLocalStorageKey(workspace);
+      const normalized = [...files].sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+      localStorage.setItem(key, JSON.stringify(normalized));
+    } catch {
+      // best effort local persistence
+    }
+  };
+
+  const extractApiFailureMessage = (response: any, fallback: string) => {
+    if (!response || typeof response !== 'object') return fallback;
+    const status = Number(response.status || 0);
+    const code = String(response.error || '').toUpperCase();
+    if (status === 401 || code === 'AUTH_REQUIRED') {
+      return `Archive API rejected auth for workspace "${workspaceId}". Sign in again, then retry.`;
+    }
+    if (status === 403 || code === 'FORBIDDEN') {
+      return `Signed in, but API denied workspace write for "${workspaceId}". Check owner/admin allowlist.`;
+    }
+    if (status === 404) {
+      return `Archive endpoint not found on API ${getServerApiBaseUrl()}. Deploy latest backend.`;
+    }
+    const message = String(response.message || '').trim();
+    if (message) return `${fallback} (${message})`;
+    return fallback;
+  };
+
+  const makeRunSheetFileId = () => `runsheet-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+  const createLocalRunSheetFileRecord = (
+    title: string,
+    payload: { items: ServiceItem[]; selectedItemId?: string | null }
+  ): RunSheetFileRecord => {
+    const createdAt = Date.now();
+    const safeTitle = String(title || '').trim() || `Run Sheet ${new Date(createdAt).toLocaleString()}`;
+    const items = Array.isArray(payload.items) ? cloneSchedule(payload.items) : [];
+    return {
+      fileId: makeRunSheetFileId(),
+      title: safeTitle,
+      payload: {
+        items,
+        selectedItemId: typeof payload.selectedItemId === 'string' ? payload.selectedItemId : null,
+      },
+      createdByUid: String(user?.uid || '').trim() || null,
+      createdByEmail: String(user?.email || '').trim() || null,
+      createdAt,
+      updatedAt: createdAt,
+      lastUsedAt: null,
+    };
+  };
+
+  const upsertRunSheetFileState = (file: RunSheetFileRecord) => {
+    setRunSheetFiles((prev) => {
+      const next = [file, ...prev.filter((entry) => entry.fileId !== file.fileId)];
+      writeLocalRunSheetFiles(workspaceId, next);
+      return next;
+    });
+  };
+
+  const removeRunSheetFileState = (fileId: string) => {
+    setRunSheetFiles((prev) => {
+      const next = prev.filter((entry) => entry.fileId !== fileId);
+      writeLocalRunSheetFiles(workspaceId, next);
+      return next;
+    });
+  };
+
+  const archiveRunSheetPayload = async (
+    title: string,
+    payload: { items: ServiceItem[]; selectedItemId?: string | null }
+  ): Promise<{ ok: boolean; file?: RunSheetFileRecord; source: 'server' | 'local' | 'none'; reason?: string }> => {
+    const safePayload = {
+      items: Array.isArray(payload.items) ? cloneSchedule(payload.items) : [],
+      selectedItemId: typeof payload.selectedItemId === 'string' ? payload.selectedItemId : null,
+    };
+    if (!safePayload.items.length) {
+      return { ok: false, source: 'none' };
+    }
+
+    let apiFailureReason: string | undefined;
+    try {
+      if (user?.uid) {
+        const response = await archiveRunSheetFile(workspaceId, user, { title, payload: safePayload });
+        if (response?.ok && response.file) {
+          const file = response.file as RunSheetFileRecord;
+          upsertRunSheetFileState(file);
+          return { ok: true, source: 'server', file };
+        }
+        if (response && !response.ok) {
+          apiFailureReason = extractApiFailureMessage(response, `Archive API failed at ${getServerApiBaseUrl()}`);
+        }
+      }
+    } catch (error) {
+      reportSyncFailure('runsheet-archive-create', error, { title });
+    }
+
+    const localFile = createLocalRunSheetFileRecord(title, safePayload);
+    upsertRunSheetFileState(localFile);
+    return { ok: true, source: 'local', file: localFile, reason: apiFailureReason };
+  };
+
+  const applyIncomingRunSheetPayload = (
+    payload: { items: ServiceItem[]; selectedItemId?: string | null },
+    mode: 'replace' | 'duplicate'
+  ) => {
+    const incomingItems = Array.isArray(payload.items) ? cloneSchedule(payload.items) : [];
+    if (!incomingItems.length) return false;
+
+    pushHistory();
+    if (mode === 'replace') {
+      setSchedule(incomingItems);
+      const nextSelected = typeof payload.selectedItemId === 'string'
+        && incomingItems.some((entry) => entry.id === payload.selectedItemId)
+        ? payload.selectedItemId
+        : incomingItems[0]?.id || '';
+      setSelectedItemId(nextSelected);
+    } else {
+      setSchedule((prev) => [
+        ...prev,
+        ...incomingItems.map((item) => ({ ...item, id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}-${item.id}` })),
+      ]);
+    }
+    setActiveItemId(null);
+    setActiveSlideIndex(-1);
+    return true;
+  };
+
+  const handleArchiveRunSheet = async (startNewAfterArchive = false) => {
+    const title = runSheetArchiveTitle.trim() || `Run Sheet ${new Date().toLocaleString()}`;
+    const result = await archiveRunSheetPayload(title, {
+      items: schedule,
+      selectedItemId,
+    });
+    if (!result.ok) {
+      setRunSheetFilesError('Cannot archive an empty run sheet.');
+      return;
+    }
+    setRunSheetArchiveTitle('');
+    setRunSheetFilesError(result.source === 'local'
+      ? (result.reason || `Saved in local archive backup (API unavailable at ${getServerApiBaseUrl()} or not signed in).`)
+      : null);
+    if (startNewAfterArchive) {
+      const fresh = buildTemplate('CLASSIC');
+      pushHistory();
+      setSchedule(fresh);
+      setSelectedItemId(fresh[0]?.id || '');
+      setActiveItemId(null);
+      setActiveSlideIndex(-1);
+      setActiveSidebarTab('SCHEDULE');
+    }
+  };
+
+  const handleArchiveSingleRunSheetItem = async (itemId: string) => {
+    const item = schedule.find((entry) => entry.id === itemId);
+    if (!item) return;
+    const confirmed = window.confirm(`Move "${item.title}" to Run Sheet Files? It will be removed from the active run sheet.`);
+    if (!confirmed) return;
+
+    const title = `${item.title} • ${new Date().toLocaleString()}`;
+    const result = await archiveRunSheetPayload(title, {
+      items: [item],
+      selectedItemId: item.id,
+    });
+    if (!result.ok) {
+      setRunSheetFilesError('Move failed. Please try again.');
+      return;
+    }
+
+    const nextSchedule = schedule.filter((entry) => entry.id !== itemId);
+    pushHistory();
+    setSchedule(nextSchedule);
+    if (selectedItemId === itemId) {
+      setSelectedItemId(nextSchedule[0]?.id || '');
+    }
+    if (activeItemId === itemId) {
+      setActiveItemId(null);
+      setActiveSlideIndex(-1);
+    }
+    setRunSheetFilesError(result.source === 'local'
+      ? (result.reason || `Moved to local archive backup (API unavailable at ${getServerApiBaseUrl()} or not signed in).`)
+      : null);
+    setActiveSidebarTab('FILES');
+  };
+
+  const handleReuseRunSheet = async (fileId: string, mode: 'replace' | 'duplicate' = 'replace') => {
+    let source: 'server' | 'local' = 'local';
+    try {
+      if (user?.uid) {
+        const response = await reuseRunSheetFile(workspaceId, fileId, user);
+        if (response?.ok && response.payload && Array.isArray(response.payload.items)) {
+          const applied = applyIncomingRunSheetPayload(response.payload as { items: ServiceItem[]; selectedItemId?: string | null }, mode);
+          if (!applied) {
+            setRunSheetFilesError('Selected archive file has no items.');
+            return;
+          }
+          if (response.file) {
+            upsertRunSheetFileState(response.file as RunSheetFileRecord);
+          }
+          setRunSheetFilesError(null);
+          return;
+        }
+        if (response && !response.ok) {
+          setRunSheetFilesError(extractApiFailureMessage(response, `Reuse API failed at ${getServerApiBaseUrl()}`));
+        }
+      }
+    } catch (error) {
+      source = 'local';
+      reportSyncFailure('runsheet-archive-reuse', error, { fileId, mode });
+    }
+
+    const localFile = runSheetFiles.find((entry) => entry.fileId === fileId)
+      || readLocalRunSheetFiles(workspaceId).find((entry) => entry.fileId === fileId);
+    if (!localFile?.payload || !Array.isArray(localFile.payload.items)) {
+      setRunSheetFilesError('Archive file not found locally.');
+      return;
+    }
+
+    const applied = applyIncomingRunSheetPayload(localFile.payload, mode);
+    if (!applied) {
+      setRunSheetFilesError('Selected archive file has no items.');
+      return;
+    }
+
+    const touchedAt = Date.now();
+    const touchedFile: RunSheetFileRecord = {
+      ...localFile,
+      updatedAt: touchedAt,
+      lastUsedAt: touchedAt,
+    };
+    upsertRunSheetFileState(touchedFile);
+    setRunSheetFilesError(source === 'local'
+      ? 'Reused local archive backup (API unavailable or not signed in).'
+      : null);
+  };
+
+  const handleRenameRunSheet = async (fileId: string) => {
+    const existing = runSheetFiles.find((entry) => entry.fileId === fileId);
+    const nextTitle = window.prompt('Rename run sheet', existing?.title || '');
+    const trimmed = String(nextTitle || '').trim();
+    if (!trimmed) return;
+    try {
+      if (user?.uid) {
+        const response = await renameRunSheetFile(workspaceId, fileId, trimmed, user);
+        if (response?.ok && response.file) {
+          upsertRunSheetFileState(response.file as RunSheetFileRecord);
+          setRunSheetFilesError(null);
+          return;
+        }
+        if (response && !response.ok) {
+          setRunSheetFilesError(extractApiFailureMessage(response, `Rename API failed at ${getServerApiBaseUrl()}`));
+        }
+      }
+    } catch (error) {
+      reportSyncFailure('runsheet-archive-rename', error, { fileId });
+    }
+
+    let changed = false;
+    setRunSheetFiles((prev) => {
+      const updatedAt = Date.now();
+      const next = prev.map((entry) => {
+        if (entry.fileId !== fileId) return entry;
+        changed = true;
+        return { ...entry, title: trimmed, updatedAt };
+      });
+      if (changed) writeLocalRunSheetFiles(workspaceId, next);
+      return next;
+    });
+    setRunSheetFilesError(changed
+      ? 'Renamed in local archive backup (API unavailable or not signed in).'
+      : 'Unable to rename archive file.');
+  };
+
+  const handleDeleteRunSheet = async (fileId: string) => {
+    if (!window.confirm('Delete this archived run sheet?')) return;
+    try {
+      if (user?.uid) {
+        const response = await deleteRunSheetFile(workspaceId, fileId, user);
+        if (response?.ok) {
+          removeRunSheetFileState(fileId);
+          setRunSheetFilesError(null);
+          return;
+        }
+        if (response && !response.ok) {
+          setRunSheetFilesError(extractApiFailureMessage(response, `Delete API failed at ${getServerApiBaseUrl()}`));
+        }
+      }
+    } catch (error) {
+      reportSyncFailure('runsheet-archive-delete', error, { fileId });
+    }
+    removeRunSheetFileState(fileId);
+    setRunSheetFilesError('Deleted from local archive backup (API unavailable or not signed in).');
+  };
+
+  const openCreatePresetModal = () => {
+    setEditingPresetId(null);
+    setPresetDraft(createSpeakerPresetDraft());
+    setIsPresetModalOpen(true);
+  };
+
+  const openEditPresetModal = (preset: SpeakerTimerPreset) => {
+    setEditingPresetId(preset.id);
+    setPresetDraft({
+      ...preset,
+      speakerName: preset.speakerName || '',
+    });
+    setIsPresetModalOpen(true);
+  };
+
+  const savePresetDraft = () => {
+    const normalized = sanitizeSpeakerTimerPreset(presetDraft);
+    if (!normalized) return;
+    setWorkspaceSettings((prev) => {
+      const existing = Array.isArray(prev.speakerTimerPresets) ? prev.speakerTimerPresets : [];
+      if (editingPresetId) {
+        return {
+          ...prev,
+          speakerTimerPresets: existing.map((entry) => (
+            entry.id === editingPresetId ? { ...normalized, id: editingPresetId } : entry
+          )),
+        };
+      }
+      return {
+        ...prev,
+        speakerTimerPresets: [...existing, normalized],
+      };
+    });
+    setIsPresetModalOpen(false);
+  };
+
+  const deleteSpeakerPreset = (presetId: string) => {
+    if (!window.confirm('Delete this speaker preset?')) return;
+    setWorkspaceSettings((prev) => {
+      const existing = Array.isArray(prev.speakerTimerPresets) ? prev.speakerTimerPresets : [];
+      const next = existing.filter((entry) => entry.id !== presetId);
+      return {
+        ...prev,
+        speakerTimerPresets: next.length ? next : DEFAULT_SPEAKER_TIMER_PRESETS,
+      };
+    });
+  };
+
+  const applySpeakerPresetToItem = (itemId: string, presetId: string) => {
+    const preset = (workspaceSettings.speakerTimerPresets || []).find((entry) => entry.id === presetId);
+    if (!preset || !itemId) return;
+    setSchedule((prev) => prev.map((item) => {
+      if (item.id !== itemId) return item;
+      return {
+        ...item,
+        timerCue: {
+          ...(item.timerCue || {}),
+          enabled: true,
+          durationSec: Math.max(1, Math.round(preset.durationSec)),
+          speakerName: preset.speakerName || item.timerCue?.speakerName || '',
+          autoStartNext: !!preset.autoStartNextDefault,
+          amberPercent: clamp(preset.amberPercent, 1, 99),
+          redPercent: clamp(preset.redPercent, 1, 99),
+          presetId: preset.id,
+        },
+      };
+    }));
+    if (currentCueItemId === itemId && !timerRunning) {
+      setTimerMode('COUNTDOWN');
+      setTimerDurationMin(Math.max(1, Math.ceil(preset.durationSec / 60)));
+      setTimerSeconds(Math.max(1, Math.round(preset.durationSec)));
+      setCueZeroHold(false);
+    }
+  };
+
+  const applySelectedPresetToCurrentCue = () => {
+    const targetItemId = currentCueItemId || selectedItemId;
+    if (!targetItemId || !selectedSpeakerPresetId) return;
+    applySpeakerPresetToItem(targetItemId, selectedSpeakerPresetId);
   };
 
   const importLyricsAsItem = () => {
@@ -1930,6 +2847,22 @@ function App() {
             }
           }
 
+          if (preferred.stageMessageCenter && typeof preferred.stageMessageCenter === 'object') {
+            const cloudCenter = sanitizeStageMessageCenterState(preferred.stageMessageCenter);
+            if (cloudCenter.queue.length || cloudCenter.activeMessageId || cloudCenter.lastSentAt) {
+              setStageMessageCenter(cloudCenter);
+            }
+          } else if (preferred.stageAlert && typeof preferred.stageAlert === 'object') {
+            const legacy = stageMessageFromLegacyAlert(sanitizeStageAlertState(preferred.stageAlert));
+            if (legacy) {
+              setStageMessageCenter({
+                queue: [legacy],
+                activeMessageId: legacy.id,
+                lastSentAt: legacy.createdAt,
+              });
+            }
+          }
+
           const cloudSettings = sanitizeWorkspaceSettings(preferred.workspaceSettings);
           const cloudSettingsUpdatedAt = typeof preferred.workspaceSettingsUpdatedAt === 'number'
             ? preferred.workspaceSettingsUpdatedAt
@@ -2049,14 +2982,15 @@ function App() {
       timerCueRedPercent: currentCueRedPercent,
       currentCueItemId,
       audienceDisplay,
-      stageAlert,
+      stageMessageCenter,
+      stageAlert: legacyAlertFromMessageCenter(stageMessageCenter),
       workspaceSettings,
       workspaceSettingsUpdatedAt: workspaceSettingsUpdatedAtRef.current || Date.now(),
       controllerOwnerUid: user.uid,
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
-  }, [activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerSeconds, effectiveTimerDurationSec, currentCueSpeaker, currentCueAmberPercent, currentCueRedPercent, currentCueItemId, audienceDisplay, stageAlert, workspaceSettings, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
+  }, [activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerSeconds, effectiveTimerDurationSec, currentCueSpeaker, currentCueAmberPercent, currentCueRedPercent, currentCueItemId, audienceDisplay, stageMessageCenter, workspaceSettings, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
 
   useEffect(() => {
     if (user?.uid && cloudBootstrapComplete && workspaceSettings.machineMode) {
@@ -2160,10 +3094,7 @@ function App() {
 
     const id = window.setInterval(() => {
       setTimerSeconds((prev) => {
-        if (timerMode === 'COUNTDOWN') {
-          if (currentCue && prev <= 1) return 0;
-          return prev - 1;
-        }
+        if (timerMode === 'COUNTDOWN') return prev - 1;
         return prev + 1;
       });
     }, 1000);
@@ -2179,7 +3110,7 @@ function App() {
       lastCueAutoAdvanceKeyRef.current = '';
       return;
     }
-    const guardKey = `${currentCue.itemId}:${timerSeconds}`;
+    const guardKey = currentCue.itemId;
     if (lastCueAutoAdvanceKeyRef.current === guardKey) return;
     lastCueAutoAdvanceKeyRef.current = guardKey;
 
@@ -2190,9 +3121,6 @@ function App() {
         return;
       }
     }
-    setTimerRunning(false);
-    setCueZeroHold(true);
-    setTimerSeconds(0);
   }, [timerMode, timerRunning, timerSeconds, currentCue, currentCueIndex, enabledTimerCues, activateCueByItemId]);
 
   useEffect(() => {
@@ -2200,6 +3128,56 @@ function App() {
       setCueZeroHold(false);
     }
   }, [timerRunning, timerSeconds, currentCueItemId]);
+
+  useEffect(() => {
+    if (viewMode !== 'PRESENTER') return;
+    const node = presenterControlsRef.current;
+    if (!node) return;
+
+    const handleUpdate = () => updatePresenterControlsScrollState();
+    handleUpdate();
+    node.addEventListener('scroll', handleUpdate, { passive: true });
+    window.addEventListener('resize', handleUpdate);
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(handleUpdate);
+      resizeObserver.observe(node);
+      if (node.firstElementChild instanceof HTMLElement) {
+        resizeObserver.observe(node.firstElementChild);
+      }
+    }
+
+    return () => {
+      node.removeEventListener('scroll', handleUpdate);
+      window.removeEventListener('resize', handleUpdate);
+      resizeObserver?.disconnect();
+    };
+  }, [viewMode, updatePresenterControlsScrollState]);
+
+  useEffect(() => {
+    if (viewMode !== 'PRESENTER') return;
+    updatePresenterControlsScrollState();
+  }, [
+    viewMode,
+    updatePresenterControlsScrollState,
+    enabledTimerCues.length,
+    selectedSpeakerPresetId,
+    timerMode,
+    routingMode,
+    blackout,
+    autoCueEnabled,
+    workspaceSettings.stageFlowLayout,
+    workspaceSettings.machineMode
+  ]);
+
+  useEffect(() => {
+    if (viewMode !== 'PRESENTER' || !presenterControlsHasOverflow) return;
+    try {
+      if (localStorage.getItem(PRESENTER_TOOLBAR_HINT_KEY)) return;
+    } catch {}
+    setPresenterControlsShowHint(true);
+  }, [viewMode, presenterControlsHasOverflow]);
 
   useEffect(() => {
     if (!autoCueEnabled) return;
@@ -2236,20 +3214,6 @@ function App() {
 
     const width = window.screen?.availWidth || 1280;
     const height = window.screen?.availHeight || 720;
-    const initialHtml = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Lumina Output (Projector)</title>
-    <style>
-      body { margin: 0; padding: 0; background-color: black; overflow: hidden; }
-      #output-root { width: 100vw; height: 100vh; }
-    </style>
-  </head>
-  <body>
-    <div id="output-root"></div>
-  </body>
-</html>`;
     const w = window.open(
       "about:blank",
       "LuminaOutput",
@@ -2263,15 +3227,6 @@ function App() {
       return;
     }
 
-    try {
-      w.document.open();
-      w.document.write(initialHtml);
-      w.document.close();
-      w.document.title = "Lumina Output (Projector)";
-    } catch (e) {
-      console.error("Failed to initialize output window", e);
-    }
-
     setPopupBlocked(false);
     setOutputWin(w);
     setIsOutputLive(true);
@@ -2279,10 +3234,6 @@ function App() {
       w.focus();
       w.moveTo?.(0, 0);
       w.resizeTo?.(width, height);
-    } catch { }
-    try {
-      const fsAttempt = w.document?.documentElement?.requestFullscreen?.();
-      fsAttempt?.catch(() => { });
     } catch { }
   };
 
@@ -2306,21 +3257,6 @@ function App() {
       return;
     }
 
-    const initialHtml = `<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Lumina Stage Display</title>
-    <style>
-      body { margin: 0; padding: 0; background-color: black; overflow: hidden; }
-      #output-root { width: 100vw; height: 100vh; }
-    </style>
-  </head>
-  <body>
-    <div id="output-root"></div>
-  </body>
-</html>`;
-
     const w = window.open(
       "about:blank",
       "LuminaStageDisplay",
@@ -2332,15 +3268,6 @@ function App() {
       setIsStageDisplayLive(false);
       setStageWin(null);
       return;
-    }
-
-    try {
-      w.document.open();
-      w.document.write(initialHtml);
-      w.document.close();
-      w.document.title = "Lumina Stage Display";
-    } catch (e) {
-      console.error("Failed to initialize stage display window", e);
     }
 
     setPopupBlocked(false);
@@ -2411,8 +3338,10 @@ function App() {
           setWorkspaceSettings((prev) => ({ ...prev, stageTimerLayout: layout }));
         }}
         profile={workspaceSettings.stageProfile}
+        flowLayout={workspaceSettings.stageFlowLayout}
         audienceOverlay={audienceDisplay}
         stageAlert={stageAlert}
+        stageMessageCenter={stageMessageCenter}
       />
     );
   }
@@ -2459,7 +3388,16 @@ function App() {
             <div className="flex gap-1 items-center">
               {activeItemId === item.id && <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse mr-2"></div>}
               {viewMode === 'BUILDER' ? (
-                <button onClick={(e) => { e.stopPropagation(); removeItem(item.id); }} className="p-1 hover:text-red-400 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity"><TrashIcon className="w-4 h-4" /></button>
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); void handleArchiveSingleRunSheetItem(item.id); }}
+                    className="p-1 hover:text-blue-300 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Move item to Run Sheet Files"
+                  >
+                    <CopyIcon className="w-4 h-4" />
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); removeItem(item.id); }} className="p-1 hover:text-red-400 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity"><TrashIcon className="w-4 h-4" /></button>
+                </>
               ) : (
                 <button onClick={(e) => { e.stopPropagation(); goLive(item); }} className={`p-1 transition-colors ${activeItemId === item.id ? 'text-red-500' : 'text-zinc-600 hover:text-white'}`}><PlayIcon className="w-4 h-4 fill-current" /></button>
               )}
@@ -2636,6 +3574,7 @@ function App() {
         <div className={`group flex flex-col h-full bg-zinc-900/50 border-r border-zinc-800 shrink-0 overflow-hidden z-20 ${isElectronShell ? 'w-12' : 'w-12 hover:w-48 transition-all'}`}>
           <div className="flex flex-col flex-1 p-1 gap-1">
             <button onClick={() => setActiveSidebarTab('SCHEDULE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'SCHEDULE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="SCHEDULE"><MonitorIcon className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Schedule</span></button>
+            <button onClick={() => setActiveSidebarTab('FILES')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'FILES' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="RUN SHEET FILES"><CopyIcon className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Files</span></button>
             <button onClick={() => setActiveSidebarTab('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIO MIXER"><Volume2Icon className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Audio Mixer</span></button>
             <button onClick={() => setActiveSidebarTab('BIBLE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'BIBLE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="BIBLE LIBRARY"><BibleIcon className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Bible Hub</span></button>
             <button onClick={() => setActiveSidebarTab('AUDIENCE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIENCE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIENCE STUDIO"><ChatIcon className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Audience</span></button>
@@ -2660,6 +3599,80 @@ function App() {
               <ScheduleList />
             </>
           )}
+          {activeSidebarTab === 'FILES' && (
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="p-3 border-b border-zinc-900 shrink-0">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Run Sheet Files</h3>
+              </div>
+              <div className="p-3 border-b border-zinc-900 bg-zinc-900/20 space-y-2 shrink-0">
+                <input
+                  value={runSheetArchiveTitle}
+                  onChange={(e) => setRunSheetArchiveTitle(e.target.value)}
+                  placeholder="Archive title (optional)"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-zinc-200"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => handleArchiveRunSheet(false)}
+                    className="px-2 py-1.5 text-[10px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-200 hover:border-zinc-500"
+                  >
+                    Archive Current
+                  </button>
+                  <button
+                    onClick={() => handleArchiveRunSheet(true)}
+                    className="px-2 py-1.5 text-[10px] font-bold border border-zinc-700 rounded bg-blue-900/40 text-blue-200 hover:border-blue-500"
+                  >
+                    Archive + New
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    value={runSheetFileQuery}
+                    onChange={(e) => setRunSheetFileQuery(e.target.value)}
+                    placeholder="Search files..."
+                    className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-zinc-200"
+                  />
+                  <button
+                    onClick={refreshRunSheetFiles}
+                    className="px-2 py-1.5 text-[10px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300"
+                  >
+                    Refresh
+                  </button>
+                </div>
+                {runSheetFilesError && (
+                  <div className="text-[10px] text-rose-400 border border-rose-900/60 bg-rose-950/30 rounded px-2 py-1">
+                    {runSheetFilesError}
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 overflow-y-auto p-3 custom-scrollbar space-y-2">
+                {runSheetFilesLoading && (
+                  <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Loading files...</div>
+                )}
+                {!runSheetFilesLoading && filteredRunSheetFiles.length === 0 && (
+                  <div className="text-[10px] text-zinc-600 uppercase tracking-wider">No archived run sheets</div>
+                )}
+                {filteredRunSheetFiles.map((file) => (
+                  <div key={file.fileId} className="border border-zinc-800 rounded p-2 bg-zinc-900/40">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-zinc-200 truncate">{file.title}</div>
+                        <div className="text-[9px] text-zinc-500">
+                          {new Date(file.updatedAt).toLocaleString()} • {(file.payload?.items || []).length} items
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-1">
+                      <button onClick={() => handleReuseRunSheet(file.fileId, 'replace')} className="px-2 py-1 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-200">Reuse</button>
+                      <button onClick={() => handleReuseRunSheet(file.fileId, 'duplicate')} className="px-2 py-1 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300">Duplicate</button>
+                      <button onClick={() => handleRenameRunSheet(file.fileId)} className="px-2 py-1 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300">Rename</button>
+                      <button onClick={() => handleDeleteRunSheet(file.fileId)} className="px-2 py-1 text-[9px] font-bold border border-rose-900/70 rounded bg-rose-950/20 text-rose-300">Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {activeSidebarTab === 'AUDIO' && <AudioLibrary currentTrackId={currentTrack?.id} isPlaying={isAudioPlaying} progress={audioProgress} onPlay={handlePlayTrack} onToggle={() => setIsAudioPlaying(!isAudioPlaying)} onStop={stopAudio} onVolumeChange={setAudioVolume} volume={audioVolume} />}
           {activeSidebarTab === 'BIBLE' && (
             <div className="flex-1 overflow-hidden flex flex-col">
@@ -2680,6 +3693,11 @@ function App() {
                 displayState={audienceDisplay}
                 onUpdateDisplay={handleUpdateAudienceDisplay}
                 stageAlert={stageAlert}
+                stageMessageCenter={stageMessageCenter}
+                onQueueStageMessage={handleQueueStageMessage}
+                onSendStageMessageNow={handleSendStageMessageNow}
+                onPromoteStageMessage={handlePromoteStageMessage}
+                onRemoveQueuedStageMessage={handleRemoveQueuedStageMessage}
                 onSendStageAlert={handleSendStageAlert}
                 onClearStageAlert={handleClearStageAlert}
                 canUseStageAlert={canUsePastorAlert}
@@ -2705,6 +3723,7 @@ function App() {
                       item={selectedItem}
                       onUpdate={updateItem}
                       onOpenLibrary={() => setIsMotionLibOpen(true)}
+                      speakerPresets={workspaceSettings.speakerTimerPresets}
                     />
                     <div className="flex-1 overflow-y-auto p-6 bg-zinc-950">
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -2741,10 +3760,14 @@ function App() {
                     <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-500 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">PREVIEW <button onClick={() => setIsPreviewMuted(!isPreviewMuted)} className={`ml-2 hover:text-white transition-colors ${isPreviewMuted ? 'text-red-400' : 'text-green-400'}`}>{isPreviewMuted ? <VolumeXIcon className="w-3 h-3" /> : <Volume2Icon className="w-3 h-3" />}</button></div>
                   </div>
                 </div>
-                <div className="h-16 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between px-6 gap-4">
-                  <div className="flex items-center gap-2"><button onClick={prevSlide} className="h-12 w-14 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center border border-zinc-700 active:scale-95 transition-transform"><ArrowLeftIcon className="w-5 h-5" /></button><button onClick={nextSlide} className="h-12 w-28 rounded-sm bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-bold text-sm tracking-wide active:scale-95 transition-transform"><ArrowRightIcon className="w-5 h-5 mr-1" /> NEXT</button></div>
-                  {isActiveVideo && (<div className="flex items-center gap-2 bg-zinc-950 rounded-sm p-1 border border-zinc-800"><button onClick={() => triggerSeek(-10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><RewindIcon className="w-4 h-4" /></button><button onClick={() => setIsPlaying(!isPlaying)} className={`p-2.5 rounded-sm ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-green-900/50 text-green-400'}`}>{isPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4 fill-current" />}</button><button onClick={() => triggerSeek(10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><ForwardIcon className="w-4 h-4" /></button></div>)}
-                  <div className="flex items-center gap-2">
+                <div className="relative border-t border-zinc-800 bg-zinc-900">
+                  <div
+                    ref={presenterControlsRef}
+                    className="min-h-16 flex items-center px-3 md:px-6 gap-3 overflow-x-auto custom-scrollbar scroll-smooth"
+                  >
+                  <div className="flex items-center gap-2 shrink-0"><button onClick={prevSlide} className="h-12 w-14 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center border border-zinc-700 active:scale-95 transition-transform"><ArrowLeftIcon className="w-5 h-5" /></button><button onClick={nextSlide} className="h-12 w-28 rounded-sm bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-bold text-sm tracking-wide active:scale-95 transition-transform"><ArrowRightIcon className="w-5 h-5 mr-1" /> NEXT</button></div>
+                  {isActiveVideo && (<div className="flex items-center gap-2 bg-zinc-950 rounded-sm p-1 border border-zinc-800 shrink-0"><button onClick={() => triggerSeek(-10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><RewindIcon className="w-4 h-4" /></button><button onClick={() => setIsPlaying(!isPlaying)} className={`p-2.5 rounded-sm ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-green-900/50 text-green-400'}`}>{isPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4 fill-current" />}</button><button onClick={() => triggerSeek(10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><ForwardIcon className="w-4 h-4" /></button></div>)}
+                  <div className="flex items-center gap-2 shrink-0">
                     <button onClick={() => { if (routingMode !== 'PROJECTOR') setLowerThirdsEnabled((prev) => !prev); }} title={routingMode === 'PROJECTOR' ? 'Projector mode keeps full-screen text (lower thirds disabled).' : 'Toggle lower thirds overlay'} className={`h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border ${lowerThirdsEnabled ? 'bg-blue-950 text-blue-400 border-blue-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800'} ${routingMode === 'PROJECTOR' ? 'opacity-60 cursor-not-allowed' : ''}`}>LOWER THIRDS</button>
                     <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} className="h-12 px-2 bg-zinc-950 border border-zinc-800 text-zinc-300 text-xs rounded-sm">
                       <option value="PROJECTOR">Projector</option>
@@ -2763,12 +3786,9 @@ function App() {
                         <option value="ELAPSED">Elapsed</option>
                       </select>
                       {timerMode === 'COUNTDOWN' && (
-                        <input type="number" min={1} max={180} value={currentCue ? Math.max(1, Math.ceil(currentCueDurationSec / 60)) : timerDurationMin} disabled={!!currentCue} onChange={(e) => {
-                          const value = Math.max(1, Math.min(180, Number(e.target.value) || 1));
-                          setTimerDurationMin(value);
-                          setCueZeroHold(false);
-                          if (!timerRunning) setTimerSeconds(value * 60);
-                        }} className={`w-14 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] ${currentCue ? 'text-zinc-500 cursor-not-allowed' : 'text-zinc-200'}`} />
+                        <input type="number" min={1} max={180} value={timerDurationMin} onChange={(e) => {
+                          applyManualCountdownMinutes(Number(e.target.value));
+                        }} className="w-14 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
                       )}
                       <div className={`text-[11px] font-mono w-14 text-center ${isTimerOvertime ? 'text-red-400 animate-pulse' : 'text-cyan-300'}`}>{formatTimer(timerSeconds)}</div>
                       <button onClick={() => {
@@ -2780,6 +3800,56 @@ function App() {
                         setCueZeroHold(false);
                         setTimerSeconds(timerMode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0);
                       }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">Reset</button>
+                    </div>
+                    <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
+                      <span className="text-[10px] text-zinc-400">Cue</span>
+                      <input
+                        type="number"
+                        min={2}
+                        max={120}
+                        value={autoCueSeconds}
+                        onChange={(e) => {
+                          const value = Math.max(2, Math.min(120, Number(e.target.value) || 2));
+                          setAutoCueSeconds(value);
+                          setAutoCueRemaining(value);
+                        }}
+                        className="w-12 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200"
+                        title="Auto-cue seconds for next slide"
+                      />
+                      <button
+                        onClick={() => setAutoCueEnabled((p) => !p)}
+                        className={`text-[10px] px-2 py-1 rounded ${autoCueEnabled ? 'bg-cyan-900/40 text-cyan-300' : 'bg-zinc-800 text-zinc-300'}`}
+                        title="Toggle auto-cue slide advance"
+                      >
+                        {autoCueEnabled ? `On ${autoCueRemaining}s` : 'Off'}
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12 max-w-[340px]">
+                      <span className="text-[10px] text-zinc-400">Preset</span>
+                      <select
+                        value={selectedSpeakerPresetId}
+                        onChange={(e) => setSelectedSpeakerPresetId(e.target.value)}
+                        className="bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200"
+                      >
+                        {(workspaceSettings.speakerTimerPresets || []).map((preset) => (
+                          <option key={preset.id} value={preset.id}>
+                            {preset.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={applySelectedPresetToCurrentCue}
+                        disabled={!selectedSpeakerPresetId || !(currentCueItemId || selectedItemId)}
+                        className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
+                      >
+                        Apply
+                      </button>
+                      <button
+                        onClick={openCreatePresetModal}
+                        className="text-[10px] px-2 py-1 bg-zinc-800 rounded"
+                      >
+                        Manage
+                      </button>
                     </div>
                     <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12 max-w-[360px]">
                       <span className="text-[10px] text-zinc-400">Rundown</span>
@@ -2810,19 +3880,110 @@ function App() {
                           : 'No timer cues enabled'}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
-                      <span className="text-[10px] text-zinc-400">Slide Auto</span>
-                      <input type="number" min={2} max={120} value={autoCueSeconds} onChange={(e) => {
-                        const value = Math.max(2, Math.min(120, Number(e.target.value) || 2));
-                        setAutoCueSeconds(value);
-                        setAutoCueRemaining(value);
-                      }} className="w-12 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
-                      <button onClick={() => setAutoCueEnabled((p) => !p)} className={`text-[10px] px-2 py-1 rounded ${autoCueEnabled ? 'bg-cyan-900/40 text-cyan-300' : 'bg-zinc-800 text-zinc-300'}`}>{autoCueEnabled ? `On ${autoCueRemaining}s` : 'Off'}</button>
+                    <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12 max-w-[260px]">
+                      <span className="text-[10px] text-zinc-400">Stage Grid</span>
+                      <select
+                        value={workspaceSettings.stageFlowLayout}
+                        onChange={(e) => {
+                          const next = e.target.value as StageFlowLayout;
+                          setWorkspaceSettings((prev) => ({
+                            ...prev,
+                            stageFlowLayout: VALID_STAGE_FLOW_LAYOUTS.includes(next) ? next : 'balanced',
+                          }));
+                        }}
+                        className="bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200"
+                        title="Stage display layout flow"
+                      >
+                        <option value="balanced">Balanced</option>
+                        <option value="speaker_focus">Speaker Focus</option>
+                        <option value="preview_focus">Preview Focus</option>
+                        <option value="minimal_next">Minimal Next</option>
+                      </select>
                     </div>
                     <button onClick={() => navigator.clipboard?.writeText(obsOutputUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY OBS URL</button>
                     <button onClick={() => navigator.clipboard?.writeText(stageDisplayUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY STAGE URL</button>
                     <button onClick={() => setBlackout(!blackout)} className={`h-12 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button>
                   </div>
+                </div>
+                {presenterControlsHasOverflow && (
+                  <>
+                    <div className={`pointer-events-none absolute top-0 left-0 h-16 w-14 bg-gradient-to-r from-zinc-900 via-zinc-900/80 to-transparent transition-opacity ${presenterControlsCanScrollLeft ? 'opacity-100' : 'opacity-0'}`} />
+                    <div className={`pointer-events-none absolute top-0 right-0 h-16 w-14 bg-gradient-to-l from-zinc-900 via-zinc-900/80 to-transparent transition-opacity ${presenterControlsCanScrollRight ? 'opacity-100' : 'opacity-0'}`} />
+                    <button
+                      onClick={() => scrollPresenterControlsBy(-320)}
+                      disabled={!presenterControlsCanScrollLeft}
+                      className="absolute left-1 top-8 -translate-y-1/2 h-7 w-7 rounded-full border border-zinc-700 bg-zinc-950/90 text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="Scroll controls left"
+                    >
+                      <ArrowLeftIcon className="w-4 h-4 mx-auto" />
+                    </button>
+                    <button
+                      onClick={() => scrollPresenterControlsBy(320)}
+                      disabled={!presenterControlsCanScrollRight}
+                      className="absolute right-1 top-8 -translate-y-1/2 h-7 w-7 rounded-full border border-zinc-700 bg-zinc-950/90 text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="Scroll controls right"
+                    >
+                      <ArrowRightIcon className="w-4 h-4 mx-auto" />
+                    </button>
+                  </>
+                )}
+                {presenterControlsHasOverflow && (
+                  <div className="px-3 md:px-6 pb-2 border-t border-zinc-800/80 bg-zinc-950/70 flex items-center gap-2">
+                    <span className="text-[9px] uppercase tracking-[0.2em] text-zinc-400 font-bold shrink-0">Controls</span>
+                    <button
+                      onClick={() => scrollPresenterControlsBy(-320)}
+                      disabled={!presenterControlsCanScrollLeft}
+                      className="h-6 px-2 rounded border border-zinc-700 bg-zinc-900 text-zinc-300 text-[10px] font-bold disabled:opacity-35"
+                    >
+                      Left
+                    </button>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={Math.round(presenterControlsScrollPercent)}
+                      onChange={(e) => handlePresenterControlsSliderChange(Number(e.target.value))}
+                      className="flex-1 accent-blue-500"
+                      aria-label="Presenter toolbar scroll position"
+                    />
+                    <button
+                      onClick={() => scrollPresenterControlsBy(320)}
+                      disabled={!presenterControlsCanScrollRight}
+                      className="h-6 px-2 rounded border border-zinc-700 bg-zinc-900 text-zinc-300 text-[10px] font-bold disabled:opacity-35"
+                    >
+                      Right
+                    </button>
+                    <button
+                      onClick={openPresenterControlsHelp}
+                      className="h-6 px-2 rounded border border-cyan-800 bg-cyan-950/30 text-cyan-200 text-[10px] font-bold"
+                      title="How to use toolbar slider"
+                    >
+                      How to scroll
+                    </button>
+                  </div>
+                )}
+                {presenterControlsShowHint && presenterControlsHasOverflow && (
+                  <div className="absolute bottom-full right-3 mb-2 z-20 max-w-xs rounded border border-blue-900 bg-blue-950/95 shadow-xl p-2">
+                    <div className="text-[9px] uppercase tracking-[0.2em] text-blue-300 font-bold">More controls available</div>
+                    <div className="mt-1 text-[10px] text-blue-100 leading-relaxed">
+                      This row scrolls sideways. Use the slider or arrows to reveal buttons like COPY OBS URL.
+                    </div>
+                    <div className="mt-2 flex items-center justify-end gap-2">
+                      <button
+                        onClick={openPresenterControlsHelp}
+                        className="px-2 py-1 rounded border border-blue-700 bg-blue-900/50 text-[10px] text-blue-100 font-bold"
+                      >
+                        Show help
+                      </button>
+                      <button
+                        onClick={dismissPresenterControlsHint}
+                        className="px-2 py-1 rounded border border-zinc-700 bg-zinc-900 text-[10px] text-zinc-200 font-bold"
+                      >
+                        Got it
+                      </button>
+                    </div>
+                  </div>
+                )}
                 </div>
               </div>
               <div className={`w-full lg:w-72 bg-zinc-950 border-l border-zinc-900 flex flex-col h-64 lg:h-auto border-t lg:border-t-0 ${workspaceSettings.machineMode ? 'hidden' : (isElectronShell ? 'flex' : 'hidden md:flex')}`}>
@@ -2856,6 +4017,7 @@ function App() {
       {
         isOutputLive && (
           <OutputWindow
+            title="Lumina Output (Projector)"
             externalWindow={outputWin}
             onClose={() => {
               setIsOutputLive(false);
@@ -2896,6 +4058,7 @@ function App() {
       {
         isStageDisplayLive && (
           <OutputWindow
+            title="Lumina Stage Display"
             externalWindow={stageWin}
             onClose={() => {
               setIsStageDisplayLive(false);
@@ -2924,8 +4087,10 @@ function App() {
                 setWorkspaceSettings((prev) => ({ ...prev, stageTimerLayout: layout }));
               }}
               profile={workspaceSettings.stageProfile}
+              flowLayout={workspaceSettings.stageFlowLayout}
               audienceOverlay={audienceDisplay}
               stageAlert={stageAlert}
+              stageMessageCenter={stageMessageCenter}
             />
           </OutputWindow>
         )
@@ -2981,7 +4146,148 @@ function App() {
         )
       }
 
+      {isPresetModalOpen && (
+        <div className="fixed inset-0 z-[130] bg-black/80 backdrop-blur-sm p-4 flex items-center justify-center">
+          <div className="w-full max-w-3xl bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
+            <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-zinc-200">Speaker Timer Presets</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={openCreatePresetModal}
+                  className="px-2 py-1 text-[10px] font-bold border border-zinc-700 rounded bg-zinc-800 text-zinc-200"
+                >
+                  New
+                </button>
+                <button
+                  onClick={() => setIsPresetModalOpen(false)}
+                  className="px-2 py-1 text-[10px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+              <div className="border-r border-zinc-800 p-3 max-h-[65vh] overflow-y-auto custom-scrollbar space-y-2">
+                {(workspaceSettings.speakerTimerPresets || []).map((preset) => (
+                  <div key={preset.id} className="p-2 border border-zinc-800 rounded bg-zinc-950/60">
+                    <div className="text-xs font-bold text-zinc-200">{preset.name}</div>
+                    <div className="text-[10px] text-zinc-500">
+                      {Math.max(1, Math.round(preset.durationSec / 60))}m • Amber {preset.amberPercent}% • Red {preset.redPercent}%
+                    </div>
+                    <div className="mt-2 flex items-center gap-1">
+                      <button onClick={() => openEditPresetModal(preset)} className="px-2 py-1 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300">Edit</button>
+                      <button onClick={() => deleteSpeakerPreset(preset.id)} className="px-2 py-1 text-[9px] font-bold border border-rose-900/70 rounded bg-rose-950/20 text-rose-300">Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="p-3 space-y-2">
+                <div className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">
+                  {editingPresetId ? 'Edit Preset' : 'Create Preset'}
+                </div>
+                <input
+                  value={presetDraft.name}
+                  onChange={(e) => setPresetDraft((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="Preset name"
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-[11px] text-zinc-200"
+                />
+                <input
+                  value={presetDraft.speakerName || ''}
+                  onChange={(e) => setPresetDraft((prev) => ({ ...prev, speakerName: e.target.value }))}
+                  placeholder="Default speaker name"
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-[11px] text-zinc-200"
+                />
+                <div className="grid grid-cols-3 gap-2">
+                  <input
+                    type="number"
+                    min={10}
+                    max={7200}
+                    value={presetDraft.durationSec}
+                    onChange={(e) => setPresetDraft((prev) => ({ ...prev, durationSec: Math.max(10, Math.min(7200, Number(e.target.value) || 10)) }))}
+                    className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-[11px] text-zinc-200"
+                    title="Duration (sec)"
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    max={99}
+                    value={presetDraft.amberPercent}
+                    onChange={(e) => setPresetDraft((prev) => ({ ...prev, amberPercent: clamp(Number(e.target.value) || 25, 1, 99) }))}
+                    className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-[11px] text-zinc-200"
+                    title="Amber %"
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    max={99}
+                    value={presetDraft.redPercent}
+                    onChange={(e) => setPresetDraft((prev) => ({ ...prev, redPercent: clamp(Number(e.target.value) || 10, 1, 99) }))}
+                    className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1.5 text-[11px] text-zinc-200"
+                    title="Red %"
+                  />
+                </div>
+                <label className="flex items-center gap-2 text-[11px] text-zinc-300">
+                  <input
+                    type="checkbox"
+                    checked={!!presetDraft.autoStartNextDefault}
+                    onChange={(e) => setPresetDraft((prev) => ({ ...prev, autoStartNextDefault: e.target.checked }))}
+                    className="accent-blue-600"
+                  />
+                  Auto-start next cue by default
+                </label>
+                <div className="pt-1 flex items-center justify-end gap-2">
+                  <button onClick={savePresetDraft} className="px-3 py-1.5 text-[10px] font-bold rounded border border-blue-600 bg-blue-600/30 text-blue-200">
+                    Save Preset
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      {isPresenterControlsHelpOpen && (
+        <div className="fixed inset-0 z-[110] bg-black/70 backdrop-blur-sm p-4 flex items-center justify-center">
+          <div className="w-full max-w-lg rounded-xl border border-zinc-700 bg-zinc-950 shadow-2xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-zinc-100">Presenter Control Slider Help</h3>
+              <button
+                onClick={() => {
+                  setIsPresenterControlsHelpOpen(false);
+                  markPresenterControlsHintSeen();
+                }}
+                className="px-2 py-1 rounded border border-zinc-700 bg-zinc-900 text-zinc-300 text-[11px] font-bold"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-4 space-y-3 text-[12px] leading-relaxed text-zinc-300">
+              <p>
+                The bottom presenter row is horizontally scrollable. Some actions are to the far right, including
+                <span className="font-bold text-zinc-100"> COPY OBS URL</span>, <span className="font-bold text-zinc-100">COPY STAGE URL</span>, and <span className="font-bold text-zinc-100">BLACKOUT</span>.
+              </p>
+              <p>Use any of these methods:</p>
+              <ul className="list-disc pl-5 space-y-1">
+                <li>Click the left/right arrow buttons beside the toolbar.</li>
+                <li>Drag the Controls slider under the toolbar.</li>
+                <li>On trackpad/mouse, scroll horizontally (Shift + mouse wheel also works).</li>
+              </ul>
+            </div>
+            <div className="px-4 py-3 border-t border-zinc-800 flex justify-end">
+              <button
+                onClick={() => {
+                  setIsPresenterControlsHelpOpen(false);
+                  markPresenterControlsHintSeen();
+                }}
+                className="px-3 py-1.5 rounded border border-blue-700 bg-blue-900/40 text-blue-100 text-[11px] font-bold"
+              >
+                Understood
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <ConnectModal isOpen={isConnectOpen} onClose={() => setIsConnectOpen(false)} audienceUrl={audienceUrl} />
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
       {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={(settings) => setWorkspaceSettings((prev) => ({ ...prev, ...settings }))} onLogout={handleLogout} currentSettings={workspaceSettings} currentUser={user} />}

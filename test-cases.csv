@@ -1,0 +1,101 @@
+id,module,priority,type,title,preconditions,steps,expected_result
+TC-001,Install and Release,P0,Manual,MSI fresh install works,Windows machine with no Lumina installed,"Download latest MSI and install then launch app",Installer completes and app opens successfully
+TC-002,Install and Release,P0,Manual,EXE fresh install works,Windows machine with no Lumina installed,"Download latest EXE and install then launch app",Installer completes and app opens successfully
+TC-003,Install and Release,P1,Manual,Reinstall works cleanly,Lumina already installed,"Uninstall app and reinstall same version",App reinstalls and launches without corruption
+TC-004,Install and Release,P1,Manual,Auto-update detects newer version,Desktop app configured for update channel,"Run current version then publish higher version then check updates",Update check detects newer version
+TC-005,Install and Release,P0,Manual,Update keeps workspace data,Existing workspace data present,"Upgrade from N-1 to N and open same workspace",Settings and run sheet data remain available
+TC-006,Install and Release,P1,Manual,Update failure recovers safely,Desktop app with staged bad package,"Trigger failed update package download",App remains launchable with prior stable version
+TC-007,Install and Release,P0,Manual,Website download link resolves,Production website deployed,"Click all desktop download links",No 404 or page-not-found
+TC-008,Install and Release,P1,Manual,Release asset integrity,Published GitHub release with artifacts,"Download release assets and compare expected list",All expected artifacts exist and download fully
+TC-009,Install and Release,P1,Manual,Desktop startup not blank,Desktop app installed,"Launch app from shortcut",Main shell loads without black blank root
+TC-010,Install and Release,P2,Manual,Cold start performance,Standard laptop,"Measure launch to usable UI",Startup time meets target SLA
+TC-011,Auth and Settings,P0,Manual,Sign in flow works,Valid user account available,"Open app and sign in",Session starts and user identity resolves
+TC-012,Auth and Settings,P0,Manual,Admin allowlist persists after refresh,Signed in as workspace owner,"Set remote admin emails save and refresh app",Values remain unchanged
+TC-013,Auth and Settings,P0,Manual,Admin allowlist persists after relogin,Signed in with saved allowlist,"Sign out and sign in again",Values remain unchanged
+TC-014,Auth and Settings,P0,Manual,Studio preferences persist after restart,Desktop app running,"Change preference save close app relaunch",Preferences remain unchanged
+TC-015,Auth and Settings,P1,Manual,Snapshot save does not revert settings,Workspace with custom settings,"Save snapshot multiple times then refresh",Latest settings are preserved
+TC-016,Auth and Settings,P1,Manual,Unauthorized user blocked from admin actions,Second non-allowlisted account available,"Try sending stage alert as non-allowlisted user",Action blocked with clear message
+TC-017,Auth and Settings,P1,Manual,Allowlisted admin can use gated controls,Allowlisted account available,"Open Audience Studio and send stage alert",Action succeeds
+TC-018,Auth and Settings,P1,Manual,Transient settings save failure recovery,Can simulate temporary API outage,"Save settings during outage then restore API and retry",Local values retained and save succeeds after retry
+TC-019,Auth and Settings,P1,Manual,Concurrent settings update conflict handling,Two clients same workspace,"Change settings on client A and client B in sequence",Newest settings win predictably
+TC-020,Auth and Settings,P2,Manual,Settings UI status clarity,Signed in workspace user,"Open settings and verify save status messages",User sees accurate success or failure states
+TC-021,Build and Present,P0,Manual,Create run sheet item,Workspace open in Build mode,"Create new item and add slides",Item appears in run sheet and library
+TC-022,Build and Present,P1,Manual,Edit run sheet item,Existing item present,"Edit title content style and save",Changes apply immediately
+TC-023,Build and Present,P1,Manual,Reorder run sheet items,Multiple run sheet items available,"Drag or move item positions",Order updates and persists after refresh
+TC-024,Build and Present,P0,Manual,Present mode shows active content,At least one item available,"Switch to Present and project item",Preview and queue reflect active content
+TC-025,Build and Present,P0,Manual,Next slide control works,Projected item with multiple slides,"Click NEXT repeatedly",Slides advance in correct order
+TC-026,Build and Present,P1,Manual,Previous slide control works,Projected item with multiple slides,"Use previous or rollback controls",Slides move back correctly
+TC-027,Build and Present,P1,Manual,Build Present toggle keeps context,Build and Present both configured,"Switch Build to Present then back",Panels remain visible and no data loss
+TC-028,Build and Present,P1,Manual,Bottom bar overflow discoverable,Narrow window width,"Resize app to narrow width",Horizontal controls remain reachable with obvious scroll cue
+TC-029,Build and Present,P1,Manual,Critical action buttons visible,Narrow window width,"Verify OBS URL Stage URL Blackout controls",Critical controls are not permanently hidden
+TC-030,Build and Present,P2,Manual,UI clipping check common resolutions,Test on 1366x768 and 1920x1080,"Open presenter and inspect edges",No essential control is cut off
+TC-031,Output and Stage,P0,Manual,Launch Output with active slide,Active projected slide exists,"Click Launch Output",Output window renders content immediately
+TC-032,Output and Stage,P0,Manual,Launch Output no active slide fallback,No active projected slide,"Click Launch Output",Output shows explicit waiting slate not blank
+TC-033,Output and Stage,P0,Manual,Launch Stage with active slide,Active projected slide exists,"Click Stage launch",Stage window renders expected layout
+TC-034,Output and Stage,P0,Manual,Launch Stage no active slide fallback,No active projected slide,"Launch Stage window",Stage shows explicit waiting or safe fallback
+TC-035,Output and Stage,P0,Manual,No black blank on repeated output launches,App running,"Open and close Launch Output 30 times",No unexplained black screen occurs
+TC-036,Output and Stage,P1,Manual,Blackout toggle behavior,Output window open,"Toggle Blackout on and off",Output transitions correctly and restores content
+TC-037,Output and Stage,P1,Manual,Rollback restores prior state,Multiple projection changes made,"Use rollback action",Previous state returns accurately
+TC-038,Output and Stage,P1,Manual,Output route survives refresh,Output window open,"Refresh output tab or window",Route rehydrates to safe render
+TC-039,Output and Stage,P1,Manual,Stage route survives refresh,Stage window open,"Refresh stage tab or window",Route rehydrates to safe render
+TC-040,Output and Stage,P2,Manual,Secondary monitor launch stability,Dual monitor setup,"Launch output and stage to second monitor",Windows remain stable and responsive
+TC-041,Timer Engine,P0,Manual,Countdown starts and decrements,Timer configured in countdown mode,"Set duration and press Start",Time decreases every second
+TC-042,Timer Engine,P0,Manual,Pause and resume timer,Countdown running,"Press Pause then Start",Timer pauses and resumes without reset
+TC-043,Timer Engine,P0,Manual,Reset timer,Timer running or paused,"Press Reset",Timer returns to configured start duration
+TC-044,Timer Engine,P0,Manual,Overtime continues negative,Countdown reaches zero,"Let timer pass zero",Display continues into negative overtime
+TC-045,Timer Engine,P1,Manual,Elapsed mode increments,Timer mode set to elapsed,"Start timer in elapsed mode",Timer counts upward correctly
+TC-046,Timer Engine,P1,Manual,Manual bottom duration input works,Presenter bottom timer controls visible,"Type custom duration and start timer",Custom duration is applied
+TC-047,Stage Timer Widget,P0,Manual,Web drag smoothness,Stage window open in web browser,"Drag timer widget across stage",Widget follows pointer smoothly
+TC-048,Stage Timer Widget,P0,Manual,Desktop drag smoothness,Stage window open in desktop app,"Drag timer widget across stage",Widget follows pointer smoothly
+TC-049,Stage Timer Widget,P0,Manual,Dual monitor drag behavior,Dual monitor stage display setup,"Drag widget directly on stage monitor",Drag works without returning pointer to controller monitor
+TC-050,Stage Timer Widget,P1,Manual,Manual resize works,Widget unlocked,"Drag resize handle repeatedly",Widget size changes continuously
+TC-051,Stage Timer Widget,P1,Manual,Large resize max bounds,Widget unlocked,"Resize to largest allowed size",Widget grows to max without breaking layout
+TC-052,Stage Timer Widget,P1,Manual,Small resize min bounds,Widget unlocked,"Resize to smallest allowed size",Widget clamps safely and remains usable
+TC-053,Stage Timer Widget,P0,Manual,Timer text auto-fit in large and small sizes,Widget unlocked,"Resize widget across extremes",Time text stays inside widget bounds
+TC-054,Stage Timer Widget,P1,Manual,A minus and A plus controls,Widget controls available,"Press A- and A+ multiple times",Font scales correctly without overflow
+TC-055,Stage Timer Widget,P1,Manual,Lock and unlock controls,Widget visible,"Toggle Free Locked state",Drag and resize disabled when locked and enabled when free
+TC-056,Stage Timer Widget,P1,Manual,Preset position buttons,Widget unlocked,"Apply top-right top-left bottom-right compact-bar",Widget moves to selected preset position
+TC-057,Stage Timer Widget,P1,Manual,Layout persistence after refresh,Widget repositioned and resized,"Refresh stage view",Widget keeps layout
+TC-058,Stage Timer Widget,P1,Manual,Layout sync across clients,Second client in same workspace,"Move resize widget on client A and open client B",Client B shows updated layout
+TC-059,Stage Timer Widget,P1,Manual,Timer overlay visibility safety,Stage showing large text slide,"Place timer over text then move",User can reposition to avoid blocking speaker content
+TC-060,Stage Timer Widget,P2,Manual,Compact menu fallback works,Widget narrowed to compact threshold,"Open widget menu and apply controls",Controls remain usable in compact mode
+TC-061,Speaker Presets,P1,Manual,Create speaker preset,Presenter open with preset modal,"Create preset with name duration thresholds",Preset saves in list
+TC-062,Speaker Presets,P1,Manual,Edit speaker preset,Existing preset available,"Edit name duration and save",Changes persist
+TC-063,Speaker Presets,P1,Manual,Delete speaker preset,Existing preset available,"Delete preset and confirm",Preset removed from list
+TC-064,Speaker Presets,P1,Manual,Apply preset to current cue,Item with cue timer enabled,"Select preset and click Apply",Cue values update from preset
+TC-065,Speaker Presets,P1,Manual,Preset persistence after refresh,Custom preset exists,"Refresh app",Preset list remains
+TC-066,Speaker Presets,P1,Manual,Preset persistence after relogin,Custom preset exists,"Sign out and sign in",Preset list remains
+TC-067,Speaker Presets,P2,Manual,Per-item override after preset,Item preset applied,"Change duration manually",Manual value overrides preset for that item
+TC-068,Cues and Rundown,P0,Manual,Auto-next cue enabled transition,Two enabled cue items in rundown,"Run timer to zero with auto-next on",Next enabled cue starts automatically
+TC-069,Cues and Rundown,P1,Manual,Auto-next disabled behavior,Cue item with auto-next off,"Run timer to zero",Timer stops at zero or overtime per mode without advancing
+TC-070,Cues and Rundown,P1,Manual,Present mode cue controls available,Present mode active,"Verify cue controls under app bar",Cue controls are visible and functional
+TC-071,Audience and Alerts,P1,Manual,Admin allowlisted indicator clarity,Audience Studio open,"Check allowlisted yes/no indicator",Indicator matches current permission
+TC-072,Audience and Alerts,P0,Manual,Stage-only pastor alert routing,Allowlisted admin user,"Send stage alert from Audience Studio",Alert appears on stage only
+TC-073,Audience and Alerts,P0,Manual,Projector isolation from stage alert,Output and stage both open,"Send stage-only alert",Projector output does not display stage alert
+TC-074,Audience and Alerts,P1,Manual,Template chips function,Audience Studio alert templates visible,"Click Wrap up 2 mins left 30 seconds",Template text fills input correctly
+TC-075,Audience and Alerts,P1,Manual,Queue message and promote flow,Message center with queued items,"Queue message then promote to active",Active banner updates correctly
+TC-076,Audience and Alerts,P1,Manual,Clear active message flow,Active stage message exists,"Click clear active",Banner disappears from stage
+TC-077,Audience and Alerts,P1,Manual,Remove queued message flow,At least two queued messages,"Remove one queued item",Queue count and order update correctly
+TC-078,Audience and Alerts,P1,Manual,Audience ticker mode,Ticker enabled with queued audience items,"Enable ticker and observe output/stage",Messages scroll continuously
+TC-079,Audience and Alerts,P1,Manual,Pinned message mode,Pinned message selected,"Disable ticker and pin message",Pinned card shows expected message
+TC-080,Audience and Alerts,P2,Manual,Queue persistence on refresh,Messages queued,"Refresh presenter",Queue state remains consistent
+TC-081,Bible Hub and Visionary,P0,Manual,Structured book chapter verse search,Bible Hub open in non-visionary mode,"Search John 7:1-7",Correct verses return
+TC-082,Bible Hub and Visionary,P1,Manual,Invalid structured reference handling,Bible Hub open,"Search invalid reference",Error shown without app crash
+TC-083,Bible Hub and Visionary,P1,Manual,Visionary contextual query peace,Visionary mode enabled,"Search i need peace and comfort",Result is context relevant not constant fallback
+TC-084,Bible Hub and Visionary,P1,Manual,Visionary contextual query fear,Visionary mode enabled,"Search i am afraid and anxious",Result is fear comfort related reference
+TC-085,Bible Hub and Visionary,P1,Manual,Visionary explicit John 3:16 query,Visionary mode enabled,"Search give me John 3:16",John 3:16 may return correctly
+TC-086,Bible Hub and Visionary,P1,Manual,Visionary fallback on AI failure,Temporarily break AI endpoint or key,"Run visionary search",Fallback reference is topic-aware not always John 3:16
+TC-087,Bible Hub and Visionary,P1,Manual,Version selector applies,Bible Hub results available,"Switch translation and search same reference",Returned verses use selected translation
+TC-088,Bible Hub and Visionary,P1,Manual,Project Now from bible results,Bible results loaded,"Click Project Now",Selected scripture projects live
+TC-089,Bible Hub and Visionary,P1,Manual,Schedule from bible results,Bible results loaded,"Click Schedule",Scripture item added to run sheet
+TC-090,Bible Hub and Visionary,P2,Manual,Visionary backdrop generation graceful fail,Backdrop generation requested with API issue,"Trigger generation with invalid key",UI shows failure gracefully and remains usable
+TC-091,Run Sheet Files,P0,Manual,Archive current success online,Signed in and API healthy,"Click Archive Current",Archive succeeds and appears in file list
+TC-092,Run Sheet Files,P1,Manual,Archive plus new success,Signed in and API healthy,"Click Archive + New",Archive created and active run sheet reset
+TC-093,Run Sheet Files,P1,Manual,Archive failure messaging clarity,API unavailable simulation,"Archive run sheet",UI clearly states fallback or failure reason
+TC-094,Run Sheet Files,P1,Manual,Reuse archived run sheet,Archived file exists,"Click Reuse",Active run sheet is restored from file payload
+TC-095,Run Sheet Files,P1,Manual,Duplicate archived run sheet,Archived file exists,"Click Duplicate",New archived entry created
+TC-096,Run Sheet Files,P1,Manual,Rename archived run sheet,Archived file exists,"Click Rename and save",New title persists
+TC-097,Run Sheet Files,P1,Manual,Delete archived run sheet,Archived file exists,"Click Delete and confirm",Entry removed from list
+TC-098,Run Sheet Files,P1,Manual,Archived files persist after relogin,Archived files created,"Sign out and sign in",Archived files remain visible
+TC-099,Run Sheet Files,P2,Manual,Search filter in files tab,Multiple archived files exist,"Use search input",List filters accurately
+TC-100,Presence and Sync,P1,Manual,Live connections count accuracy,Controller output stage clients available,"Open three clients and monitor badge",Badge reflects active connections within TTL

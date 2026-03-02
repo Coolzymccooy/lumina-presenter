@@ -38,6 +38,12 @@ const readSessionState = async (
   return body?.state || {};
 };
 
+const parseJsonResponse = async (response: any, endpoint: string) => {
+  const bodyText = await response.text();
+  expect(response.ok(), `${endpoint} failed: ${response.status()} ${bodyText}`).toBeTruthy();
+  return JSON.parse(bodyText);
+};
+
 const uniqueKey = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
 test('server session state keeps live fields across partial updates', async ({ request }) => {
@@ -181,4 +187,123 @@ test('projector routing ignores lower thirds overlay', async ({ page }) => {
 
   await expect(page.getByText(songText, { exact: false })).toBeVisible();
   await expect(page.locator('div[class*="bg-black/60"][class*="rounded-2xl"]')).toHaveCount(0);
+});
+
+test('run sheet archive endpoints support create/list/rename/reuse/delete', async ({ request }) => {
+  const key = uniqueKey();
+  const workspaceId = `e2e-workspace-${key}`;
+  const title = `Sunday Flow ${key}`;
+  const schedule = [
+    {
+      id: `item-${key}-1`,
+      title: 'Opening Prayer',
+      type: 'ANNOUNCEMENT',
+      slides: [{ id: `slide-${key}-1`, label: 'Open', content: 'Welcome everyone' }],
+      theme: { backgroundUrl: '', fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'medium' },
+    },
+    {
+      id: `item-${key}-2`,
+      title: 'Main Message',
+      type: 'SCRIPTURE',
+      slides: [{ id: `slide-${key}-2`, label: 'Text', content: 'John 3:16' }],
+      theme: { backgroundUrl: '', fontFamily: 'serif', textColor: '#ffffff', shadow: true, fontSize: 'large' },
+    },
+  ];
+
+  const createEndpoint = `${SERVER_BASE_URL}/api/workspaces/${encodeURIComponent(workspaceId)}/runsheets`;
+  const createResponse = await request.post(createEndpoint, {
+    headers: ownerHeaders,
+    data: {
+      title,
+      payload: {
+        items: schedule,
+        selectedItemId: schedule[0].id,
+      },
+    },
+  });
+  const createBody = await parseJsonResponse(createResponse, createEndpoint);
+  expect(createBody.ok).toBeTruthy();
+  expect(createBody.file?.title).toBe(title);
+  const fileId = createBody.file?.fileId;
+  expect(typeof fileId).toBe('string');
+  expect(fileId.length).toBeGreaterThan(6);
+
+  const listEndpoint = `${SERVER_BASE_URL}/api/workspaces/${encodeURIComponent(workspaceId)}/runsheets`;
+  const listResponse = await request.get(listEndpoint, { headers: ownerHeaders });
+  const listBody = await parseJsonResponse(listResponse, listEndpoint);
+  expect(listBody.ok).toBeTruthy();
+  expect(Array.isArray(listBody.files)).toBeTruthy();
+  expect(listBody.files.some((entry: any) => entry.fileId === fileId)).toBeTruthy();
+
+  const renamedTitle = `Renamed ${title}`;
+  const renameEndpoint = `${SERVER_BASE_URL}/api/workspaces/${encodeURIComponent(workspaceId)}/runsheets/${encodeURIComponent(fileId)}`;
+  const renameResponse = await request.patch(renameEndpoint, {
+    headers: ownerHeaders,
+    data: { title: renamedTitle },
+  });
+  const renameBody = await parseJsonResponse(renameResponse, renameEndpoint);
+  expect(renameBody.ok).toBeTruthy();
+  expect(renameBody.file?.title).toBe(renamedTitle);
+
+  const reuseEndpoint = `${SERVER_BASE_URL}/api/workspaces/${encodeURIComponent(workspaceId)}/runsheets/${encodeURIComponent(fileId)}/reuse`;
+  const reuseResponse = await request.post(reuseEndpoint, { headers: ownerHeaders });
+  const reuseBody = await parseJsonResponse(reuseResponse, reuseEndpoint);
+  expect(reuseBody.ok).toBeTruthy();
+  expect(Array.isArray(reuseBody.payload?.items)).toBeTruthy();
+  expect(reuseBody.payload.items).toHaveLength(2);
+  expect(reuseBody.file?.lastUsedAt).toBeTruthy();
+
+  const deleteEndpoint = `${SERVER_BASE_URL}/api/workspaces/${encodeURIComponent(workspaceId)}/runsheets/${encodeURIComponent(fileId)}`;
+  const deleteResponse = await request.delete(deleteEndpoint, { headers: ownerHeaders });
+  const deleteBody = await parseJsonResponse(deleteResponse, deleteEndpoint);
+  expect(deleteBody.ok).toBeTruthy();
+
+  const listAfterDeleteResponse = await request.get(listEndpoint, { headers: ownerHeaders });
+  const listAfterDeleteBody = await parseJsonResponse(listAfterDeleteResponse, listEndpoint);
+  expect(listAfterDeleteBody.ok).toBeTruthy();
+  expect(listAfterDeleteBody.files.some((entry: any) => entry.fileId === fileId)).toBeFalsy();
+});
+
+test('session state preserves stage message center across partial updates', async ({ request }) => {
+  const key = uniqueKey();
+  const workspaceId = `e2e-workspace-${key}`;
+  const sessionId = `e2e-session-${key}`;
+  const now = Date.now();
+
+  await postSessionState(request, workspaceId, sessionId, {
+    stageMessageCenter: {
+      queue: [
+        {
+          id: `msg-${key}`,
+          category: 'urgent',
+          text: 'Wrap up sir',
+          priority: 'high',
+          target: 'stage_only',
+          createdAt: now,
+          author: 'owner@e2e.local',
+        },
+      ],
+      activeMessageId: `msg-${key}`,
+      lastSentAt: now,
+    },
+    stageAlert: {
+      active: true,
+      text: 'Wrap up sir',
+      updatedAt: now,
+      author: 'owner@e2e.local',
+    },
+    activeItemId: 'item-alpha',
+  });
+
+  await postSessionState(request, workspaceId, sessionId, {
+    activeSlideIndex: 2,
+  });
+
+  const state = await readSessionState(request, workspaceId, sessionId);
+  expect(state.activeItemId).toBe('item-alpha');
+  expect(state.activeSlideIndex).toBe(2);
+  expect(state.stageMessageCenter?.activeMessageId).toBe(`msg-${key}`);
+  expect(Array.isArray(state.stageMessageCenter?.queue)).toBeTruthy();
+  expect(state.stageMessageCenter.queue[0]?.text).toBe('Wrap up sir');
+  expect(state.stageAlert?.text).toBe('Wrap up sir');
 });

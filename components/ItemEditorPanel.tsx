@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ServiceItem } from '../types';
+import { ServiceItem, SpeakerTimerPreset } from '../types';
 import { DEFAULT_BACKGROUNDS } from '../constants';
 import { PlusIcon } from './Icons';
 
@@ -8,9 +8,10 @@ interface ItemEditorPanelProps {
   item: ServiceItem;
   onUpdate: (updatedItem: ServiceItem) => void;
   onOpenLibrary?: () => void;
+  speakerPresets?: SpeakerTimerPreset[];
 }
 
-export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate, onOpenLibrary }) => {
+export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate, onOpenLibrary, speakerPresets = [] }) => {
   const defaultTimerCue = {
     enabled: false,
     durationSec: 300,
@@ -18,6 +19,7 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
     autoStartNext: false,
     amberPercent: 25,
     redPercent: 10,
+    presetId: '',
   };
 
   const updateTheme = (updates: Partial<typeof item.theme>) => {
@@ -32,6 +34,20 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
     onUpdate({
       ...item,
       timerCue: merged,
+    });
+  };
+
+  const applyPreset = (presetId: string) => {
+    const preset = speakerPresets.find((entry) => entry.id === presetId);
+    if (!preset) return;
+    updateTimerCue({
+      enabled: true,
+      durationSec: Math.max(1, Math.round(preset.durationSec)),
+      speakerName: typeof preset.speakerName === 'string' ? preset.speakerName : (item.timerCue?.speakerName || ''),
+      autoStartNext: !!preset.autoStartNextDefault,
+      amberPercent: Math.max(1, Math.min(99, Math.round(preset.amberPercent || 25))),
+      redPercent: Math.max(1, Math.min(99, Math.round(preset.redPercent || 10))),
+      presetId: preset.id,
     });
   };
 
@@ -117,7 +133,7 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
 
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-6 gap-2 border border-zinc-800 rounded-sm p-2 bg-zinc-900/50">
+      <div className="grid grid-cols-1 lg:grid-cols-8 gap-2 border border-zinc-800 rounded-sm p-2 bg-zinc-900/50">
         <label className="lg:col-span-1 flex items-center gap-2 text-[10px] uppercase tracking-wider text-zinc-400 font-bold">
           <input
             type="checkbox"
@@ -127,6 +143,31 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
           />
           Cue Timer
         </label>
+        <div className="lg:col-span-2">
+          <div className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Speaker Preset</div>
+          <div className="flex items-center gap-1">
+            <select
+              value={item.timerCue?.presetId || ''}
+              onChange={(e) => updateTimerCue({ presetId: e.target.value || '' })}
+              className="flex-1 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-200"
+            >
+              <option value="">None</option>
+              {speakerPresets.map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.name} ({Math.max(1, Math.round(preset.durationSec / 60))}m)
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => applyPreset(item.timerCue?.presetId || '')}
+              disabled={!item.timerCue?.presetId}
+              className="px-2 py-1 text-[10px] font-bold rounded border border-zinc-700 text-zinc-200 bg-zinc-800 disabled:opacity-40"
+            >
+              APPLY
+            </button>
+          </div>
+        </div>
         <div className="lg:col-span-1">
           <div className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Duration (sec)</div>
           <input

@@ -42,7 +42,20 @@ export const DEFAULT_BACKGROUNDS = [
   makeGradientBackground('#0f172a', '#1e293b', '#334155'),
 ];
 
-export const VIDEO_BACKGROUNDS = [
+const LOCAL_VIDEO_BACKGROUNDS = [
+  "/assets/10845-226632921_medium.mp4",
+  "/assets/124105-730195435.mp4",
+  "/assets/135587-762107320.mp4",
+  "/assets/150957-799711743.mp4",
+  "/assets/166852-835629095_small.mp4",
+  "/assets/169249-840702546_small.mp4",
+  "/assets/183281-870457586_small.mp4",
+  // "/assets/283431.mp4", // Intentionally excluded from default curated list (large file; can stutter on lower-end systems)
+  "/assets/5090-182666911.mp4",
+  "/assets/83880-585600454.mp4",
+];
+
+const REMOTE_VIDEO_BACKGROUNDS = [
   "https://player.vimeo.com/external/370331493.hd.mp4?s=383057e1d5225f543dc5364177265a9530fc976a&profile_id=175&oauth2_token_id=57447761", // Abstract Blue Flow
   "https://player.vimeo.com/external/403209224.hd.mp4?s=97cf46a06660600126a117b07096d2719f96213a&profile_id=175&oauth2_token_id=57447761", // Purple Particles
   "https://player.vimeo.com/external/394336066.hd.mp4?s=d01f99c1d683786194da94fc54f392dd55e94b15&profile_id=175&oauth2_token_id=57447761", // Slow Clouds
@@ -53,7 +66,15 @@ export const VIDEO_BACKGROUNDS = [
   "https://player.vimeo.com/external/448201205.hd.mp4?s=f048e918c5e0de0459c5d19d6a36f7311746726c&profile_id=175&oauth2_token_id=57447761", // Soft Ocean Waves
   "https://player.vimeo.com/external/394333635.hd.mp4?s=98da698270ca81f4404746d84128537a4c0a525f&profile_id=175&oauth2_token_id=57447761", // Golden Hour Glow
   "https://player.vimeo.com/external/403210332.hd.mp4?s=98da698270ca81f4404746d84128537a4c0a525f&profile_id=175&oauth2_token_id=57447761", // Abstract Geometry
+  "https://assets.mixkit.co/videos/preview/mixkit-waterfall-in-forest-2213-large.mp4", // Forest Waterfall
+  "https://assets.mixkit.co/videos/preview/mixkit-calm-sea-under-the-moonlight-2415-large.mp4", // Calm Moonlit Sea
+  "https://assets.mixkit.co/videos/preview/mixkit-waves-coming-to-the-beach-5016-large.mp4", // Beach Waves
+  "https://assets.mixkit.co/videos/preview/mixkit-sunbeams-through-the-forest-1228-large.mp4", // Forest Sunbeams (Warm)
+  "https://assets.mixkit.co/videos/preview/mixkit-clouds-and-blue-sky-2408-large.mp4", // Clouds + Sky
+  "https://assets.mixkit.co/videos/preview/mixkit-orange-and-purple-sky-over-calm-water-1219-large.mp4", // Sunset Water
 ];
+
+export const VIDEO_BACKGROUNDS = [...LOCAL_VIDEO_BACKGROUNDS, ...REMOTE_VIDEO_BACKGROUNDS];
 
 export const SOLID_COLORS = [
   "#000000", // Black

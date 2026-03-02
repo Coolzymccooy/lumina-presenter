@@ -632,6 +632,33 @@ const ensureWorkspaceRead = (workspaceId, actor) => {
   return workspace;
 };
 
+const SEMANTIC_BIBLE_REFERENCE_PATTERN = /\b(?:[1-3]\s*)?[A-Za-z]+(?:\s+[A-Za-z]+)*\s+\d{1,3}:\d{1,3}(?:-\d{1,3})?\b/i;
+const SEMANTIC_JOHN_316_PATTERN = /^john\s+3:16$/i;
+
+const extractBibleReference = (value) => {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  const match = text.match(SEMANTIC_BIBLE_REFERENCE_PATTERN);
+  return match ? match[0].replace(/\s+/g, " ").trim() : null;
+};
+
+const inferSemanticFallbackReference = (query) => {
+  const text = String(query || "").toLowerCase();
+  const includesAny = (keywords) => keywords.some((keyword) => text.includes(keyword));
+
+  if (includesAny(["peace", "comfort", "anx", "worry", "stress", "trouble"])) return "Philippians 4:6-7";
+  if (includesAny(["grief", "mourning", "loss", "broken", "sad"])) return "Psalm 34:18";
+  if (includesAny(["fear", "afraid", "panic"])) return "Isaiah 41:10";
+  if (includesAny(["strength", "weak", "tired", "weary"])) return "Isaiah 40:31";
+  if (includesAny(["guidance", "direction", "decision", "wisdom"])) return "Proverbs 3:5-6";
+  if (includesAny(["healing", "sick", "pain", "disease"])) return "Jeremiah 30:17";
+  if (includesAny(["forgive", "forgiveness", "guilt", "sin", "shame"])) return "1 John 1:9";
+  if (includesAny(["marriage", "family", "relationship", "love"])) return "1 Corinthians 13:4-7";
+  if (includesAny(["hope", "future", "discourage", "depress"])) return "Romans 15:13";
+  if (includesAny(["protection", "danger", "battle", "war"])) return "Psalm 91:1-2";
+  return "Psalm 23:1-4";
+};
+
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "lumina-server-api", db: DB_PATH, now: now() });
 });
@@ -697,7 +724,12 @@ User Input: "${query}"
 
 Return ONLY the reference (e.g., "Philippians 4:13" or "Psalm 23:1-4").`,
     });
-    const reference = String(response?.text || "").trim() || "John 3:16";
+    const parsedReference = extractBibleReference(response?.text);
+    const looksLikeDefaultJohn = parsedReference ? SEMANTIC_JOHN_316_PATTERN.test(parsedReference) : false;
+    const userAskedForJohn316 = /john\s*3:16|for god so loved|eternal life|believe/i.test(query);
+    const reference = parsedReference && (!looksLikeDefaultJohn || userAskedForJohn316)
+      ? parsedReference
+      : inferSemanticFallbackReference(query);
     return res.json({ ok: true, reference });
   } catch (error) {
     return res.status(500).json({ ok: false, error: "AI_SEMANTIC_SEARCH_FAILED", message: String(error?.message || error) });

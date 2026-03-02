@@ -25,9 +25,11 @@ export interface TimerCue {
   autoStartNext?: boolean;
   amberPercent?: number;
   redPercent?: number;
+  presetId?: string;
 }
 
 export type StageTimerVariant = 'top-right' | 'top-left' | 'bottom-right' | 'compact-bar';
+export type StageFlowLayout = 'balanced' | 'speaker_focus' | 'preview_focus' | 'minimal_next';
 
 export interface StageTimerLayout {
   x: number;
@@ -40,6 +42,51 @@ export interface StageTimerLayout {
 }
 
 export type ConnectionRole = 'controller' | 'output' | 'stage' | 'remote';
+
+export type StageMessageCategory = 'urgent' | 'timing' | 'logistics';
+export type StageMessagePriority = 'normal' | 'high';
+export type StageMessageTarget = 'stage_only';
+
+export interface StageMessage {
+  id: string;
+  category: StageMessageCategory;
+  text: string;
+  priority: StageMessagePriority;
+  target: StageMessageTarget;
+  createdAt: number;
+  author: string | null;
+  templateKey?: string;
+}
+
+export interface StageMessageCenterState {
+  queue: StageMessage[];
+  activeMessageId: string | null;
+  lastSentAt: number;
+}
+
+export interface SpeakerTimerPreset {
+  id: string;
+  name: string;
+  durationSec: number;
+  amberPercent: number;
+  redPercent: number;
+  autoStartNextDefault: boolean;
+  speakerName?: string;
+}
+
+export interface RunSheetFileRecord {
+  fileId: string;
+  title: string;
+  payload: {
+    items: ServiceItem[];
+    selectedItemId?: string | null;
+  };
+  createdByUid: string | null;
+  createdByEmail: string | null;
+  createdAt: number;
+  updatedAt: number;
+  lastUsedAt: number | null;
+}
 
 export interface ServiceItem {
   id: string;
