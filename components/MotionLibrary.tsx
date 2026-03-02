@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PlayIcon } from './Icons';
 import { DEFAULT_BACKGROUNDS, VIDEO_BACKGROUNDS } from '../constants';
 import { MediaType } from '../types';
@@ -45,18 +45,33 @@ const CURATED_STILL_ASSETS: MotionAsset[] = DEFAULT_BACKGROUNDS.map((url, idx) =
 
 const pickBestVideo = (files: any[]): string | null => {
   if (!Array.isArray(files) || !files.length) return null;
-  const mp4 = files.filter((f) => String(f?.file_type || '').includes('mp4'));
+  const mp4 = files.filter((f) => String(f?.file_type || '').toLowerCase().includes('mp4'));
   const pool = mp4.length ? mp4 : files;
-  const sorted = [...pool].sort((a, b) => (Number(b?.width) || 0) - (Number(a?.width) || 0));
-  return sorted[0]?.link || sorted[0]?.url || null;
+  // Avoid huge files that can freeze weak clients; prefer practical 720p-1080p sources.
+  const preferred = pool
+    .filter((entry) => {
+      const width = Number(entry?.width) || 0;
+      return width > 0 && width <= 1920;
+    })
+    .sort((a, b) => {
+      const aw = Number(a?.width) || 0;
+      const bw = Number(b?.width) || 0;
+      const aScore = Math.abs(1280 - aw);
+      const bScore = Math.abs(1280 - bw);
+      return aScore - bScore;
+    });
+  const candidate = preferred[0] || pool[0];
+  return candidate?.link || candidate?.url || null;
 };
 
 export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose }) => {
   const [activeTab, setActiveTab] = useState<MotionTab>('curated');
-  const [query, setQuery] = useState('worship background');
+  const [queryInput, setQueryInput] = useState('worship background');
+  const [debouncedQuery, setDebouncedQuery] = useState('worship background');
   const [assets, setAssets] = useState<MotionAsset[]>(CURATED_VIDEO_ASSETS);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const cacheRef = useRef<Record<string, MotionAsset[]>>({});
 
   const pexelsKey = (import.meta.env.VITE_PEXELS_API_KEY as string | undefined)?.trim();
   const pixabayKey = (import.meta.env.VITE_PIXABAY_API_KEY as string | undefined)?.trim();
@@ -68,28 +83,50 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
   }, [activeTab, pexelsKey, pixabayKey]);
 
   useEffect(() => {
+    const id = window.setTimeout(() => {
+      setDebouncedQuery(queryInput.trim() || 'worship background');
+    }, 380);
+    return () => window.clearTimeout(id);
+  }, [queryInput]);
+
+  useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
+    const requestTimeout = window.setTimeout(() => controller.abort(), 10000);
 
     const run = async () => {
       setError('');
 
       if (activeTab === 'curated') {
+        setLoading(false);
         setAssets(CURATED_VIDEO_ASSETS);
         return;
       }
 
       if (activeTab === 'stills') {
+        setLoading(false);
         setAssets(CURATED_STILL_ASSETS);
         return;
       }
 
       if (activeTab === 'pexels' && !pexelsKey) {
+        setLoading(false);
         setAssets(CURATED_VIDEO_ASSETS);
         return;
       }
 
       if (activeTab === 'pixabay' && !pixabayKey) {
+        setLoading(false);
         setAssets(CURATED_VIDEO_ASSETS);
+        return;
+      }
+
+      const normalizedQuery = debouncedQuery.trim().toLowerCase();
+      const cacheKey = `${activeTab}:${normalizedQuery}`;
+      const cached = cacheRef.current[cacheKey];
+      if (cached && cached.length > 0) {
+        setLoading(false);
+        setAssets(cached);
         return;
       }
 
@@ -97,8 +134,11 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
       try {
         if (activeTab === 'pexels') {
           const res = await fetch(
-            `https://api.pexels.com/videos/search?query=${encodeURIComponent(query || 'worship background')}&per_page=20&orientation=landscape`,
-            { headers: { Authorization: pexelsKey as string } }
+            `https://api.pexels.com/videos/search?query=${encodeURIComponent(debouncedQuery || 'worship background')}&per_page=12&orientation=landscape`,
+            {
+              headers: { Authorization: pexelsKey as string },
+              signal: controller.signal,
+            }
           );
           if (!res.ok) throw new Error(`Pexels request failed: ${res.status}`);
           const data = await res.json();
@@ -114,13 +154,18 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
             }))
             .filter((item: MotionAsset) => !!item.url);
 
-          if (!cancelled) setAssets(parsed.length ? parsed : CURATED_VIDEO_ASSETS);
+          if (!cancelled) {
+            const next = parsed.length ? parsed : CURATED_VIDEO_ASSETS;
+            cacheRef.current[cacheKey] = next;
+            setAssets(next);
+          }
           return;
         }
 
         if (activeTab === 'pixabay') {
           const res = await fetch(
-            `https://pixabay.com/api/videos/?key=${encodeURIComponent(pixabayKey as string)}&q=${encodeURIComponent(query || 'worship background')}&per_page=20&safesearch=true`,
+            `https://pixabay.com/api/videos/?key=${encodeURIComponent(pixabayKey as string)}&q=${encodeURIComponent(debouncedQuery || 'worship background')}&per_page=12&safesearch=true`,
+            { signal: controller.signal }
           );
           if (!res.ok) throw new Error(`Pixabay request failed: ${res.status}`);
           const data = await res.json();
@@ -144,9 +189,16 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
             }))
             .filter((item: MotionAsset) => !!item.url);
 
-          if (!cancelled) setAssets(parsed.length ? parsed : CURATED_VIDEO_ASSETS);
+          if (!cancelled) {
+            const next = parsed.length ? parsed : CURATED_VIDEO_ASSETS;
+            cacheRef.current[cacheKey] = next;
+            setAssets(next);
+          }
         }
       } catch (err: any) {
+        if (cancelled || err?.name === 'AbortError') {
+          return;
+        }
         if (!cancelled) {
           setError(err?.message || 'Failed to load motion assets');
           setAssets(CURATED_VIDEO_ASSETS);
@@ -159,8 +211,10 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
     run();
     return () => {
       cancelled = true;
+      window.clearTimeout(requestTimeout);
+      controller.abort();
     };
-  }, [activeTab, query, pexelsKey, pixabayKey]);
+  }, [activeTab, debouncedQuery, pexelsKey, pixabayKey]);
 
   return (
     <div className="fixed inset-0 bg-black/85 z-[140] p-3 md:p-6 overflow-hidden">
@@ -182,8 +236,8 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
           <button onClick={() => setActiveTab('pexels')} className={`px-3 py-1 text-xs rounded ${activeTab === 'pexels' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Pexels</button>
           <button onClick={() => setActiveTab('pixabay')} className={`px-3 py-1 text-xs rounded ${activeTab === 'pixabay' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Pixabay</button>
           <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            value={queryInput}
+            onChange={(e) => setQueryInput(e.target.value)}
             placeholder="Search worship, sunrise, abstract..."
             className="w-full md:w-80 md:ml-auto bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-200"
           />
@@ -203,7 +257,7 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
                   className="group relative aspect-video bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800 hover:border-blue-500 transition-all cursor-pointer"
                   onClick={() => onSelect(motion.url, motion.mediaType)}
                 >
-                  {motion.mediaType === 'video' ? (
+                  {motion.mediaType === 'video' && motion.provider === 'curated' ? (
                     <video
                       src={motion.url}
                       poster={motion.thumb}
@@ -215,7 +269,12 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
                       preload="metadata"
                     />
                   ) : (
-                    <img src={motion.thumb} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" />
+                    <img
+                      src={motion.thumb}
+                      loading="lazy"
+                      className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+                      alt={motion.name}
+                    />
                   )}
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
                     <PlayIcon className="w-8 h-8 text-white drop-shadow-lg" />

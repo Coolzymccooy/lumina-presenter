@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ServiceItem, Slide, StageAlertState, StageFlowLayout, StageMessageCenterState, StageTimerLayout, StageTimerVariant } from '../types';
+import { ServiceItem, Slide, StageAlertLayout, StageAlertState, StageFlowLayout, StageMessageCenterState, StageTimerLayout, StageTimerVariant } from '../types';
 import { getCachedMedia, getMedia } from '../services/localMedia';
 
 interface StageDisplayProps {
@@ -16,6 +16,8 @@ interface StageDisplayProps {
   timerRedPercent?: number;
   timerLayout?: StageTimerLayout;
   onTimerLayoutChange?: (layout: StageTimerLayout) => void;
+  stageAlertLayout?: StageAlertLayout;
+  onStageAlertLayoutChange?: (layout: StageAlertLayout) => void;
   profile?: 'classic' | 'compact' | 'high_contrast';
   flowLayout?: StageFlowLayout;
   audienceOverlay?: any;
@@ -30,6 +32,15 @@ const DEFAULT_LAYOUT: StageTimerLayout = {
   height: 150,
   fontScale: 1,
   variant: 'top-right',
+  locked: false,
+};
+
+const DEFAULT_ALERT_LAYOUT: StageAlertLayout = {
+  x: 120,
+  y: 84,
+  width: 920,
+  height: 116,
+  fontScale: 1,
   locked: false,
 };
 
@@ -82,6 +93,21 @@ const normalizeLayout = (value: StageTimerLayout | undefined | null, hostWindow?
   };
 };
 
+const normalizeAlertLayout = (value: StageAlertLayout | undefined | null, hostWindow?: Window | null): StageAlertLayout => {
+  const raw = value || DEFAULT_ALERT_LAYOUT;
+  const { vw, vh } = resolveViewport(hostWindow);
+  const width = Number.isFinite(raw.width) ? clamp(raw.width, 320, 1800) : DEFAULT_ALERT_LAYOUT.width;
+  const height = Number.isFinite(raw.height) ? clamp(raw.height, 88, 640) : DEFAULT_ALERT_LAYOUT.height;
+  return {
+    x: Number.isFinite(raw.x) ? clamp(raw.x, 0, Math.max(0, vw - width)) : clamp(DEFAULT_ALERT_LAYOUT.x, 0, Math.max(0, vw - width)),
+    y: Number.isFinite(raw.y) ? clamp(raw.y, 0, Math.max(0, vh - height)) : clamp(DEFAULT_ALERT_LAYOUT.y, 0, Math.max(0, vh - height)),
+    width,
+    height,
+    fontScale: Number.isFinite(raw.fontScale) ? clamp(raw.fontScale, 0.7, 2.2) : DEFAULT_ALERT_LAYOUT.fontScale,
+    locked: !!raw.locked,
+  };
+};
+
 const layoutsEqual = (left: StageTimerLayout, right: StageTimerLayout) => (
   left.x === right.x
   && left.y === right.y
@@ -89,6 +115,15 @@ const layoutsEqual = (left: StageTimerLayout, right: StageTimerLayout) => (
   && left.height === right.height
   && left.fontScale === right.fontScale
   && left.variant === right.variant
+  && left.locked === right.locked
+);
+
+const alertLayoutsEqual = (left: StageAlertLayout, right: StageAlertLayout) => (
+  left.x === right.x
+  && left.y === right.y
+  && left.width === right.width
+  && left.height === right.height
+  && left.fontScale === right.fontScale
   && left.locked === right.locked
 );
 
@@ -106,6 +141,8 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
   timerRedPercent = 10,
   timerLayout,
   onTimerLayoutChange,
+  stageAlertLayout,
+  onStageAlertLayoutChange,
   profile = 'classic',
   flowLayout = 'balanced',
   audienceOverlay,
@@ -114,12 +151,19 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
 }) => {
   const [time, setTime] = useState(new Date());
   const [layout, setLayout] = useState<StageTimerLayout>(() => normalizeLayout(timerLayout));
+  const [alertLayout, setAlertLayout] = useState<StageAlertLayout>(() => normalizeAlertLayout(stageAlertLayout));
   const [dragMode, setDragMode] = useState<'move' | 'resize' | null>(null);
+  const [alertDragMode, setAlertDragMode] = useState<'move' | 'resize' | null>(null);
   const dragStartRef = useRef<{ x: number; y: number; layout: StageTimerLayout } | null>(null);
+  const alertDragStartRef = useRef<{ x: number; y: number; layout: StageAlertLayout } | null>(null);
   const dragPointerIdRef = useRef<number | null>(null);
+  const alertDragPointerIdRef = useRef<number | null>(null);
   const dragCaptureTargetRef = useRef<HTMLElement | null>(null);
+  const alertDragCaptureTargetRef = useRef<HTMLElement | null>(null);
   const timerWidgetRef = useRef<HTMLDivElement | null>(null);
+  const alertWidgetRef = useRef<HTMLDivElement | null>(null);
   const [timerBounds, setTimerBounds] = useState<{ width: number; height: number }>({ width: layout.width, height: layout.height });
+  const [alertBounds, setAlertBounds] = useState<{ width: number; height: number }>({ width: alertLayout.width, height: alertLayout.height });
   const [controlsMenuOpen, setControlsMenuOpen] = useState(false);
   const getHostWindow = useCallback(() => (
     timerWidgetRef.current?.ownerDocument?.defaultView
@@ -143,6 +187,11 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
     onTimerLayoutChange?.(next);
   }, [onTimerLayoutChange]);
 
+  const publishAlertLayout = useCallback((next: StageAlertLayout) => {
+    setAlertLayout(next);
+    onStageAlertLayoutChange?.(next);
+  }, [onStageAlertLayoutChange]);
+
   useEffect(() => {
     const normalized = normalizeLayout(timerLayout, getHostWindow());
     if (!layoutsEqual(normalized, layout)) {
@@ -151,15 +200,24 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
   }, [timerLayout, getHostWindow]);
 
   useEffect(() => {
+    const normalized = normalizeAlertLayout(stageAlertLayout, getHostWindow());
+    if (!alertLayoutsEqual(normalized, alertLayout)) {
+      setAlertLayout(normalized);
+    }
+  }, [stageAlertLayout, getHostWindow]);
+
+  useEffect(() => {
     const hostWindow = getHostWindow();
     if (!hostWindow) return;
     const onResize = () => {
       const normalized = normalizeLayout(layout, hostWindow);
       if (!layoutsEqual(normalized, layout)) publishLayout(normalized);
+      const normalizedAlert = normalizeAlertLayout(alertLayout, hostWindow);
+      if (!alertLayoutsEqual(normalizedAlert, alertLayout)) publishAlertLayout(normalizedAlert);
     };
     hostWindow.addEventListener('resize', onResize);
     return () => hostWindow.removeEventListener('resize', onResize);
-  }, [layout, publishLayout, getHostWindow]);
+  }, [layout, alertLayout, publishLayout, publishAlertLayout, getHostWindow]);
 
   useEffect(() => {
     const node = timerWidgetRef.current;
@@ -183,6 +241,29 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
     observer.observe(node);
     return () => observer.disconnect();
   }, [layout, publishLayout]);
+
+  useEffect(() => {
+    const node = alertWidgetRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    const hostWindow = node.ownerDocument?.defaultView || null;
+    const normalized = normalizeAlertLayout(alertLayout, hostWindow);
+    if (!alertLayoutsEqual(normalized, alertLayout)) {
+      publishAlertLayout(normalized);
+    }
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const nextWidth = Math.max(0, Math.round(entry.contentRect.width));
+      const nextHeight = Math.max(0, Math.round(entry.contentRect.height));
+      setAlertBounds((prev) => (
+        prev.width === nextWidth && prev.height === nextHeight
+          ? prev
+          : { width: nextWidth, height: nextHeight }
+      ));
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [alertLayout, publishAlertLayout]);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -312,6 +393,72 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
     };
   }, [dragMode, publishLayout, getHostWindow]);
 
+  useEffect(() => {
+    if (!alertDragMode) return;
+    const hostWindow = getHostWindow();
+    const hostDocument = alertWidgetRef.current?.ownerDocument || hostWindow?.document;
+    if (!hostWindow || !hostDocument) return;
+    const onMove = (event: PointerEvent) => {
+      const pointerId = alertDragPointerIdRef.current;
+      if (pointerId !== null && event.pointerId !== pointerId) return;
+      const start = alertDragStartRef.current;
+      if (!start) return;
+      const dx = event.clientX - start.x;
+      const dy = event.clientY - start.y;
+      const { vw, vh } = resolveViewport(hostWindow);
+
+      if (alertDragMode === 'move') {
+        const next = {
+          ...start.layout,
+          x: clamp(start.layout.x + dx, 0, Math.max(0, vw - start.layout.width)),
+          y: clamp(start.layout.y + dy, 0, Math.max(0, vh - start.layout.height)),
+        };
+        publishAlertLayout(next);
+      } else if (alertDragMode === 'resize') {
+        const width = clamp(start.layout.width + dx, 320, 1800);
+        const height = clamp(start.layout.height + dy, 88, 640);
+        const next = {
+          ...start.layout,
+          width,
+          height,
+          x: clamp(start.layout.x, 0, Math.max(0, vw - width)),
+          y: clamp(start.layout.y, 0, Math.max(0, vh - height)),
+        };
+        publishAlertLayout(next);
+      }
+    };
+    const onUp = (event?: PointerEvent) => {
+      const pointerId = alertDragPointerIdRef.current;
+      if (event && pointerId !== null && event.pointerId !== pointerId) return;
+      const captureTarget = alertDragCaptureTargetRef.current;
+      if (
+        pointerId !== null
+        && captureTarget
+        && typeof captureTarget.hasPointerCapture === 'function'
+        && captureTarget.hasPointerCapture(pointerId)
+        && typeof captureTarget.releasePointerCapture === 'function'
+      ) {
+        try {
+          captureTarget.releasePointerCapture(pointerId);
+        } catch {
+          // ignore release errors
+        }
+      }
+      alertDragPointerIdRef.current = null;
+      alertDragCaptureTargetRef.current = null;
+      setAlertDragMode(null);
+      alertDragStartRef.current = null;
+    };
+    hostDocument.addEventListener('pointermove', onMove);
+    hostDocument.addEventListener('pointerup', onUp);
+    hostDocument.addEventListener('pointercancel', onUp);
+    return () => {
+      hostDocument.removeEventListener('pointermove', onMove);
+      hostDocument.removeEventListener('pointerup', onUp);
+      hostDocument.removeEventListener('pointercancel', onUp);
+    };
+  }, [alertDragMode, publishAlertLayout, getHostWindow]);
+
   const compact = profile === 'compact';
   const highContrast = profile === 'high_contrast';
   const currentTitle = typeof activeItem?.title === 'string' && activeItem.title.trim() ? activeItem.title : 'Waiting for Service...';
@@ -392,13 +539,65 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
     setDragMode(mode);
   };
 
+  const startAlertDrag = (mode: 'move' | 'resize', event: React.PointerEvent<HTMLElement>) => {
+    if (alertLayout.locked) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    alertDragPointerIdRef.current = event.pointerId;
+    alertDragCaptureTargetRef.current = event.currentTarget;
+    if (typeof event.currentTarget.setPointerCapture === 'function') {
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // ignore capture errors
+      }
+    }
+    alertDragStartRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      layout: alertLayout,
+    };
+    setAlertDragMode(mode);
+  };
+
   const applyPreset = (variant: StageTimerVariant) => {
     const next = applyLayoutPreset(variant, layout.locked, getHostWindow());
     publishLayout(next);
   };
 
+  const applyAlertPreset = (preset: 'top-center' | 'top-left' | 'bottom-center') => {
+    const hostWindow = getHostWindow();
+    const { vw, vh } = resolveViewport(hostWindow);
+    const margin = 24;
+    const width = clamp(alertLayout.width, 320, 1800);
+    const height = clamp(alertLayout.height, 88, 640);
+    let x = alertLayout.x;
+    let y = alertLayout.y;
+    if (preset === 'top-center') {
+      x = Math.max(0, Math.round((vw - width) / 2));
+      y = margin;
+    } else if (preset === 'top-left') {
+      x = margin;
+      y = margin;
+    } else if (preset === 'bottom-center') {
+      x = Math.max(0, Math.round((vw - width) / 2));
+      y = Math.max(margin, vh - height - margin);
+    }
+    publishAlertLayout({
+      ...alertLayout,
+      x: clamp(x, 0, Math.max(0, vw - width)),
+      y: clamp(y, 0, Math.max(0, vh - height)),
+      width,
+      height,
+    });
+  };
+
   const toggleLock = () => {
     publishLayout({ ...layout, locked: !layout.locked });
+  };
+  const toggleAlertLock = () => {
+    publishAlertLayout({ ...alertLayout, locked: !alertLayout.locked });
   };
   const stopWidgetDrag = (event: React.PointerEvent<HTMLElement>) => {
     event.stopPropagation();
@@ -425,6 +624,13 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
       : stageCategory === 'logistics'
         ? 'bg-cyan-950/80 border-cyan-500/50 text-cyan-50'
         : 'bg-rose-950/80 border-rose-500/50 text-rose-50';
+  const measuredAlertWidth = Math.max(320, alertBounds.width || alertLayout.width);
+  const measuredAlertHeight = Math.max(88, alertBounds.height || alertLayout.height);
+  const alertFontScale = clamp(alertLayout.fontScale, 0.7, 2.2);
+  const alertTitleSize = `${Math.round(clamp(10 * alertFontScale, 9, 20))}px`;
+  const alertBodyPx = clamp(Math.min(measuredAlertHeight * 0.42, measuredAlertWidth * 0.06) * alertFontScale, 16, 66);
+  const alertBodySize = `${Math.round(alertBodyPx)}px`;
+  const alertMetaSize = `${Math.round(clamp(10 * alertFontScale, 9, 16))}px`;
   const safeFlowLayout = isFlowLayout(flowLayout) ? flowLayout : 'balanced';
   const flowGridRows = safeFlowLayout === 'speaker_focus'
     ? 'auto minmax(0,1.45fr) minmax(0,0.55fr)'
@@ -516,25 +722,112 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
       </div>
 
       {showStageAlert && (
-        <div className={`absolute top-20 left-1/2 -translate-x-1/2 max-w-4xl w-[88%] border rounded-2xl px-5 py-3 backdrop-blur-md shadow-2xl z-40 ${stageBannerTone}`}>
-          <div className="flex items-center justify-between gap-3 mb-1">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em]">
-              Pastor Alert • {stageCategory}
-              {stagePriorityHigh ? ' • HIGH' : ''}
+        <div
+          ref={alertWidgetRef}
+          data-testid="stage-alert-widget"
+          className={`absolute border rounded-2xl backdrop-blur-md shadow-2xl z-40 ${stageBannerTone}`}
+          style={{
+            left: alertLayout.x,
+            top: alertLayout.y,
+            width: alertLayout.width,
+            height: alertLayout.height,
+            minHeight: 88,
+            overflow: 'hidden',
+            touchAction: alertLayout.locked ? 'auto' : 'none',
+          }}
+        >
+          <div
+            data-testid="stage-alert-drag-surface"
+            onPointerDown={(event) => startAlertDrag('move', event)}
+            className={`relative w-full h-full px-5 py-3 ${alertLayout.locked ? 'cursor-default' : 'cursor-move'} flex flex-col justify-between overflow-hidden`}
+          >
+            <div className="flex items-center justify-between gap-3 mb-1">
+              <div className="font-black uppercase tracking-[0.2em] truncate pr-2" style={{ fontSize: alertTitleSize }}>
+                Pastor Alert - {stageCategory}
+                {stagePriorityHigh ? ' - HIGH' : ''}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {activeStageQueueIndex >= 0 && stageQueue.length > 0 && (
+                  <div className="uppercase tracking-[0.2em] opacity-80" style={{ fontSize: alertTitleSize }}>
+                    {activeStageQueueIndex + 1}/{stageQueue.length}
+                  </div>
+                )}
+                {!alertLayout.locked && (
+                  <>
+                    <button
+                      onPointerDown={stopWidgetDrag}
+                      onClick={() => publishAlertLayout({ ...alertLayout, fontScale: clamp(alertLayout.fontScale - 0.1, 0.7, 2.2) })}
+                      className="text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-white/30 text-white/70 hover:border-white/60"
+                      title="Reduce alert text size"
+                    >
+                      A-
+                    </button>
+                    <button
+                      onPointerDown={stopWidgetDrag}
+                      onClick={() => publishAlertLayout({ ...alertLayout, fontScale: clamp(alertLayout.fontScale + 0.1, 0.7, 2.2) })}
+                      className="text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-white/30 text-white/70 hover:border-white/60"
+                      title="Increase alert text size"
+                    >
+                      A+
+                    </button>
+                    <button
+                      onPointerDown={stopWidgetDrag}
+                      onClick={() => applyAlertPreset('top-center')}
+                      className="text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-white/30 text-white/70 hover:border-white/60"
+                      title="Snap alert to top center"
+                    >
+                      TOP C
+                    </button>
+                    <button
+                      onPointerDown={stopWidgetDrag}
+                      onClick={() => applyAlertPreset('top-left')}
+                      className="text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-white/30 text-white/70 hover:border-white/60"
+                      title="Snap alert to top left"
+                    >
+                      TOP L
+                    </button>
+                    <button
+                      onPointerDown={stopWidgetDrag}
+                      onClick={() => applyAlertPreset('bottom-center')}
+                      className="text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-white/30 text-white/70 hover:border-white/60"
+                      title="Snap alert to bottom center"
+                    >
+                      BOT C
+                    </button>
+                  </>
+                )}
+                <button
+                  onPointerDown={stopWidgetDrag}
+                  onClick={toggleAlertLock}
+                  className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border border-white/30 hover:border-white/60"
+                  title={alertLayout.locked ? 'Unlock alert widget' : 'Lock alert widget'}
+                >
+                  {alertLayout.locked ? 'Locked' : 'Free'}
+                </button>
+              </div>
             </div>
-            {activeStageQueueIndex >= 0 && stageQueue.length > 0 && (
-              <div className="text-[10px] uppercase tracking-[0.2em] opacity-80">
-                {activeStageQueueIndex + 1}/{stageQueue.length}
+            <div className="font-semibold leading-snug truncate" style={{ fontSize: alertBodySize }}>
+              {activeStageMessage?.text}
+            </div>
+            {activeStageMessage?.author && (
+              <div className="uppercase tracking-wider opacity-80 mt-1 truncate" style={{ fontSize: alertMetaSize }}>
+                From {activeStageMessage.author}
               </div>
             )}
           </div>
-          <div className="text-xl font-semibold leading-snug">{activeStageMessage?.text}</div>
-          {activeStageMessage?.author && (
-            <div className="text-[10px] uppercase tracking-wider opacity-80 mt-2">From {activeStageMessage.author}</div>
+
+          {!alertLayout.locked && (
+            <div
+              data-testid="stage-alert-resize-handle"
+              onPointerDown={(event) => startAlertDrag('resize', event)}
+              className="absolute right-1 bottom-1 h-6 w-6 cursor-se-resize rounded-sm border border-white/50 bg-black/40 flex items-center justify-center"
+              title="Resize alert widget"
+            >
+              <span className="text-[10px] leading-none text-white/80">::</span>
+            </div>
           )}
         </div>
       )}
-
       <div className={`flex flex-col justify-start ${nextPanelOpacityClass} ${highContrast ? 'bg-black border-white/30' : 'bg-gray-900/50 border-gray-800'} p-6 rounded-xl border`}>
         <span className="text-sm font-bold text-blue-500 uppercase tracking-widest mb-2">NEXT</span>
         {nextHasText ? (

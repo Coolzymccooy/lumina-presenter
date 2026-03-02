@@ -6,8 +6,10 @@ import {
   Slide,
   ItemType,
   AudienceDisplayState,
+  AudienceQrProjectionState,
   AudienceMessage,
   StageAlertState,
+  StageAlertLayout,
   StageTimerLayout,
   StageTimerVariant,
   ConnectionRole,
@@ -89,6 +91,7 @@ type WorkspaceSettings = {
   stageFlowLayout: StageFlowLayout;
   machineMode: boolean;
   stageTimerLayout: StageTimerLayout;
+  stageAlertLayout: StageAlertLayout;
   connectionTargetRoles: ConnectionRole[];
   speakerTimerPresets: SpeakerTimerPreset[];
 };
@@ -109,6 +112,7 @@ type CloudPlaylistRecord = {
   activeSlideIndex?: number;
   stageAlert?: StageAlertState;
   stageMessageCenter?: StageMessageCenterState;
+  audienceQrProjection?: AudienceQrProjectionState;
   workspaceSettings?: Partial<WorkspaceSettings>;
   workspaceSettingsUpdatedAt?: number;
 };
@@ -134,6 +138,15 @@ const DEFAULT_STAGE_TIMER_LAYOUT: StageTimerLayout = {
   height: 150,
   fontScale: 1,
   variant: 'top-right',
+  locked: false,
+};
+
+const DEFAULT_STAGE_ALERT_LAYOUT: StageAlertLayout = {
+  x: 120,
+  y: 84,
+  width: 920,
+  height: 116,
+  fontScale: 1,
   locked: false,
 };
 
@@ -220,6 +233,19 @@ const normalizeStageTimerLayout = (value: unknown): StageTimerLayout => {
   };
 };
 
+const normalizeStageAlertLayout = (value: unknown): StageAlertLayout => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return DEFAULT_STAGE_ALERT_LAYOUT;
+  const raw = value as Record<string, unknown>;
+  return {
+    x: typeof raw.x === 'number' && Number.isFinite(raw.x) ? raw.x : DEFAULT_STAGE_ALERT_LAYOUT.x,
+    y: typeof raw.y === 'number' && Number.isFinite(raw.y) ? raw.y : DEFAULT_STAGE_ALERT_LAYOUT.y,
+    width: typeof raw.width === 'number' && Number.isFinite(raw.width) ? clamp(raw.width, 320, 1800) : DEFAULT_STAGE_ALERT_LAYOUT.width,
+    height: typeof raw.height === 'number' && Number.isFinite(raw.height) ? clamp(raw.height, 88, 640) : DEFAULT_STAGE_ALERT_LAYOUT.height,
+    fontScale: typeof raw.fontScale === 'number' && Number.isFinite(raw.fontScale) ? clamp(raw.fontScale, 0.7, 2.2) : DEFAULT_STAGE_ALERT_LAYOUT.fontScale,
+    locked: !!raw.locked,
+  };
+};
+
 const normalizeConnectionTargetRoles = (value: unknown): ConnectionRole[] => {
   if (!Array.isArray(value)) return DEFAULT_CONNECTION_TARGET_ROLES;
   const filtered = value
@@ -289,6 +315,9 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
   if (raw.stageTimerLayout && typeof raw.stageTimerLayout === 'object') {
     safe.stageTimerLayout = normalizeStageTimerLayout(raw.stageTimerLayout);
   }
+  if (raw.stageAlertLayout && typeof raw.stageAlertLayout === 'object') {
+    safe.stageAlertLayout = normalizeStageAlertLayout(raw.stageAlertLayout);
+  }
   if (Array.isArray(raw.connectionTargetRoles)) {
     safe.connectionTargetRoles = normalizeConnectionTargetRoles(raw.connectionTargetRoles);
   }
@@ -305,6 +334,13 @@ const DEFAULT_AUDIENCE_DISPLAY: AudienceDisplayState = {
   pinnedMessageId: null,
   tickerEnabled: false,
   activeMessageId: null,
+};
+
+const DEFAULT_AUDIENCE_QR_PROJECTION: AudienceQrProjectionState = {
+  visible: false,
+  audienceUrl: '',
+  scale: 1,
+  updatedAt: 0,
 };
 
 const DEFAULT_STAGE_ALERT: StageAlertState = {
@@ -340,6 +376,20 @@ const sanitizeAudienceDisplayState = (value: unknown): AudienceDisplayState => {
     pinnedMessageId: toNullableNumber(raw.pinnedMessageId),
     tickerEnabled: !!raw.tickerEnabled,
     activeMessageId: toNullableNumber(raw.activeMessageId),
+  };
+};
+
+const sanitizeAudienceQrProjectionState = (value: unknown): AudienceQrProjectionState => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return DEFAULT_AUDIENCE_QR_PROJECTION;
+  }
+  const raw = value as Record<string, unknown>;
+  const audienceUrl = typeof raw.audienceUrl === 'string' ? raw.audienceUrl.trim() : '';
+  return {
+    visible: !!raw.visible && !!audienceUrl,
+    audienceUrl,
+    scale: typeof raw.scale === 'number' && Number.isFinite(raw.scale) ? clamp(raw.scale, 0.7, 2.2) : 1,
+    updatedAt: typeof raw.updatedAt === 'number' && Number.isFinite(raw.updatedAt) ? raw.updatedAt : 0,
   };
 };
 
@@ -538,6 +588,7 @@ function App() {
     stageFlowLayout: 'balanced',
     machineMode: false,
     stageTimerLayout: DEFAULT_STAGE_TIMER_LAYOUT,
+    stageAlertLayout: DEFAULT_STAGE_ALERT_LAYOUT,
     connectionTargetRoles: DEFAULT_CONNECTION_TARGET_ROLES,
     speakerTimerPresets: DEFAULT_SPEAKER_TIMER_PRESETS,
   });
@@ -637,6 +688,10 @@ function App() {
   const [audienceDisplay, setAudienceDisplay] = useState<AudienceDisplayState>(() => {
     const saved = initialSavedState;
     return sanitizeAudienceDisplayState(saved?.audienceDisplay);
+  });
+  const [audienceQrProjection, setAudienceQrProjection] = useState<AudienceQrProjectionState>(() => {
+    const saved = initialSavedState;
+    return sanitizeAudienceQrProjectionState(saved?.audienceQrProjection);
   });
   const [stageAlert, setStageAlert] = useState<StageAlertState>(() => {
     const saved = initialSavedState;
@@ -1330,6 +1385,14 @@ function App() {
       if (typeof payload.activeSlideIndex === 'number') {
         setActiveSlideIndex(payload.activeSlideIndex);
       }
+      if (payload.audienceQrProjection && typeof payload.audienceQrProjection === 'object') {
+        const incomingQrProjection = sanitizeAudienceQrProjectionState(payload.audienceQrProjection);
+        setAudienceQrProjection((prev) => (
+          incomingQrProjection.updatedAt >= (prev.updatedAt || 0)
+            ? incomingQrProjection
+            : prev
+        ));
+      }
       if (payload.stageMessageCenter && typeof payload.stageMessageCenter === 'object') {
         const incomingCenter = sanitizeStageMessageCenterState(payload.stageMessageCenter);
         if (incomingCenter.queue.length || incomingCenter.activeMessageId || incomingCenter.lastSentAt) {
@@ -1515,6 +1578,7 @@ function App() {
         timerSeconds,
         currentCueItemId,
         audienceDisplay,
+        audienceQrProjection,
         stageAlert,
         stageMessageCenter,
         workspaceSettings,
@@ -1528,7 +1592,7 @@ function App() {
       }
     }, 180);
     return () => window.clearTimeout(id);
-  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, stageAlert, stageMessageCenter, workspaceSettings, user]);
+  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, audienceQrProjection, stageAlert, stageMessageCenter, workspaceSettings, user]);
 
 
 
@@ -1540,6 +1604,7 @@ function App() {
       scheduleSnapshot: schedule,
       workspaceSettings,
       workspaceSettingsUpdatedAt: settingsUpdatedAt,
+      audienceQrProjection,
       stageMessageCenter,
       stageAlert: legacyAlertFromMessageCenter(stageMessageCenter),
       controllerOwnerUid: user.uid,
@@ -1556,6 +1621,7 @@ function App() {
           activeSlideIndex,
           workspaceSettings,
           workspaceSettingsUpdatedAt: settingsUpdatedAt,
+          audienceQrProjection,
           stageMessageCenter,
           updatedAt,
         });
@@ -1566,6 +1632,7 @@ function App() {
           activeSlideIndex,
           workspaceSettings,
           workspaceSettingsUpdatedAt: settingsUpdatedAt,
+          audienceQrProjection,
           stageMessageCenter,
           updatedAt,
         });
@@ -1579,6 +1646,7 @@ function App() {
     activeItemId,
     activeSlideIndex,
     workspaceSettings,
+    audienceQrProjection,
     stageMessageCenter,
     user?.uid,
     user?.email,
@@ -1745,6 +1813,36 @@ function App() {
   const audienceUrl = useMemo(() => {
     return `${getShareBaseOrigin()}/#/audience?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&api=${encodeURIComponent(getServerApiBaseUrl())}`;
   }, [liveSessionId, workspaceId]);
+
+  useEffect(() => {
+    setAudienceQrProjection((prev) => {
+      if (!prev.visible) return prev;
+      if (prev.audienceUrl === audienceUrl) return prev;
+      return {
+        ...prev,
+        audienceUrl,
+        updatedAt: Date.now(),
+      };
+    });
+  }, [audienceUrl]);
+
+  const setAudienceQrProjectionVisible = useCallback((visible: boolean) => {
+    setAudienceQrProjection((prev) => ({
+      ...prev,
+      visible,
+      audienceUrl,
+      updatedAt: Date.now(),
+    }));
+  }, [audienceUrl]);
+
+  const setAudienceQrProjectionScale = useCallback((scale: number) => {
+    setAudienceQrProjection((prev) => ({
+      ...prev,
+      scale: clamp(scale, 0.7, 2.2),
+      audienceUrl,
+      updatedAt: Date.now(),
+    }));
+  }, [audienceUrl]);
 
   const cloneSchedule = (value: ServiceItem[]) => JSON.parse(JSON.stringify(value)) as ServiceItem[];
   const pushHistory = () => {
@@ -2863,6 +2961,15 @@ function App() {
             }
           }
 
+          if (preferred.audienceQrProjection && typeof preferred.audienceQrProjection === 'object') {
+            const cloudQrProjection = sanitizeAudienceQrProjectionState(preferred.audienceQrProjection);
+            setAudienceQrProjection((prev) => (
+              cloudQrProjection.updatedAt >= (prev.updatedAt || 0)
+                ? cloudQrProjection
+                : prev
+            ));
+          }
+
           const cloudSettings = sanitizeWorkspaceSettings(preferred.workspaceSettings);
           const cloudSettingsUpdatedAt = typeof preferred.workspaceSettingsUpdatedAt === 'number'
             ? preferred.workspaceSettingsUpdatedAt
@@ -2982,6 +3089,7 @@ function App() {
       timerCueRedPercent: currentCueRedPercent,
       currentCueItemId,
       audienceDisplay,
+      audienceQrProjection,
       stageMessageCenter,
       stageAlert: legacyAlertFromMessageCenter(stageMessageCenter),
       workspaceSettings,
@@ -2990,7 +3098,7 @@ function App() {
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
-  }, [activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerSeconds, effectiveTimerDurationSec, currentCueSpeaker, currentCueAmberPercent, currentCueRedPercent, currentCueItemId, audienceDisplay, stageMessageCenter, workspaceSettings, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
+  }, [activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerSeconds, effectiveTimerDurationSec, currentCueSpeaker, currentCueAmberPercent, currentCueRedPercent, currentCueItemId, audienceDisplay, audienceQrProjection, stageMessageCenter, workspaceSettings, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
 
   useEffect(() => {
     if (user?.uid && cloudBootstrapComplete && workspaceSettings.machineMode) {
@@ -3310,6 +3418,7 @@ function App() {
             isProjector={true}
             lowerThirds={routingMode !== 'PROJECTOR'}
             audienceOverlay={audienceDisplay}
+            projectedAudienceQr={audienceQrProjection}
           />
         )}
       </div>
@@ -3336,6 +3445,10 @@ function App() {
         timerLayout={workspaceSettings.stageTimerLayout}
         onTimerLayoutChange={(layout) => {
           setWorkspaceSettings((prev) => ({ ...prev, stageTimerLayout: layout }));
+        }}
+        stageAlertLayout={workspaceSettings.stageAlertLayout}
+        onStageAlertLayoutChange={(layout) => {
+          setWorkspaceSettings((prev) => ({ ...prev, stageAlertLayout: layout }));
         }}
         profile={workspaceSettings.stageProfile}
         flowLayout={workspaceSettings.stageFlowLayout}
@@ -3681,7 +3794,7 @@ function App() {
             </div>
           )}
           {activeSidebarTab === 'AUDIENCE' && (
-            <div className="flex-1 overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-hidden flex flex-col min-h-0">
               <div className="p-3 border-b border-zinc-900 shrink-0"><h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Audience Studio</h3></div>
               <AudienceStudio
                 workspaceId={workspaceId}
@@ -4048,6 +4161,7 @@ function App() {
                   showSlideLabel={true}
                   showProjectorHelper={false}
                   audienceOverlay={audienceDisplay}
+                  projectedAudienceQr={audienceQrProjection}
                 />
               )}
             </div>
@@ -4085,6 +4199,10 @@ function App() {
               timerLayout={workspaceSettings.stageTimerLayout}
               onTimerLayoutChange={(layout) => {
                 setWorkspaceSettings((prev) => ({ ...prev, stageTimerLayout: layout }));
+              }}
+              stageAlertLayout={workspaceSettings.stageAlertLayout}
+              onStageAlertLayoutChange={(layout) => {
+                setWorkspaceSettings((prev) => ({ ...prev, stageAlertLayout: layout }));
               }}
               profile={workspaceSettings.stageProfile}
               flowLayout={workspaceSettings.stageFlowLayout}
@@ -4288,7 +4406,15 @@ function App() {
           </div>
         </div>
       )}
-      <ConnectModal isOpen={isConnectOpen} onClose={() => setIsConnectOpen(false)} audienceUrl={audienceUrl} />
+      <ConnectModal
+        isOpen={isConnectOpen}
+        onClose={() => setIsConnectOpen(false)}
+        audienceUrl={audienceUrl}
+        isProjected={audienceQrProjection.visible}
+        onSetProjected={setAudienceQrProjectionVisible}
+        projectionScale={audienceQrProjection.scale}
+        onSetProjectionScale={setAudienceQrProjectionScale}
+      />
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
       {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={(settings) => setWorkspaceSettings((prev) => ({ ...prev, ...settings }))} onLogout={handleLogout} currentSettings={workspaceSettings} currentUser={user} />}
       {

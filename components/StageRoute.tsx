@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState } from '../services/firebase';
 import { fetchServerSessionState, getOrCreateConnectionClientId, heartbeatSessionConnection } from '../services/serverApi';
-import { AudienceDisplayState, ServiceItem, StageAlertState, StageFlowLayout, StageMessageCenterState, StageTimerLayout } from '../types';
+import { AudienceDisplayState, ServiceItem, StageAlertLayout, StageAlertState, StageFlowLayout, StageMessageCenterState, StageTimerLayout } from '../types';
 import { LoginScreen } from './LoginScreen';
 import { StageDisplay } from './StageDisplay';
 
@@ -25,6 +25,7 @@ type LocalStageState = {
   workspaceSettings?: {
     stageProfile?: 'classic' | 'compact' | 'high_contrast';
     stageTimerLayout?: StageTimerLayout;
+    stageAlertLayout?: StageAlertLayout;
     stageFlowLayout?: StageFlowLayout;
   };
   updatedAt?: number;
@@ -46,6 +47,7 @@ type EffectiveStageState = {
   timerCueRedPercent: number;
   stageProfile: 'classic' | 'compact' | 'high_contrast';
   stageTimerLayout?: StageTimerLayout;
+  stageAlertLayout?: StageAlertLayout;
   stageFlowLayout: StageFlowLayout;
   updatedAt: number;
   hasRenderable: boolean;
@@ -235,6 +237,7 @@ export const StageRoute: React.FC = () => {
         ? 'high_contrast'
         : 'classic';
     const stageTimerLayout = source?.workspaceSettings?.stageTimerLayout;
+    const stageAlertLayout = source?.workspaceSettings?.stageAlertLayout;
     const stageFlowLayout = source?.workspaceSettings?.stageFlowLayout === 'speaker_focus'
       || source?.workspaceSettings?.stageFlowLayout === 'preview_focus'
       || source?.workspaceSettings?.stageFlowLayout === 'minimal_next'
@@ -261,6 +264,7 @@ export const StageRoute: React.FC = () => {
       timerCueRedPercent,
       stageProfile,
       stageTimerLayout,
+      stageAlertLayout,
       stageFlowLayout,
       updatedAt,
       hasRenderable: !!(activeItem && activeSlide),
@@ -325,6 +329,7 @@ export const StageRoute: React.FC = () => {
       timerAmberPercent={display.timerCueAmberPercent}
       timerRedPercent={display.timerCueRedPercent}
       timerLayout={display.stageTimerLayout}
+      stageAlertLayout={display.stageAlertLayout}
       flowLayout={display.stageFlowLayout}
       profile={display.stageProfile}
       audienceOverlay={display.audienceOverlay}

@@ -43,6 +43,22 @@ function createWindow() {
     show: false,
   });
 
+  // Desktop UX: pressing Esc restores a maximized/fullscreen window back to normal.
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown' || input.key !== 'Escape') return;
+
+    if (mainWindow.isFullScreen()) {
+      event.preventDefault();
+      mainWindow.setFullScreen(false);
+      return;
+    }
+
+    if (mainWindow.isMaximized()) {
+      event.preventDefault();
+      mainWindow.unmaximize();
+    }
+  });
+
   // Apply CSP in production only — Vite dev server needs unsafe-inline for HMR.
   if (isProd) {
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {

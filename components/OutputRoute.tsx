@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState } from '../services/firebase';
 import { fetchServerSessionState, getOrCreateConnectionClientId, heartbeatSessionConnection } from '../services/serverApi';
-import { AudienceDisplayState, AudienceMessage, ItemType, ServiceItem } from '../types';
+import { AudienceDisplayState, AudienceMessage, AudienceQrProjectionState, ItemType, ServiceItem } from '../types';
 import { LoginScreen } from './LoginScreen';
 import { SlideRenderer } from './SlideRenderer';
 
@@ -21,6 +21,7 @@ type LocalPresenterState = {
   lowerThirdsEnabled?: boolean;
   routingMode?: RoutingMode;
   audienceDisplay?: AudienceDisplayState;
+  audienceQrProjection?: AudienceQrProjectionState;
   updatedAt?: number;
 };
 
@@ -34,6 +35,7 @@ type EffectiveOutputState = {
   seekAmount: number;
   lowerThirdsEnabled: boolean;
   audienceOverlay: AudienceDisplayState | null;
+  projectedAudienceQr: AudienceQrProjectionState | null;
   updatedAt: number;
   hasRenderable: boolean;
 };
@@ -69,6 +71,21 @@ const sanitizeAudienceOverlay = (value: unknown): AudienceDisplayState | null =>
     pinnedMessageId: typeof raw.pinnedMessageId === 'number' && Number.isFinite(raw.pinnedMessageId) ? raw.pinnedMessageId : null,
     tickerEnabled: !!raw.tickerEnabled,
     activeMessageId: typeof raw.activeMessageId === 'number' && Number.isFinite(raw.activeMessageId) ? raw.activeMessageId : null,
+  };
+};
+
+const sanitizeAudienceQrProjection = (value: unknown): AudienceQrProjectionState | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
+  const audienceUrl = typeof raw.audienceUrl === 'string' ? raw.audienceUrl.trim() : '';
+  if (!audienceUrl) return null;
+  return {
+    visible: !!raw.visible,
+    audienceUrl,
+    scale: typeof raw.scale === 'number' && Number.isFinite(raw.scale)
+      ? Math.min(2.2, Math.max(0.7, raw.scale))
+      : 1,
+    updatedAt: typeof raw.updatedAt === 'number' && Number.isFinite(raw.updatedAt) ? raw.updatedAt : 0,
   };
 };
 
@@ -225,6 +242,7 @@ export const OutputRoute: React.FC = () => {
     const lowerThirdsEnabled = !!source?.lowerThirdsEnabled;
     const lowerThirdsForRoute = lowerThirdsEnabled && routingMode !== 'PROJECTOR';
     const audienceOverlay = sanitizeAudienceOverlay(source?.audienceDisplay);
+    const projectedAudienceQr = sanitizeAudienceQrProjection(source?.audienceQrProjection);
     const updatedAt = typeof source?.updatedAt === 'number' ? source.updatedAt : 0;
 
     const activeItem = activeItemId
@@ -245,6 +263,7 @@ export const OutputRoute: React.FC = () => {
         seekAmount,
         lowerThirdsEnabled: lowerThirdsForRoute,
         audienceOverlay,
+        projectedAudienceQr,
         updatedAt,
         hasRenderable,
       };
@@ -261,6 +280,7 @@ export const OutputRoute: React.FC = () => {
       seekAmount,
       lowerThirdsEnabled: lowerThirdsForRoute,
       audienceOverlay,
+      projectedAudienceQr,
       updatedAt,
       hasRenderable,
     };
@@ -315,6 +335,7 @@ export const OutputRoute: React.FC = () => {
           showSlideLabel={true}
           showProjectorHelper={false}
           audienceOverlay={display.audienceOverlay || undefined}
+          projectedAudienceQr={display.projectedAudienceQr || undefined}
         />
       )}
     </div>

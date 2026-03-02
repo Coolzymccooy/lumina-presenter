@@ -73,6 +73,9 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
     const [lastRefresh, setLastRefresh] = useState<number>(Date.now());
     const [stageAlertDraft, setStageAlertDraft] = useState('');
     const [stageCategory, setStageCategory] = useState<StageMessageCategory>('urgent');
+    const [broadcastDraft, setBroadcastDraft] = useState('');
+    const [broadcastCategory, setBroadcastCategory] = useState<AudienceCategory>('welcome');
+    const [broadcastHistory, setBroadcastHistory] = useState<AudienceMessage[]>([]);
     const stageTemplates: Record<StageMessageCategory, Array<{ key: string; label: string }>> = {
         urgent: [
             { key: 'wrap_up_now', label: 'Wrap up now' },
@@ -174,8 +177,118 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
         setStageAlertDraft(label);
     };
 
+    const isAdminBroadcastMessage = (message: AudienceMessage) =>
+        message.id < 0 && (message.submitter_name || '').trim().toUpperCase() === 'ADMIN';
+
+    const nextLocalBroadcastId = () => {
+        const entropy = Math.floor(Math.random() * 1000);
+        return -(Date.now() * 1000 + entropy);
+    };
+
+    const createBroadcastMessage = (text: string, category: AudienceCategory): AudienceMessage => {
+        const now = Date.now();
+        const localId = nextLocalBroadcastId();
+        return {
+            id: localId,
+            workspace_id: workspaceId,
+            category,
+            text: text.trim(),
+            submitter_name: 'ADMIN',
+            status: 'projected',
+            created_at: now,
+            updated_at: now,
+        };
+    };
+
+    const buildDisplayPatchAfterQueueUpdate = (queue: AudienceMessage[], preferredActiveId?: number | null) => {
+        const nextActive = typeof preferredActiveId === 'number' && queue.some((entry) => entry.id === preferredActiveId)
+            ? preferredActiveId
+            : (queue[0]?.id ?? null);
+        const nextPinned = typeof displayState.pinnedMessageId === 'number' && queue.some((entry) => entry.id === displayState.pinnedMessageId)
+            ? displayState.pinnedMessageId
+            : null;
+        return {
+            queue,
+            activeMessageId: nextActive,
+            pinnedMessageId: nextPinned,
+            tickerEnabled: queue.length > 0 ? displayState.tickerEnabled : false,
+        } as Partial<AudienceDisplayState>;
+    };
+
+    const rememberBroadcast = (message: AudienceMessage) => {
+        setBroadcastHistory((prev) => [message, ...prev.filter((entry) => entry.id !== message.id)].slice(0, 25));
+    };
+
+    const pushBroadcastToAudience = (mode: 'ticker' | 'pinned') => {
+        const text = broadcastDraft.trim();
+        if (!text || !canUseStageAlert) return;
+        const message = createBroadcastMessage(text, broadcastCategory);
+        const queue = [...displayState.queue, message];
+        rememberBroadcast(message);
+        if (mode === 'ticker') {
+            onUpdateDisplay({
+                queue,
+                activeMessageId: message.id,
+                tickerEnabled: true,
+                pinnedMessageId: displayState.pinnedMessageId,
+            });
+        } else {
+            onUpdateDisplay({
+                queue,
+                activeMessageId: message.id,
+                pinnedMessageId: message.id,
+                tickerEnabled: false,
+            });
+        }
+        setBroadcastDraft('');
+    };
+
+    const removeAdminBroadcast = (messageId: number) => {
+        const queue = displayState.queue.filter((entry) => entry.id !== messageId);
+        onUpdateDisplay(buildDisplayPatchAfterQueueUpdate(queue, displayState.activeMessageId));
+    };
+
+    const removeAllAdminBroadcasts = () => {
+        const queue = displayState.queue.filter((entry) => !isAdminBroadcastMessage(entry));
+        onUpdateDisplay(buildDisplayPatchAfterQueueUpdate(queue, displayState.activeMessageId));
+    };
+
+    const resendFromHistory = (source: AudienceMessage, mode: 'ticker' | 'pinned') => {
+        if (!canUseStageAlert) return;
+        const message = createBroadcastMessage(source.text, source.category);
+        const queue = [...displayState.queue, message];
+        rememberBroadcast(message);
+        if (mode === 'ticker') {
+            onUpdateDisplay({
+                queue,
+                activeMessageId: message.id,
+                tickerEnabled: true,
+            });
+            return;
+        }
+        onUpdateDisplay({
+            queue,
+            activeMessageId: message.id,
+            pinnedMessageId: message.id,
+            tickerEnabled: false,
+        });
+    };
+
+    useEffect(() => {
+        const existingAdminQueue = displayState.queue.filter(isAdminBroadcastMessage);
+        if (!existingAdminQueue.length) return;
+        setBroadcastHistory((prev) => {
+            const prevIds = new Set(prev.map((entry) => entry.id));
+            const incoming = existingAdminQueue.filter((entry) => !prevIds.has(entry.id));
+            if (!incoming.length) return prev;
+            return [...incoming, ...prev].slice(0, 25);
+        });
+    }, [displayState.queue]);
+
+    const adminBroadcastQueue = displayState.queue.filter(isAdminBroadcastMessage);
+
     return (
-        <div className="flex flex-col h-full bg-zinc-950 text-zinc-300 font-sans">
+        <div className="flex flex-col h-full min-h-0 bg-zinc-950 text-zinc-300 font-sans">
             {/* Header */}
             <header className="p-3 sm:p-4 border-b border-zinc-900 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between bg-zinc-900/30 backdrop-blur-md">
                 <div className="flex items-center gap-2 min-w-0">
@@ -217,7 +330,7 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
             </div>
 
             {/* Advanced Controls */}
-            <div className="px-3 sm:px-4 py-3 border-b border-zinc-900 bg-zinc-900/10 space-y-3">
+            <div className="px-3 sm:px-4 py-3 border-b border-zinc-900 bg-zinc-900/10 space-y-3 max-h-[48vh] overflow-y-auto custom-scrollbar">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div className="flex items-center justify-between gap-2 min-w-0">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 truncate">Pin Visible</span>
@@ -281,6 +394,131 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
                         </div>
                     </div>
                 )}
+
+                <div className="bg-black/20 rounded-lg p-2 border border-zinc-800/50">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Audience Broadcast (Ticker/Pin)</span>
+                        <span className={`text-[9px] font-black uppercase tracking-widest ${canUseStageAlert ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            Admin allowlisted: {canUseStageAlert ? 'Yes' : 'No'}
+                        </span>
+                    </div>
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                        {(['welcome', 'qa', 'prayer', 'testimony', 'poll'] as AudienceCategory[]).map((cat) => (
+                            <button
+                                key={cat}
+                                onClick={() => setBroadcastCategory(cat)}
+                                disabled={!canUseStageAlert}
+                                className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                                    broadcastCategory === cat
+                                        ? 'bg-blue-600/20 border-blue-500/40 text-blue-300'
+                                        : 'bg-zinc-900 border-zinc-800 text-zinc-400'
+                                } disabled:opacity-40`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                        {[
+                            'Scan the QR code to submit prayer requests and questions.',
+                            'Please include your name with your message.',
+                            'We are receiving live testimonies now. Scan and share.',
+                        ].map((template) => (
+                            <button
+                                key={template}
+                                onClick={() => setBroadcastDraft(template)}
+                                disabled={!canUseStageAlert}
+                                className="px-2 py-1 rounded-md text-[10px] font-bold border border-zinc-700 text-zinc-300 hover:border-blue-500/60 hover:text-blue-200 disabled:opacity-40"
+                            >
+                                {template.length > 30 ? `${template.slice(0, 30)}...` : template}
+                            </button>
+                        ))}
+                    </div>
+                    <textarea
+                        rows={2}
+                        value={broadcastDraft}
+                        onChange={(e) => setBroadcastDraft(e.target.value)}
+                        placeholder={canUseStageAlert ? "Broadcast audience message (ticker or pinned)..." : "Only allowlisted admin can broadcast audience notices."}
+                        disabled={!canUseStageAlert}
+                        className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-2 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-blue-600 disabled:opacity-60 resize-none"
+                    />
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                        <button
+                            onClick={() => pushBroadcastToAudience('ticker')}
+                            disabled={!canUseStageAlert || !broadcastDraft.trim()}
+                            className="px-3 py-1.5 rounded-md text-[10px] font-bold border border-transparent bg-blue-600 text-white disabled:opacity-40"
+                        >
+                            SEND TO TICKER
+                        </button>
+                        <button
+                            onClick={() => pushBroadcastToAudience('pinned')}
+                            disabled={!canUseStageAlert || !broadcastDraft.trim()}
+                            className="px-3 py-1.5 rounded-md text-[10px] font-bold border border-zinc-700 text-zinc-200 disabled:opacity-40 hover:border-zinc-600"
+                        >
+                            SHOW PINNED
+                        </button>
+                    </div>
+                    <div className="mt-2 border border-zinc-800 rounded-md p-2 bg-zinc-900/40">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+                                Broadcast History ({broadcastHistory.length})
+                            </span>
+                            <button
+                                onClick={removeAllAdminBroadcasts}
+                                disabled={!canUseStageAlert || adminBroadcastQueue.length === 0}
+                                className="px-2 py-1 text-[9px] font-bold border border-rose-900/70 rounded text-rose-300 disabled:opacity-40"
+                            >
+                                Remove All Admin Broadcasts
+                            </button>
+                        </div>
+                        {broadcastHistory.length === 0 ? (
+                            <div className="text-[10px] text-zinc-600">No admin broadcasts sent yet.</div>
+                        ) : (
+                            <div className="space-y-1.5 max-h-28 overflow-y-auto custom-scrollbar">
+                                {broadcastHistory.map((entry) => {
+                                    const inQueue = displayState.queue.some((message) => message.id === entry.id);
+                                    return (
+                                        <div key={entry.id} className="p-1.5 rounded border border-zinc-800 bg-zinc-950/60">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="min-w-0">
+                                                    <div className="text-[9px] uppercase tracking-wider font-bold text-zinc-500">
+                                                        {entry.category} {inQueue ? '- active in queue' : '- archived'}
+                                                    </div>
+                                                    <div className="text-[11px] text-zinc-200 truncate">{entry.text}</div>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={() => resendFromHistory(entry, 'ticker')}
+                                                        disabled={!canUseStageAlert}
+                                                        className="px-1.5 py-0.5 text-[9px] font-bold border border-zinc-700 rounded text-zinc-200 disabled:opacity-40"
+                                                    >
+                                                        Ticker
+                                                    </button>
+                                                    <button
+                                                        onClick={() => resendFromHistory(entry, 'pinned')}
+                                                        disabled={!canUseStageAlert}
+                                                        className="px-1.5 py-0.5 text-[9px] font-bold border border-zinc-700 rounded text-zinc-200 disabled:opacity-40"
+                                                    >
+                                                        Pin
+                                                    </button>
+                                                    {inQueue && (
+                                                        <button
+                                                            onClick={() => removeAdminBroadcast(entry.id)}
+                                                            disabled={!canUseStageAlert}
+                                                            className="px-1.5 py-0.5 text-[9px] font-bold border border-rose-900/70 rounded text-rose-300 disabled:opacity-40"
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 <div className="bg-black/20 rounded-lg p-2 border border-zinc-800/50">
                     <div className="flex items-center justify-between mb-2">
@@ -408,7 +646,7 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
             </div>
 
             {/* Message List */}
-            <div className="flex-1 overflow-y-auto p-3 sm:p-4 pb-24 md:pb-4 space-y-3 custom-scrollbar">
+            <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 pb-24 md:pb-4 space-y-3 custom-scrollbar">
                 {messages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 opacity-20">
                         <ChatIcon className="w-12 h-12 mb-4" />

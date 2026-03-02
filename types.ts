@@ -41,6 +41,15 @@ export interface StageTimerLayout {
   locked: boolean;
 }
 
+export interface StageAlertLayout {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fontScale: number;
+  locked: boolean;
+}
+
 export type ConnectionRole = 'controller' | 'output' | 'stage' | 'remote';
 
 export type StageMessageCategory = 'urgent' | 'timing' | 'logistics';
@@ -142,6 +151,13 @@ export interface AudienceDisplayState {
   pinnedMessageId: number | null;
   tickerEnabled: boolean;
   activeMessageId: number | null;
+}
+
+export interface AudienceQrProjectionState {
+  visible: boolean;
+  audienceUrl: string;
+  scale: number;
+  updatedAt: number;
 }
 
 export interface StageAlertState {

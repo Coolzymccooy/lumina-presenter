@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Slide, ServiceItem, MediaType, AudienceDisplayState } from "../types";
+import { Slide, ServiceItem, MediaType, AudienceDisplayState, AudienceQrProjectionState } from "../types";
 
 import { getMedia, getCachedMedia } from "../services/localMedia";
 import { DEFAULT_BACKGROUNDS } from "../constants";
@@ -28,6 +28,7 @@ interface SlideRendererProps {
   showSlideLabel?: boolean;
   showProjectorHelper?: boolean;
   audienceOverlay?: AudienceDisplayState;
+  projectedAudienceQr?: AudienceQrProjectionState;
 }
 
 function safeString(v: unknown) {
@@ -125,6 +126,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   showSlideLabel = true,
   showProjectorHelper = true,
   audienceOverlay,
+  projectedAudienceQr,
 }) => {
   const htmlVideoRef = useRef<HTMLVideoElement>(null);
   const youtubeIframeRef = useRef<HTMLIFrameElement>(null);
@@ -506,6 +508,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       mediaError={mediaError}
       isLoading={isLoading}
       audienceOverlay={audienceOverlay}
+      projectedAudienceQr={projectedAudienceQr}
     />
   );
 };
@@ -528,12 +531,13 @@ interface ScaledCanvasProps {
   mediaError: boolean;
   isLoading: boolean;
   audienceOverlay?: AudienceDisplayState;
+  projectedAudienceQr?: AudienceQrProjectionState;
 }
 
 const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
   fitContainer, slide, item, contentText, hasReadableText, textPx, textLayerStyle,
   lowerThirds, showSlideLabel, renderMedia, mediaType, hasBackground, mediaError, isLoading,
-  audienceOverlay,
+  audienceOverlay, projectedAudienceQr,
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -556,6 +560,14 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
   const labelPx = Math.round(CANVAS_H * 0.026);   // ~28px at 1080p
   const labelPadH = Math.round(CANVAS_H * 0.014);
   const labelPadV = Math.round(CANVAS_H * 0.009);
+  const projectedQrScale = projectedAudienceQr?.scale && Number.isFinite(projectedAudienceQr.scale)
+    ? Math.max(0.7, Math.min(2.2, projectedAudienceQr.scale))
+    : 1;
+  const projectedQrPanelWidth = Math.max(360, Math.min(840, Math.round(520 * projectedQrScale)));
+  const projectedQrImageSize = Math.max(240, Math.min(560, Math.round(projectedQrPanelWidth * 0.68)));
+  const projectedQrTitlePx = Math.max(20, Math.min(42, Math.round(28 * projectedQrScale)));
+  const projectedQrBodyPx = Math.max(12, Math.min(26, Math.round(18 * projectedQrScale)));
+  const projectedQrPadding = Math.max(12, Math.min(24, Math.round(18 * projectedQrScale)));
 
   return (
     <div
@@ -762,6 +774,61 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Audience QR Projection */}
+        {projectedAudienceQr?.visible && projectedAudienceQr.audienceUrl && (
+          <div
+            style={{
+              position: "absolute",
+              top: CANVAS_H * 0.04,
+              right: CANVAS_W * 0.03,
+              width: projectedQrPanelWidth,
+              pointerEvents: "none",
+              zIndex: 120,
+            }}
+          >
+            <div
+              style={{
+                borderRadius: 18,
+                background: "rgba(0,0,0,0.78)",
+                border: "2px solid rgba(59,130,246,0.55)",
+                boxShadow: "0 14px 40px rgba(0,0,0,0.55)",
+                padding: `${projectedQrPadding}px ${projectedQrPadding}px ${Math.max(10, projectedQrPadding - 2)}px`,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: Math.max(8, Math.round(10 * projectedQrScale)),
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              <div style={{ fontSize: projectedQrTitlePx, fontWeight: 900, letterSpacing: "0.08em", color: "#93c5fd", textTransform: "uppercase" }}>
+                Scan To Participate
+              </div>
+              <div
+                style={{
+                  background: "#fff",
+                  borderRadius: 14,
+                  padding: Math.max(8, Math.round(12 * projectedQrScale)),
+                  width: projectedQrImageSize,
+                  height: projectedQrImageSize,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=460x460&data=${encodeURIComponent(projectedAudienceQr.audienceUrl)}`}
+                  alt="Audience QR Code"
+                  style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                  draggable={false}
+                />
+              </div>
+              <div style={{ fontSize: projectedQrBodyPx, color: "rgba(255,255,255,0.85)", fontWeight: 600 }}>
+                Open camera and scan this code to submit.
+              </div>
+            </div>
           </div>
         )}
       </div>
