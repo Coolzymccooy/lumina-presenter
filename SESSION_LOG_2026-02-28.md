@@ -89,3 +89,30 @@
 
 ### Notes
 - Morning workset includes desktop/web runtime and QA artifacts, stage/output/timer enhancements, run sheet file/archive work, audience/stage messaging, and media asset additions for background library.
+
+## Update (2026-03-02 - Release Follow-up)
+
+### Focus
+- Prepare a clean production tag workflow from master after QA automation rollout.
+- Address large-file warning risk from media assets.
+
+### Completed
+
+1. Version and release prep
+- Bumped app version:
+  - `package.json` -> `2.2.11`
+- Updated landing fallback latest tag:
+  - `components/LandingPage.tsx` -> `v2.2.11`
+
+2. Large-file mitigation
+- Removed oversized media asset:
+  - `public/assets/283431.mp4` (~68.66MB)
+- Rationale:
+  - File exceeded GitHub's recommended 50MB threshold and was already excluded from curated defaults.
+
+### Impact Notes
+- Immediate:
+  - Future pushes avoid re-triggering warning for that file in current tip.
+- Remaining:
+  - The large blob still exists in git history from prior commit(s).
+  - Full repo-size cleanup would require history rewrite (separate controlled operation).
