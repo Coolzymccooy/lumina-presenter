@@ -181,3 +181,35 @@ test('visionary semantic search fallback is context-aware when AI endpoint fails
   });
   expect(fearReference).toBe('Isaiah 41:10');
 });
+
+test('cloud transcription client maps cooldown responses correctly @smoke', async ({ page }) => {
+  await page.route('**/api/ai/transcribe-sermon-chunk', async (route) => {
+    await route.fulfill({
+      status: 429,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        ok: false,
+        error: 'TRANSCRIBE_COOLDOWN',
+        message: 'Cooling down',
+        retryAfterMs: 1800,
+      }),
+    });
+  });
+
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    const mod = await import('/services/geminiService.ts');
+    return mod.transcribeSermonChunk({
+      audioBase64: 'AA==',
+      mimeType: 'audio/webm;codecs=opus',
+      locale: 'en-GB',
+      workspaceId: 'smoke-workspace',
+      sessionId: 'smoke-session',
+      clientId: 'smoke-client',
+    });
+  });
+
+  expect(result.ok).toBeFalsy();
+  expect(result.mode).toBe('cooldown');
+  expect(Number(result.retryAfterMs || 0)).toBeGreaterThan(0);
+});

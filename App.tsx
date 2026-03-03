@@ -62,6 +62,7 @@ import {
   saveWorkspaceSnapshot
 } from './services/serverApi';
 import { parsePptxFile } from './services/pptxImport';
+import { copyTextToClipboard } from './services/clipboardService';
 import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon
 
 // --- CONSTANTS ---
@@ -84,6 +85,7 @@ type WorkspaceSettings = {
   churchName: string;
   ccli: string;
   defaultVersion: string;
+  visionarySpeechLocaleMode: 'auto' | 'en-GB' | 'en-US';
   theme: 'dark' | 'light' | 'midnight';
   remoteAdminEmails: string;
   sessionId: string;
@@ -302,6 +304,9 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
   if (typeof raw.churchName === 'string') safe.churchName = raw.churchName;
   if (typeof raw.ccli === 'string') safe.ccli = raw.ccli;
   if (typeof raw.defaultVersion === 'string') safe.defaultVersion = raw.defaultVersion;
+  if (raw.visionarySpeechLocaleMode === 'auto' || raw.visionarySpeechLocaleMode === 'en-GB' || raw.visionarySpeechLocaleMode === 'en-US') {
+    safe.visionarySpeechLocaleMode = raw.visionarySpeechLocaleMode;
+  }
   if (raw.theme === 'dark' || raw.theme === 'light' || raw.theme === 'midnight') safe.theme = raw.theme;
   if (typeof raw.remoteAdminEmails === 'string') safe.remoteAdminEmails = raw.remoteAdminEmails;
   if (typeof raw.sessionId === 'string') safe.sessionId = raw.sessionId;
@@ -581,6 +586,7 @@ function App() {
     churchName: 'My Church',
     ccli: '',
     defaultVersion: 'kjv',
+    visionarySpeechLocaleMode: 'auto',
     theme: 'dark',
     remoteAdminEmails: '',
     sessionId: 'live',
@@ -684,6 +690,12 @@ function App() {
   const [cueZeroHold, setCueZeroHold] = useState(false);
   const [connectionCountsByRole, setConnectionCountsByRole] = useState<Record<string, number>>({});
   const [activeTargetConnectionCount, setActiveTargetConnectionCount] = useState(0);
+  const controllerConnectionFailureRef = useRef(0);
+  const controllerConnectionPauseUntilRef = useRef(0);
+  const outputHeartbeatFailureRef = useRef(0);
+  const outputHeartbeatPauseUntilRef = useRef(0);
+  const stageHeartbeatFailureRef = useRef(0);
+  const stageHeartbeatPauseUntilRef = useRef(0);
 
   const [audienceDisplay, setAudienceDisplay] = useState<AudienceDisplayState>(() => {
     const saved = initialSavedState;
@@ -1809,6 +1821,16 @@ function App() {
   const stageDisplayUrl = typeof window !== 'undefined'
     ? buildSharedRouteUrl('stage')
     : `/#/stage?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}`;
+  const copyShareUrl = useCallback(async (url: string, successMessage?: string) => {
+    const copied = await copyTextToClipboard(url);
+    if (!copied) {
+      alert('Copy failed. Try again or use Ctrl+C manually.');
+      return;
+    }
+    if (successMessage) {
+      alert(successMessage);
+    }
+  }, []);
 
   const audienceUrl = useMemo(() => {
     return `${getShareBaseOrigin()}/#/audience?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&api=${encodeURIComponent(getServerApiBaseUrl())}`;
@@ -3127,19 +3149,38 @@ function App() {
     if (!workspaceId || !liveSessionId) return;
     let active = true;
     const pulse = async () => {
-      await heartbeatSessionConnection(workspaceId, liveSessionId, 'controller', controllerClientId, {
-        route: 'studio',
-        viewMode,
-        uid: user?.uid || '',
-      });
-      const response = await fetchSessionConnections(workspaceId, liveSessionId);
-      if (!active) return;
-      const byRole = response?.counts?.byRole || {};
-      setConnectionCountsByRole(byRole);
-      const satisfied = targetConnectionRoles.reduce((sum, role) => (
-        sum + ((Number(byRole[role] || 0) > 0) ? 1 : 0)
-      ), 0);
-      setActiveTargetConnectionCount(satisfied);
+      const nowTs = Date.now();
+      if (nowTs < controllerConnectionPauseUntilRef.current) return;
+      try {
+        const heartbeat = await heartbeatSessionConnection(workspaceId, liveSessionId, 'controller', controllerClientId, {
+          route: 'studio',
+          viewMode,
+          uid: user?.uid || '',
+        });
+        const response = await fetchSessionConnections(workspaceId, liveSessionId);
+        const ok = heartbeat?.ok === true && response?.ok === true;
+        if (!ok) {
+          controllerConnectionFailureRef.current += 1;
+          if (controllerConnectionFailureRef.current >= 3) {
+            controllerConnectionPauseUntilRef.current = Date.now() + 60000;
+          }
+          return;
+        }
+        controllerConnectionFailureRef.current = 0;
+        controllerConnectionPauseUntilRef.current = 0;
+        if (!active) return;
+        const byRole = response?.counts?.byRole || {};
+        setConnectionCountsByRole(byRole);
+        const satisfied = targetConnectionRoles.reduce((sum, role) => (
+          sum + ((Number(byRole[role] || 0) > 0) ? 1 : 0)
+        ), 0);
+        setActiveTargetConnectionCount(satisfied);
+      } catch {
+        controllerConnectionFailureRef.current += 1;
+        if (controllerConnectionFailureRef.current >= 3) {
+          controllerConnectionPauseUntilRef.current = Date.now() + 60000;
+        }
+      }
     };
     pulse();
     const id = window.setInterval(pulse, 4000);
@@ -3152,9 +3193,24 @@ function App() {
   useEffect(() => {
     if (!isOutputLive) return;
     const beat = async () => {
-      await heartbeatSessionConnection(workspaceId, liveSessionId, 'output', outputClientId, {
-        route: 'studio-popout',
-      });
+      const nowTs = Date.now();
+      if (nowTs < outputHeartbeatPauseUntilRef.current) return;
+      try {
+        const heartbeat = await heartbeatSessionConnection(workspaceId, liveSessionId, 'output', outputClientId, {
+          route: 'studio-popout',
+        });
+        if (heartbeat?.ok === true) {
+          outputHeartbeatFailureRef.current = 0;
+          outputHeartbeatPauseUntilRef.current = 0;
+          return;
+        }
+        outputHeartbeatFailureRef.current += 1;
+      } catch {
+        outputHeartbeatFailureRef.current += 1;
+      }
+      if (outputHeartbeatFailureRef.current >= 3) {
+        outputHeartbeatPauseUntilRef.current = Date.now() + 60000;
+      }
     };
     beat();
     const id = window.setInterval(beat, 4000);
@@ -3164,9 +3220,24 @@ function App() {
   useEffect(() => {
     if (!isStageDisplayLive) return;
     const beat = async () => {
-      await heartbeatSessionConnection(workspaceId, liveSessionId, 'stage', stageClientId, {
-        route: 'studio-popout',
-      });
+      const nowTs = Date.now();
+      if (nowTs < stageHeartbeatPauseUntilRef.current) return;
+      try {
+        const heartbeat = await heartbeatSessionConnection(workspaceId, liveSessionId, 'stage', stageClientId, {
+          route: 'studio-popout',
+        });
+        if (heartbeat?.ok === true) {
+          stageHeartbeatFailureRef.current = 0;
+          stageHeartbeatPauseUntilRef.current = 0;
+          return;
+        }
+        stageHeartbeatFailureRef.current += 1;
+      } catch {
+        stageHeartbeatFailureRef.current += 1;
+      }
+      if (stageHeartbeatFailureRef.current >= 3) {
+        stageHeartbeatPauseUntilRef.current = Date.now() + 60000;
+      }
     };
     beat();
     const id = window.setInterval(beat, 4000);
@@ -3642,20 +3713,14 @@ function App() {
             </button>
 
             <button
-              onClick={() => {
-                navigator.clipboard?.writeText(remoteControlUrl);
-                alert('Remote Control URL Copied!');
-              }}
+              onClick={() => void copyShareUrl(remoteControlUrl, 'Remote Control URL copied!')}
               className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all border border-transparent hover:border-zinc-700"
               title="Copy Remote URL"
             >
               <CopyIcon className="w-4.5 h-4.5" />
             </button>
             <button
-              onClick={() => {
-                navigator.clipboard?.writeText(stageDisplayUrl);
-                alert('Stage URL Copied!');
-              }}
+              onClick={() => void copyShareUrl(stageDisplayUrl, 'Stage URL copied!')}
               className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all border border-transparent hover:border-zinc-700"
               title="Copy Stage URL"
             >
@@ -3790,7 +3855,14 @@ function App() {
           {activeSidebarTab === 'BIBLE' && (
             <div className="flex-1 overflow-hidden flex flex-col">
               <div className="p-3 border-b border-zinc-900 shrink-0"><h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Bible Hub</h3></div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-3"><BibleBrowser onProjectRequest={(item) => goLive(item)} onAddRequest={addItem} /></div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
+                <BibleBrowser
+                  onProjectRequest={(item) => goLive(item)}
+                  onAddRequest={addItem}
+                  speechLocaleMode={workspaceSettings.visionarySpeechLocaleMode}
+                  onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
+                />
+              </div>
             </div>
           )}
           {activeSidebarTab === 'AUDIENCE' && (
@@ -4013,8 +4085,8 @@ function App() {
                         <option value="minimal_next">Minimal Next</option>
                       </select>
                     </div>
-                    <button onClick={() => navigator.clipboard?.writeText(obsOutputUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY OBS URL</button>
-                    <button onClick={() => navigator.clipboard?.writeText(stageDisplayUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY STAGE URL</button>
+                    <button onClick={() => void copyShareUrl(obsOutputUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY OBS URL</button>
+                    <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY STAGE URL</button>
                     <button onClick={() => setBlackout(!blackout)} className={`h-12 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button>
                   </div>
                 </div>

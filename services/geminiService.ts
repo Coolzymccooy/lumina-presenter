@@ -5,6 +5,7 @@ type AiJson = {
   ok?: boolean;
   error?: string;
   message?: string;
+  retryAfterMs?: number;
   [key: string]: any;
 };
 
@@ -32,6 +33,7 @@ const postAi = async (path: string, payload: Record<string, unknown>, timeoutMs 
         ok: false,
         error: json?.error || `HTTP_${response.status}`,
         message: json?.message || `AI request failed (${response.status})`,
+        retryAfterMs: Number(json?.retryAfterMs || 0),
       };
     }
 
@@ -85,6 +87,84 @@ export const generateSlidesFromText = async (text: string): Promise<GeneratedSli
   if (!response?.ok || !response?.data?.slides) return null;
   const slides = sanitizeSlides(response.data.slides);
   return slides.length ? { slides } : null;
+};
+
+export type TranscribeSermonChunkRequest = {
+  audioBase64: string;
+  mimeType: 'audio/webm' | 'audio/webm;codecs=opus' | 'audio/mp4';
+  locale: 'en-GB' | 'en-US';
+  workspaceId?: string;
+  sessionId?: string;
+  clientId?: string;
+};
+
+export type TranscribeSermonChunkResult =
+  | {
+      ok: true;
+      transcript: string;
+      locale: 'en-GB' | 'en-US';
+      retryAfterMs?: 0;
+      mode: 'success';
+    }
+  | {
+      ok: false;
+      mode: 'cooldown';
+      retryAfterMs: number;
+      error: string;
+      message: string;
+    }
+  | {
+      ok: false;
+      mode: 'transient_error' | 'terminal_error';
+      retryAfterMs: 0;
+      error: string;
+      message: string;
+    };
+
+export const transcribeSermonChunk = async (
+  payload: TranscribeSermonChunkRequest
+): Promise<TranscribeSermonChunkResult> => {
+  const response = await postAi('/api/ai/transcribe-sermon-chunk', payload, 10000);
+  if (response?.ok) {
+    const locale = response.locale === 'en-GB' ? 'en-GB' : 'en-US';
+    return {
+      ok: true,
+      mode: 'success',
+      transcript: String(response.transcript || '').trim(),
+      locale,
+      retryAfterMs: 0,
+    };
+  }
+
+  const errorCode = String(response?.error || 'TRANSCRIBE_REQUEST_FAILED').trim() || 'TRANSCRIBE_REQUEST_FAILED';
+  const message = String(response?.message || 'Cloud transcription request failed.').trim() || 'Cloud transcription request failed.';
+  const retryAfterMs = Number(response?.retryAfterMs || 0);
+
+  if (errorCode === 'TRANSCRIBE_COOLDOWN') {
+    return {
+      ok: false,
+      mode: 'cooldown',
+      retryAfterMs: Number.isFinite(retryAfterMs) ? Math.max(0, retryAfterMs) : 0,
+      error: errorCode,
+      message,
+    };
+  }
+
+  const transient = (
+    errorCode === 'SERVER_TIMEOUT'
+    || errorCode === 'HTTP_502'
+    || errorCode === 'HTTP_503'
+    || errorCode === 'TRANSCRIBE_FAILED'
+    || errorCode === 'TRANSCRIBE_REQUEST_FAILED'
+  );
+
+  return {
+    ok: false,
+    mode: transient ? 'transient_error' : 'terminal_error',
+    retryAfterMs: 0,
+    error: errorCode,
+    message,
+  };
 };
 
 export const semanticBibleSearch = async (query: string): Promise<string> => {

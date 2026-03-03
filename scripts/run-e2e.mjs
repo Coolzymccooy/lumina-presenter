@@ -83,6 +83,9 @@ const run = async () => {
     server = startProcess('server', [path.join(rootDir, 'server', 'index.js')], {
       LUMINA_API_PORT: String(SERVER_PORT),
       LUMINA_DB_PATH: e2eDbPath,
+      LUMINA_TRANSCRIBE_SOFT_MAX_RPM: '1',
+      LUMINA_TRANSCRIBE_COOLDOWN_MS: '1200',
+      LUMINA_TRANSCRIBE_MAX_BYTES: String(256 * 1024),
     });
     await waitForHttp(SERVER_HEALTH_URL, 60_000, server);
 

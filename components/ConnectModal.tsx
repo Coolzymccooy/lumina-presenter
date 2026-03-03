@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { XIcon, CopyIcon, ExternalLinkIcon, QrCodeIcon, MonitorIcon } from './Icons';
+import { copyTextToClipboard } from '../services/clipboardService';
 
 interface ConnectModalProps {
     isOpen: boolean;
@@ -27,9 +28,9 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
 
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(audienceUrl)}`;
 
-    const copyUrl = () => {
-        navigator.clipboard.writeText(audienceUrl);
-        alert('URL copied to clipboard!');
+    const copyUrl = async () => {
+        const copied = await copyTextToClipboard(audienceUrl);
+        alert(copied ? 'URL copied to clipboard!' : 'Copy failed. Try again or use Ctrl+C manually.');
     };
 
     const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));

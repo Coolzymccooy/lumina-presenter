@@ -264,6 +264,78 @@ test('run sheet archive endpoints support create/list/rename/reuse/delete', asyn
   expect(listAfterDeleteBody.files.some((entry: any) => entry.fileId === fileId)).toBeFalsy();
 });
 
+test('transcribe sermon chunk endpoint validates payload and applies cooldown guard', async ({ request }) => {
+  const key = uniqueKey();
+  const endpoint = `${SERVER_BASE_URL}/api/ai/transcribe-sermon-chunk`;
+
+  const missingAudioResponse = await request.post(endpoint, {
+    data: {
+      mimeType: 'audio/webm;codecs=opus',
+      locale: 'en-GB',
+      workspaceId: `e2e-workspace-${key}`,
+      sessionId: `e2e-session-${key}`,
+      clientId: `e2e-client-${key}`,
+    },
+  });
+  expect(missingAudioResponse.status()).toBe(400);
+  const missingAudioBody = JSON.parse(await missingAudioResponse.text());
+  expect(missingAudioBody.error).toBe('AUDIO_REQUIRED');
+
+  const oversizeBase64 = 'A'.repeat(370_000);
+  const oversizeResponse = await request.post(endpoint, {
+    data: {
+      audioBase64: oversizeBase64,
+      mimeType: 'audio/webm;codecs=opus',
+      locale: 'en-GB',
+      workspaceId: `e2e-workspace-${key}-oversize`,
+      sessionId: `e2e-session-${key}-oversize`,
+      clientId: `e2e-client-${key}-oversize`,
+    },
+  });
+  expect(oversizeResponse.status()).toBe(413);
+  const oversizeBody = JSON.parse(await oversizeResponse.text());
+  expect(oversizeBody.error).toBe('AUDIO_TOO_LARGE');
+
+  const bucketWorkspace = `e2e-workspace-${key}-cooldown`;
+  const bucketSession = `e2e-session-${key}-cooldown`;
+  const bucketClient = `e2e-client-${key}-cooldown`;
+
+  const firstAttempt = await request.post(endpoint, {
+    data: {
+      audioBase64: '!!',
+      mimeType: 'audio/webm;codecs=opus',
+      locale: 'en-GB',
+      workspaceId: bucketWorkspace,
+      sessionId: bucketSession,
+      clientId: bucketClient,
+    },
+  });
+  expect(firstAttempt.status()).toBe(400);
+
+  let cooldownBody: any = null;
+  let cooldownStatus = 0;
+  for (let i = 0; i < 6; i += 1) {
+    const attempt = await request.post(endpoint, {
+      data: {
+        audioBase64: '!!',
+        mimeType: 'audio/webm;codecs=opus',
+        locale: 'en-GB',
+        workspaceId: bucketWorkspace,
+        sessionId: bucketSession,
+        clientId: bucketClient,
+      },
+    });
+    cooldownStatus = attempt.status();
+    if (cooldownStatus === 429) {
+      cooldownBody = JSON.parse(await attempt.text());
+      break;
+    }
+  }
+  expect(cooldownStatus).toBe(429);
+  expect(cooldownBody.error).toBe('TRANSCRIBE_COOLDOWN');
+  expect(Number(cooldownBody.retryAfterMs || 0)).toBeGreaterThan(0);
+});
+
 test('session state preserves stage message center across partial updates', async ({ request }) => {
   const key = uniqueKey();
   const workspaceId = `e2e-workspace-${key}`;

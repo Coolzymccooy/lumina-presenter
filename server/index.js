@@ -314,6 +314,12 @@ const parseBool = (value, fallback = false) => {
   if (!normalized) return fallback;
   return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
 };
+const parseBase64Payload = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const commaIdx = raw.indexOf(",");
+  return commaIdx >= 0 ? raw.slice(commaIdx + 1).trim() : raw;
+};
 let cachedGoogleAiClient = null;
 let cachedGoogleAiKey = "";
 const getGoogleAiClient = () => {
@@ -659,6 +665,74 @@ const inferSemanticFallbackReference = (query) => {
   return "Psalm 23:1-4";
 };
 
+const TRANSCRIBE_ALLOWED_MIME_TYPES = new Set([
+  "audio/webm",
+  "audio/webm;codecs=opus",
+  "audio/mp4",
+]);
+const TRANSCRIBE_MAX_BASE64_BYTES = Math.max(
+  64 * 1024,
+  Number(process.env.LUMINA_TRANSCRIBE_MAX_BYTES || (1.5 * 1024 * 1024)),
+);
+const TRANSCRIBE_SOFT_MAX_REQUESTS_PER_MIN = Math.max(
+  3,
+  Number(process.env.LUMINA_TRANSCRIBE_SOFT_MAX_RPM || 24),
+);
+const TRANSCRIBE_COOLDOWN_MS = Math.max(
+  5000,
+  Number(process.env.LUMINA_TRANSCRIBE_COOLDOWN_MS || 15000),
+);
+const TRANSCRIBE_BUCKETS = new Map();
+
+const pruneTranscribeBuckets = (nowTs) => {
+  TRANSCRIBE_BUCKETS.forEach((bucket, key) => {
+    if (!bucket || (nowTs - bucket.lastSeenAt) > (10 * 60 * 1000)) {
+      TRANSCRIBE_BUCKETS.delete(key);
+    }
+  });
+};
+
+const transcribeBucketKey = (input) => {
+  const workspaceId = String(input?.workspaceId || "anon").slice(0, 128);
+  const sessionId = String(input?.sessionId || "live").slice(0, 128);
+  const clientId = String(input?.clientId || "client").slice(0, 128);
+  return `${workspaceId}::${sessionId}::${clientId}`;
+};
+
+const checkTranscribeRateLimit = (bucketKey) => {
+  const ts = now();
+  pruneTranscribeBuckets(ts);
+  const existing = TRANSCRIBE_BUCKETS.get(bucketKey) || {
+    windowStart: ts,
+    count: 0,
+    cooldownUntil: 0,
+    lastSeenAt: ts,
+  };
+  existing.lastSeenAt = ts;
+
+  if (existing.cooldownUntil && ts < existing.cooldownUntil) {
+    const retryAfterMs = Math.max(0, existing.cooldownUntil - ts);
+    TRANSCRIBE_BUCKETS.set(bucketKey, existing);
+    return { allowed: false, retryAfterMs };
+  }
+
+  if ((ts - existing.windowStart) >= 60000) {
+    existing.windowStart = ts;
+    existing.count = 0;
+  }
+
+  existing.count += 1;
+  if (existing.count > TRANSCRIBE_SOFT_MAX_REQUESTS_PER_MIN) {
+    existing.cooldownUntil = ts + TRANSCRIBE_COOLDOWN_MS;
+    const retryAfterMs = Math.max(0, existing.cooldownUntil - ts);
+    TRANSCRIBE_BUCKETS.set(bucketKey, existing);
+    return { allowed: false, retryAfterMs };
+  }
+
+  TRANSCRIBE_BUCKETS.set(bucketKey, existing);
+  return { allowed: true, retryAfterMs: 0 };
+};
+
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "lumina-server-api", db: DB_PATH, now: now() });
 });
@@ -872,6 +946,113 @@ ${sermonText}`,
     });
   } catch (error) {
     return res.json({ ok: true, data: fallback, warning: String(error?.message || error) });
+  }
+});
+
+app.post("/api/ai/transcribe-sermon-chunk", async (req, res) => {
+  const locale = String(req.body?.locale || "").trim();
+  const mimeType = String(req.body?.mimeType || "").trim().toLowerCase();
+  const audioBase64Raw = parseBase64Payload(req.body?.audioBase64);
+  const workspaceId = String(req.body?.workspaceId || "").trim();
+  const sessionId = String(req.body?.sessionId || "").trim();
+  const clientId = String(req.body?.clientId || "").trim();
+
+  if (!audioBase64Raw) {
+    return res.status(400).json({
+      ok: false,
+      error: "AUDIO_REQUIRED",
+      message: "audioBase64 is required.",
+    });
+  }
+  if (!TRANSCRIBE_ALLOWED_MIME_TYPES.has(mimeType)) {
+    return res.status(400).json({
+      ok: false,
+      error: "MIME_TYPE_UNSUPPORTED",
+      message: "mimeType must be one of audio/webm, audio/webm;codecs=opus, audio/mp4.",
+    });
+  }
+  if (locale !== "en-GB" && locale !== "en-US") {
+    return res.status(400).json({
+      ok: false,
+      error: "LOCALE_UNSUPPORTED",
+      message: "locale must be en-GB or en-US.",
+    });
+  }
+
+  const estimatedBytes = Math.floor((audioBase64Raw.length * 3) / 4);
+  if (estimatedBytes > TRANSCRIBE_MAX_BASE64_BYTES) {
+    return res.status(413).json({
+      ok: false,
+      error: "AUDIO_TOO_LARGE",
+      message: `audioBase64 exceeds max chunk size (${TRANSCRIBE_MAX_BASE64_BYTES} bytes).`,
+      maxBytes: TRANSCRIBE_MAX_BASE64_BYTES,
+    });
+  }
+
+  const bucketKey = transcribeBucketKey({ workspaceId, sessionId, clientId });
+  const limit = checkTranscribeRateLimit(bucketKey);
+  if (!limit.allowed) {
+    return res.status(429).json({
+      ok: false,
+      error: "TRANSCRIBE_COOLDOWN",
+      message: "Transcription cooldown active. Retry after a short delay.",
+      retryAfterMs: limit.retryAfterMs,
+    });
+  }
+
+  const audioBuffer = decodeBase64(audioBase64Raw);
+  if (!audioBuffer.length) {
+    return res.status(400).json({
+      ok: false,
+      error: "AUDIO_DECODE_FAILED",
+      message: "Unable to decode audioBase64 payload.",
+    });
+  }
+  if (audioBuffer.length > TRANSCRIBE_MAX_BASE64_BYTES) {
+    return res.status(413).json({
+      ok: false,
+      error: "AUDIO_TOO_LARGE",
+      message: `Decoded audio exceeds max chunk size (${TRANSCRIBE_MAX_BASE64_BYTES} bytes).`,
+      maxBytes: TRANSCRIBE_MAX_BASE64_BYTES,
+    });
+  }
+
+  const ai = ensureGoogleAiClient(res);
+  if (!ai) return;
+
+  try {
+    const speechPrompt = locale === "en-GB"
+      ? "Transcribe this church speech audio in British English. Return plain transcript text only."
+      : "Transcribe this church speech audio in American English. Return plain transcript text only.";
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: {
+        parts: [
+          { text: speechPrompt },
+          {
+            inlineData: {
+              mimeType,
+              data: audioBuffer.toString("base64"),
+            },
+          },
+        ],
+      },
+    });
+
+    const transcript = String(response?.text || "").trim();
+    return res.json({
+      ok: true,
+      transcript,
+      locale,
+      bytes: audioBuffer.length,
+    });
+  } catch (error) {
+    return res.status(502).json({
+      ok: false,
+      error: "TRANSCRIBE_FAILED",
+      message: String(error?.message || error),
+    });
   }
 });
 

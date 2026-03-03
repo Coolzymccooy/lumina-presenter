@@ -1,9 +1,8 @@
-
-import React, { useState, useEffect, useRef } from 'react';
-import { BibleIcon, SearchIcon, PlayIcon, PlusIcon, SparklesIcon, TrashIcon } from './Icons';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { BibleIcon, SearchIcon, PlayIcon, SparklesIcon } from './Icons';
 import { ServiceItem, ItemType, MediaType } from '../types';
 import { DEFAULT_BACKGROUNDS } from '../constants';
-import { semanticBibleSearch, generateVisionaryBackdrop } from '../services/geminiService';
+import { semanticBibleSearch, transcribeSermonChunk, type TranscribeSermonChunkResult } from '../services/geminiService';
 
 interface Verse {
   book_id: string;
@@ -12,6 +11,46 @@ interface Verse {
   verse: number;
   text: string;
 }
+
+interface BibleBrowserProps {
+  onAddRequest: (item: ServiceItem) => void;
+  onProjectRequest: (item: ServiceItem) => void;
+  speechLocaleMode: VisionarySpeechLocaleMode;
+  onSpeechLocaleModeChange: (mode: VisionarySpeechLocaleMode) => void;
+}
+
+interface SpeechRecognitionResultLike {
+  isFinal: boolean;
+  0: { transcript: string };
+}
+
+interface SpeechRecognitionEventLike {
+  resultIndex: number;
+  results: ArrayLike<SpeechRecognitionResultLike>;
+}
+
+interface SpeechRecognitionLike {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onstart?: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onend: (() => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
+
+interface WindowWithSpeech extends Window {
+  SpeechRecognition?: SpeechRecognitionCtor;
+  webkitSpeechRecognition?: SpeechRecognitionCtor;
+}
+
+type VisionarySpeechLocaleMode = 'auto' | 'en-GB' | 'en-US';
+type TranscriptionEngineMode = 'browser_stt' | 'cloud_fallback' | 'disabled';
+type CloudRecorderState = 'idle' | 'recording' | 'cooldown' | 'uploading' | 'error';
 
 const VERSIONS = [
   { id: 'kjv', name: 'King James Version' },
@@ -24,7 +63,6 @@ const VERSIONS = [
   { id: 'webbe', name: 'WEB British Edition' },
 ];
 
-// Books list with chapter counts
 const BIBLE_BOOKS: { name: string; chapters: number }[] = [
   { name: 'Genesis', chapters: 50 }, { name: 'Exodus', chapters: 40 }, { name: 'Leviticus', chapters: 27 },
   { name: 'Numbers', chapters: 36 }, { name: 'Deuteronomy', chapters: 34 }, { name: 'Joshua', chapters: 24 },
@@ -50,9 +88,137 @@ const BIBLE_BOOKS: { name: string; chapters: number }[] = [
   { name: '3 John', chapters: 1 }, { name: 'Jude', chapters: 1 }, { name: 'Revelation', chapters: 22 },
 ];
 
-const PRESET_BGS = DEFAULT_BACKGROUNDS.slice(0, 4);
+const AUTO_DEBOUNCE_MS = 2500;
+const AUTO_REQUERY_COOLDOWN_MS = 15000;
+const AUTO_REPEAT_REFERENCE_WINDOW_MS = 120000;
+const AUTO_WORD_BUFFER = 90;
+const AUTO_ERROR_COOLDOWN_MS = 10000;
+const AUTO_NETWORK_ERROR_LIMIT = 3;
+const AUTO_RESTART_BASE_MS = 600;
+const AUTO_MIC_PREFLIGHT_COOLDOWN_MS = 120000;
+const AUTO_NETWORK_FALLBACK_THRESHOLD = 2;
+const CLOUD_FALLBACK_CHUNK_MS = 6000;
+const CLOUD_FALLBACK_RETRY_MS = 3500;
+const CLOUD_BROWSER_PROBE_INTERVAL_MS = 45000;
+const ENGINE_TOAST_MS = 4200;
+const BENIGN_SPEECH_ERRORS = new Set(['no-speech', 'aborted']);
+const TRANSIENT_SPEECH_ERRORS = new Set(['network']);
+const PERMISSION_SPEECH_ERRORS = new Set(['not-allowed', 'service-not-allowed']);
+const DEVICE_SPEECH_ERRORS = new Set(['audio-capture']);
 
-export const BibleBrowser: React.FC<any> = ({ onAddRequest, onProjectRequest }) => {
+const getQueryParam = (key: string): string => {
+  if (typeof window === 'undefined') return '';
+  try {
+    const direct = new URLSearchParams(window.location.search || '').get(key);
+    if (direct) return String(direct).trim();
+  } catch {
+    // ignore
+  }
+  try {
+    const hashQuery = window.location.hash.includes('?') ? window.location.hash.split('?')[1] : '';
+    const fromHash = new URLSearchParams(hashQuery).get(key);
+    if (fromHash) return String(fromHash).trim();
+  } catch {
+    // ignore
+  }
+  return '';
+};
+
+const getFallbackSessionContext = () => ({
+  workspaceId: getQueryParam('workspace') || 'default-workspace',
+  sessionId: getQueryParam('session') || 'live',
+});
+
+const createFallbackClientId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `visionary-${crypto.randomUUID()}`;
+  }
+  return `visionary-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const blobToBase64 = async (blob: Blob): Promise<string> => {
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = String(reader.result || '');
+      if (!value) {
+        reject(new Error('BLOB_READ_FAILED'));
+        return;
+      }
+      const commaIdx = value.indexOf(',');
+      resolve(commaIdx >= 0 ? value.slice(commaIdx + 1) : value);
+    };
+    reader.onerror = () => reject(new Error('BLOB_READ_FAILED'));
+    reader.readAsDataURL(blob);
+  });
+};
+
+const pickSupportedRecorderMimeType = (): 'audio/webm;codecs=opus' | 'audio/webm' | 'audio/mp4' | null => {
+  if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') {
+    return null;
+  }
+  if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) return 'audio/webm;codecs=opus';
+  if (MediaRecorder.isTypeSupported('audio/webm')) return 'audio/webm';
+  if (MediaRecorder.isTypeSupported('audio/mp4')) return 'audio/mp4';
+  return null;
+};
+
+const getSpeechCtor = (): SpeechRecognitionCtor | null => {
+  if (typeof window === 'undefined') return null;
+  const speechWindow = window as WindowWithSpeech;
+  return speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition || null;
+};
+
+const normalizeLocale = (value: string): string => value.trim().replace(/_/g, '-');
+
+const unique = (items: string[]): string[] => {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  items.forEach((entry) => {
+    const normalized = normalizeLocale(entry);
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    out.push(normalized);
+  });
+  return out;
+};
+
+const getNavigatorLocales = (): string[] => {
+  if (typeof window === 'undefined') return [];
+  const browserLocales = Array.isArray(window.navigator.languages) ? window.navigator.languages : [];
+  const navigatorLocale = typeof window.navigator.language === 'string' ? window.navigator.language : '';
+  const intlLocale = Intl.DateTimeFormat().resolvedOptions().locale || '';
+  return unique([...browserLocales, navigatorLocale, intlLocale].filter(Boolean));
+};
+
+const regionFromLocale = (locale: string): string => {
+  const parts = normalizeLocale(locale).split('-');
+  if (parts.length < 2) return '';
+  return parts[parts.length - 1].toUpperCase();
+};
+
+export const resolveSpeechLanguageCandidates = (
+  mode: VisionarySpeechLocaleMode,
+  navigatorLocales: string[]
+): string[] => {
+  if (mode === 'en-GB') return ['en-GB', 'en-US'];
+  if (mode === 'en-US') return ['en-US', 'en-GB'];
+
+  const regionHints = navigatorLocales
+    .map(regionFromLocale)
+    .filter(Boolean);
+
+  if (regionHints.includes('GB')) return ['en-GB', 'en-US'];
+  if (regionHints.includes('US')) return ['en-US', 'en-GB'];
+  return ['en-US', 'en-GB'];
+};
+
+export const BibleBrowser: React.FC<BibleBrowserProps> = ({
+  onAddRequest,
+  onProjectRequest,
+  speechLocaleMode,
+  onSpeechLocaleModeChange,
+}) => {
   const [bookInput, setBookInput] = useState('');
   const [selectedBook, setSelectedBook] = useState<{ name: string; chapters: number } | null>(null);
   const [chapter, setChapter] = useState<number>(1);
@@ -60,31 +226,191 @@ export const BibleBrowser: React.FC<any> = ({ onAddRequest, onProjectRequest }) 
   const [verseTo, setVerseTo] = useState<number>(1);
   const [showBookDropdown, setShowBookDropdown] = useState(false);
   const [filteredBooks, setFilteredBooks] = useState<{ name: string; chapters: number }[]>([]);
-
-  // AI / free-text mode
   const [aiQuery, setAiQuery] = useState('');
   const [isVisionaryMode, setIsVisionaryMode] = useState(false);
-
   const [results, setResults] = useState<Verse[]>([]);
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedVersion, setSelectedVersion] = useState('kjv');
   const [showSuccess, setShowSuccess] = useState(false);
-
   const [selectedBg, setSelectedBg] = useState<string>(DEFAULT_BACKGROUNDS[1]);
   const [selectedMediaType, setSelectedMediaType] = useState<MediaType>('image');
 
-  const bookInputRef = useRef<HTMLInputElement>(null);
+  const [autoVisionaryEnabled, setAutoVisionaryEnabled] = useState(false);
+  const [autoProjectEnabled, setAutoProjectEnabled] = useState(true);
+  const [autoListening, setAutoListening] = useState(false);
+  const [autoBusy, setAutoBusy] = useState(false);
+  const [autoTranscript, setAutoTranscript] = useState('');
+  const [autoReference, setAutoReference] = useState('');
+  const [autoError, setAutoError] = useState<string | null>(null);
+  const [autoSupportError, setAutoSupportError] = useState<string | null>(null);
+  const [activeSpeechLanguage, setActiveSpeechLanguage] = useState('en-US');
+  const [transcriptionEngine, setTranscriptionEngine] = useState<TranscriptionEngineMode>('disabled');
+  const [cloudRecorderState, setCloudRecorderState] = useState<CloudRecorderState>('idle');
+  const [engineToast, setEngineToast] = useState<string | null>(null);
+  const [cloudCooldownUntil, setCloudCooldownUntil] = useState(0);
+  const [browserRestartNonce, setBrowserRestartNonce] = useState(0);
 
-  // Filter book suggestions as user types
+  const bookInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const cloudStreamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const restartTimerRef = useRef<number | null>(null);
+  const processTimerRef = useRef<number | null>(null);
+  const processAutoTranscriptRef = useRef<() => Promise<void>>(async () => {});
+  const cloudRetryTimerRef = useRef<number | null>(null);
+  const toastTimerRef = useRef<number | null>(null);
+  const transcriptBufferRef = useRef('');
+  const lastProcessAtRef = useRef(0);
+  const lastReferenceRef = useRef<{ reference: string; at: number }>({ reference: '', at: 0 });
+  const lastSpeechErrorAtRef = useRef(0);
+  const consecutiveNetworkErrorsRef = useRef(0);
+  const restartDelayMsRef = useRef(AUTO_RESTART_BASE_MS);
+  const speechCandidatesRef = useRef<string[]>(['en-US', 'en-GB']);
+  const activeSpeechCandidateIndexRef = useRef(0);
+  const autoEnabledRef = useRef(false);
+  const autoProjectRef = useRef(autoProjectEnabled);
+  const autoBusyRef = useRef(false);
+  const transcriptionEngineRef = useRef<TranscriptionEngineMode>('disabled');
+  const micPreflightOkRef = useRef(false);
+  const micPreflightAtRef = useRef(0);
+  const cloudQueueRef = useRef<Blob[]>([]);
+  const cloudUploadInFlightRef = useRef(false);
+  const cloudStartInFlightRef = useRef(false);
+  const cloudRecorderMimeTypeRef = useRef<'audio/webm;codecs=opus' | 'audio/webm' | 'audio/mp4'>('audio/webm;codecs=opus');
+  const probeInFlightRef = useRef(false);
+  const lastBrowserProbeAtRef = useRef(0);
+  const fallbackClientIdRef = useRef(createFallbackClientId());
+  const fallbackContextRef = useRef(getFallbackSessionContext());
+
   useEffect(() => {
-    if (!bookInput.trim()) { setFilteredBooks([]); setShowBookDropdown(false); return; }
+    autoProjectRef.current = autoProjectEnabled;
+  }, [autoProjectEnabled]);
+
+  useEffect(() => {
+    transcriptionEngineRef.current = transcriptionEngine;
+  }, [transcriptionEngine]);
+
+  useEffect(() => {
+    if (!bookInput.trim()) {
+      setFilteredBooks([]);
+      setShowBookDropdown(false);
+      return;
+    }
     const q = bookInput.toLowerCase();
-    const matches = BIBLE_BOOKS.filter(b => b.name.toLowerCase().startsWith(q) || b.name.toLowerCase().includes(q));
+    const matches = BIBLE_BOOKS.filter((b) => b.name.toLowerCase().startsWith(q) || b.name.toLowerCase().includes(q));
     setFilteredBooks(matches.slice(0, 10));
     setShowBookDropdown(matches.length > 0 && !selectedBook);
   }, [bookInput, selectedBook]);
+
+  const clearTimer = (ref: React.MutableRefObject<number | null>) => {
+    if (ref.current) {
+      window.clearTimeout(ref.current);
+      ref.current = null;
+    }
+  };
+
+  const stopRecognition = useCallback(() => {
+    clearTimer(restartTimerRef);
+    const recognition = recognitionRef.current;
+    if (recognition) {
+      recognition.onend = null;
+      recognition.onresult = null;
+      recognition.onerror = null;
+      try {
+        recognition.stop();
+      } catch {
+        // no-op
+      }
+    }
+    recognitionRef.current = null;
+    setAutoListening(false);
+  }, []);
+
+  const ensureMicCaptureReady = useCallback(async (): Promise<{ ok: boolean; reason?: string }> => {
+    if (typeof window === 'undefined') return { ok: false, reason: 'Window context unavailable for microphone capture.' };
+    if (micPreflightOkRef.current && (Date.now() - micPreflightAtRef.current) < AUTO_MIC_PREFLIGHT_COOLDOWN_MS) {
+      return { ok: true };
+    }
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+      // Some Chromium builds omit preflight support but still allow SpeechRecognition.
+      return { ok: true };
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      stream.getTracks().forEach((track) => track.stop());
+      micPreflightOkRef.current = true;
+      micPreflightAtRef.current = Date.now();
+      return { ok: true };
+    } catch (error) {
+      micPreflightOkRef.current = false;
+      micPreflightAtRef.current = Date.now();
+      const code = String((error as { name?: string })?.name || '').toLowerCase();
+
+      if (code === 'notallowederror' || code === 'securityerror') {
+        return { ok: false, reason: 'Microphone permission denied. Allow microphone access for Lumina and try again.' };
+      }
+      if (code === 'notfounderror' || code === 'devicesnotfounderror' || code === 'overconstrainederror') {
+        return { ok: false, reason: 'No usable microphone found. Select a valid input device in OS sound settings.' };
+      }
+      if (code === 'notreadableerror' || code === 'aborterror') {
+        return { ok: false, reason: 'Microphone is busy or unavailable. Close other apps using the mic and retry.' };
+      }
+      return { ok: false, reason: 'Microphone preflight failed. Check OS mic permission, input device, and internet.' };
+    }
+  }, []);
+
+  const showEngineToast = useCallback((message: string) => {
+    setEngineToast(message);
+    clearTimer(toastTimerRef);
+    toastTimerRef.current = window.setTimeout(() => {
+      setEngineToast(null);
+    }, ENGINE_TOAST_MS);
+  }, []);
+
+  const stopCloudFallbackCapture = useCallback(() => {
+    clearTimer(cloudRetryTimerRef);
+    const recorder = mediaRecorderRef.current;
+    if (recorder) {
+      recorder.ondataavailable = null;
+      recorder.onerror = null;
+      recorder.onstop = null;
+      try {
+        if (recorder.state !== 'inactive') recorder.stop();
+      } catch {
+        // ignore
+      }
+    }
+    mediaRecorderRef.current = null;
+    const stream = cloudStreamRef.current;
+    if (stream) {
+      stream.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch {
+          // ignore
+        }
+      });
+    }
+    cloudStreamRef.current = null;
+    cloudQueueRef.current = [];
+    cloudUploadInFlightRef.current = false;
+    setCloudRecorderState('idle');
+  }, []);
+
+  const stopAllVisionaryCapture = useCallback(() => {
+    stopRecognition();
+    stopCloudFallbackCapture();
+    setAutoListening(false);
+  }, [stopCloudFallbackCapture, stopRecognition]);
 
   const selectBook = (book: { name: string; chapters: number }) => {
     setSelectedBook(book);
@@ -100,60 +426,576 @@ export const BibleBrowser: React.FC<any> = ({ onAddRequest, onProjectRequest }) 
     return `${selectedBook.name} ${chapter}:${verseFrom}${verseTo > verseFrom ? `-${verseTo}` : ''}`;
   };
 
-  const fetchScripture = async (query: string, useSemantic = false) => {
-    if (!query) return;
-    setLoading(true);
-    setError(null);
+  const createServiceItem = useCallback((verses: Verse[]): ServiceItem => {
+    const title = `${verses[0].book_name} ${verses[0].chapter}:${verses[0].verse}${verses.length > 1 ? `-${verses[verses.length - 1].verse}` : ''}`;
+    const versionLabel = VERSIONS.find((v) => v.id === selectedVersion)?.name || selectedVersion.toUpperCase();
+    return {
+      id: `bible-${Date.now()}`,
+      title,
+      type: ItemType.BIBLE,
+      theme: {
+        backgroundUrl: selectedBg,
+        mediaType: selectedMediaType,
+        fontFamily: 'serif',
+        textColor: '#ffffff',
+        shadow: true,
+        fontSize: 'large',
+      },
+      slides: verses.map((v) => ({
+        id: `v-${v.verse}-${Date.now()}`,
+        content: v.text.trim(),
+        label: `${v.book_name} ${v.chapter}:${v.verse} (${versionLabel})`,
+      })),
+    };
+  }, [selectedBg, selectedMediaType, selectedVersion]);
+
+  const fetchScripture = useCallback(async (query: string, useSemantic = false, silent = false): Promise<Verse[]> => {
+    if (!query.trim()) return [];
+    if (!silent) {
+      setLoading(true);
+      setError(null);
+    }
+
     try {
-      let finalQuery = query;
+      let finalQuery = query.trim();
       if (useSemantic) {
         setAiLoading(true);
-        finalQuery = await semanticBibleSearch(query);
+        finalQuery = await semanticBibleSearch(finalQuery);
       }
-      const res = await fetch(`https://bible-api.com/${encodeURIComponent(finalQuery)}?translation=${selectedVersion}`);
-      const data = await res.json();
-      if (data.verses) {
-        setResults(data.verses);
+      const lookup = async (version: string): Promise<Verse[]> => {
+        const res = await fetch(`https://bible-api.com/${encodeURIComponent(finalQuery)}?translation=${version}`);
+        const data = await res.json();
+        return Array.isArray(data?.verses) ? data.verses as Verse[] : [];
+      };
+
+      let verses = await lookup(selectedVersion);
+      if (!verses.length && selectedVersion !== 'kjv') {
+        verses = await lookup('kjv');
+      }
+      if (verses.length) {
+        setResults(verses);
         setSelectedBg(DEFAULT_BACKGROUNDS[1]);
         setSelectedMediaType('image');
-      } else {
-        setError("Reference not found. Try a different book/chapter.");
+        if (silent) setError(null);
+        return verses;
+      }
+      if (!silent) {
+        setError('Reference not found. Try a different book/chapter.');
         setResults([]);
       }
+      return [];
     } catch {
-      setError("Network error. Could not reach Bible API.");
+      if (!silent) {
+        setError('Network error. Could not reach Bible API.');
+      }
+      return [];
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
       setAiLoading(false);
     }
-  };
+  }, [selectedVersion]);
+
+  const scheduleAutoProcess = useCallback(() => {
+    clearTimer(processTimerRef);
+    processTimerRef.current = window.setTimeout(() => {
+      void processAutoTranscriptRef.current();
+    }, AUTO_DEBOUNCE_MS);
+  }, []);
+
+  const appendTranscriptChunk = useCallback((chunk: string) => {
+    const cleaned = String(chunk || '').trim();
+    if (!cleaned) return;
+    const next = `${transcriptBufferRef.current} ${cleaned}`.trim().split(/\s+/).slice(-AUTO_WORD_BUFFER).join(' ');
+    transcriptBufferRef.current = next;
+    setAutoTranscript(next);
+    setAutoError(null);
+    scheduleAutoProcess();
+  }, [scheduleAutoProcess]);
+
+  const processCloudQueue = useCallback(async () => {
+    if (!autoEnabledRef.current || transcriptionEngineRef.current !== 'cloud_fallback') return;
+    if (cloudUploadInFlightRef.current) return;
+    if (!cloudQueueRef.current.length) return;
+    const nowTs = Date.now();
+    if (cloudCooldownUntil > nowTs) {
+      const waitMs = Math.max(1000, cloudCooldownUntil - nowTs);
+      clearTimer(cloudRetryTimerRef);
+      cloudRetryTimerRef.current = window.setTimeout(() => {
+        void processCloudQueue();
+      }, waitMs);
+      return;
+    }
+
+    cloudUploadInFlightRef.current = true;
+    setCloudRecorderState('uploading');
+    const chunk = cloudQueueRef.current.shift();
+    if (!chunk) {
+      cloudUploadInFlightRef.current = false;
+      setCloudRecorderState('recording');
+      return;
+    }
+
+    try {
+      const base64 = await blobToBase64(chunk);
+      const locale = activeSpeechLanguage === 'en-GB' ? 'en-GB' : 'en-US';
+      const response: TranscribeSermonChunkResult = await transcribeSermonChunk({
+        audioBase64: base64,
+        mimeType: cloudRecorderMimeTypeRef.current,
+        locale,
+        workspaceId: fallbackContextRef.current.workspaceId,
+        sessionId: fallbackContextRef.current.sessionId,
+        clientId: fallbackClientIdRef.current,
+      });
+
+      if (response.ok) {
+        appendTranscriptChunk(response.transcript);
+        setAutoError(null);
+        setCloudRecorderState('recording');
+      } else if (response.mode === 'cooldown') {
+        const retryAfterMs = Math.max(1000, Number(response.retryAfterMs || 0));
+        const resumeAt = Date.now() + retryAfterMs;
+        setCloudCooldownUntil(resumeAt);
+        setCloudRecorderState('cooldown');
+        setAutoError(`Cloud transcription cooling down. Retrying in ${Math.ceil(retryAfterMs / 1000)}s.`);
+        clearTimer(cloudRetryTimerRef);
+        cloudRetryTimerRef.current = window.setTimeout(() => {
+          setCloudCooldownUntil(0);
+          void processCloudQueue();
+        }, retryAfterMs);
+      } else if (response.mode === 'transient_error') {
+        setCloudRecorderState('error');
+        setAutoError('Cloud transcription transient error. Retrying shortly.');
+        clearTimer(cloudRetryTimerRef);
+        cloudRetryTimerRef.current = window.setTimeout(() => {
+          void processCloudQueue();
+        }, CLOUD_FALLBACK_RETRY_MS);
+      } else {
+        setCloudRecorderState('error');
+        setAutoError('Cloud transcription unavailable. Turn Auto Visionary OFF/ON to retry.');
+        setAutoVisionaryEnabled(false);
+      }
+    } catch {
+      setCloudRecorderState('error');
+      setAutoError('Cloud transcription failed. Retrying shortly.');
+      clearTimer(cloudRetryTimerRef);
+      cloudRetryTimerRef.current = window.setTimeout(() => {
+        void processCloudQueue();
+      }, CLOUD_FALLBACK_RETRY_MS);
+    } finally {
+      cloudUploadInFlightRef.current = false;
+      if (autoEnabledRef.current && transcriptionEngineRef.current === 'cloud_fallback' && cloudQueueRef.current.length > 0) {
+        void processCloudQueue();
+      }
+    }
+  }, [activeSpeechLanguage, appendTranscriptChunk, cloudCooldownUntil]);
+
+  const startCloudFallbackCapture = useCallback(async (): Promise<boolean> => {
+    if (cloudStartInFlightRef.current) return true;
+    cloudStartInFlightRef.current = true;
+    try {
+      if (typeof window === 'undefined') return false;
+      if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') return false;
+      const supportedMime = pickSupportedRecorderMimeType();
+      if (!supportedMime) {
+        setAutoError('Cloud fallback recorder is unavailable in this browser.');
+        return false;
+      }
+
+      const micReady = await ensureMicCaptureReady();
+      if (!micReady.ok) {
+        setAutoError(micReady.reason || 'Microphone initialization failed.');
+        return false;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      stopCloudFallbackCapture();
+      cloudStreamRef.current = stream;
+      cloudRecorderMimeTypeRef.current = supportedMime;
+      cloudQueueRef.current = [];
+      setCloudCooldownUntil(0);
+
+      const recorder = new MediaRecorder(stream, { mimeType: supportedMime });
+      recorder.ondataavailable = (event: BlobEvent) => {
+        const chunk = event.data;
+        if (!chunk || !chunk.size) return;
+        cloudQueueRef.current.push(chunk);
+        void processCloudQueue();
+      };
+      recorder.onerror = () => {
+        setCloudRecorderState('error');
+        setAutoError('Cloud recorder error. Retrying capture.');
+      };
+      recorder.onstop = () => {
+        if (autoEnabledRef.current && transcriptionEngineRef.current === 'cloud_fallback') {
+          setCloudRecorderState('error');
+          setAutoError('Cloud recorder stopped unexpectedly. Restarting.');
+          clearTimer(cloudRetryTimerRef);
+          cloudRetryTimerRef.current = window.setTimeout(() => {
+            void startCloudFallbackCapture();
+          }, CLOUD_FALLBACK_RETRY_MS);
+        }
+      };
+      recorder.start(CLOUD_FALLBACK_CHUNK_MS);
+      mediaRecorderRef.current = recorder;
+      setCloudRecorderState('recording');
+      setAutoListening(true);
+      return true;
+    } catch {
+      setCloudRecorderState('error');
+      setAutoError('Unable to start cloud fallback recorder.');
+      return false;
+    } finally {
+      cloudStartInFlightRef.current = false;
+    }
+  }, [ensureMicCaptureReady, processCloudQueue, stopCloudFallbackCapture]);
+
+  const probeBrowserSpeechRecovery = useCallback(async () => {
+    if (!autoEnabledRef.current || transcriptionEngineRef.current !== 'cloud_fallback') return;
+    if (probeInFlightRef.current) return;
+    const nowTs = Date.now();
+    if ((nowTs - lastBrowserProbeAtRef.current) < CLOUD_BROWSER_PROBE_INTERVAL_MS) return;
+    lastBrowserProbeAtRef.current = nowTs;
+    probeInFlightRef.current = true;
+    try {
+      const SpeechCtor = getSpeechCtor();
+      if (!SpeechCtor) return;
+      const locale = activeSpeechLanguage === 'en-GB' ? 'en-GB' : 'en-US';
+      const probeOk = await new Promise<boolean>((resolve) => {
+        let settled = false;
+        const recognition = new SpeechCtor();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = locale;
+        recognition.onstart = () => {
+          if (settled) return;
+          settled = true;
+          try {
+            recognition.stop();
+          } catch {
+            // ignore
+          }
+          resolve(true);
+        };
+        recognition.onerror = () => {
+          if (settled) return;
+          settled = true;
+          resolve(false);
+        };
+        recognition.onend = () => {
+          if (settled) return;
+          settled = true;
+          resolve(false);
+        };
+        try {
+          recognition.start();
+        } catch {
+          settled = true;
+          resolve(false);
+          return;
+        }
+        window.setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          try {
+            recognition.stop();
+          } catch {
+            // ignore
+          }
+          resolve(false);
+        }, 3000);
+      });
+
+      if (probeOk && autoEnabledRef.current) {
+        stopCloudFallbackCapture();
+        setTranscriptionEngine('browser_stt');
+        setBrowserRestartNonce((prev) => prev + 1);
+        setAutoError(null);
+        setCloudRecorderState('idle');
+        showEngineToast('Browser speech recovered; switched back.');
+      }
+    } finally {
+      probeInFlightRef.current = false;
+    }
+  }, [activeSpeechLanguage, showEngineToast, stopCloudFallbackCapture]);
+
+  const activateCloudFallback = useCallback(async () => {
+    stopRecognition();
+    setTranscriptionEngine('cloud_fallback');
+    setAutoListening(true);
+    setAutoError('Switching to cloud fallback for reliable transcription...');
+    showEngineToast('Switched to Cloud Fallback for reliability.');
+    const started = await startCloudFallbackCapture();
+    if (!started) {
+      setAutoVisionaryEnabled(false);
+      setAutoListening(false);
+    }
+  }, [showEngineToast, startCloudFallbackCapture, stopRecognition]);
+
+  const processAutoTranscript = useCallback(async () => {
+    if (autoBusyRef.current) return;
+    const transcript = transcriptBufferRef.current.trim();
+    if (transcript.split(/\s+/).length < 6) return;
+    const now = Date.now();
+    if (now - lastProcessAtRef.current < AUTO_REQUERY_COOLDOWN_MS) return;
+
+    lastProcessAtRef.current = now;
+    autoBusyRef.current = true;
+    setAutoBusy(true);
+    setAutoError(null);
+    try {
+      const reference = await semanticBibleSearch(transcript);
+      if (!reference) return;
+      setAutoReference(reference);
+      setAiQuery(reference);
+
+      const last = lastReferenceRef.current;
+      if (last.reference.toLowerCase() === reference.toLowerCase() && (now - last.at) < AUTO_REPEAT_REFERENCE_WINDOW_MS) {
+        return;
+      }
+
+      const verses = await fetchScripture(reference, false, true);
+      if (!verses.length) {
+        lastReferenceRef.current = { reference, at: Date.now() };
+        return;
+      }
+
+      lastReferenceRef.current = { reference, at: Date.now() };
+
+      if (autoProjectRef.current) {
+        onProjectRequest(createServiceItem(verses));
+      }
+    } catch {
+      setAutoError('Auto matching failed. Keep speaking or run manual AI Search.');
+    } finally {
+      autoBusyRef.current = false;
+      setAutoBusy(false);
+    }
+  }, [createServiceItem, fetchScripture, onProjectRequest]);
+
+  useEffect(() => {
+    processAutoTranscriptRef.current = processAutoTranscript;
+  }, [processAutoTranscript]);
+
+  useEffect(() => {
+    const enabled = autoVisionaryEnabled && isVisionaryMode;
+    autoEnabledRef.current = enabled;
+    if (!enabled) {
+      setTranscriptionEngine('disabled');
+      setCloudCooldownUntil(0);
+      stopAllVisionaryCapture();
+      return;
+    }
+    setAutoSupportError(null);
+    if (transcriptionEngine === 'disabled') {
+      setTranscriptionEngine('browser_stt');
+    }
+  }, [autoVisionaryEnabled, isVisionaryMode, stopAllVisionaryCapture, transcriptionEngine]);
+
+  useEffect(() => {
+    if (!autoEnabledRef.current || transcriptionEngine !== 'browser_stt') return;
+    let cancelled = false;
+    stopCloudFallbackCapture();
+    const initializeRecognition = async () => {
+      const SpeechCtor = getSpeechCtor();
+      if (!SpeechCtor) {
+        setAutoSupportError('Auto listening is not available in this browser.');
+        setAutoVisionaryEnabled(false);
+        return;
+      }
+
+      setAutoSupportError(null);
+      setAutoError(null);
+      setCloudRecorderState('idle');
+      setCloudCooldownUntil(0);
+
+      const micReady = await ensureMicCaptureReady();
+      if (cancelled || !autoEnabledRef.current || transcriptionEngine !== 'browser_stt') return;
+      if (!micReady.ok) {
+        setAutoError(micReady.reason || 'Microphone initialization failed.');
+        setAutoVisionaryEnabled(false);
+        return;
+      }
+
+      consecutiveNetworkErrorsRef.current = 0;
+      restartDelayMsRef.current = AUTO_RESTART_BASE_MS;
+      const navigatorLocales = getNavigatorLocales();
+      const speechCandidates = resolveSpeechLanguageCandidates(speechLocaleMode, navigatorLocales);
+      speechCandidatesRef.current = speechCandidates;
+      activeSpeechCandidateIndexRef.current = 0;
+
+      const recognition = new SpeechCtor();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = speechCandidates[0];
+      setActiveSpeechLanguage(speechCandidates[0]);
+      setAutoListening(false);
+
+      recognition.onresult = (event) => {
+        let finalChunk = '';
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          const result = event.results[i];
+          const phrase = String(result?.[0]?.transcript || '').trim();
+          if (!phrase || !result?.isFinal) continue;
+          finalChunk += ` ${phrase}`;
+        }
+        if (!finalChunk.trim()) return;
+        appendTranscriptChunk(finalChunk);
+        consecutiveNetworkErrorsRef.current = 0;
+        restartDelayMsRef.current = AUTO_RESTART_BASE_MS;
+      };
+
+      recognition.onerror = (event) => {
+        const code = event?.error ? String(event.error) : 'unknown';
+        if (BENIGN_SPEECH_ERRORS.has(code)) return;
+
+        if (PERMISSION_SPEECH_ERRORS.has(code)) {
+          setAutoError('Microphone permission denied. Allow microphone access for this app/browser.');
+          setAutoVisionaryEnabled(false);
+          stopRecognition();
+          return;
+        }
+
+        if (DEVICE_SPEECH_ERRORS.has(code)) {
+          setAutoError('No usable microphone detected. Check your input device and OS sound settings.');
+          setAutoVisionaryEnabled(false);
+          stopRecognition();
+          return;
+        }
+
+        if (TRANSIENT_SPEECH_ERRORS.has(code)) {
+          consecutiveNetworkErrorsRef.current += 1;
+          const nowTs = Date.now();
+          if (nowTs - lastSpeechErrorAtRef.current < AUTO_ERROR_COOLDOWN_MS) return;
+          lastSpeechErrorAtRef.current = nowTs;
+          const currentLanguage = recognition.lang || speechCandidatesRef.current[activeSpeechCandidateIndexRef.current] || 'en-US';
+
+          if (consecutiveNetworkErrorsRef.current >= AUTO_NETWORK_FALLBACK_THRESHOLD) {
+            void activateCloudFallback();
+            return;
+          }
+
+          if (consecutiveNetworkErrorsRef.current >= AUTO_NETWORK_ERROR_LIMIT) {
+            setAutoError(`Speech service unreachable on ${currentLanguage}. Turn Auto Visionary OFF/ON to retry.`);
+            setAutoVisionaryEnabled(false);
+            stopRecognition();
+            return;
+          }
+
+          const speechCandidatesForRetry = speechCandidatesRef.current;
+          let languageForMessage = currentLanguage;
+          if (speechCandidatesForRetry.length > 1) {
+            activeSpeechCandidateIndexRef.current = (activeSpeechCandidateIndexRef.current + 1) % speechCandidatesForRetry.length;
+            const nextLanguage = speechCandidatesForRetry[activeSpeechCandidateIndexRef.current];
+            recognition.lang = nextLanguage;
+            setActiveSpeechLanguage(nextLanguage);
+            languageForMessage = nextLanguage;
+          }
+
+          const triesLeft = AUTO_NETWORK_FALLBACK_THRESHOLD - consecutiveNetworkErrorsRef.current;
+          setAutoError(`Temporary speech network glitch on ${languageForMessage}. ${Math.max(0, triesLeft)} browser retry left before cloud fallback.`);
+          restartDelayMsRef.current = Math.min(3000, AUTO_RESTART_BASE_MS + (consecutiveNetworkErrorsRef.current * 700));
+          return;
+        }
+
+        setAutoError(`Mic error: ${code}`);
+      };
+
+      recognition.onend = () => {
+        setAutoListening(false);
+        if (!autoEnabledRef.current || transcriptionEngine !== 'browser_stt') return;
+        clearTimer(restartTimerRef);
+        restartTimerRef.current = window.setTimeout(() => {
+          try {
+            recognition.start();
+            setAutoListening(true);
+          } catch {
+            setAutoError('Could not restart microphone capture.');
+          }
+        }, restartDelayMsRef.current);
+      };
+
+      recognitionRef.current = recognition;
+      try {
+        recognition.start();
+        setAutoListening(true);
+      } catch {
+        setAutoError('Could not start microphone capture.');
+        setAutoVisionaryEnabled(false);
+        stopRecognition();
+      }
+    };
+
+    void initializeRecognition();
+    return () => {
+      cancelled = true;
+      stopRecognition();
+    };
+  }, [activateCloudFallback, appendTranscriptChunk, browserRestartNonce, ensureMicCaptureReady, speechLocaleMode, stopCloudFallbackCapture, stopRecognition, transcriptionEngine]);
+
+  useEffect(() => {
+    if (!autoEnabledRef.current || transcriptionEngine !== 'cloud_fallback') return;
+    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') {
+      void startCloudFallbackCapture();
+    }
+  }, [startCloudFallbackCapture, transcriptionEngine]);
+
+  useEffect(() => {
+    if (!autoEnabledRef.current || transcriptionEngine !== 'cloud_fallback') return;
+    const id = window.setInterval(() => {
+      void probeBrowserSpeechRecovery();
+    }, CLOUD_BROWSER_PROBE_INTERVAL_MS);
+    return () => {
+      window.clearInterval(id);
+    };
+  }, [probeBrowserSpeechRecovery, transcriptionEngine]);
+
+  useEffect(() => () => {
+    stopAllVisionaryCapture();
+    clearTimer(processTimerRef);
+    clearTimer(toastTimerRef);
+  }, [stopAllVisionaryCapture]);
 
   const handleStructuredSearch = () => {
     const q = buildQuery();
     if (q) fetchScripture(q, false);
   };
 
-  const createServiceItem = (verses: Verse[]): ServiceItem => {
-    const title = `${verses[0].book_name} ${verses[0].chapter}:${verses[0].verse}${verses.length > 1 ? '-' + verses[verses.length - 1].verse : ''}`;
-    const versionLabel = VERSIONS.find(v => v.id === selectedVersion)?.name || selectedVersion.toUpperCase();
-    return {
-      id: `bible-${Date.now()}`,
-      title,
-      type: ItemType.BIBLE,
-      theme: { backgroundUrl: selectedBg, mediaType: selectedMediaType, fontFamily: 'serif', textColor: '#ffffff', shadow: true, fontSize: 'large' },
-      slides: verses.map(v => ({
-        id: `v-${v.verse}-${Date.now()}`,
-        content: v.text.trim(),
-        label: `${v.book_name} ${v.chapter}:${v.verse} (${versionLabel})`
-      }))
-    };
-  };
-
   const chapterCount = selectedBook?.chapters ?? 150;
+  const resolvedCandidates = resolveSpeechLanguageCandidates(speechLocaleMode, getNavigatorLocales());
+  const localeModeLabel = speechLocaleMode === 'auto' ? 'Auto' : 'Manual';
+  const localeStatusLanguage = autoListening ? activeSpeechLanguage : resolvedCandidates[0];
+  const engineLabel = (
+    transcriptionEngine === 'cloud_fallback'
+      ? 'Cloud Fallback'
+      : transcriptionEngine === 'browser_stt'
+        ? 'Browser STT'
+        : 'Disabled'
+  );
+  const autoStatusText = autoSupportError
+    || (!isVisionaryMode ? 'Turn on Visionary mode to enable auto listening.' : '')
+    || (autoBusy ? 'Analyzing live speech...' : '')
+    || (transcriptionEngine === 'cloud_fallback'
+      ? (
+        cloudRecorderState === 'cooldown'
+          ? 'Cloud fallback cooling down...'
+          : cloudRecorderState === 'uploading'
+            ? 'Cloud fallback uploading audio chunk...'
+            : cloudRecorderState === 'recording'
+              ? 'Cloud fallback listening for sermon context...'
+              : 'Cloud fallback starting...'
+      )
+      : (autoListening ? 'Listening for sermon context...' : (autoVisionaryEnabled ? 'Starting microphone...' : 'Auto listen is off.')));
 
   return (
     <div className="flex flex-col h-full bg-zinc-950">
-      {/* Header */}
       <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex items-center justify-between bg-zinc-950">
         <div className="flex items-center">
           <BibleIcon className="w-3 h-3 mr-2" />
@@ -170,7 +1012,6 @@ export const BibleBrowser: React.FC<any> = ({ onAddRequest, onProjectRequest }) 
 
       <div className="p-3 space-y-2">
         {isVisionaryMode ? (
-          /* ── AI / semantic search ── */
           <div className="space-y-2">
             <div className="relative">
               <SparklesIcon className="absolute left-2 top-2.5 w-3.5 h-3.5 text-purple-600 animate-pulse" />
@@ -179,8 +1020,8 @@ export const BibleBrowser: React.FC<any> = ({ onAddRequest, onProjectRequest }) 
                 className="w-full bg-zinc-900 border border-purple-900 focus:border-purple-500 rounded-sm py-2 pl-8 pr-3 text-xs text-white focus:outline-none font-mono"
                 placeholder="e.g. I need peace and comfort..."
                 value={aiQuery}
-                onChange={e => setAiQuery(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') fetchScripture(aiQuery, true); }}
+                onChange={(e) => setAiQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') fetchScripture(aiQuery, true); }}
               />
             </div>
             <button
@@ -189,11 +1030,76 @@ export const BibleBrowser: React.FC<any> = ({ onAddRequest, onProjectRequest }) 
             >
               AI SEARCH
             </button>
+            <div className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[9px] font-bold tracking-wider text-purple-300 uppercase">Auto Visionary (Mic)</span>
+                <button
+                  onClick={() => setAutoVisionaryEnabled((prev) => !prev)}
+                  className={`px-2 py-1 rounded-sm text-[9px] font-bold border ${autoVisionaryEnabled ? 'bg-emerald-700/40 text-emerald-300 border-emerald-700' : 'bg-zinc-900 text-zinc-300 border-zinc-700'}`}
+                >
+                  {autoVisionaryEnabled ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[9px] text-zinc-400 uppercase tracking-wider">Auto Project to Stage/Output</span>
+                <button
+                  onClick={() => setAutoProjectEnabled((prev) => !prev)}
+                  className={`px-2 py-1 rounded-sm text-[9px] font-bold border ${autoProjectEnabled ? 'bg-cyan-700/40 text-cyan-300 border-cyan-700' : 'bg-zinc-900 text-zinc-300 border-zinc-700'}`}
+                >
+                  {autoProjectEnabled ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[9px] text-zinc-400 uppercase tracking-wider">Speech Dialect</span>
+                <select
+                  value={speechLocaleMode}
+                  onChange={(e) => onSpeechLocaleModeChange(e.target.value as VisionarySpeechLocaleMode)}
+                  className="bg-zinc-900 border border-zinc-700 rounded-sm px-2 py-1 text-[9px] text-zinc-200"
+                >
+                  <option value="auto">Auto (System Locale)</option>
+                  <option value="en-GB">English (UK) - en-GB</option>
+                  <option value="en-US">English (US) - en-US</option>
+                </select>
+              </div>
+              <div className="text-[9px] text-cyan-300 font-mono">
+                Dialect: {localeStatusLanguage} ({localeModeLabel})
+              </div>
+              <div className="flex items-center gap-2 text-[9px] font-mono">
+                <span className="text-zinc-400">Engine:</span>
+                <span className={`font-bold ${transcriptionEngine === 'cloud_fallback' ? 'text-amber-300' : 'text-emerald-300'}`}>
+                  {engineLabel}
+                </span>
+              </div>
+              {engineToast && (
+                <div className="text-[9px] text-amber-200 font-mono border border-amber-700/60 rounded-sm p-1.5 bg-amber-950/25">
+                  {engineToast}
+                </div>
+              )}
+              <div className="text-[9px] text-zinc-300 font-mono">{autoStatusText}</div>
+              {cloudCooldownUntil > Date.now() && (
+                <div className="text-[9px] text-amber-300 font-mono">
+                  Cooldown: {Math.max(1, Math.ceil((cloudCooldownUntil - Date.now()) / 1000))}s
+                </div>
+              )}
+              {autoReference && (
+                <div className="text-[9px] text-cyan-300 font-mono truncate">
+                  Match: {autoReference}
+                </div>
+              )}
+              {autoTranscript && (
+                <div className="text-[9px] text-zinc-400 font-mono border border-zinc-800 rounded-sm p-1.5 max-h-16 overflow-y-auto">
+                  Heard: {autoTranscript}
+                </div>
+              )}
+              {autoError && (
+                <div className="text-[9px] text-rose-300 font-mono">
+                  {autoError}
+                </div>
+              )}
+            </div>
           </div>
         ) : (
-          /* ── Structured book / chapter / verse search ── */
           <div className="space-y-2">
-            {/* Book autocomplete */}
             <div className="relative">
               <SearchIcon className="absolute left-2 top-2.5 w-3.5 h-3.5 text-zinc-600" />
               <input
@@ -202,13 +1108,12 @@ export const BibleBrowser: React.FC<any> = ({ onAddRequest, onProjectRequest }) 
                 className="w-full bg-zinc-900 border border-zinc-800 focus:border-blue-600 rounded-sm py-2 pl-8 pr-3 text-xs text-white focus:outline-none font-mono"
                 placeholder="Book name (e.g. John)..."
                 value={bookInput}
-                onChange={e => { setBookInput(e.target.value); setSelectedBook(null); }}
+                onChange={(e) => { setBookInput(e.target.value); setSelectedBook(null); }}
                 onFocus={() => { if (filteredBooks.length) setShowBookDropdown(true); }}
               />
-              {/* Book suggestions dropdown */}
               {showBookDropdown && (
                 <div className="absolute z-20 top-full left-0 right-0 bg-zinc-900 border border-zinc-700 rounded-sm shadow-xl max-h-40 overflow-y-auto">
-                  {filteredBooks.map(b => (
+                  {filteredBooks.map((b) => (
                     <button
                       key={b.name}
                       onMouseDown={() => selectBook(b)}
@@ -221,17 +1126,16 @@ export const BibleBrowser: React.FC<any> = ({ onAddRequest, onProjectRequest }) 
               )}
             </div>
 
-            {/* Chapter + Verse row — shown once a book is selected */}
             {selectedBook && (
               <div className="grid grid-cols-3 gap-1.5">
                 <div className="flex flex-col gap-0.5">
                   <label className="text-[8px] text-zinc-600 uppercase tracking-wider px-0.5">Chapter</label>
                   <select
                     value={chapter}
-                    onChange={e => { setChapter(Number(e.target.value)); setVerseFrom(1); setVerseTo(1); }}
+                    onChange={(e) => { setChapter(Number(e.target.value)); setVerseFrom(1); setVerseTo(1); }}
                     className="bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 py-1.5 px-2 rounded-sm focus:outline-none focus:border-blue-600"
                   >
-                    {Array.from({ length: chapterCount }, (_, i) => i + 1).map(n => (
+                    {Array.from({ length: chapterCount }, (_, i) => i + 1).map((n) => (
                       <option key={n} value={n}>{n}</option>
                     ))}
                   </select>
@@ -240,10 +1144,10 @@ export const BibleBrowser: React.FC<any> = ({ onAddRequest, onProjectRequest }) 
                   <label className="text-[8px] text-zinc-600 uppercase tracking-wider px-0.5">From verse</label>
                   <select
                     value={verseFrom}
-                    onChange={e => { const v = Number(e.target.value); setVerseFrom(v); if (verseTo < v) setVerseTo(v); }}
+                    onChange={(e) => { const v = Number(e.target.value); setVerseFrom(v); if (verseTo < v) setVerseTo(v); }}
                     className="bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 py-1.5 px-2 rounded-sm focus:outline-none focus:border-blue-600"
                   >
-                    {Array.from({ length: 200 }, (_, i) => i + 1).map(n => (
+                    {Array.from({ length: 200 }, (_, i) => i + 1).map((n) => (
                       <option key={n} value={n}>{n}</option>
                     ))}
                   </select>
@@ -252,10 +1156,10 @@ export const BibleBrowser: React.FC<any> = ({ onAddRequest, onProjectRequest }) 
                   <label className="text-[8px] text-zinc-600 uppercase tracking-wider px-0.5">To verse</label>
                   <select
                     value={verseTo}
-                    onChange={e => setVerseTo(Number(e.target.value))}
+                    onChange={(e) => setVerseTo(Number(e.target.value))}
                     className="bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 py-1.5 px-2 rounded-sm focus:outline-none focus:border-blue-600"
                   >
-                    {Array.from({ length: 200 }, (_, i) => i + 1).filter(n => n >= verseFrom).map(n => (
+                    {Array.from({ length: 200 }, (_, i) => i + 1).filter((n) => n >= verseFrom).map((n) => (
                       <option key={n} value={n}>{n}</option>
                     ))}
                   </select>
@@ -263,28 +1167,26 @@ export const BibleBrowser: React.FC<any> = ({ onAddRequest, onProjectRequest }) 
               </div>
             )}
 
-            {/* Preview of the reference being searched */}
             {selectedBook && (
               <div className="px-1 text-[9px] text-blue-500 font-mono">
-                → {buildQuery()}
+                -&gt; {buildQuery()}
               </div>
             )}
           </div>
         )}
 
-        {/* Version selector + Search button */}
         <div className="flex gap-2">
           <select
             value={selectedVersion}
-            onChange={e => setSelectedVersion(e.target.value)}
+            onChange={(e) => setSelectedVersion(e.target.value)}
             className="flex-1 bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-400 py-1 px-2 rounded-sm focus:outline-none"
           >
-            {VERSIONS.map(v => (
+            {VERSIONS.map((v) => (
               <option key={v.id} value={v.id}>{v.name} ({v.id.toUpperCase()})</option>
             ))}
           </select>
           <button
-            onClick={() => isVisionaryMode ? fetchScripture(aiQuery, true) : handleStructuredSearch()}
+            onClick={() => (isVisionaryMode ? fetchScripture(aiQuery, true) : handleStructuredSearch())}
             disabled={isVisionaryMode ? !aiQuery.trim() : !selectedBook}
             className="px-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white rounded-sm text-[9px] font-bold transition-all active:scale-95"
           >
@@ -293,7 +1195,6 @@ export const BibleBrowser: React.FC<any> = ({ onAddRequest, onProjectRequest }) 
         </div>
       </div>
 
-      {/* Results */}
       <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
         {loading || aiLoading ? (
           <div className="flex flex-col items-center justify-center p-8 space-y-3">
@@ -306,7 +1207,7 @@ export const BibleBrowser: React.FC<any> = ({ onAddRequest, onProjectRequest }) 
           <div className="space-y-4 animate-in fade-in duration-500">
             <div className="space-y-2">
               <div className="px-1 text-[9px] font-bold text-zinc-600 uppercase tracking-tighter">
-                {results[0].book_name} {results[0].chapter} — {results.length} verse{results.length > 1 ? 's' : ''}
+                {results[0].book_name} {results[0].chapter} - {results.length} verse{results.length > 1 ? 's' : ''}
               </div>
               {results.map((v, i) => (
                 <div key={i} className="p-3 rounded-sm border bg-zinc-900/40 border-zinc-900">
@@ -325,10 +1226,14 @@ export const BibleBrowser: React.FC<any> = ({ onAddRequest, onProjectRequest }) 
                 PROJECT NOW
               </button>
               <button
-                onClick={() => { onAddRequest(createServiceItem(results)); setShowSuccess(true); setTimeout(() => setShowSuccess(false), 2000); }}
+                onClick={() => {
+                  onAddRequest(createServiceItem(results));
+                  setShowSuccess(true);
+                  window.setTimeout(() => setShowSuccess(false), 2000);
+                }}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-sm text-[10px] font-bold transition-all active:scale-95 border ${showSuccess ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-blue-600 hover:bg-blue-500 text-white border-transparent'}`}
               >
-                {showSuccess ? 'SCHEDULED ✓' : 'SCHEDULE'}
+                {showSuccess ? 'SCHEDULED OK' : 'SCHEDULE'}
               </button>
             </div>
           </div>

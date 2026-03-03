@@ -10,3 +10,10 @@ interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
 
+interface Window {
+  electron?: {
+    isElectron?: boolean;
+    copyText?: (text: string) => Promise<boolean>;
+  };
+}
+

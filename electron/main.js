@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen, session, Menu, shell } from 'electron';
+import { app, BrowserWindow, screen, session, Menu, shell, ipcMain, clipboard } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -9,6 +9,8 @@ const DIST_INDEX_PATH = path.join(__dirname, '../dist/index.html');
 const DEV_SERVER_URL = process.env.ELECTRON_RENDERER_URL || 'http://localhost:5173';
 const SHOULD_OPEN_DEVTOOLS = process.env.LUMINA_OPEN_DEVTOOLS === '1';
 const RELEASES_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases';
+const TRUSTED_DEV_ORIGINS = new Set(['http://localhost:5173', 'http://127.0.0.1:5173']);
+const MEDIA_PERMISSIONS = new Set(['media', 'microphone', 'camera']);
 
 // Content Security Policy — allows Firebase, Google APIs, and the Lumina API.
 const CSP = [
@@ -22,6 +24,59 @@ const CSP = [
   "worker-src 'self' blob:",
   "frame-src 'none'",
 ].join('; ');
+
+function normalizeOrigin(value) {
+  if (!value || typeof value !== 'string') return '';
+  try {
+    if (value.startsWith('file://')) return 'file://';
+    return new URL(value).origin.toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+function isTrustedRendererOrigin(value) {
+  const origin = normalizeOrigin(value);
+  if (!origin) return false;
+  if (origin === 'file://') return true;
+  return TRUSTED_DEV_ORIGINS.has(origin);
+}
+
+function installMediaPermissionHandlers() {
+  const ses = session.defaultSession;
+  if (!ses) return;
+
+  ses.setPermissionCheckHandler((_webContents, permission, requestingOrigin) => {
+    if (!MEDIA_PERMISSIONS.has(String(permission))) return false;
+    return isTrustedRendererOrigin(String(requestingOrigin || ''));
+  });
+
+  ses.setPermissionRequestHandler((_webContents, permission, callback, details) => {
+    if (!MEDIA_PERMISSIONS.has(String(permission))) {
+      callback(false);
+      return;
+    }
+
+    const requestingUrl = String(details?.requestingUrl || details?.embeddingOrigin || '');
+    callback(isTrustedRendererOrigin(requestingUrl));
+  });
+}
+
+function installClipboardHandlers() {
+  ipcMain.handle('clipboard:write-text', (event, text) => {
+    if (!isTrustedRendererOrigin(String(event?.senderFrame?.url || ''))) {
+      return false;
+    }
+    const value = String(text || '');
+    if (!value) return false;
+    try {
+      clipboard.writeText(value);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
 
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
@@ -200,6 +255,8 @@ async function checkForUpdatesSafely() {
 }
 
 app.whenReady().then(() => {
+  installMediaPermissionHandlers();
+  installClipboardHandlers();
   installApplicationMenu();
   createWindow();
   app.on('activate', () => {
