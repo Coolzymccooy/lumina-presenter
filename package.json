@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:all": "node scripts/dev-all.mjs",
     "server": "node scripts/server-start.mjs",
     "start": "node scripts/server-start.mjs",
     "build": "vite build",

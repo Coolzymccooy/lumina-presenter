@@ -3146,6 +3146,7 @@ function App() {
   }, [user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
 
   useEffect(() => {
+    if (!user?.uid || viewState !== 'studio') return;
     if (!workspaceId || !liveSessionId) return;
     let active = true;
     const pulse = async () => {
@@ -3188,9 +3189,10 @@ function App() {
       active = false;
       window.clearInterval(id);
     };
-  }, [workspaceId, liveSessionId, controllerClientId, targetConnectionRoles, viewMode, user?.uid]);
+  }, [workspaceId, liveSessionId, controllerClientId, targetConnectionRoles, viewMode, user?.uid, viewState]);
 
   useEffect(() => {
+    if (!user?.uid || viewState !== 'studio') return;
     if (!isOutputLive) return;
     const beat = async () => {
       const nowTs = Date.now();
@@ -3215,9 +3217,10 @@ function App() {
     beat();
     const id = window.setInterval(beat, 4000);
     return () => window.clearInterval(id);
-  }, [isOutputLive, workspaceId, liveSessionId, outputClientId]);
+  }, [isOutputLive, workspaceId, liveSessionId, outputClientId, user?.uid, viewState]);
 
   useEffect(() => {
+    if (!user?.uid || viewState !== 'studio') return;
     if (!isStageDisplayLive) return;
     const beat = async () => {
       const nowTs = Date.now();
@@ -3242,7 +3245,7 @@ function App() {
     beat();
     const id = window.setInterval(beat, 4000);
     return () => window.clearInterval(id);
-  }, [isStageDisplayLive, workspaceId, liveSessionId, stageClientId]);
+  }, [isStageDisplayLive, workspaceId, liveSessionId, stageClientId, user?.uid, viewState]);
 
   useEffect(() => {
     if (!navigator.requestMIDIAccess) return;

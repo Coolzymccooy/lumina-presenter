@@ -24,12 +24,16 @@ Lumina is a church-focused presentation app for lyrics, scripture, announcements
    - `npm run server`
 5. Start frontend (Terminal B):
    - `npm run dev`
-6. Open app:
+6. Optional single-command dev runner (starts backend + frontend together):
+   - `npm run dev:all`
+7. Open app:
    - `http://localhost:5173`
 
 Notes:
+- Run commands from the repository root (`lumina-presenter`), not from the `server/` subfolder.
 - `npm run dev` starts **frontend only**.
 - `npm run server` starts **backend only** (and defaults `LUMINA_VIS_CACHE_VERSION=v4` if not set).
+- If you see `soffice not found ... Visual PPTX import will return 503`, the backend is still running; only visual `.pptx` import is affected.
 - For production bundle check: `npm run build`
 
 ## Playwright E2E

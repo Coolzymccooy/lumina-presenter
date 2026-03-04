@@ -313,7 +313,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
           <div>
             {onLogout && (
               <button onClick={onLogout} className="px-5 py-2.5 rounded-xl text-xs font-black text-red-400 border border-red-900/40 bg-red-950/20 hover:bg-red-500 hover:text-white transition-all active:scale-95">
-                TERMINATE SESSION
+                SIGN OUT
               </button>
             )}
           </div>
