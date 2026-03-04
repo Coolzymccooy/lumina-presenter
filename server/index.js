@@ -322,8 +322,17 @@ const parseBase64Payload = (value) => {
 };
 let cachedGoogleAiClient = null;
 let cachedGoogleAiKey = "";
+const resolveGoogleAiKey = () => (
+  String(
+    process.env.GOOGLE_AI_API_KEY
+    || process.env.GOOGLE_API_KEY
+    || process.env.GEMINI_API_KEY
+    || process.env.VITE_GOOGLE_AI_API_KEY
+    || "",
+  ).trim()
+);
 const getGoogleAiClient = () => {
-  const key = String(process.env.GOOGLE_AI_API_KEY || process.env.VITE_GOOGLE_AI_API_KEY || "").trim();
+  const key = resolveGoogleAiKey();
   if (!key) return null;
   if (cachedGoogleAiClient && cachedGoogleAiKey === key) return cachedGoogleAiClient;
   cachedGoogleAiClient = new GoogleGenAI({ apiKey: key });
@@ -336,7 +345,7 @@ const ensureGoogleAiClient = (res) => {
   res.status(503).json({
     ok: false,
     error: "AI_KEY_MISSING",
-    message: "Missing GOOGLE_AI_API_KEY on server. Set it in backend environment variables.",
+    message: "Missing AI key on server. Set GOOGLE_AI_API_KEY (or GOOGLE_API_KEY / GEMINI_API_KEY).",
   });
   return null;
 };

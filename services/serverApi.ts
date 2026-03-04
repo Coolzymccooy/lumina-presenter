@@ -11,7 +11,67 @@ const getInitialApiBaseUrl = () => {
   return (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787').trim();
 };
 
-const API_BASE_URL = getInitialApiBaseUrl().replace(/\/+$/, '');
+const DEFAULT_PROD_API_BASE_URL = 'https://lumina-presenter-api.onrender.com';
+const normalizeApiBaseUrl = (input?: string | null) => String(input || '').trim().replace(/\/+$/, '');
+const INITIAL_API_BASE_URL = normalizeApiBaseUrl(getInitialApiBaseUrl());
+let activeApiBaseUrl = INITIAL_API_BASE_URL;
+
+const withHostSwap = (sourceUrl: string, from: string, to: string) => {
+  if (!sourceUrl) return '';
+  try {
+    const parsed = new URL(sourceUrl);
+    if (!parsed.hostname.includes(from)) return '';
+    parsed.hostname = parsed.hostname.replace(from, to);
+    return normalizeApiBaseUrl(parsed.toString());
+  } catch {
+    return '';
+  }
+};
+
+const buildApiBaseCandidates = (seedBaseUrl: string): string[] => {
+  const candidates: string[] = [];
+  const addCandidate = (value?: string | null) => {
+    const normalized = normalizeApiBaseUrl(value);
+    if (!normalized) return;
+    if (!candidates.includes(normalized)) candidates.push(normalized);
+  };
+
+  addCandidate(seedBaseUrl);
+  addCandidate(withHostSwap(seedBaseUrl, '-docker.', '.'));
+  addCandidate(withHostSwap(seedBaseUrl, '.onrender.com', '-docker.onrender.com'));
+  addCandidate(import.meta.env.VITE_API_BASE_URL || '');
+  addCandidate(DEFAULT_PROD_API_BASE_URL);
+  return candidates;
+};
+
+let apiBaseCandidates = buildApiBaseCandidates(activeApiBaseUrl);
+const getApiBaseCandidates = () => {
+  const merged: string[] = [];
+  const addCandidate = (value?: string | null) => {
+    const normalized = normalizeApiBaseUrl(value);
+    if (!normalized) return;
+    if (!merged.includes(normalized)) merged.push(normalized);
+  };
+  addCandidate(activeApiBaseUrl);
+  buildApiBaseCandidates(INITIAL_API_BASE_URL).forEach(addCandidate);
+  apiBaseCandidates.forEach(addCandidate);
+  addCandidate('http://localhost:8787');
+  return merged;
+};
+
+const updateActiveApiBaseUrl = (value: string) => {
+  const normalized = normalizeApiBaseUrl(value);
+  if (!normalized) return;
+  activeApiBaseUrl = normalized;
+  apiBaseCandidates = buildApiBaseCandidates(normalized);
+};
+
+const shouldRetryWithNextApiBase = (status: number) => (
+  status === 404
+  || status === 502
+  || status === 503
+  || status === 504
+);
 const CONNECTION_CLIENT_ID_PREFIX = 'lumina_conn_client_v1';
 
 type ActorLike = {
@@ -66,45 +126,64 @@ const buildHeaders = async (user?: ActorLike, allowAnonymous = false): Promise<R
 };
 
 const requestJson = async <T,>(path: string, options: RequestOptions = {}): Promise<T | null> => {
-  if (!API_BASE_URL) return null;
+  const apiCandidates = getApiBaseCandidates();
+  if (!apiCandidates.length) return null;
   const method = options.method || 'GET';
   const headers = await buildHeaders(options.user, !!options.allowAnonymous);
   if (!headers) return null;
   const timeoutMs = options.timeoutMs || 6000;
 
-  try {
-    const response = await withTimeout(fetch(`${API_BASE_URL}${path}`, {
-      method,
-      headers,
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-    }), timeoutMs);
-    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
-    const canParseJson = contentType.includes('application/json');
-    const payload = canParseJson ? await response.json().catch(() => null) : null;
-    if (!response.ok) {
-      if (payload && typeof payload === 'object') {
+  for (let idx = 0; idx < apiCandidates.length; idx += 1) {
+    const apiBase = apiCandidates[idx];
+    const isLastCandidate = idx >= apiCandidates.length - 1;
+    try {
+      const response = await withTimeout(fetch(`${apiBase}${path}`, {
+        method,
+        headers,
+        body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      }), timeoutMs);
+      const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+      const canParseJson = contentType.includes('application/json');
+      const payload = canParseJson ? await response.json().catch(() => null) : null;
+
+      if (!response.ok) {
+        if (!isLastCandidate && shouldRetryWithNextApiBase(response.status)) {
+          continue;
+        }
+        if (payload && typeof payload === 'object') {
+          return {
+            ...(payload as Record<string, unknown>),
+            ok: false,
+            status: response.status,
+            path,
+            apiBase,
+          } as T;
+        }
         return {
-          ...(payload as Record<string, unknown>),
           ok: false,
           status: response.status,
+          error: `HTTP_${response.status}`,
           path,
-        } as T;
+          apiBase,
+        } as unknown as T;
       }
-      return {
-        ok: false,
-        status: response.status,
-        error: `HTTP_${response.status}`,
-        path,
-      } as unknown as T;
+
+      if (payload && typeof payload === 'object') {
+        updateActiveApiBaseUrl(apiBase);
+        return payload as T;
+      }
+      if (!isLastCandidate) continue;
+      return null;
+    } catch {
+      if (!isLastCandidate) continue;
+      return null;
     }
-    if (payload && typeof payload === 'object') return payload as T;
-    return null;
-  } catch {
-    return null;
   }
+  return null;
 };
 
-export const getServerApiBaseUrl = () => API_BASE_URL;
+export const getServerApiBaseUrl = () => activeApiBaseUrl || INITIAL_API_BASE_URL;
+export const getServerApiBaseCandidates = () => getApiBaseCandidates();
 
 export const resolveWorkspaceId = (user: ActorLike, fallback = 'default-workspace') => {
   const uid = String(user?.uid || '').trim();
@@ -272,76 +351,95 @@ export const importVisualPptxDeck = async (workspaceId: string, user: ActorLike,
     };
   };
 
-  try {
-    const response = await withTimeout(fetch(
-      `${API_BASE_URL}/api/workspaces/${encodeURIComponent(workspaceId)}/imports/pptx-visual`,
-      {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          filename: file.name || 'import.pptx',
-          fileBase64,
-        }),
-      }
-    ), 240000);
+  const apiCandidates = getApiBaseCandidates();
+  for (let idx = 0; idx < apiCandidates.length; idx += 1) {
+    const apiBase = apiCandidates[idx];
+    const isLastCandidate = idx >= apiCandidates.length - 1;
+    try {
+      const response = await withTimeout(fetch(
+        `${apiBase}/api/workspaces/${encodeURIComponent(workspaceId)}/imports/pptx-visual`,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            filename: file.name || 'import.pptx',
+            fileBase64,
+          }),
+        }
+      ), 240000);
 
-    const payload = await (async () => {
-      if (response.ok) {
-        return await response.json().catch(() => null);
-      }
-      return await readErrorPayload(response);
-    })();
-
-    if (!response.ok) {
-      const fallbackMessage = (() => {
-        if (response.status === 401) return 'Sign in required for visual PowerPoint import.';
-        if (response.status === 403) return 'You do not have access to import into this workspace.';
-        if (response.status === 404) return 'Visual PowerPoint import endpoint is not available. Deploy latest backend and verify VITE_API_BASE_URL.';
-        if (response.status === 413) return 'PowerPoint file is too large for visual import.';
-        if (response.status === 503) return 'Visual import renderer is unavailable on the server (LibreOffice/soffice missing).';
-        if (response.status === 504) return 'Visual import timed out on the server. Try a smaller deck.';
-        return `Visual PowerPoint import failed (HTTP ${response.status}).`;
+      const payload = await (async () => {
+        if (response.ok) {
+          return await response.json().catch(() => null);
+        }
+        return await readErrorPayload(response);
       })();
-      return {
-        ok: false,
-        slideCount: 0,
-        slides: [],
-        error: payload?.error || `HTTP_${response.status}`,
-        message: payload?.message || fallbackMessage,
-      };
-    }
 
-    // Some upstream/proxy paths can return HTTP 200 with an app-level error payload.
-    if (payload && payload.ok === false) {
-      return {
-        ok: false,
-        slideCount: 0,
-        slides: [],
-        error: payload.error || 'VISUAL_IMPORT_FAILED',
-        message: payload.message || 'Visual PowerPoint import failed on the server.',
-      };
-    }
+      if (!response.ok) {
+        if (!isLastCandidate && shouldRetryWithNextApiBase(response.status)) {
+          continue;
+        }
+        const fallbackMessage = (() => {
+          if (response.status === 401) return 'Sign in required for visual PowerPoint import.';
+          if (response.status === 403) return 'You do not have access to import into this workspace.';
+          if (response.status === 404) return 'Visual PowerPoint import endpoint is not available. Deploy latest backend and verify VITE_API_BASE_URL.';
+          if (response.status === 413) return 'PowerPoint file is too large for visual import.';
+          if (response.status === 503) return 'Visual import renderer is unavailable on the server (LibreOffice/soffice missing).';
+          if (response.status === 504) return 'Visual import timed out on the server. Try a smaller deck.';
+          return `Visual PowerPoint import failed (HTTP ${response.status}).`;
+        })();
+        return {
+          ok: false,
+          slideCount: 0,
+          slides: [],
+          error: payload?.error || `HTTP_${response.status}`,
+          message: payload?.message || fallbackMessage,
+        };
+      }
 
-    if (!payload || !Array.isArray(payload.slides)) {
-      const payloadKeys = payload && typeof payload === 'object' ? Object.keys(payload).join(', ') : 'none';
+      // Some upstream/proxy paths can return HTTP 200 with an app-level error payload.
+      if (payload && payload.ok === false) {
+        return {
+          ok: false,
+          slideCount: 0,
+          slides: [],
+          error: payload.error || 'VISUAL_IMPORT_FAILED',
+          message: payload.message || 'Visual PowerPoint import failed on the server.',
+        };
+      }
+
+      if (!payload || !Array.isArray(payload.slides)) {
+        if (!isLastCandidate) continue;
+        const payloadKeys = payload && typeof payload === 'object' ? Object.keys(payload).join(', ') : 'none';
+        return {
+          ok: false,
+          slideCount: 0,
+          slides: [],
+          error: 'INVALID_RESPONSE',
+          message: `Server returned an invalid visual import payload (keys: ${payloadKeys}).`,
+        };
+      }
+
+      updateActiveApiBaseUrl(apiBase);
+      return payload as VisualPptxImportResponse;
+    } catch {
+      if (!isLastCandidate) continue;
       return {
         ok: false,
         slideCount: 0,
         slides: [],
-        error: 'INVALID_RESPONSE',
-        message: `Server returned an invalid visual import payload (keys: ${payloadKeys}).`,
+        error: 'NETWORK_OR_TIMEOUT',
+        message: 'Could not reach server for visual PowerPoint import.',
       };
     }
-    return payload as VisualPptxImportResponse;
-  } catch {
-    return {
-      ok: false,
-      slideCount: 0,
-      slides: [],
-      error: 'NETWORK_OR_TIMEOUT',
-      message: 'Could not reach server for visual PowerPoint import.',
-    };
   }
+  return {
+    ok: false,
+    slideCount: 0,
+    slides: [],
+    error: 'NETWORK_OR_TIMEOUT',
+    message: 'Could not reach server for visual PowerPoint import.',
+  };
 };
 
 export const fetchWorkspaceReportSummary = async (workspaceId: string, user: ActorLike, from?: number, to?: number) => {

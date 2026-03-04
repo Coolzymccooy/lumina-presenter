@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { analyzeSermonAndGenerateDeck, generateSlidesFromText, suggestVisualTheme } from '../services/geminiService';
+import { getServerApiBaseUrl } from '../services/serverApi';
 import { ItemType, ServiceItem } from '../types';
 import { SparklesIcon, BibleIcon, MonitorIcon } from './Icons'; // Assuming icons exist or use generics
 
@@ -74,7 +75,7 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
         onClose();
         setInputText('');
       } else {
-          throw new Error("Empty response from AI");
+          throw new Error(`AI returned no slide content from ${getServerApiBaseUrl()}.`);
       }
     } catch (e: any) {
       console.error(e);

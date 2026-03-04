@@ -1,5 +1,5 @@
 import type { GeneratedSlideData } from "../types";
-import { getServerApiBaseUrl } from "./serverApi";
+import { getServerApiBaseCandidates, getServerApiBaseUrl } from "./serverApi";
 
 type AiJson = {
   ok?: boolean;
@@ -10,39 +10,77 @@ type AiJson = {
 };
 
 const postAi = async (path: string, payload: Record<string, unknown>, timeoutMs = 45000): Promise<AiJson | null> => {
-  const apiBase = getServerApiBaseUrl();
-  if (!apiBase) return null;
-
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const response = await fetch(`${apiBase.replace(/\/+$/, "")}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    });
-
-    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
-    const json = contentType.includes("application/json")
-      ? await response.json().catch(() => null)
-      : null;
-
-    if (!response.ok) {
-      return {
-        ok: false,
-        error: json?.error || `HTTP_${response.status}`,
-        message: json?.message || `AI request failed (${response.status})`,
-        retryAfterMs: Number(json?.retryAfterMs || 0),
-      };
-    }
-
-    return (json && typeof json === "object") ? json : null;
-  } catch {
-    return null;
-  } finally {
-    window.clearTimeout(timeout);
+  const apiBases = getServerApiBaseCandidates();
+  if (!apiBases.length) {
+    return {
+      ok: false,
+      error: "API_BASE_URL_MISSING",
+      message: "Missing API base URL. Set VITE_API_BASE_URL to your backend service.",
+    };
   }
+
+  const shouldRetry = (status: number) => (
+    status === 404
+    || status === 502
+    || status === 503
+    || status === 504
+  );
+
+  let lastFailure: AiJson | null = null;
+  for (let idx = 0; idx < apiBases.length; idx += 1) {
+    const apiBase = apiBases[idx];
+    const isLastCandidate = idx >= apiBases.length - 1;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(`${apiBase.replace(/\/+$/, "")}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+
+      const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+      const json = contentType.includes("application/json")
+        ? await response.json().catch(() => null)
+        : null;
+
+      if (!response.ok) {
+        lastFailure = {
+          ok: false,
+          error: json?.error || `HTTP_${response.status}`,
+          message: json?.message || `AI request failed (${response.status})`,
+          retryAfterMs: Number(json?.retryAfterMs || 0),
+          apiBase,
+        };
+        if (!isLastCandidate && shouldRetry(response.status)) continue;
+        return lastFailure;
+      }
+
+      if (json && typeof json === "object") return json;
+      lastFailure = {
+        ok: false,
+        error: "INVALID_JSON",
+        message: "AI endpoint returned an invalid JSON payload.",
+        apiBase,
+      };
+      if (!isLastCandidate) continue;
+      return lastFailure;
+    } catch {
+      lastFailure = {
+        ok: false,
+        error: "NETWORK_OR_TIMEOUT",
+        message: `Could not reach AI backend at ${apiBase}.`,
+        retryAfterMs: 0,
+        apiBase,
+      };
+      if (!isLastCandidate) continue;
+      return lastFailure;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+  return lastFailure;
 };
 
 const sanitizeSlides = (slides: any[]): { label: string; content: string }[] => {
@@ -84,9 +122,20 @@ const inferSemanticFallbackReference = (query: string): string => {
 
 export const generateSlidesFromText = async (text: string): Promise<GeneratedSlideData | null> => {
   const response = await postAi("/api/ai/generate-slides", { text }, 30000);
-  if (!response?.ok || !response?.data?.slides) return null;
+  if (!response) {
+    throw new Error(`Could not reach AI backend at ${getServerApiBaseUrl()}.`);
+  }
+  if (!response.ok) {
+    throw new Error(String(response.message || response.error || "AI request failed."));
+  }
+  if (!response?.data?.slides) {
+    throw new Error("AI returned no slide data. Please retry or check backend logs.");
+  }
   const slides = sanitizeSlides(response.data.slides);
-  return slides.length ? { slides } : null;
+  if (!slides.length) {
+    throw new Error("AI returned empty slide content. Try a more specific prompt.");
+  }
+  return { slides };
 };
 
 export type TranscribeSermonChunkRequest = {
