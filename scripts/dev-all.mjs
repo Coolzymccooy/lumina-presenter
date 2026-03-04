@@ -1,8 +1,11 @@
 import { spawn } from 'node:child_process';
+import fs from 'node:fs';
+import path from 'node:path';
 
-const launch = (label, command, args) => {
+const launch = (label, command, args = [], extraOptions = {}) => {
   const child = spawn(command, args, {
     stdio: 'inherit',
+    ...extraOptions,
   });
 
   return child;
@@ -11,17 +14,21 @@ const launch = (label, command, args) => {
 const npmExecPath = typeof process.env.npm_execpath === 'string'
   ? process.env.npm_execpath
   : '';
+const bundledNpmCli = path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js');
 
 const launchNpmScript = (label, scriptName) => {
-  // When this script is launched via `npm run ...`, npm exposes its JS entrypoint.
-  // Running that entrypoint with the current Node binary is cross-platform and avoids shell spawning issues.
-  if (npmExecPath && npmExecPath.toLowerCase().endsWith('.js')) {
+  // Primary path when launched from `npm run ...`.
+  if (npmExecPath && npmExecPath.toLowerCase().endsWith('.js') && fs.existsSync(npmExecPath)) {
     return launch(label, process.execPath, [npmExecPath, 'run', scriptName]);
   }
 
-  // Fallback for non-npm invocation contexts.
-  const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  return launch(label, npmCommand, ['run', scriptName]);
+  // Fallback for direct `node scripts/dev-all.mjs` invocation.
+  if (fs.existsSync(bundledNpmCli)) {
+    return launch(label, process.execPath, [bundledNpmCli, 'run', scriptName]);
+  }
+
+  // Last resort for unusual Node installs: run via shell command text (no args array).
+  return launch(label, `npm run ${scriptName}`, [], { shell: true });
 };
 
 const server = launchNpmScript('server', 'server');
