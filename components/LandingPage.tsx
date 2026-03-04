@@ -19,7 +19,7 @@ const RELEASES_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases'
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isAuthenticated, hasSavedSession = false }) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [latestTag, setLatestTag] = useState('v2.2.12');
+  const [latestTag, setLatestTag] = useState('v2.2.13');
   const [downloadUrls, setDownloadUrls] = useState({
     installer: RELEASES_URL,
     msi: RELEASES_URL,
