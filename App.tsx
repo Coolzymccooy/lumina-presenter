@@ -63,6 +63,7 @@ import {
 } from './services/serverApi';
 import { parsePptxFile } from './services/pptxImport';
 import { copyTextToClipboard } from './services/clipboardService';
+import { dispatchAetherBridgeEvent } from './services/aetherBridge';
 import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon
 
 // --- CONSTANTS ---
@@ -72,6 +73,7 @@ const SETTINGS_UPDATED_AT_KEY = 'lumina_workspace_settings_updated_at_v1';
 const LIVE_STATE_QUEUE_KEY = 'lumina_live_state_queue_v1';
 const RUNSHEET_FILES_LOCAL_KEY_PREFIX = 'lumina_runsheet_files_local_v1';
 const PRESENTER_TOOLBAR_HINT_KEY = 'lumina_presenter_toolbar_hint_v1';
+const AETHER_TOKEN_KEY_PREFIX = 'lumina_aether_bridge_token_v1';
 const CLOUD_PLAYLIST_SUFFIX = 'default-playlist-v2';
 const SYNC_BACKOFF_BASE_MS = 5000;
 const SYNC_BACKOFF_MAX_MS = 60000;
@@ -80,6 +82,7 @@ const SILENT_AUDIO_B64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2
 const PUBLIC_WEB_APP_ORIGIN = 'https://lumina-presenter.vercel.app';
 const getWorkspaceSettingsKey = (workspace: string) => `${SETTINGS_KEY}:${workspace || 'default-workspace'}`;
 const getWorkspaceSettingsUpdatedAtKey = (workspace: string) => `${SETTINGS_UPDATED_AT_KEY}:${workspace || 'default-workspace'}`;
+const getAetherTokenKey = (workspace: string) => `${AETHER_TOKEN_KEY_PREFIX}:${workspace || 'default-workspace'}`;
 
 type WorkspaceSettings = {
   churchName: string;
@@ -96,7 +99,15 @@ type WorkspaceSettings = {
   stageAlertLayout: StageAlertLayout;
   connectionTargetRoles: ConnectionRole[];
   speakerTimerPresets: SpeakerTimerPreset[];
+  aetherBridgeEnabled: boolean;
+  aetherBridgeAutoSync: boolean;
+  aetherBridgeUrl: string;
+  aetherSceneProgram: string;
+  aetherSceneBlackout: string;
+  aetherSceneLobby: string;
 };
+
+type AetherBridgeStatusTone = 'neutral' | 'ok' | 'error';
 
 type SmokeTestResult = {
   name: string;
@@ -329,6 +340,12 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
   if (Array.isArray(raw.speakerTimerPresets)) {
     safe.speakerTimerPresets = sanitizeSpeakerTimerPresets(raw.speakerTimerPresets);
   }
+  if (typeof raw.aetherBridgeEnabled === 'boolean') safe.aetherBridgeEnabled = raw.aetherBridgeEnabled;
+  if (typeof raw.aetherBridgeAutoSync === 'boolean') safe.aetherBridgeAutoSync = raw.aetherBridgeAutoSync;
+  if (typeof raw.aetherBridgeUrl === 'string') safe.aetherBridgeUrl = raw.aetherBridgeUrl.slice(0, 500);
+  if (typeof raw.aetherSceneProgram === 'string') safe.aetherSceneProgram = raw.aetherSceneProgram.slice(0, 120);
+  if (typeof raw.aetherSceneBlackout === 'string') safe.aetherSceneBlackout = raw.aetherSceneBlackout.slice(0, 120);
+  if (typeof raw.aetherSceneLobby === 'string') safe.aetherSceneLobby = raw.aetherSceneLobby.slice(0, 120);
   return safe;
 };
 
@@ -597,6 +614,12 @@ function App() {
     stageAlertLayout: DEFAULT_STAGE_ALERT_LAYOUT,
     connectionTargetRoles: DEFAULT_CONNECTION_TARGET_ROLES,
     speakerTimerPresets: DEFAULT_SPEAKER_TIMER_PRESETS,
+    aetherBridgeEnabled: false,
+    aetherBridgeAutoSync: true,
+    aetherBridgeUrl: '',
+    aetherSceneProgram: 'Program',
+    aetherSceneBlackout: 'Blackout',
+    aetherSceneLobby: 'Lobby',
   });
   const allowedAdminEmails = useMemo(() => {
     const raw = workspaceSettings.remoteAdminEmails || '';
@@ -629,6 +652,7 @@ function App() {
     if (urlWorkspace && viewState === 'audience') return urlWorkspace.trim();
     return resolveWorkspaceId(user);
   }, [user?.uid, viewState]);
+
   const controllerClientId = useMemo(
     () => getOrCreateConnectionClientId(workspaceId, liveSessionId, 'controller'),
     [workspaceId, liveSessionId]
@@ -936,6 +960,35 @@ function App() {
   const [timerRunning, setTimerRunning] = useState(false);
   const [isConnectOpen, setIsConnectOpen] = useState(false);
   const [connectPanel, setConnectPanel] = useState<'audience' | 'aether'>('audience');
+  const [aetherBridgeToken, setAetherBridgeToken] = useState('');
+  const [aetherBridgeStatus, setAetherBridgeStatus] = useState<{ tone: AetherBridgeStatusTone; text: string }>({
+    tone: 'neutral',
+    text: 'Bridge idle.',
+  });
+  const aetherBridgeAutoSyncTimerRef = useRef<number | null>(null);
+  const lastAetherAutoSyncKeyRef = useRef('');
+  const aetherBridgeInFlightRef = useRef(false);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(getAetherTokenKey(workspaceId));
+      setAetherBridgeToken(String(stored || ''));
+    } catch {
+      setAetherBridgeToken('');
+    }
+  }, [workspaceId]);
+
+  useEffect(() => {
+    try {
+      if (!aetherBridgeToken.trim()) {
+        localStorage.removeItem(getAetherTokenKey(workspaceId));
+        return;
+      }
+      localStorage.setItem(getAetherTokenKey(workspaceId), aetherBridgeToken.trim());
+    } catch {
+      // best effort local persistence for token
+    }
+  }, [workspaceId, aetherBridgeToken]);
 
   const [activeItemId, setActiveItemId] = useState<string | null>(() => {
     const saved = initialSavedState;
@@ -1836,6 +1889,258 @@ function App() {
   const audienceUrl = useMemo(() => {
     return `${getShareBaseOrigin()}/#/audience?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&api=${encodeURIComponent(getServerApiBaseUrl())}`;
   }, [liveSessionId, workspaceId]);
+
+  const resolveAetherSceneName = useCallback((target: 'program' | 'blackout' | 'lobby') => {
+    const byTarget = {
+      program: (workspaceSettings.aetherSceneProgram || '').trim() || 'Program',
+      blackout: (workspaceSettings.aetherSceneBlackout || '').trim() || 'Blackout',
+      lobby: (workspaceSettings.aetherSceneLobby || '').trim() || 'Lobby',
+    };
+    return byTarget[target];
+  }, [workspaceSettings.aetherSceneProgram, workspaceSettings.aetherSceneBlackout, workspaceSettings.aetherSceneLobby]);
+
+  const resolveCurrentAetherSceneTarget = useCallback((): 'program' | 'blackout' | 'lobby' => {
+    if (blackout) return 'blackout';
+    if (routingMode === 'LOBBY') return 'lobby';
+    return 'program';
+  }, [blackout, routingMode]);
+
+  const buildAetherStatePayload = useCallback((origin: 'auto' | 'manual') => {
+    const activeSlideContent = String(activeSlide?.content || '').replace(/\s+/g, ' ').trim();
+    const activeSlidePreview = activeSlideContent.length > 220
+      ? `${activeSlideContent.slice(0, 217)}...`
+      : activeSlideContent;
+    const activeStageMessage = stageMessageCenter.queue.find((entry) => entry.id === stageMessageCenter.activeMessageId) || null;
+    const sceneTarget = resolveCurrentAetherSceneTarget();
+    return {
+      origin,
+      sceneTarget,
+      sceneName: resolveAetherSceneName(sceneTarget),
+      runtime: {
+        blackout,
+        routingMode,
+        isPlaying,
+        outputMuted,
+        lowerThirdsEnabled,
+      },
+      session: {
+        workspaceId,
+        sessionId: liveSessionId,
+      },
+      activeItem: activeItem
+        ? {
+          id: activeItem.id,
+          title: activeItem.title,
+          type: activeItem.type,
+        }
+        : null,
+      activeSlide: activeSlide
+        ? {
+          index: activeSlideIndex,
+          label: String(activeSlide.label || `Slide ${activeSlideIndex + 1}`),
+          preview: activeSlidePreview,
+        }
+        : null,
+      stage: {
+        timerMode,
+        timerSeconds,
+        timerDurationSec: effectiveTimerDurationSec,
+        speaker: currentCueSpeaker,
+        activeMessage: activeStageMessage
+          ? {
+            id: activeStageMessage.id,
+            category: activeStageMessage.category,
+            text: activeStageMessage.text,
+            priority: activeStageMessage.priority,
+          }
+          : null,
+      },
+      audience: {
+        qrProjected: !!audienceQrProjection.visible,
+      },
+      urls: {
+        output: obsOutputUrl,
+        stage: stageDisplayUrl,
+        remote: remoteControlUrl,
+      },
+      sentAt: Date.now(),
+    };
+  }, [
+    activeItem,
+    activeSlide,
+    activeSlideIndex,
+    audienceQrProjection.visible,
+    blackout,
+    currentCueSpeaker,
+    effectiveTimerDurationSec,
+    isPlaying,
+    liveSessionId,
+    lowerThirdsEnabled,
+    obsOutputUrl,
+    outputMuted,
+    remoteControlUrl,
+    resolveAetherSceneName,
+    resolveCurrentAetherSceneTarget,
+    routingMode,
+    stageDisplayUrl,
+    stageMessageCenter.activeMessageId,
+    stageMessageCenter.queue,
+    timerMode,
+    timerSeconds,
+    workspaceId,
+  ]);
+
+  const dispatchAetherEvent = useCallback(async (
+    event: 'lumina.bridge.ping' | 'lumina.state.sync' | 'lumina.scene.switch',
+    payload: Record<string, unknown>,
+    options?: { timeoutMs?: number; successLabel?: string; failureLabel?: string }
+  ) => {
+    const endpointUrl = String(workspaceSettings.aetherBridgeUrl || '').trim();
+    if (!endpointUrl) {
+      setAetherBridgeStatus({
+        tone: 'error',
+        text: 'Set Aether bridge URL first.',
+      });
+      return { ok: false };
+    }
+    const result = await dispatchAetherBridgeEvent({
+      endpointUrl,
+      accessToken: String(aetherBridgeToken || '').trim() || undefined,
+      event,
+      workspaceId,
+      sessionId: liveSessionId,
+      payload,
+      timeoutMs: options?.timeoutMs,
+    });
+    if (result.ok) {
+      const label = options?.successLabel || `${event} accepted`;
+      setAetherBridgeStatus({
+        tone: 'ok',
+        text: `${label} (${result.durationMs}ms).`,
+      });
+    } else {
+      const label = options?.failureLabel || `${event} failed`;
+      setAetherBridgeStatus({
+        tone: 'error',
+        text: `${label}: ${result.message || result.error || 'unknown error'}`,
+      });
+    }
+    return result;
+  }, [aetherBridgeToken, liveSessionId, workspaceId, workspaceSettings.aetherBridgeUrl]);
+
+  const handleAetherBridgeTest = useCallback(async () => {
+    await dispatchAetherEvent(
+      'lumina.bridge.ping',
+      {
+        app: 'lumina-presenter',
+        mode: viewMode,
+        workspaceId,
+        sessionId: liveSessionId,
+      },
+      {
+        timeoutMs: 4000,
+        successLabel: 'Bridge ping succeeded',
+        failureLabel: 'Bridge ping failed',
+      }
+    );
+  }, [dispatchAetherEvent, liveSessionId, viewMode, workspaceId]);
+
+  const handleAetherBridgeSyncNow = useCallback(async () => {
+    await dispatchAetherEvent(
+      'lumina.state.sync',
+      buildAetherStatePayload('manual'),
+      {
+        timeoutMs: 5000,
+        successLabel: 'State sync sent',
+        failureLabel: 'State sync failed',
+      }
+    );
+  }, [buildAetherStatePayload, dispatchAetherEvent]);
+
+  const handleAetherSceneSwitch = useCallback(async (target: 'program' | 'blackout' | 'lobby') => {
+    await dispatchAetherEvent(
+      'lumina.scene.switch',
+      {
+        target,
+        sceneName: resolveAetherSceneName(target),
+        workspaceId,
+        sessionId: liveSessionId,
+      },
+      {
+        timeoutMs: 4500,
+        successLabel: `${resolveAetherSceneName(target)} scene command sent`,
+        failureLabel: `${resolveAetherSceneName(target)} scene command failed`,
+      }
+    );
+  }, [dispatchAetherEvent, liveSessionId, resolveAetherSceneName, workspaceId]);
+
+  useEffect(() => {
+    if (viewState !== 'studio') return;
+    if (!workspaceSettings.aetherBridgeEnabled) return;
+    if (!workspaceSettings.aetherBridgeAutoSync) return;
+    if (!String(workspaceSettings.aetherBridgeUrl || '').trim()) return;
+
+    const syncFingerprint = JSON.stringify({
+      activeItemId,
+      activeSlideIndex,
+      blackout,
+      routingMode,
+      isPlaying,
+      outputMuted,
+      timerMode,
+      timerSeconds,
+      activeStageMessageId: stageMessageCenter.activeMessageId,
+      stageMessageAt: stageMessageCenter.lastSentAt,
+      qrProjected: audienceQrProjection.visible,
+    });
+    if (lastAetherAutoSyncKeyRef.current === syncFingerprint) return;
+    lastAetherAutoSyncKeyRef.current = syncFingerprint;
+
+    if (aetherBridgeAutoSyncTimerRef.current) {
+      window.clearTimeout(aetherBridgeAutoSyncTimerRef.current);
+    }
+
+    aetherBridgeAutoSyncTimerRef.current = window.setTimeout(() => {
+      if (aetherBridgeInFlightRef.current) return;
+      aetherBridgeInFlightRef.current = true;
+      void dispatchAetherEvent(
+        'lumina.state.sync',
+        buildAetherStatePayload('auto'),
+        {
+          timeoutMs: 4500,
+          successLabel: 'Auto sync sent',
+          failureLabel: 'Auto sync failed',
+        }
+      ).finally(() => {
+        aetherBridgeInFlightRef.current = false;
+      });
+    }, 280);
+
+    return () => {
+      if (aetherBridgeAutoSyncTimerRef.current) {
+        window.clearTimeout(aetherBridgeAutoSyncTimerRef.current);
+        aetherBridgeAutoSyncTimerRef.current = null;
+      }
+    };
+  }, [
+    activeItemId,
+    activeSlideIndex,
+    audienceQrProjection.visible,
+    blackout,
+    buildAetherStatePayload,
+    dispatchAetherEvent,
+    isPlaying,
+    outputMuted,
+    routingMode,
+    stageMessageCenter.activeMessageId,
+    stageMessageCenter.lastSentAt,
+    timerMode,
+    timerSeconds,
+    viewState,
+    workspaceSettings.aetherBridgeAutoSync,
+    workspaceSettings.aetherBridgeEnabled,
+    workspaceSettings.aetherBridgeUrl,
+  ]);
 
   useEffect(() => {
     setAudienceQrProjection((prev) => {
@@ -4509,6 +4814,25 @@ function App() {
         onSetProjected={setAudienceQrProjectionVisible}
         projectionScale={audienceQrProjection.scale}
         onSetProjectionScale={setAudienceQrProjectionScale}
+        aetherBridgeEnabled={workspaceSettings.aetherBridgeEnabled}
+        onSetAetherBridgeEnabled={(enabled) => setWorkspaceSettings((prev) => ({ ...prev, aetherBridgeEnabled: enabled }))}
+        aetherBridgeAutoSync={workspaceSettings.aetherBridgeAutoSync}
+        onSetAetherBridgeAutoSync={(enabled) => setWorkspaceSettings((prev) => ({ ...prev, aetherBridgeAutoSync: enabled }))}
+        aetherBridgeUrl={workspaceSettings.aetherBridgeUrl}
+        onSetAetherBridgeUrl={(url) => setWorkspaceSettings((prev) => ({ ...prev, aetherBridgeUrl: url }))}
+        aetherBridgeToken={aetherBridgeToken}
+        onSetAetherBridgeToken={setAetherBridgeToken}
+        aetherSceneProgram={workspaceSettings.aetherSceneProgram}
+        onSetAetherSceneProgram={(value) => setWorkspaceSettings((prev) => ({ ...prev, aetherSceneProgram: value }))}
+        aetherSceneBlackout={workspaceSettings.aetherSceneBlackout}
+        onSetAetherSceneBlackout={(value) => setWorkspaceSettings((prev) => ({ ...prev, aetherSceneBlackout: value }))}
+        aetherSceneLobby={workspaceSettings.aetherSceneLobby}
+        onSetAetherSceneLobby={(value) => setWorkspaceSettings((prev) => ({ ...prev, aetherSceneLobby: value }))}
+        onAetherBridgePing={handleAetherBridgeTest}
+        onAetherBridgeSyncNow={handleAetherBridgeSyncNow}
+        onAetherSceneSwitch={handleAetherSceneSwitch}
+        aetherBridgeStatusTone={aetherBridgeStatus.tone}
+        aetherBridgeStatusText={aetherBridgeStatus.text}
       />
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
       {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={(settings) => setWorkspaceSettings((prev) => ({ ...prev, ...settings }))} onLogout={handleLogout} currentSettings={workspaceSettings} currentUser={user} />}

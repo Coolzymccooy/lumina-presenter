@@ -16,6 +16,25 @@ interface ConnectModalProps {
     onSetProjected: (visible: boolean) => void;
     projectionScale: number;
     onSetProjectionScale: (scale: number) => void;
+    aetherBridgeEnabled: boolean;
+    onSetAetherBridgeEnabled: (enabled: boolean) => void;
+    aetherBridgeAutoSync: boolean;
+    onSetAetherBridgeAutoSync: (enabled: boolean) => void;
+    aetherBridgeUrl: string;
+    onSetAetherBridgeUrl: (url: string) => void;
+    aetherBridgeToken: string;
+    onSetAetherBridgeToken: (token: string) => void;
+    aetherSceneProgram: string;
+    onSetAetherSceneProgram: (value: string) => void;
+    aetherSceneBlackout: string;
+    onSetAetherSceneBlackout: (value: string) => void;
+    aetherSceneLobby: string;
+    onSetAetherSceneLobby: (value: string) => void;
+    onAetherBridgePing: () => Promise<void> | void;
+    onAetherBridgeSyncNow: () => Promise<void> | void;
+    onAetherSceneSwitch: (target: 'program' | 'blackout' | 'lobby') => Promise<void> | void;
+    aetherBridgeStatusTone: 'neutral' | 'ok' | 'error';
+    aetherBridgeStatusText: string;
 }
 
 export const ConnectModal: React.FC<ConnectModalProps> = ({
@@ -29,13 +48,33 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
     isProjected,
     onSetProjected,
     projectionScale,
-    onSetProjectionScale
+    onSetProjectionScale,
+    aetherBridgeEnabled,
+    onSetAetherBridgeEnabled,
+    aetherBridgeAutoSync,
+    onSetAetherBridgeAutoSync,
+    aetherBridgeUrl,
+    onSetAetherBridgeUrl,
+    aetherBridgeToken,
+    onSetAetherBridgeToken,
+    aetherSceneProgram,
+    onSetAetherSceneProgram,
+    aetherSceneBlackout,
+    onSetAetherSceneBlackout,
+    aetherSceneLobby,
+    onSetAetherSceneLobby,
+    onAetherBridgePing,
+    onAetherBridgeSyncNow,
+    onAetherSceneSwitch,
+    aetherBridgeStatusTone,
+    aetherBridgeStatusText
 }) => {
     const cardRef = useRef<HTMLDivElement | null>(null);
     const dragOffsetRef = useRef({ x: 0, y: 0 });
     const [dragging, setDragging] = useState(false);
     const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
     const [activePanel, setActivePanel] = useState<ConnectPanel>(initialPanel);
+    const [bridgeBusy, setBridgeBusy] = useState(false);
 
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(audienceUrl)}`;
 
@@ -93,6 +132,7 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
         if (!isOpen) {
             setDragging(false);
             setPosition(null);
+            setBridgeBusy(false);
             return;
         }
         setActivePanel(initialPanel);
@@ -101,6 +141,21 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
     if (!isOpen) return null;
 
     const headingLabel = activePanel === 'audience' ? 'Connect Audience' : 'Aether Integration';
+    const aetherStatusClass = aetherBridgeStatusTone === 'ok'
+        ? 'border-emerald-700/70 bg-emerald-950/30 text-emerald-200'
+        : aetherBridgeStatusTone === 'error'
+            ? 'border-rose-700/70 bg-rose-950/30 text-rose-200'
+            : 'border-zinc-700 bg-zinc-950/60 text-zinc-300';
+
+    const runBridgeAction = async (action: () => Promise<void> | void) => {
+        if (bridgeBusy) return;
+        setBridgeBusy(true);
+        try {
+            await action();
+        } finally {
+            setBridgeBusy(false);
+        }
+    };
 
     return (
         <div className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
@@ -244,15 +299,15 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                     {activePanel === 'aether' && (
                         <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-950/70 text-left space-y-3">
                             <div className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300">
-                                Aether / Switcher Integration (Phase 1)
+                                Aether / Switcher Integration (Phase 1-3)
                             </div>
                             <p className="text-[11px] text-zinc-400 leading-relaxed">
-                                Use Lumina as your live graphics engine inside OBS/vMix (or similar) without replacing your current switcher workflow.
+                                Lumina can run as browser-source graphics and optionally push live control events into Aether bridge APIs for scene automation.
                             </p>
                             <ol className="text-[11px] text-zinc-400 list-decimal ml-4 space-y-1">
                                 <li>Add a Browser/Web source in your broadcast app.</li>
                                 <li>Paste the Lumina Output URL below as the source URL.</li>
-                                <li>Keep camera switching and stream encoding in your existing stack.</li>
+                                <li>Configure Aether Bridge URL for command/event automation (optional).</li>
                             </ol>
 
                             <div className="space-y-2">
@@ -295,6 +350,120 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                                         <CopyIcon className="w-4 h-4" />
                                     </button>
                                 </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <label className="col-span-2 flex items-center gap-2 p-2 rounded-lg border border-zinc-800 bg-black/40 text-[11px] text-zinc-300">
+                                    <input
+                                        type="checkbox"
+                                        checked={aetherBridgeEnabled}
+                                        onChange={(e) => onSetAetherBridgeEnabled(e.target.checked)}
+                                        className="accent-cyan-500"
+                                        data-no-drag
+                                    />
+                                    Enable Aether Bridge command delivery
+                                </label>
+                                <label className="col-span-2 flex items-center gap-2 p-2 rounded-lg border border-zinc-800 bg-black/40 text-[11px] text-zinc-300">
+                                    <input
+                                        type="checkbox"
+                                        checked={aetherBridgeAutoSync}
+                                        onChange={(e) => onSetAetherBridgeAutoSync(e.target.checked)}
+                                        className="accent-cyan-500"
+                                        data-no-drag
+                                    />
+                                    Auto-sync Lumina runtime state to bridge
+                                </label>
+                                <label className="col-span-2 text-[10px] uppercase tracking-wider text-zinc-500">
+                                    Bridge Endpoint URL
+                                </label>
+                                <input
+                                    value={aetherBridgeUrl}
+                                    onChange={(e) => onSetAetherBridgeUrl(e.target.value)}
+                                    placeholder="https://aether.local/api/lumina/bridge"
+                                    className="col-span-2 px-2 py-2 rounded-lg border border-zinc-800 bg-black/60 text-[11px] text-zinc-200 font-mono"
+                                    data-no-drag
+                                />
+                                <label className="col-span-2 text-[10px] uppercase tracking-wider text-zinc-500">
+                                    Bridge Token (optional, local only)
+                                </label>
+                                <input
+                                    value={aetherBridgeToken}
+                                    onChange={(e) => onSetAetherBridgeToken(e.target.value)}
+                                    placeholder="x-lumina-token"
+                                    className="col-span-2 px-2 py-2 rounded-lg border border-zinc-800 bg-black/60 text-[11px] text-zinc-200 font-mono"
+                                    data-no-drag
+                                />
+                                <label className="text-[10px] uppercase tracking-wider text-zinc-500">
+                                    Program Scene
+                                </label>
+                                <label className="text-[10px] uppercase tracking-wider text-zinc-500">
+                                    Blackout Scene
+                                </label>
+                                <input
+                                    value={aetherSceneProgram}
+                                    onChange={(e) => onSetAetherSceneProgram(e.target.value)}
+                                    className="px-2 py-2 rounded-lg border border-zinc-800 bg-black/60 text-[11px] text-zinc-200"
+                                    data-no-drag
+                                />
+                                <input
+                                    value={aetherSceneBlackout}
+                                    onChange={(e) => onSetAetherSceneBlackout(e.target.value)}
+                                    className="px-2 py-2 rounded-lg border border-zinc-800 bg-black/60 text-[11px] text-zinc-200"
+                                    data-no-drag
+                                />
+                                <label className="col-span-2 text-[10px] uppercase tracking-wider text-zinc-500">
+                                    Lobby Scene
+                                </label>
+                                <input
+                                    value={aetherSceneLobby}
+                                    onChange={(e) => onSetAetherSceneLobby(e.target.value)}
+                                    className="col-span-2 px-2 py-2 rounded-lg border border-zinc-800 bg-black/60 text-[11px] text-zinc-200"
+                                    data-no-drag
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    onClick={() => void runBridgeAction(onAetherBridgePing)}
+                                    className="px-3 py-2 rounded-lg border border-cyan-700/70 bg-cyan-950/30 text-cyan-200 text-[11px] font-bold disabled:opacity-50"
+                                    disabled={bridgeBusy}
+                                    data-no-drag
+                                >
+                                    {bridgeBusy ? 'WORKING...' : 'PING BRIDGE'}
+                                </button>
+                                <button
+                                    onClick={() => void runBridgeAction(onAetherBridgeSyncNow)}
+                                    className="px-3 py-2 rounded-lg border border-blue-700/70 bg-blue-950/30 text-blue-200 text-[11px] font-bold disabled:opacity-50"
+                                    disabled={bridgeBusy}
+                                    data-no-drag
+                                >
+                                    {bridgeBusy ? 'WORKING...' : 'SYNC NOW'}
+                                </button>
+                                <button
+                                    onClick={() => void runBridgeAction(() => onAetherSceneSwitch('program'))}
+                                    className="px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-900 text-zinc-200 text-[11px] font-bold disabled:opacity-50"
+                                    disabled={bridgeBusy}
+                                    data-no-drag
+                                >
+                                    GO PROGRAM
+                                </button>
+                                <button
+                                    onClick={() => void runBridgeAction(() => onAetherSceneSwitch('blackout'))}
+                                    className="px-3 py-2 rounded-lg border border-rose-800/80 bg-rose-950/40 text-rose-200 text-[11px] font-bold disabled:opacity-50"
+                                    disabled={bridgeBusy}
+                                    data-no-drag
+                                >
+                                    GO BLACKOUT
+                                </button>
+                                <button
+                                    onClick={() => void runBridgeAction(() => onAetherSceneSwitch('lobby'))}
+                                    className="col-span-2 px-3 py-2 rounded-lg border border-amber-700/70 bg-amber-950/30 text-amber-200 text-[11px] font-bold disabled:opacity-50"
+                                    disabled={bridgeBusy}
+                                    data-no-drag
+                                >
+                                    GO LOBBY
+                                </button>
+                            </div>
+                            <div className={`p-2 rounded-lg border text-[11px] ${aetherStatusClass}`}>
+                                {aetherBridgeStatusText || 'Bridge idle.'}
                             </div>
                             <div className="p-3 rounded-lg border border-zinc-800 bg-black/40">
                                 <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Recommended Browser Source Baseline</div>

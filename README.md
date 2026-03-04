@@ -83,6 +83,7 @@ Render dashboard quick path:
 
 ## Integration Specs
 - `docs/lumina_aether_integration_spec.md` - Phase 1 browser-source integration for Lumina in existing OBS/vMix-style broadcast stacks, including console-noise diagnostics and follow-up engineering tasks.
+- `docs/lumina_aether_control_bridge_spec.md` - Phase 2/3 control-bridge contract for Aether scene automation (ping/state-sync/scene-switch events, headers, payload schema, and Aether receiver implementation checklist).
 
 ---
 

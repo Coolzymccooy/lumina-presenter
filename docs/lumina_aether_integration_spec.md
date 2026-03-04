@@ -5,6 +5,9 @@ Owner: Lumina Engineering
 Date: 2026-03-04  
 Scope Lock: Phase 1 only
 
+Note:
+- Phase 2/3 bridge automation is documented separately in `docs/lumina_aether_control_bridge_spec.md`.
+
 ## Phase Boundary Statement
 This specification is strictly for Phase 1: integrating Lumina output into an existing broadcast switcher pipeline using browser-source ingestion.  
 This document does not approve or implement direct switcher control, direct stream destination orchestration, or OBS WebSocket automation.

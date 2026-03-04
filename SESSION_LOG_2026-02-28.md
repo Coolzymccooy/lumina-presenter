@@ -213,3 +213,50 @@ Potential value:
 3. Traceability update
 - Added README pointer to the new integration spec:
   - `README.md` -> Integration Specs section
+
+## Update (2026-03-04 - Aether Phase 2/3 Delivery)
+
+### Focus
+- Move from Phase 1 informational integration to actionable Aether bridge automation.
+- Add Lumina-side bridge runtime with explicit contract for Aether implementers.
+
+### Completed
+1. Aether bridge runtime in Lumina
+- Added service:
+  - `services/aetherBridge.ts`
+- Implemented event dispatch contract:
+  - `lumina.bridge.ping`
+  - `lumina.state.sync`
+  - `lumina.scene.switch`
+- Added timeout/error/status handling for operator feedback.
+
+2. Studio runtime autosync and scene command support
+- `App.tsx`
+  - Added Aether bridge settings into workspace profile (enable, auto-sync, endpoint URL, scene mappings).
+  - Added local-only bridge token persistence keyed by workspace.
+  - Added structured state payload emitter and throttled auto-sync.
+  - Added manual bridge actions (ping, sync now, scene switches).
+
+3. Connect modal expanded from Phase 1 to operational Phase 2/3
+- `components/ConnectModal.tsx`
+  - Added bridge enable/auto-sync toggles.
+  - Added endpoint + token inputs.
+  - Added scene mapping fields (Program/Blackout/Lobby).
+  - Added operator action buttons:
+    - Ping Bridge
+    - Sync Now
+    - Go Program / Go Blackout / Go Lobby
+  - Added live bridge status banner (neutral/success/error).
+
+4. Aether implementation contract for receiving Lumina events
+- Added:
+  - `docs/lumina_aether_control_bridge_spec.md`
+- Includes:
+  - headers/payload schema
+  - expected response behavior
+  - Aether-side receiver checklist
+  - reliability and security notes
+
+5. README integration docs index update
+- `README.md`
+  - Added pointer to `docs/lumina_aether_control_bridge_spec.md`.
