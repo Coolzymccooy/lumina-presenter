@@ -1,18 +1,31 @@
 import { spawn } from 'node:child_process';
 
-const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-
 const launch = (label, command, args) => {
   const child = spawn(command, args, {
     stdio: 'inherit',
-    env: process.env,
   });
 
   return child;
 };
 
-const server = launch('server', npmCommand, ['run', 'server']);
-const frontend = launch('frontend', npmCommand, ['run', 'dev']);
+const npmExecPath = typeof process.env.npm_execpath === 'string'
+  ? process.env.npm_execpath
+  : '';
+
+const launchNpmScript = (label, scriptName) => {
+  // When this script is launched via `npm run ...`, npm exposes its JS entrypoint.
+  // Running that entrypoint with the current Node binary is cross-platform and avoids shell spawning issues.
+  if (npmExecPath && npmExecPath.toLowerCase().endsWith('.js')) {
+    return launch(label, process.execPath, [npmExecPath, 'run', scriptName]);
+  }
+
+  // Fallback for non-npm invocation contexts.
+  const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  return launch(label, npmCommand, ['run', scriptName]);
+};
+
+const server = launchNpmScript('server', 'server');
+const frontend = launchNpmScript('frontend', 'dev');
 
 let shuttingDown = false;
 const stopChildren = () => {

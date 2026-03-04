@@ -24,16 +24,17 @@ export const RemoteControl: React.FC = () => {
     return {
       sessionId: fromSearch || fromHash || 'live',
       workspaceHint: fromSearchWorkspace || fromHashWorkspace || '',
+      hasExplicitWorkspace: !!(fromSearchWorkspace || fromHashWorkspace),
     };
   };
-  const [{ sessionId, workspaceHint }] = useState(getRouteParams);
+  const [{ sessionId, workspaceHint, hasExplicitWorkspace }] = useState(getRouteParams);
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [state, setState] = useState<any>({});
   const [syncError, setSyncError] = useState('');
   const [commandStatus, setCommandStatus] = useState('');
   const [sending, setSending] = useState(false);
-  const workspaceId = useMemo(() => resolveWorkspaceId(user, workspaceHint || 'default-workspace'), [user?.uid, workspaceHint]);
+  const workspaceId = useMemo(() => resolveWorkspaceId(user, workspaceHint || ''), [user?.uid, workspaceHint]);
   const remoteClientId = useMemo(
     () => getOrCreateConnectionClientId(workspaceId, sessionId, 'remote'),
     [workspaceId, sessionId]
@@ -68,6 +69,8 @@ export const RemoteControl: React.FC = () => {
   }, [user, sessionId]);
 
   useEffect(() => {
+    if (!workspaceId) return;
+    if (!hasExplicitWorkspace && !user?.uid) return;
     const beat = async () => {
       await heartbeatSessionConnection(workspaceId, sessionId, 'remote', remoteClientId, {
         route: 'remote',
@@ -77,7 +80,7 @@ export const RemoteControl: React.FC = () => {
     beat();
     const id = window.setInterval(beat, 4000);
     return () => window.clearInterval(id);
-  }, [workspaceId, sessionId, remoteClientId, user?.uid]);
+  }, [workspaceId, sessionId, remoteClientId, hasExplicitWorkspace, user?.uid]);
 
   const ownerUid = state?.controllerOwnerUid || null;
   const allowedUids = Array.isArray(state?.controllerAllowedUids) ? state.controllerAllowedUids : [];

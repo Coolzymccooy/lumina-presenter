@@ -124,9 +124,10 @@ export const OutputRoute: React.FC = () => {
       sessionId: fromSearch || fromHash || 'live',
       workspaceId: fromSearchWorkspace || fromHashWorkspace || 'default-workspace',
       fullscreen: fromSearchFullscreen || fromHashFullscreen,
+      hasExplicitWorkspace: !!(fromSearchWorkspace || fromHashWorkspace),
     };
   };
-  const [{ sessionId, workspaceId, fullscreen }] = useState(getRouteParams);
+  const [{ sessionId, workspaceId, fullscreen, hasExplicitWorkspace }] = useState(getRouteParams);
   const outputClientId = useMemo(
     () => getOrCreateConnectionClientId(workspaceId, sessionId, 'output'),
     [workspaceId, sessionId]
@@ -139,6 +140,10 @@ export const OutputRoute: React.FC = () => {
   const [serverState, setServerState] = useState<Record<string, any> | null>(null);
   const [stableEffective, setStableEffective] = useState<EffectiveOutputState | null>(null);
   const localStateRawRef = useRef<string | null>(null);
+  const canUseServerWorkspace = useMemo(
+    () => !!workspaceId && (hasExplicitWorkspace || !!user?.uid),
+    [workspaceId, hasExplicitWorkspace, user?.uid]
+  );
 
   useEffect(() => {
     if (!auth) {
@@ -196,6 +201,7 @@ export const OutputRoute: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (!canUseServerWorkspace) return;
     let active = true;
     const refresh = async () => {
       const response = await fetchServerSessionState(workspaceId, sessionId);
@@ -210,9 +216,10 @@ export const OutputRoute: React.FC = () => {
       active = false;
       window.clearInterval(id);
     };
-  }, [workspaceId, sessionId]);
+  }, [workspaceId, sessionId, canUseServerWorkspace]);
 
   useEffect(() => {
+    if (!canUseServerWorkspace) return;
     const beat = async () => {
       await heartbeatSessionConnection(workspaceId, sessionId, 'output', outputClientId, {
         route: 'output',
@@ -222,7 +229,7 @@ export const OutputRoute: React.FC = () => {
     beat();
     const id = window.setInterval(beat, 4000);
     return () => window.clearInterval(id);
-  }, [workspaceId, sessionId, outputClientId]);
+  }, [workspaceId, sessionId, outputClientId, canUseServerWorkspace]);
 
   const liveSchedule: ServiceItem[] = Array.isArray(liveState?.scheduleSnapshot) ? liveState.scheduleSnapshot : [];
   const localSchedule: ServiceItem[] = Array.isArray(localState?.schedule) ? localState.schedule : [];

@@ -120,10 +120,11 @@ export const StageRoute: React.FC = () => {
     return {
       sessionId: fromSearch || fromHash || 'live',
       workspaceId: fromSearchWorkspace || fromHashWorkspace || 'default-workspace',
+      hasExplicitWorkspace: !!(fromSearchWorkspace || fromHashWorkspace),
     };
   };
 
-  const [{ sessionId, workspaceId }] = useState(getRouteParams);
+  const [{ sessionId, workspaceId, hasExplicitWorkspace }] = useState(getRouteParams);
   const stageClientId = useMemo(
     () => getOrCreateConnectionClientId(workspaceId, sessionId, 'stage'),
     [workspaceId, sessionId]
@@ -136,6 +137,10 @@ export const StageRoute: React.FC = () => {
   const [serverState, setServerState] = useState<Record<string, any> | null>(null);
   const [stableEffective, setStableEffective] = useState<EffectiveStageState | null>(null);
   const localStateRawRef = useRef<string | null>(null);
+  const canUseServerWorkspace = useMemo(
+    () => !!workspaceId && (hasExplicitWorkspace || !!user?.uid),
+    [workspaceId, hasExplicitWorkspace, user?.uid]
+  );
 
   useEffect(() => {
     if (!auth) {
@@ -185,6 +190,7 @@ export const StageRoute: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (!canUseServerWorkspace) return;
     let active = true;
     const refresh = async () => {
       const response = await fetchServerSessionState(workspaceId, sessionId);
@@ -199,9 +205,10 @@ export const StageRoute: React.FC = () => {
       active = false;
       window.clearInterval(id);
     };
-  }, [workspaceId, sessionId]);
+  }, [workspaceId, sessionId, canUseServerWorkspace]);
 
   useEffect(() => {
+    if (!canUseServerWorkspace) return;
     const beat = async () => {
       await heartbeatSessionConnection(workspaceId, sessionId, 'stage', stageClientId, {
         route: 'stage',
@@ -211,7 +218,7 @@ export const StageRoute: React.FC = () => {
     beat();
     const id = window.setInterval(beat, 4000);
     return () => window.clearInterval(id);
-  }, [workspaceId, sessionId, stageClientId]);
+  }, [workspaceId, sessionId, stageClientId, canUseServerWorkspace]);
 
   const buildEffective = (source: any): EffectiveStageState => {
     const schedule = Array.isArray(source?.scheduleSnapshot)
