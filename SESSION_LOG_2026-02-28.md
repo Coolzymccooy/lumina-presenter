@@ -116,3 +116,100 @@
 - Remaining:
   - The large blob still exists in git history from prior commit(s).
   - Full repo-size cleanup would require history rewrite (separate controlled operation).
+
+## Update (2026-03-03)
+
+### Focus
+- Stabilize live operator UX in desktop/web parity.
+- Eliminate Electron clipboard failures on URL copy actions.
+- Finalize and publish the latest desktop release build.
+- Document next potential streaming integration path.
+
+### Completed
+
+1. Electron copy-to-clipboard reliability fix (URL controls)
+- Root cause:
+  - URL copy buttons used `navigator.clipboard` directly, which was reliable on web but inconsistent in Electron shell.
+- Implemented:
+  - Added secure Electron IPC clipboard handler in:
+    - `electron/main.js`
+    - `electron/preload.js`
+  - Added shared copy utility with fallback chain:
+    - `services/clipboardService.ts`
+    - Electron native clipboard -> browser clipboard -> textarea fallback
+  - Updated all affected copy buttons:
+    - `App.tsx` (copy remote/stage/OBS URLs)
+    - `components/ConnectModal.tsx` (copy audience URL)
+  - Added window typing for Electron clipboard bridge:
+    - `env.d.ts`
+
+2. Visionary reliability hardening package (recent)
+- Included in recent master updates:
+  - Browser/cloud speech reliability hardening and runtime safeguards.
+  - Stage overlay/timer and audience broadcast flow hardening.
+  - Desktop output flow resilience improvements.
+
+3. Server health warning clarification
+- Confirmed non-blocking startup warning on Windows:
+  - `font probe skipped (fc-list unavailable: ENOENT)`
+- Interpretation:
+  - Healthy startup if API listens and dependencies (`soffice`, `pdftocairo`) are available.
+  - `fc-list` probe is optional diagnostic only on this runtime.
+
+4. Release and deployment completion
+- Pushed fixes to `master`.
+- Release version bump:
+  - `package.json` -> `2.2.12`
+  - `components/LandingPage.tsx` fallback latest tag -> `v2.2.12`
+- Tagged and published:
+  - `v2.2.12`
+  - Windows artifacts built/published (setup exe, msi, portable exe, latest.yml)
+
+### Validation
+- `npm run build`: PASS
+- `npm run test:e2e:smoke`: PASS
+- `npm run test:e2e`: PASS
+
+### Git / Release Notes
+- `76f0eca` - `feat: harden stage overlays, audience broadcast controls, and desktop output flow`
+- `7bc8715` - `fix: harden visionary reliability and restore Electron URL copy across studio controls`
+- `b62afa9` - `chore(release): bump version to 2.2.12`
+- Tag pushed: `v2.2.12`
+
+### Potential Feature (Contemplated)
+- Integrate Lumina with existing broadcast stack for multi-destination streaming (including YouTube) without replacing current switcher.
+
+High-level path:
+1. Use Lumina Output URL as browser source in broadcast app (OBS/vMix/etc.).
+2. Keep camera switching/mixing/encoding in existing broadcast app.
+3. Optional next step: add control bridge (OBS WebSocket/API) so Lumina actions can trigger scene/overlay transitions automatically.
+
+Potential value:
+- Retain full broadcast-grade directing workflow while using Lumina as live graphics/scripture/stage engine.
+- Faster operator flow with less manual scene choreography.
+
+## Update (2026-03-04 - In Progress)
+
+### Focus
+- Start Aether Phase 1 integration documentation for Lumina browser-source workflows in existing broadcast stacks.
+- Add console-noise triage guidance and follow-up engineering task list.
+
+### In Progress
+1. Aether integration spec authoring
+- Created:
+  - `docs/lumina_aether_integration_spec.md`
+- Scope lock:
+  - Phase 1 only (Lumina Output URL as browser source in OBS/vMix/other switchers).
+  - No control bridge automation implementation in this phase.
+
+2. Console-noise diagnostics capture
+- Documented symptom categories:
+  - Repeated `404` on `/api/workspaces/default-workspace/...`
+  - `favicon.ico` 404
+  - Tracking prevention storage warnings
+  - Anti-sleep audio source warning
+- Added immediate operator mitigations and follow-up engineering task IDs.
+
+3. Traceability update
+- Added README pointer to the new integration spec:
+  - `README.md` -> Integration Specs section

@@ -77,6 +77,9 @@ Render dashboard quick path:
 - Service → **Environment** → add/update `LUMINA_VIS_CACHE_VERSION` (e.g. `v4`, then `v5` later to force another refresh).
 - Redeploy after changing the value.
 
+## Integration Specs
+- `docs/lumina_aether_integration_spec.md` - Phase 1 browser-source integration for Lumina in existing OBS/vMix-style broadcast stacks, including console-noise diagnostics and follow-up engineering tasks.
+
 ---
 
 ## New Feature Guide (How it works)
