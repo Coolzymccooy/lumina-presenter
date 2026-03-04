@@ -4485,6 +4485,9 @@ function App() {
         isOpen={isConnectOpen}
         onClose={() => setIsConnectOpen(false)}
         audienceUrl={audienceUrl}
+        obsOutputUrl={obsOutputUrl}
+        stageDisplayUrl={stageDisplayUrl}
+        remoteControlUrl={remoteControlUrl}
         isProjected={audienceQrProjection.visible}
         onSetProjected={setAudienceQrProjectionVisible}
         projectionScale={audienceQrProjection.scale}

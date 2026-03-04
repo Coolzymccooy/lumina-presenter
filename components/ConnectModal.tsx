@@ -6,6 +6,9 @@ interface ConnectModalProps {
     isOpen: boolean;
     onClose: () => void;
     audienceUrl: string;
+    obsOutputUrl: string;
+    stageDisplayUrl: string;
+    remoteControlUrl: string;
     isProjected: boolean;
     onSetProjected: (visible: boolean) => void;
     projectionScale: number;
@@ -16,6 +19,9 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
     isOpen,
     onClose,
     audienceUrl,
+    obsOutputUrl,
+    stageDisplayUrl,
+    remoteControlUrl,
     isProjected,
     onSetProjected,
     projectionScale,
@@ -31,6 +37,10 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
     const copyUrl = async () => {
         const copied = await copyTextToClipboard(audienceUrl);
         alert(copied ? 'URL copied to clipboard!' : 'Copy failed. Try again or use Ctrl+C manually.');
+    };
+    const copyAnyUrl = async (value: string, label: string) => {
+        const copied = await copyTextToClipboard(value);
+        alert(copied ? `${label} copied!` : 'Copy failed. Try again or use Ctrl+C manually.');
     };
 
     const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -186,6 +196,71 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                                 className="w-full accent-blue-500"
                                 data-no-drag
                             />
+                        </div>
+                        <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-950/70 text-left space-y-3">
+                            <div className="text-[11px] font-black uppercase tracking-[0.18em] text-blue-300">
+                                Aether / Switcher Integration (Phase 1)
+                            </div>
+                            <p className="text-[11px] text-zinc-400 leading-relaxed">
+                                Use Lumina as your live graphics engine inside OBS/vMix (or similar) without replacing your current switcher workflow.
+                            </p>
+                            <ol className="text-[11px] text-zinc-400 list-decimal ml-4 space-y-1">
+                                <li>Add a Browser/Web source in your broadcast app.</li>
+                                <li>Paste the Lumina Output URL below as the source URL.</li>
+                                <li>Keep camera switching and stream encoding in your existing stack.</li>
+                            </ol>
+
+                            <div className="space-y-2">
+                                <div className="p-2 bg-black/60 border border-zinc-800 rounded-lg flex items-center justify-between gap-2">
+                                    <div className="min-w-0">
+                                        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Output URL (Browser Source)</div>
+                                        <div className="text-[10px] font-mono text-zinc-500 truncate">{obsOutputUrl}</div>
+                                    </div>
+                                    <button
+                                        onClick={() => void copyAnyUrl(obsOutputUrl, 'Output URL')}
+                                        className="p-2 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-white transition-colors"
+                                        data-no-drag
+                                    >
+                                        <CopyIcon className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                <div className="p-2 bg-black/60 border border-zinc-800 rounded-lg flex items-center justify-between gap-2">
+                                    <div className="min-w-0">
+                                        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Stage URL</div>
+                                        <div className="text-[10px] font-mono text-zinc-500 truncate">{stageDisplayUrl}</div>
+                                    </div>
+                                    <button
+                                        onClick={() => void copyAnyUrl(stageDisplayUrl, 'Stage URL')}
+                                        className="p-2 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-white transition-colors"
+                                        data-no-drag
+                                    >
+                                        <CopyIcon className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                <div className="p-2 bg-black/60 border border-zinc-800 rounded-lg flex items-center justify-between gap-2">
+                                    <div className="min-w-0">
+                                        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Remote URL</div>
+                                        <div className="text-[10px] font-mono text-zinc-500 truncate">{remoteControlUrl}</div>
+                                    </div>
+                                    <button
+                                        onClick={() => void copyAnyUrl(remoteControlUrl, 'Remote URL')}
+                                        className="p-2 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-white transition-colors"
+                                        data-no-drag
+                                    >
+                                        <CopyIcon className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                            <a
+                                href={obsOutputUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 text-[11px] font-bold text-blue-300 hover:text-white"
+                                data-no-drag
+                            >
+                                <ExternalLinkIcon className="w-3.5 h-3.5" />
+                                OPEN OUTPUT URL
+                            </a>
                         </div>
                         <p className="text-[11px] text-zinc-500">
                             Tip: Drag this window by its header. QR projection appears on Output/Projector.
