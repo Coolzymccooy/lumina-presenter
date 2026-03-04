@@ -935,6 +935,7 @@ function App() {
   }, [runSheetFiles, runSheetFileQuery]);
   const [timerRunning, setTimerRunning] = useState(false);
   const [isConnectOpen, setIsConnectOpen] = useState(false);
+  const [connectPanel, setConnectPanel] = useState<'audience' | 'aether'>('audience');
 
   const [activeItemId, setActiveItemId] = useState<string | null>(() => {
     const saved = initialSavedState;
@@ -3687,8 +3688,23 @@ function App() {
         {/* RIGHT: COMMAND CENTER */}
         <div className="flex items-center gap-2">
           <div className="flex items-center bg-black/30 p-1 rounded-xl border border-zinc-800/40 gap-1 mr-2">
-            <button onClick={() => setIsConnectOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 rounded-lg text-[10px] font-black tracking-widest transition-all active:scale-95">
+            <button
+              onClick={() => {
+                setConnectPanel('audience');
+                setIsConnectOpen(true);
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 rounded-lg text-[10px] font-black tracking-widest transition-all active:scale-95"
+            >
               <QrCodeIcon className="w-3.5 h-3.5" /> CONNECT
+            </button>
+            <button
+              onClick={() => {
+                setConnectPanel('aether');
+                setIsConnectOpen(true);
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 bg-cyan-600/10 text-cyan-300 hover:bg-cyan-600/20 rounded-lg text-[10px] font-black tracking-widest transition-all active:scale-95"
+            >
+              <MonitorIcon className="w-3.5 h-3.5" /> AETHER
             </button>
             <button onClick={() => setIsAIModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 text-zinc-300 hover:text-white rounded-lg text-[10px] font-black tracking-widest transition-all">
               <SparklesIcon className="w-3 h-3 text-purple-400" /> AI ASSIST
@@ -4484,6 +4500,7 @@ function App() {
       <ConnectModal
         isOpen={isConnectOpen}
         onClose={() => setIsConnectOpen(false)}
+        initialPanel={connectPanel}
         audienceUrl={audienceUrl}
         obsOutputUrl={obsOutputUrl}
         stageDisplayUrl={stageDisplayUrl}

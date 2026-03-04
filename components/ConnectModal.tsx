@@ -2,9 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { XIcon, CopyIcon, ExternalLinkIcon, QrCodeIcon, MonitorIcon } from './Icons';
 import { copyTextToClipboard } from '../services/clipboardService';
 
+export type ConnectPanel = 'audience' | 'aether';
+
 interface ConnectModalProps {
     isOpen: boolean;
     onClose: () => void;
+    initialPanel?: ConnectPanel;
     audienceUrl: string;
     obsOutputUrl: string;
     stageDisplayUrl: string;
@@ -18,6 +21,7 @@ interface ConnectModalProps {
 export const ConnectModal: React.FC<ConnectModalProps> = ({
     isOpen,
     onClose,
+    initialPanel = 'audience',
     audienceUrl,
     obsOutputUrl,
     stageDisplayUrl,
@@ -31,13 +35,15 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
     const dragOffsetRef = useRef({ x: 0, y: 0 });
     const [dragging, setDragging] = useState(false);
     const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+    const [activePanel, setActivePanel] = useState<ConnectPanel>(initialPanel);
 
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(audienceUrl)}`;
 
-    const copyUrl = async () => {
+    const copyAudienceUrl = async () => {
         const copied = await copyTextToClipboard(audienceUrl);
-        alert(copied ? 'URL copied to clipboard!' : 'Copy failed. Try again or use Ctrl+C manually.');
+        alert(copied ? 'Audience URL copied!' : 'Copy failed. Try again or use Ctrl+C manually.');
     };
+
     const copyAnyUrl = async (value: string, label: string) => {
         const copied = await copyTextToClipboard(value);
         alert(copied ? `${label} copied!` : 'Copy failed. Try again or use Ctrl+C manually.');
@@ -87,17 +93,21 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
         if (!isOpen) {
             setDragging(false);
             setPosition(null);
+            return;
         }
-    }, [isOpen]);
+        setActivePanel(initialPanel);
+    }, [isOpen, initialPanel]);
 
     if (!isOpen) return null;
+
+    const headingLabel = activePanel === 'audience' ? 'Connect Audience' : 'Aether Integration';
 
     return (
         <div className="fixed inset-0 z-[150] bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-300">
             <button
                 onClick={onClose}
                 className="absolute inset-0 w-full h-full cursor-default"
-                aria-label="Close connect audience modal backdrop"
+                aria-label="Close connect modal backdrop"
                 data-no-drag
             />
             <div
@@ -112,8 +122,10 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                     className={`p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50 select-none ${dragging ? 'cursor-grabbing' : 'cursor-grab'}`}
                 >
                     <div className="flex items-center gap-3">
-                        <QrCodeIcon className="w-5 h-5 text-blue-500" />
-                        <h2 className="text-lg font-black uppercase tracking-widest text-white">Connect Audience</h2>
+                        {activePanel === 'audience'
+                            ? <QrCodeIcon className="w-5 h-5 text-blue-500" />
+                            : <MonitorIcon className="w-5 h-5 text-cyan-400" />}
+                        <h2 className="text-lg font-black uppercase tracking-widest text-white">{headingLabel}</h2>
                     </div>
                     <button
                         onClick={onClose}
@@ -124,81 +136,114 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                     </button>
                 </div>
 
-                <div className="p-8 flex flex-col items-center text-center">
-                    <div className="mb-6 p-4 bg-white rounded-xl shadow-lg">
-                        <img src={qrCodeUrl} alt="QR Code" className="w-48 h-48" />
+                <div className="p-6 space-y-4">
+                    <div className="grid grid-cols-2 gap-2" data-no-drag>
+                        <button
+                            onClick={() => setActivePanel('audience')}
+                            className={`px-3 py-2 rounded-lg text-[10px] font-black tracking-widest border transition-all ${
+                                activePanel === 'audience'
+                                    ? 'bg-blue-600/20 border-blue-500 text-blue-200'
+                                    : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white'
+                            }`}
+                        >
+                            AUDIENCE
+                        </button>
+                        <button
+                            onClick={() => setActivePanel('aether')}
+                            className={`px-3 py-2 rounded-lg text-[10px] font-black tracking-widest border transition-all ${
+                                activePanel === 'aether'
+                                    ? 'bg-cyan-600/20 border-cyan-500 text-cyan-200'
+                                    : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-white'
+                            }`}
+                        >
+                            AETHER
+                        </button>
                     </div>
 
-                    <h3 className="text-white font-bold mb-2">Scan to Participate</h3>
-                    <p className="text-zinc-400 text-sm mb-8 leading-relaxed">
-                        Congregation members can scan this QR code to submit prayer requests, testimonies, and questions.
-                    </p>
-
-                    <div className="w-full space-y-3">
-                        <div className="p-3 bg-black border border-zinc-800 rounded-lg flex items-center justify-between group">
-                            <span className="text-[11px] font-mono text-zinc-500 truncate mr-4">{audienceUrl}</span>
-                            <button onClick={copyUrl} className="p-2 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-white transition-colors">
-                                <CopyIcon className="w-4 h-4" />
-                            </button>
-                        </div>
-
-                        <a
-                            href={audienceUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-900/20"
-                            data-no-drag
-                        >
-                            <ExternalLinkIcon className="w-4 h-4" />
-                            OPEN SUBMISSION PAGE
-                        </a>
-
-                        <button
-                            onClick={() => onSetProjected(!isProjected)}
-                            className={`w-full py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 border ${
-                                isProjected
-                                    ? 'bg-emerald-600/25 border-emerald-500 text-emerald-200 hover:bg-emerald-600/35'
-                                    : 'bg-zinc-800/60 border-zinc-700 text-zinc-200 hover:bg-zinc-800'
-                            }`}
-                            data-no-drag
-                        >
-                            <MonitorIcon className="w-4 h-4" />
-                            {isProjected ? 'HIDE QR FROM PROJECTOR' : 'PROJECT QR TO SCREEN'}
-                        </button>
-                        <div className="p-3 rounded-lg border border-zinc-800 bg-zinc-950/70 text-left">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Projected QR Size</span>
-                                <span className="text-[11px] font-mono text-zinc-300">{Math.round((projectionScale || 1) * 100)}%</span>
+                    {activePanel === 'audience' && (
+                        <div className="flex flex-col items-center text-center">
+                            <div className="mb-6 p-4 bg-white rounded-xl shadow-lg">
+                                <img src={qrCodeUrl} alt="QR Code" className="w-48 h-48" />
                             </div>
-                            <div className="flex items-center gap-2 mb-2">
-                                {[0.9, 1, 1.25, 1.5].map((preset) => (
-                                    <button
-                                        key={preset}
-                                        onClick={() => onSetProjectionScale(preset)}
-                                        className={`px-2 py-1 rounded border text-[10px] font-bold ${
-                                            Math.abs((projectionScale || 1) - preset) < 0.01
-                                                ? 'bg-blue-600/25 border-blue-500 text-blue-200'
-                                                : 'bg-zinc-900 border-zinc-700 text-zinc-300'
-                                        }`}
-                                        data-no-drag
-                                    >
-                                        {Math.round(preset * 100)}%
+
+                            <h3 className="text-white font-bold mb-2">Scan to Participate</h3>
+                            <p className="text-zinc-400 text-sm mb-6 leading-relaxed">
+                                Congregation members can scan this QR code to submit prayer requests, testimonies, and questions.
+                            </p>
+
+                            <div className="w-full space-y-3 text-left">
+                                <div className="p-3 bg-black border border-zinc-800 rounded-lg flex items-center justify-between group">
+                                    <span className="text-[11px] font-mono text-zinc-500 truncate mr-4">{audienceUrl}</span>
+                                    <button onClick={copyAudienceUrl} className="p-2 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-white transition-colors" data-no-drag>
+                                        <CopyIcon className="w-4 h-4" />
                                     </button>
-                                ))}
+                                </div>
+
+                                <a
+                                    href={audienceUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-blue-900/20"
+                                    data-no-drag
+                                >
+                                    <ExternalLinkIcon className="w-4 h-4" />
+                                    OPEN SUBMISSION PAGE
+                                </a>
+
+                                <button
+                                    onClick={() => onSetProjected(!isProjected)}
+                                    className={`w-full py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 border ${
+                                        isProjected
+                                            ? 'bg-emerald-600/25 border-emerald-500 text-emerald-200 hover:bg-emerald-600/35'
+                                            : 'bg-zinc-800/60 border-zinc-700 text-zinc-200 hover:bg-zinc-800'
+                                    }`}
+                                    data-no-drag
+                                >
+                                    <MonitorIcon className="w-4 h-4" />
+                                    {isProjected ? 'HIDE QR FROM PROJECTOR' : 'PROJECT QR TO SCREEN'}
+                                </button>
+                                <div className="p-3 rounded-lg border border-zinc-800 bg-zinc-950/70 text-left">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Projected QR Size</span>
+                                        <span className="text-[11px] font-mono text-zinc-300">{Math.round((projectionScale || 1) * 100)}%</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        {[0.9, 1, 1.25, 1.5].map((preset) => (
+                                            <button
+                                                key={preset}
+                                                onClick={() => onSetProjectionScale(preset)}
+                                                className={`px-2 py-1 rounded border text-[10px] font-bold ${
+                                                    Math.abs((projectionScale || 1) - preset) < 0.01
+                                                        ? 'bg-blue-600/25 border-blue-500 text-blue-200'
+                                                        : 'bg-zinc-900 border-zinc-700 text-zinc-300'
+                                                }`}
+                                                data-no-drag
+                                            >
+                                                {Math.round(preset * 100)}%
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min={70}
+                                        max={220}
+                                        step={5}
+                                        value={Math.round((projectionScale || 1) * 100)}
+                                        onChange={(e) => onSetProjectionScale((Number(e.target.value) || 100) / 100)}
+                                        className="w-full accent-blue-500"
+                                        data-no-drag
+                                    />
+                                </div>
+                                <p className="text-[11px] text-zinc-500 text-center">
+                                    Tip: Drag this window by its header. QR projection appears on Output/Projector.
+                                </p>
                             </div>
-                            <input
-                                type="range"
-                                min={70}
-                                max={220}
-                                step={5}
-                                value={Math.round((projectionScale || 1) * 100)}
-                                onChange={(e) => onSetProjectionScale((Number(e.target.value) || 100) / 100)}
-                                className="w-full accent-blue-500"
-                                data-no-drag
-                            />
                         </div>
+                    )}
+
+                    {activePanel === 'aether' && (
                         <div className="p-4 rounded-xl border border-zinc-800 bg-zinc-950/70 text-left space-y-3">
-                            <div className="text-[11px] font-black uppercase tracking-[0.18em] text-blue-300">
+                            <div className="text-[11px] font-black uppercase tracking-[0.18em] text-cyan-300">
                                 Aether / Switcher Integration (Phase 1)
                             </div>
                             <p className="text-[11px] text-zinc-400 leading-relaxed">
@@ -251,21 +296,24 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                                     </button>
                                 </div>
                             </div>
+                            <div className="p-3 rounded-lg border border-zinc-800 bg-black/40">
+                                <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">Recommended Browser Source Baseline</div>
+                                <div className="text-[11px] text-zinc-400 leading-relaxed">
+                                    1920x1080, 30 FPS, low buffering, browser-source audio disabled (unless intentionally required).
+                                </div>
+                            </div>
                             <a
                                 href={obsOutputUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 text-[11px] font-bold text-blue-300 hover:text-white"
+                                className="inline-flex items-center gap-2 text-[11px] font-bold text-cyan-300 hover:text-white"
                                 data-no-drag
                             >
                                 <ExternalLinkIcon className="w-3.5 h-3.5" />
                                 OPEN OUTPUT URL
                             </a>
                         </div>
-                        <p className="text-[11px] text-zinc-500">
-                            Tip: Drag this window by its header. QR projection appears on Output/Projector.
-                        </p>
-                    </div>
+                    )}
                 </div>
 
                 <div className="p-4 bg-zinc-950/50 text-center">
