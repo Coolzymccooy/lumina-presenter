@@ -289,44 +289,46 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm">
-      <div className="bg-zinc-950 border border-zinc-800 rounded-sm shadow-2xl w-full max-w-3xl flex flex-col max-h-[90vh]">
-        <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900">
+      <div className="bg-zinc-950 border border-zinc-800 rounded-sm shadow-2xl w-full max-w-6xl flex flex-col max-h-[92vh]">
+        <div className="sticky top-0 z-20 flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-900">
           <h2 className="text-sm font-bold text-zinc-100 uppercase tracking-widest">{slide ? 'Edit Slide' : 'Add New Slide'}</h2>
           <button onClick={onClose} className="text-zinc-500 hover:text-white px-2">ESC</button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          {/* Label Input */}
-          <div>
-            <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Label (Index)</label>
-            <input 
-              type="text" 
-              className="w-full bg-zinc-900 border border-zinc-700 rounded-sm px-3 py-2 text-white focus:border-blue-600 focus:outline-none placeholder-zinc-700 text-sm font-mono"
-              placeholder="VERSE 1"
-              value={label}
-              onChange={e => setLabel(e.target.value)}
-              maxLength={20}
-            />
-          </div>
+        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(22rem,0.8fr)] items-start">
+            <div className="space-y-5">
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Label (Index)</label>
+                <input 
+                  type="text" 
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded-sm px-3 py-2 text-white focus:border-blue-600 focus:outline-none placeholder-zinc-700 text-sm font-mono"
+                  placeholder="VERSE 1"
+                  value={label}
+                  onChange={e => setLabel(e.target.value)}
+                  maxLength={20}
+                />
+              </div>
 
-          {/* Content Input */}
-          <div>
-            <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Slide Content</label>
-            <textarea
-              className="w-full h-40 bg-zinc-900 border border-zinc-700 rounded-sm px-3 py-2 text-white focus:border-blue-600 focus:outline-none resize-none font-sans text-base leading-relaxed"
-              placeholder="..."
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              maxLength={1000} // Prevent crash via paste bomb
-            />
-            <div className="text-[9px] text-zinc-600 text-right mt-1">{content.length}/1000</div>
-          </div>
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Slide Content</label>
+                <textarea
+                  className="w-full h-40 min-h-[12rem] lg:h-[22rem] bg-zinc-900 border border-zinc-700 rounded-sm px-3 py-2 text-white focus:border-blue-600 focus:outline-none resize-none font-sans text-base leading-relaxed"
+                  placeholder="..."
+                  value={content}
+                  onChange={e => setContent(e.target.value)}
+                  maxLength={1000}
+                />
+                <div className="text-[9px] text-zinc-600 text-right mt-1">{content.length}/1000</div>
+              </div>
+            </div>
 
-          {/* Background Selection */}
-          <div>
-            <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Background Asset</label>
-            
-            <div className="flex flex-wrap gap-px mb-4 bg-zinc-800 border border-zinc-800 rounded-sm overflow-hidden p-px">
+            <div className="space-y-4 lg:sticky lg:top-4 self-start">
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-2">Background Asset</label>
+
+                <div className="sticky top-0 z-10 rounded-sm border border-zinc-800 bg-zinc-950/95 backdrop-blur-sm p-3 space-y-3">
+                  <div className="flex flex-wrap gap-px bg-zinc-800 border border-zinc-800 rounded-sm overflow-hidden p-px">
                 <button 
                   onClick={() => setActiveTab('image')}
                   className={`px-4 py-1.5 text-xs font-medium transition-colors flex-1 ${activeTab === 'image' ? 'bg-zinc-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800'}`}
@@ -345,66 +347,9 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
                 >
                   Color
                 </button>
-            </div>
+                  </div>
 
-            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 mb-3">
-              {activeTab === 'image' && DEFAULT_BACKGROUNDS.map((url, i) => (
-                <button 
-                  key={i}
-                  onClick={() => handleMediaSelect(url, 'image')}
-                  className={`aspect-video rounded-sm border-2 overflow-hidden bg-cover bg-center ${bgUrl === url ? 'border-blue-500 opacity-100' : 'border-transparent opacity-50 hover:opacity-100'}`}
-                  style={{ backgroundImage: `url(${url})` }}
-                />
-              ))}
-
-              {activeTab === 'video' && VIDEO_BACKGROUNDS.map((url, i) => (
-                 <button 
-                   key={i}
-                   onClick={() => handleMediaSelect(url, 'video')}
-                   className={`aspect-video rounded-sm border-2 overflow-hidden bg-black flex items-center justify-center ${bgUrl === url ? 'border-blue-500 opacity-100' : 'border-transparent opacity-50 hover:opacity-100'}`}
-                 >
-                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-500 text-[9px]">VIDEO {i+1}</div>
-                 </button>
-              ))}
-
-              {activeTab === 'color' && SOLID_COLORS.map((color, i) => (
-                 <button 
-                   key={i}
-                   onClick={() => handleMediaSelect(color, 'color')}
-                   className={`aspect-video rounded-sm border-2 overflow-hidden ${bgUrl === color ? 'border-blue-500' : 'border-transparent opacity-80 hover:opacity-100'}`}
-                   style={{ backgroundColor: color }}
-                 />
-              ))}
-            </div>
-
-            {activeTab === 'image' && (
-              <div className="mb-3 flex items-center justify-between gap-3 rounded-sm border border-zinc-800 bg-zinc-900/60 px-3 py-2">
-                <div>
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Image Fit</div>
-                  <div className="text-[10px] text-zinc-500">Use `FIT TO SCREEN` to keep the full image inside the slide frame.</div>
-                </div>
-                <div className="flex items-center gap-1 rounded-sm border border-zinc-800 bg-zinc-950 p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setMediaFit('cover')}
-                    className={`px-3 py-1 text-[10px] font-bold rounded-sm transition-colors ${mediaFit === 'cover' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                  >
-                    FILL FRAME
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMediaFit('contain')}
-                    data-testid="slide-editor-fit-to-screen"
-                    className={`px-3 py-1 text-[10px] font-bold rounded-sm transition-colors ${mediaFit === 'contain' ? 'bg-cyan-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                  >
-                    FIT TO SCREEN
-                  </button>
-                </div>
-              </div>
-            )}
-            
-            <div className="flex flex-col gap-2">
-                <div className="flex gap-2">
+                  <div className="space-y-2">
                     <div className="flex-1 relative">
                         <input 
                             type="text"
@@ -419,58 +364,99 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
                         )}
                     </div>
 
-                    <button 
-                      onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-2 text-xs font-bold rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 whitespace-nowrap"
-                      disabled={isUploading || isImportingPptx}
-                    >
-                      {isUploading ? 'SAVING...' : 'UPLOAD'}
-                    </button>
-                    <input 
-                      type="file" 
-                      ref={fileInputRef} 
-                      onChange={handleFileUpload} 
-                      className="hidden" 
-                      data-testid="slide-editor-upload-input"
-                      multiple
-                      accept="image/*,video/*"
-                    />
-                    <button 
-                      onClick={() => pptxVisualInputRef.current?.click()}
-                      className="px-3 py-2 text-xs font-bold rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 whitespace-nowrap"
-                      disabled={isUploading || isImportingPptx}
-                    >
-                      {isImportingPptx ? 'VIS...' : 'PPTX VIS'}
-                    </button>
-                    <input 
-                      type="file" 
-                      ref={pptxVisualInputRef}
-                      onChange={(event) => handlePowerPointImport(event, 'visual')}
-                      className="hidden" 
-                      accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint"
-                    />
-                    <button 
-                      onClick={() => pptxTextInputRef.current?.click()}
-                      className="px-3 py-2 text-xs font-bold rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 whitespace-nowrap"
-                      disabled={isUploading || isImportingPptx}
-                    >
-                      {isImportingPptx ? 'TXT...' : 'PPTX TXT'}
-                    </button>
-                    <input 
-                      type="file" 
-                      ref={pptxTextInputRef}
-                      onChange={(event) => handlePowerPointImport(event, 'text')}
-                      className="hidden" 
-                      accept=".pptx,.ppt,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint"
-                    />
-                    <button 
-                      onClick={clearBackground}
-                      className="px-3 py-2 text-xs font-bold rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border border-zinc-700"
-                      disabled={isImportingPptx}
-                    >
-                      CLR
-                    </button>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <button 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-3 py-2 text-xs font-bold rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 whitespace-nowrap"
+                        disabled={isUploading || isImportingPptx}
+                      >
+                        {isUploading ? 'SAVING...' : 'UPLOAD'}
+                      </button>
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleFileUpload} 
+                        className="hidden" 
+                        data-testid="slide-editor-upload-input"
+                        multiple
+                        accept="image/*,video/*"
+                      />
+                      <button 
+                        onClick={() => pptxVisualInputRef.current?.click()}
+                        className="px-3 py-2 text-xs font-bold rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 whitespace-nowrap"
+                        disabled={isUploading || isImportingPptx}
+                      >
+                        {isImportingPptx ? 'VIS...' : 'PPTX VIS'}
+                      </button>
+                      <input 
+                        type="file" 
+                        ref={pptxVisualInputRef}
+                        onChange={(event) => handlePowerPointImport(event, 'visual')}
+                        className="hidden" 
+                        accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint"
+                      />
+                      <button 
+                        onClick={() => pptxTextInputRef.current?.click()}
+                        className="px-3 py-2 text-xs font-bold rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 whitespace-nowrap"
+                        disabled={isUploading || isImportingPptx}
+                      >
+                        {isImportingPptx ? 'TXT...' : 'PPTX TXT'}
+                      </button>
+                      <input 
+                        type="file" 
+                        ref={pptxTextInputRef}
+                        onChange={(event) => handlePowerPointImport(event, 'text')}
+                        className="hidden" 
+                        accept=".pptx,.ppt,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint"
+                      />
+                      <button 
+                        onClick={clearBackground}
+                        className="px-3 py-2 text-xs font-bold rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-400 border border-zinc-700"
+                        disabled={isImportingPptx}
+                      >
+                        CLR
+                      </button>
+                    </div>
+                  </div>
+
+                  {activeTab === 'image' && (
+                    <div className="flex flex-col gap-3 rounded-sm border border-zinc-800 bg-zinc-900/60 px-3 py-2">
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Image Fit</div>
+                        <div className="text-[10px] text-zinc-500">Use `FIT TO SCREEN` to keep the full image inside the slide frame.</div>
+                      </div>
+                      <div className="flex items-center gap-1 rounded-sm border border-zinc-800 bg-zinc-950 p-0.5 self-start">
+                        <button
+                          type="button"
+                          onClick={() => setMediaFit('cover')}
+                          className={`px-3 py-1 text-[10px] font-bold rounded-sm transition-colors ${mediaFit === 'cover' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                        >
+                          FILL FRAME
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setMediaFit('contain')}
+                          data-testid="slide-editor-fit-to-screen"
+                          className={`px-3 py-1 text-[10px] font-bold rounded-sm transition-colors ${mediaFit === 'contain' ? 'bg-cyan-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                        >
+                          FIT TO SCREEN
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {previewUrl && (activeTab === 'image' || activeTab === 'video') && (
+                    <div className="aspect-video w-full max-w-xs rounded-sm border border-zinc-700 bg-black overflow-hidden relative">
+                         {activeTab === 'video' || (previewUrl.startsWith('blob:') && mediaType === 'video') ? (
+                             <video src={previewUrl} className="w-full h-full object-cover" muted />
+                         ) : (
+                             <div className={`w-full h-full bg-center bg-no-repeat ${mediaFit === 'contain' ? 'bg-contain bg-black' : 'bg-cover'}`} style={{ backgroundImage: `url(${previewUrl})` }} />
+                         )}
+                         <div className="absolute bottom-0 left-0 bg-black/70 text-white text-[8px] px-1">PREVIEW</div>
+                    </div>
+                  )}
                 </div>
+
                 {uploadError && (
                     <div className="text-[10px] text-red-400 bg-red-900/10 border border-red-900/30 p-2 rounded-sm font-mono">
                         Error: {uploadError}
@@ -486,27 +472,48 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
                         {pptxStatus}
                     </div>
                 )}
-                
-                {/* Visual Preview Box */}
-                {previewUrl && (activeTab === 'image' || activeTab === 'video') && (
-                    <div className="mt-2 aspect-video w-32 rounded-sm border border-zinc-700 bg-black overflow-hidden relative">
-                         {activeTab === 'video' || (previewUrl.startsWith('blob:') && mediaType === 'video') ? (
-                             <video src={previewUrl} className="w-full h-full object-cover" muted />
-                         ) : (
-                             <div className={`w-full h-full bg-center bg-no-repeat ${mediaFit === 'contain' ? 'bg-contain bg-black' : 'bg-cover'}`} style={{ backgroundImage: `url(${previewUrl})` }} />
-                         )}
-                         <div className="absolute bottom-0 left-0 bg-black/70 text-white text-[8px] px-1">PREVIEW</div>
-                    </div>
-                )}
+                <div className="rounded-sm border border-zinc-800 bg-zinc-950/60 p-3">
+                  <div className="max-h-72 overflow-y-auto custom-scrollbar">
+                    <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-4 gap-2">
+                      {activeTab === 'image' && DEFAULT_BACKGROUNDS.map((url, i) => (
+                        <button 
+                          key={i}
+                          onClick={() => handleMediaSelect(url, 'image')}
+                          className={`aspect-video rounded-sm border-2 overflow-hidden bg-cover bg-center ${bgUrl === url ? 'border-blue-500 opacity-100' : 'border-transparent opacity-50 hover:opacity-100'}`}
+                          style={{ backgroundImage: `url(${url})` }}
+                        />
+                      ))}
 
-                <div className="text-[9px] text-zinc-600 italic">
-                    Note: `PPTX VIS` retains original layout/background. `PPTX TXT` imports text for Lumina styling.
+                      {activeTab === 'video' && VIDEO_BACKGROUNDS.map((url, i) => (
+                         <button 
+                           key={i}
+                           onClick={() => handleMediaSelect(url, 'video')}
+                           className={`aspect-video rounded-sm border-2 overflow-hidden bg-black flex items-center justify-center ${bgUrl === url ? 'border-blue-500 opacity-100' : 'border-transparent opacity-50 hover:opacity-100'}`}
+                         >
+                            <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-500 text-[9px]">VIDEO {i+1}</div>
+                         </button>
+                      ))}
+
+                      {activeTab === 'color' && SOLID_COLORS.map((color, i) => (
+                         <button 
+                           key={i}
+                           onClick={() => handleMediaSelect(color, 'color')}
+                           className={`aspect-video rounded-sm border-2 overflow-hidden ${bgUrl === color ? 'border-blue-500' : 'border-transparent opacity-80 hover:opacity-100'}`}
+                           style={{ backgroundColor: color }}
+                         />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="mt-3 text-[9px] text-zinc-600 italic">
+                      Note: `PPTX VIS` retains original layout/background. `PPTX TXT` imports text for Lumina styling.
+                  </div>
                 </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-between items-center p-4 border-t border-zinc-800 bg-zinc-900">
+        <div className="sticky bottom-0 z-20 flex justify-between items-center p-4 border-t border-zinc-800 bg-zinc-900">
           <button 
             onClick={onClose}
             className="px-4 py-2 text-xs font-bold text-zinc-500 hover:text-white transition-colors"

@@ -12,7 +12,7 @@ const RELEASES_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases'
 const TRUSTED_DEV_ORIGINS = new Set(['http://localhost:5173', 'http://127.0.0.1:5173']);
 const MEDIA_PERMISSIONS = new Set(['media', 'microphone', 'camera']);
 
-// Content Security Policy — allows Firebase, Google APIs, and the Lumina API.
+// Content Security Policy â€” allows Firebase, Google APIs, and the Lumina API.
 const CSP = [
   "default-src 'self' blob: data:",
   "script-src 'self' 'wasm-unsafe-eval'",
@@ -114,7 +114,7 @@ function createWindow() {
     }
   });
 
-  // Apply CSP in production only — Vite dev server needs unsafe-inline for HMR.
+  // Apply CSP in production only â€” Vite dev server needs unsafe-inline for HMR.
   if (isProd) {
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       callback({
@@ -219,45 +219,39 @@ async function loadMainContent(mainWindow, isProd) {
     try {
       await mainWindow.loadURL(DEV_SERVER_URL);
       if (SHOULD_OPEN_DEVTOOLS) {
-        mainWindow.webContents.openDevTools();
+        mainWindow.webContents.openDevTools({ mode: 'detach' });
       }
       return;
     } catch (error) {
-      console.warn(`Dev URL failed (${DEV_SERVER_URL}); falling back to packaged dist.`, error);
+      console.warn('Dev server unavailable, falling back to dist build:', error);
     }
   }
 
-  if (fs.existsSync(DIST_INDEX_PATH)) {
-    await mainWindow.loadFile(DIST_INDEX_PATH);
-    return;
+  if (!fs.existsSync(DIST_INDEX_PATH)) {
+    throw new Error(`Renderer build not found at ${DIST_INDEX_PATH}`);
   }
-
-  throw new Error(`Renderer entry not found: ${DIST_INDEX_PATH}`);
+  await mainWindow.loadFile(DIST_INDEX_PATH);
 }
 
+// Best-effort update check. Works only in packaged builds with publish config.
 async function checkForUpdatesSafely() {
   try {
-    // `electron-updater` is CommonJS. In ESM mode, resolve from either shape.
-    const updaterModule = await import('electron-updater');
-    const updater =
-      updaterModule.autoUpdater ??
-      updaterModule.default?.autoUpdater ??
-      updaterModule.default;
-
-    if (updater?.checkForUpdatesAndNotify) {
-      await updater.checkForUpdatesAndNotify();
-    } else {
-      console.warn('Auto-update is unavailable: invalid electron-updater export shape.');
-    }
-  } catch (error) {
-    console.error('Auto-update initialization failed:', error);
+    const { autoUpdater } = await import('electron-updater');
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.on('error', (err) => console.warn('autoUpdater error:', err?.message || err));
+    autoUpdater.on('update-available', info => console.log('Update available:', info?.version || info));
+    autoUpdater.on('update-downloaded', info => console.log('Update downloaded:', info?.version || info));
+    await autoUpdater.checkForUpdates();
+  } catch (err) {
+    console.warn('Auto-update not available:', err?.message || err);
   }
 }
 
 app.whenReady().then(() => {
+  installApplicationMenu();
   installMediaPermissionHandlers();
   installClipboardHandlers();
-  installApplicationMenu();
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

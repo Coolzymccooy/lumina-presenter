@@ -4,6 +4,7 @@ import App from './App';
 import { RemoteControl } from './components/RemoteControl';
 import { OutputRoute } from './components/OutputRoute';
 import { StageRoute } from './components/StageRoute';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
 
 const rootElement = document.getElementById('root');
@@ -29,6 +30,8 @@ const isStageRoute = activeRoutePath.startsWith('/stage');
 
 root.render(
   <React.StrictMode>
-    {isOutputRoute ? <OutputRoute /> : isStageRoute ? <StageRoute /> : isRemoteRoute ? <RemoteControl /> : <App />}
+    <ErrorBoundary>
+      {isOutputRoute ? <OutputRoute /> : isStageRoute ? <StageRoute /> : isRemoteRoute ? <RemoteControl /> : <App />}
+    </ErrorBoundary>
   </React.StrictMode>
 );

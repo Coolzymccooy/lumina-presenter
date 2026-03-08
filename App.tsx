@@ -65,7 +65,7 @@ import {
 import { parsePptxFile } from './services/pptxImport';
 import { copyTextToClipboard } from './services/clipboardService';
 import { dispatchAetherBridgeEvent } from './services/aetherBridge';
-import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon, CheckIcon, XIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon
+import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon, CheckIcon, XIcon, PinIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon
 
 // --- CONSTANTS ---
 const STORAGE_KEY = 'lumina_session_v1';
@@ -73,7 +73,6 @@ const SETTINGS_KEY = 'lumina_workspace_settings_v1';
 const SETTINGS_UPDATED_AT_KEY = 'lumina_workspace_settings_updated_at_v1';
 const LIVE_STATE_QUEUE_KEY = 'lumina_live_state_queue_v1';
 const RUNSHEET_FILES_LOCAL_KEY_PREFIX = 'lumina_runsheet_files_local_v1';
-const PRESENTER_TOOLBAR_HINT_KEY = 'lumina_presenter_toolbar_hint_v1';
 const AETHER_TOKEN_KEY_PREFIX = 'lumina_aether_bridge_token_v1';
 const CLOUD_PLAYLIST_SUFFIX = 'default-playlist-v2';
 const SYNC_BACKOFF_BASE_MS = 5000;
@@ -622,6 +621,11 @@ function App() {
     const saved = initialSavedState;
     return saved?.viewMode || 'BUILDER';
   });
+  const [sidebarPinned, setSidebarPinned] = useState<boolean>(() => {
+    const saved = initialSavedState;
+    return !!saved?.sidebarPinned;
+  });
+  const [isSidebarHovering, setIsSidebarHovering] = useState(false);
 
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isSlideEditorOpen, setIsSlideEditorOpen] = useState(false);
@@ -794,63 +798,6 @@ function App() {
   const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
   const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
   const [presetDraft, setPresetDraft] = useState<SpeakerTimerPreset>(() => createSpeakerPresetDraft());
-  const presenterControlsRef = useRef<HTMLDivElement | null>(null);
-  const [presenterControlsHasOverflow, setPresenterControlsHasOverflow] = useState(false);
-  const [presenterControlsCanScrollLeft, setPresenterControlsCanScrollLeft] = useState(false);
-  const [presenterControlsCanScrollRight, setPresenterControlsCanScrollRight] = useState(false);
-  const [presenterControlsScrollPercent, setPresenterControlsScrollPercent] = useState(0);
-  const [presenterControlsShowHint, setPresenterControlsShowHint] = useState(false);
-  const [isPresenterControlsHelpOpen, setIsPresenterControlsHelpOpen] = useState(false);
-
-  const updatePresenterControlsScrollState = useCallback(() => {
-    const node = presenterControlsRef.current;
-    if (!node) {
-      setPresenterControlsHasOverflow(false);
-      setPresenterControlsCanScrollLeft(false);
-      setPresenterControlsCanScrollRight(false);
-      setPresenterControlsScrollPercent(0);
-      return;
-    }
-    const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
-    const hasOverflow = maxScrollLeft > 8;
-    const clampedLeft = clamp(node.scrollLeft, 0, maxScrollLeft);
-    const percent = hasOverflow && maxScrollLeft > 0 ? (clampedLeft / maxScrollLeft) * 100 : 0;
-    setPresenterControlsHasOverflow(hasOverflow);
-    setPresenterControlsCanScrollLeft(hasOverflow && clampedLeft > 4);
-    setPresenterControlsCanScrollRight(hasOverflow && clampedLeft < maxScrollLeft - 4);
-    setPresenterControlsScrollPercent(percent);
-  }, []);
-
-  const markPresenterControlsHintSeen = useCallback(() => {
-    try {
-      localStorage.setItem(PRESENTER_TOOLBAR_HINT_KEY, '1');
-    } catch {}
-  }, []);
-
-  const dismissPresenterControlsHint = useCallback(() => {
-    setPresenterControlsShowHint(false);
-    markPresenterControlsHintSeen();
-  }, [markPresenterControlsHintSeen]);
-
-  const openPresenterControlsHelp = useCallback(() => {
-    setIsPresenterControlsHelpOpen(true);
-    dismissPresenterControlsHint();
-  }, [dismissPresenterControlsHint]);
-
-  const scrollPresenterControlsBy = useCallback((delta: number) => {
-    const node = presenterControlsRef.current;
-    if (!node) return;
-    node.scrollBy({ left: delta, behavior: 'smooth' });
-  }, []);
-
-  const handlePresenterControlsSliderChange = useCallback((value: number) => {
-    const node = presenterControlsRef.current;
-    if (!node) return;
-    const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
-    node.scrollTo({ left: (maxScrollLeft * clamp(value, 0, 100)) / 100, behavior: 'auto' });
-    updatePresenterControlsScrollState();
-  }, [updatePresenterControlsScrollState]);
-
   // Handle Auto-Rotate Logic
   useEffect(() => {
     if (!audienceDisplay.autoRotate || audienceDisplay.queue.length === 0) return;
@@ -1667,6 +1614,7 @@ function App() {
         schedule,
         selectedItemId,
         viewMode,
+        sidebarPinned,
         activeItemId,
         activeSlideIndex,
         blackout,
@@ -1695,7 +1643,7 @@ function App() {
       }
     }, 180);
     return () => window.clearTimeout(id);
-  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, audienceQrProjection, stageAlert, stageMessageCenter, workspaceSettings, user]);
+  }, [schedule, selectedItemId, viewMode, sidebarPinned, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, audienceQrProjection, stageAlert, stageMessageCenter, workspaceSettings, user]);
 
   useEffect(() => {
     const safeWorkspaceId = String(workspaceId || '').trim();
@@ -1827,6 +1775,34 @@ function App() {
     || (!activeSlide.mediaType && activeItem?.theme.mediaType === 'video')
     || looksLikeVideoUrl(activeBackgroundUrl)
   );
+  const sidebarExpanded = sidebarPinned || isSidebarHovering;
+  const sidebarRailWidthClass = `${sidebarExpanded ? 'w-52' : 'w-12'} transition-[width] duration-200 ease-out`;
+  const sidebarLabelClass = `${sidebarExpanded ? 'opacity-100' : 'opacity-0'} transition-opacity whitespace-nowrap`;
+  const sidebarPanelWidthClass = isElectronShell
+    ? (viewMode === 'PRESENTER' && sidebarExpanded ? 'w-72 min-w-[18rem]' : 'w-80 min-w-[20rem]')
+    : 'w-[calc(100vw-3rem)] max-w-80 md:w-80';
+  const presenterQueueSlides = activeItem?.slides || [];
+  const presenterQueueActiveIndex = activeItem && activeItem.slides.length > 0
+    ? clamp(activeSlideIndex, 0, activeItem.slides.length - 1)
+    : -1;
+  const presenterQueueCompact = presenterQueueSlides.length > 10;
+  const presenterQueueWidthClass = presenterQueueCompact
+    ? (sidebarExpanded ? 'lg:w-80 xl:w-[22rem]' : 'lg:w-[22rem] xl:w-[24rem]')
+    : (sidebarExpanded ? 'lg:w-72' : 'lg:w-80');
+  const presenterQueueUpNext = useMemo(() => {
+    if (presenterQueueActiveIndex < 0) return [];
+    const upNextCount = presenterQueueCompact ? 3 : 4;
+    return presenterQueueSlides
+      .map((slide, idx) => ({ slide, idx }))
+      .filter((entry) => entry.idx > presenterQueueActiveIndex)
+      .slice(0, upNextCount);
+  }, [presenterQueueSlides, presenterQueueActiveIndex, presenterQueueCompact]);
+  const presenterQueueRemaining = useMemo(() => {
+    const excluded = new Set(presenterQueueUpNext.map((entry) => entry.slide.id));
+    return presenterQueueSlides
+      .map((slide, idx) => ({ slide, idx }))
+      .filter((entry) => entry.idx !== presenterQueueActiveIndex && !excluded.has(entry.slide.id));
+  }, [presenterQueueSlides, presenterQueueActiveIndex, presenterQueueUpNext]);
   const enabledTimerCues = useMemo(() => {
     return schedule
       .map((item, idx) => {
@@ -3799,56 +3775,6 @@ function App() {
   }, [timerRunning, timerSeconds, currentCueItemId]);
 
   useEffect(() => {
-    if (viewMode !== 'PRESENTER') return;
-    const node = presenterControlsRef.current;
-    if (!node) return;
-
-    const handleUpdate = () => updatePresenterControlsScrollState();
-    handleUpdate();
-    node.addEventListener('scroll', handleUpdate, { passive: true });
-    window.addEventListener('resize', handleUpdate);
-
-    let resizeObserver: ResizeObserver | null = null;
-    if (typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver(handleUpdate);
-      resizeObserver.observe(node);
-      if (node.firstElementChild instanceof HTMLElement) {
-        resizeObserver.observe(node.firstElementChild);
-      }
-    }
-
-    return () => {
-      node.removeEventListener('scroll', handleUpdate);
-      window.removeEventListener('resize', handleUpdate);
-      resizeObserver?.disconnect();
-    };
-  }, [viewMode, updatePresenterControlsScrollState]);
-
-  useEffect(() => {
-    if (viewMode !== 'PRESENTER') return;
-    updatePresenterControlsScrollState();
-  }, [
-    viewMode,
-    updatePresenterControlsScrollState,
-    enabledTimerCues.length,
-    selectedSpeakerPresetId,
-    timerMode,
-    routingMode,
-    blackout,
-    autoCueEnabled,
-    workspaceSettings.stageFlowLayout,
-    workspaceSettings.machineMode
-  ]);
-
-  useEffect(() => {
-    if (viewMode !== 'PRESENTER' || !presenterControlsHasOverflow) return;
-    try {
-      if (localStorage.getItem(PRESENTER_TOOLBAR_HINT_KEY)) return;
-    } catch {}
-    setPresenterControlsShowHint(true);
-  }, [viewMode, presenterControlsHasOverflow]);
-
-  useEffect(() => {
     if (!autoCueEnabled) return;
     if (viewMode !== 'PRESENTER') return;
     if (!activeItem) return;
@@ -3865,6 +3791,17 @@ function App() {
     }, 1000);
     return () => window.clearInterval(id);
   }, [autoCueEnabled, autoCueSeconds, viewMode, activeItemId, nextSlide, activeItem]);
+
+  useEffect(() => {
+    setIsSidebarHovering(false);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ left: 0, top: window.scrollY, behavior: 'auto' });
+    }
+    try {
+      document.documentElement.scrollLeft = 0;
+      document.body.scrollLeft = 0;
+    } catch {}
+  }, [viewMode, sidebarPinned]);
 
   // ✅ Launch Output handler (opens window synchronously from user gesture — popup-safe)
   const handleToggleOutput = () => {
@@ -4310,7 +4247,7 @@ function App() {
 
   // ROUTING: STUDIO (MAIN APP)
   return (
-    <div className={`theme-${workspaceSettings.theme} flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] bg-zinc-950 text-zinc-200 font-sans selection:bg-blue-900 selection:text-white relative`}>
+    <div className={`theme-${workspaceSettings.theme} flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] bg-zinc-950 text-zinc-200 font-sans selection:bg-blue-900 selection:text-white relative overflow-x-hidden`}>
       <audio ref={antiSleepAudioRef} src={SILENT_AUDIO_B64} loop muted />
       {saveError && <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-red-900/90 border border-red-500 text-white px-4 py-2 rounded-sm shadow-xl z-50 flex items-center gap-3 text-xs font-bold animate-pulse"><span>⚠ STORAGE FULL: Changes are NOT saving.</span><button onClick={() => setSaveError(false)} className="hover:text-zinc-300">✕</button></div>}
       {syncIssue && <div className="absolute top-24 right-4 z-50 max-w-md bg-amber-950/90 border border-amber-800 text-amber-200 px-3 py-2 rounded-sm text-[11px]"><span className="font-bold">SYNC WARNING:</span> {syncIssue}</div>}
@@ -4468,23 +4405,38 @@ function App() {
         </div>
       )}
 
-      <div className={`flex-1 flex overflow-hidden min-w-0 ${isElectronShell ? '' : 'mb-16 md:mb-0'}`}>
+      <div className={`flex-1 flex overflow-hidden min-w-0 overflow-x-hidden ${isElectronShell ? '' : 'mb-16 md:mb-0'}`}>
         {/* Sidebar with Tabs (Hidden on Mobile unless Builder Mode) */}
-        <div className={`group flex flex-col h-full bg-zinc-900/50 border-r border-zinc-800 shrink-0 overflow-hidden z-20 ${isElectronShell ? 'w-12' : 'w-12 hover:w-48 transition-all'}`}>
+        <div
+          className={`group flex flex-col h-full bg-zinc-900/50 border-r border-zinc-800 shrink-0 overflow-hidden z-20 ${sidebarRailWidthClass}`}
+          onMouseEnter={() => setIsSidebarHovering(true)}
+          onMouseLeave={() => setIsSidebarHovering(false)}
+        >
+          <div className="flex items-center justify-between p-1 border-b border-zinc-800/80">
+            <span className={`px-2 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 ${sidebarLabelClass}`}>Studio</span>
+            <button
+              onClick={() => setSidebarPinned((prev) => !prev)}
+              className={`h-9 w-9 shrink-0 rounded-sm border transition-colors flex items-center justify-center ${sidebarPinned ? 'border-blue-700 bg-blue-950/40 text-blue-300' : 'border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300'}`}
+              title={sidebarPinned ? 'Unpin navigation' : 'Pin navigation open'}
+              aria-label={sidebarPinned ? 'Unpin navigation' : 'Pin navigation open'}
+            >
+              <PinIcon className="w-4 h-4" />
+            </button>
+          </div>
           <div className="flex flex-col flex-1 p-1 gap-1">
-            <button onClick={() => setActiveSidebarTab('SCHEDULE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'SCHEDULE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="SCHEDULE"><MonitorIcon className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Schedule</span></button>
-            <button onClick={() => setActiveSidebarTab('FILES')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'FILES' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="RUN SHEET FILES"><CopyIcon className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Files</span></button>
-            <button onClick={() => setActiveSidebarTab('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIO MIXER"><Volume2Icon className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Audio Mixer</span></button>
-            <button onClick={() => setActiveSidebarTab('BIBLE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'BIBLE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="BIBLE LIBRARY"><BibleIcon className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Bible Hub</span></button>
-            <button onClick={() => setActiveSidebarTab('AUDIENCE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIENCE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIENCE STUDIO"><ChatIcon className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Audience</span></button>
+            <button onClick={() => setActiveSidebarTab('SCHEDULE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'SCHEDULE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="SCHEDULE"><MonitorIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Schedule</span></button>
+            <button onClick={() => setActiveSidebarTab('FILES')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'FILES' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="RUN SHEET FILES"><CopyIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Files</span></button>
+            <button onClick={() => setActiveSidebarTab('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIO MIXER"><Volume2Icon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audio Mixer</span></button>
+            <button onClick={() => setActiveSidebarTab('BIBLE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'BIBLE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="BIBLE LIBRARY"><BibleIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Bible Hub</span></button>
+            <button onClick={() => setActiveSidebarTab('AUDIENCE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIENCE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIENCE STUDIO"><ChatIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audience</span></button>
           </div>
           <div className="p-1 border-t border-zinc-800">
-            <button onClick={() => setIsProfileOpen(true)} className="w-full p-2.5 rounded-sm flex items-center gap-3 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors" title="SETTINGS"><Settings className="w-5 h-5 shrink-0" /><span className="text-xs font-bold tracking-tight uppercase opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Settings</span></button>
+            <button onClick={() => setIsProfileOpen(true)} className="w-full p-2.5 rounded-sm flex items-center gap-3 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors" title="SETTINGS"><Settings className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Settings</span></button>
           </div>
         </div>
 
         {/* SIDEBAR PANEL */}
-        <div className={`flex flex-col bg-zinc-950 border-r border-zinc-900 shrink-0 ${isElectronShell ? 'w-80 min-w-[20rem]' : 'w-[calc(100vw-3rem)] max-w-80 md:w-80'}`}>
+        <div className={`flex flex-col bg-zinc-950 border-r border-zinc-900 shrink-0 ${sidebarPanelWidthClass}`}>
           {activeSidebarTab === 'SCHEDULE' && (
             <>
               <div className="p-3 border-b border-zinc-900 flex items-center justify-between shrink-0">
@@ -4770,238 +4722,183 @@ function App() {
                     <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-500 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">PREVIEW <button onClick={() => setIsPreviewMuted(!isPreviewMuted)} className={`ml-2 hover:text-white transition-colors ${isPreviewMuted ? 'text-red-400' : 'text-green-400'}`}>{isPreviewMuted ? <VolumeXIcon className="w-3 h-3" /> : <Volume2Icon className="w-3 h-3" />}</button></div>
                   </div>
                 </div>
-                <div className="relative border-t border-zinc-800 bg-zinc-900">
-                  <div
-                    ref={presenterControlsRef}
-                    className="min-h-16 flex items-center px-3 md:px-6 gap-3 overflow-x-auto custom-scrollbar scroll-smooth"
-                  >
-                  <div className="flex items-center gap-2 shrink-0"><button onClick={prevSlide} className="h-12 w-14 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center border border-zinc-700 active:scale-95 transition-transform"><ArrowLeftIcon className="w-5 h-5" /></button><button onClick={nextSlide} className="h-12 w-28 rounded-sm bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-bold text-sm tracking-wide active:scale-95 transition-transform"><ArrowRightIcon className="w-5 h-5 mr-1" /> NEXT</button></div>
-                  {isActiveVideo && (<div className="flex items-center gap-2 bg-zinc-950 rounded-sm p-1 border border-zinc-800 shrink-0"><button onClick={() => triggerSeek(-10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><RewindIcon className="w-4 h-4" /></button><button onClick={() => setIsPlaying(!isPlaying)} className={`p-2.5 rounded-sm ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-green-900/50 text-green-400'}`}>{isPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4 fill-current" />}</button><button onClick={() => triggerSeek(10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><ForwardIcon className="w-4 h-4" /></button></div>)}
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button onClick={() => { if (routingMode !== 'PROJECTOR') setLowerThirdsEnabled((prev) => !prev); }} title={routingMode === 'PROJECTOR' ? 'Projector mode keeps full-screen text (lower thirds disabled).' : 'Toggle lower thirds overlay'} className={`h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border ${lowerThirdsEnabled ? 'bg-blue-950 text-blue-400 border-blue-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800'} ${routingMode === 'PROJECTOR' ? 'opacity-60 cursor-not-allowed' : ''}`}>LOWER THIRDS</button>
-                    <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} className="h-12 px-2 bg-zinc-950 border border-zinc-800 text-zinc-300 text-xs rounded-sm">
-                      <option value="PROJECTOR">Projector</option>
-                      <option value="STREAM">Stream</option>
-                      <option value="LOBBY">Lobby</option>
-                    </select>
-                    <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
-                      <select value={timerMode} onChange={(e) => {
-                        const mode = e.target.value as 'COUNTDOWN' | 'ELAPSED';
-                        setTimerMode(mode);
-                        setTimerRunning(false);
-                        setCueZeroHold(false);
-                        setTimerSeconds(mode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0);
-                      }} className="bg-transparent text-zinc-300 text-[10px]">
-                        <option value="COUNTDOWN">Countdown</option>
-                        <option value="ELAPSED">Elapsed</option>
-                      </select>
-                      {timerMode === 'COUNTDOWN' && (
-                        <input type="number" min={1} max={180} value={timerDurationMin} onChange={(e) => {
-                          applyManualCountdownMinutes(Number(e.target.value));
-                        }} className="w-14 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
+                <div className="border-t border-zinc-800 bg-zinc-950 px-3 py-3 md:px-6 space-y-3">
+                  <div className="rounded-sm border border-zinc-800 bg-zinc-900/70 p-3">
+                    <div className="mb-2 text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Transport</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button onClick={prevSlide} className="h-12 w-14 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center border border-zinc-700 active:scale-95 transition-transform"><ArrowLeftIcon className="w-5 h-5" /></button>
+                      <button onClick={nextSlide} className="h-12 min-w-[7rem] px-4 rounded-sm bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-bold text-sm tracking-wide active:scale-95 transition-transform"><ArrowRightIcon className="w-5 h-5 mr-1" /> NEXT</button>
+                      {isActiveVideo && (
+                        <div className="flex items-center gap-2 bg-zinc-950 rounded-sm p-1 border border-zinc-800">
+                          <button onClick={() => triggerSeek(-10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><RewindIcon className="w-4 h-4" /></button>
+                          <button onClick={() => setIsPlaying(!isPlaying)} className={`p-2.5 rounded-sm ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-green-900/50 text-green-400'}`}>{isPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4 fill-current" />}</button>
+                          <button onClick={() => triggerSeek(10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><ForwardIcon className="w-4 h-4" /></button>
+                        </div>
                       )}
-                      <div className={`text-[11px] font-mono w-14 text-center ${isTimerOvertime ? 'text-red-400 animate-pulse' : 'text-cyan-300'}`}>{formatTimer(timerSeconds)}</div>
-                      <button onClick={() => {
-                        setCueZeroHold(false);
-                        setTimerRunning((p) => !p);
-                      }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">{timerRunning ? 'Pause' : 'Start'}</button>
-                      <button onClick={() => {
-                        setTimerRunning(false);
-                        setCueZeroHold(false);
-                        setTimerSeconds(timerMode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0);
-                      }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">Reset</button>
-                    </div>
-                    <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
-                      <span className="text-[10px] text-zinc-400">Cue</span>
-                      <input
-                        type="number"
-                        min={2}
-                        max={120}
-                        value={autoCueSeconds}
-                        onChange={(e) => {
-                          const value = Math.max(2, Math.min(120, Number(e.target.value) || 2));
-                          setAutoCueSeconds(value);
-                          setAutoCueRemaining(value);
-                        }}
-                        className="w-12 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200"
-                        title="Auto-cue seconds for next slide"
-                      />
-                      <button
-                        onClick={() => setAutoCueEnabled((p) => !p)}
-                        className={`text-[10px] px-2 py-1 rounded ${autoCueEnabled ? 'bg-cyan-900/40 text-cyan-300' : 'bg-zinc-800 text-zinc-300'}`}
-                        title="Toggle auto-cue slide advance"
-                      >
-                        {autoCueEnabled ? `On ${autoCueRemaining}s` : 'Off'}
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12 max-w-[340px]">
-                      <span className="text-[10px] text-zinc-400">Preset</span>
-                      <select
-                        value={selectedSpeakerPresetId}
-                        onChange={(e) => setSelectedSpeakerPresetId(e.target.value)}
-                        className="bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200"
-                      >
-                        {(workspaceSettings.speakerTimerPresets || []).map((preset) => (
-                          <option key={preset.id} value={preset.id}>
-                            {preset.name}
-                          </option>
-                        ))}
+                      <button onClick={() => { if (routingMode !== 'PROJECTOR') setLowerThirdsEnabled((prev) => !prev); }} title={routingMode === 'PROJECTOR' ? 'Projector mode keeps full-screen text (lower thirds disabled).' : 'Toggle lower thirds overlay'} className={`h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border ${lowerThirdsEnabled ? 'bg-blue-950 text-blue-400 border-blue-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800'} ${routingMode === 'PROJECTOR' ? 'opacity-60 cursor-not-allowed' : ''}`}>LOWER THIRDS</button>
+                      <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} className="h-12 min-w-[8rem] px-2 bg-zinc-950 border border-zinc-800 text-zinc-300 text-xs rounded-sm">
+                        <option value="PROJECTOR">Projector</option>
+                        <option value="STREAM">Stream</option>
+                        <option value="LOBBY">Lobby</option>
                       </select>
-                      <button
-                        onClick={applySelectedPresetToCurrentCue}
-                        disabled={!selectedSpeakerPresetId || !(currentCueItemId || selectedItemId)}
-                        className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
-                      >
-                        Apply
-                      </button>
-                      <button
-                        onClick={openCreatePresetModal}
-                        className="text-[10px] px-2 py-1 bg-zinc-800 rounded"
-                      >
-                        Manage
-                      </button>
                     </div>
-                    <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12 max-w-[360px]">
-                      <span className="text-[10px] text-zinc-400">Rundown</span>
-                      <button
-                        onClick={() => moveCueByOffset(-1, { autoStart: false, goLiveItem: true })}
-                        disabled={!enabledTimerCues.length}
-                        className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
-                      >
-                        Prev
-                      </button>
-                      <button
-                        onClick={() => moveCueByOffset(1, { autoStart: false, goLiveItem: true })}
-                        disabled={!enabledTimerCues.length}
-                        className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
-                      >
-                        Next
-                      </button>
-                      <button
-                        onClick={() => currentCue && activateCueByItemId(currentCue.itemId, { autoStart: false, goLiveItem: true })}
-                        disabled={!currentCue}
-                        className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
-                      >
-                        Load
-                      </button>
-                      <div className="text-[10px] text-zinc-300 truncate">
-                        {currentCue
-                          ? `${currentCueIndex + 1}/${enabledTimerCues.length} ${currentCue.itemTitle}${currentCue.cue.autoStartNext ? ' (auto)' : ''}`
-                          : 'No timer cues enabled'}
+                  </div>
+                  <div className="rounded-sm border border-zinc-800 bg-zinc-900/70 p-3">
+                    <div className="mb-2 text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Timer + Cue</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
+                        <select value={timerMode} onChange={(e) => {
+                          const mode = e.target.value as 'COUNTDOWN' | 'ELAPSED';
+                          setTimerMode(mode);
+                          setTimerRunning(false);
+                          setCueZeroHold(false);
+                          setTimerSeconds(mode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0);
+                        }} className="bg-transparent text-zinc-300 text-[10px]">
+                          <option value="COUNTDOWN">Countdown</option>
+                          <option value="ELAPSED">Elapsed</option>
+                        </select>
+                        {timerMode === 'COUNTDOWN' && (
+                          <input type="number" min={1} max={180} value={timerDurationMin} onChange={(e) => {
+                            applyManualCountdownMinutes(Number(e.target.value));
+                          }} className="w-14 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
+                        )}
+                        <div className={`text-[11px] font-mono w-16 text-center ${isTimerOvertime ? 'text-red-400 animate-pulse' : 'text-cyan-300'}`}>{formatTimer(timerSeconds)}</div>
+                        <button onClick={() => {
+                          setCueZeroHold(false);
+                          setTimerRunning((p) => !p);
+                        }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">{timerRunning ? 'Pause' : 'Start'}</button>
+                        <button onClick={() => {
+                          setTimerRunning(false);
+                          setCueZeroHold(false);
+                          setTimerSeconds(timerMode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0);
+                        }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">Reset</button>
+                      </div>
+                      <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
+                        <span className="text-[10px] text-zinc-400">Cue</span>
+                        <input
+                          type="number"
+                          min={2}
+                          max={120}
+                          value={autoCueSeconds}
+                          onChange={(e) => {
+                            const value = Math.max(2, Math.min(120, Number(e.target.value) || 2));
+                            setAutoCueSeconds(value);
+                            setAutoCueRemaining(value);
+                          }}
+                          className="w-12 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200"
+                          title="Auto-cue seconds for next slide"
+                        />
+                        <button
+                          onClick={() => setAutoCueEnabled((p) => !p)}
+                          className={`text-[10px] px-2 py-1 rounded ${autoCueEnabled ? 'bg-cyan-900/40 text-cyan-300' : 'bg-zinc-800 text-zinc-300'}`}
+                          title="Toggle auto-cue slide advance"
+                        >
+                          {autoCueEnabled ? `On ${autoCueRemaining}s` : 'Off'}
+                        </button>
+                      </div>
+                      <div className="min-w-[10rem] rounded-sm border border-zinc-800 bg-zinc-950 px-3 py-2">
+                        <div className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">Current Cue</div>
+                        <div className="mt-1 text-[11px] text-zinc-200 truncate">
+                          {currentCue
+                            ? `${currentCueIndex + 1}/${enabledTimerCues.length} ${currentCue.itemTitle}${currentCue.cue.autoStartNext ? ' (auto)' : ''}`
+                            : 'No timer cues enabled'}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12 max-w-[260px]">
-                      <span className="text-[10px] text-zinc-400">Stage Grid</span>
-                      <select
-                        value={workspaceSettings.stageFlowLayout}
-                        onChange={(e) => {
-                          const next = e.target.value as StageFlowLayout;
-                          setWorkspaceSettings((prev) => ({
-                            ...prev,
-                            stageFlowLayout: VALID_STAGE_FLOW_LAYOUTS.includes(next) ? next : 'balanced',
-                          }));
-                        }}
-                        className="bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200"
-                        title="Stage display layout flow"
-                      >
-                        <option value="balanced">Balanced</option>
-                        <option value="speaker_focus">Speaker Focus</option>
-                        <option value="preview_focus">Preview Focus</option>
-                        <option value="minimal_next">Minimal Next</option>
-                      </select>
-                    </div>
-                    <button onClick={() => void copyShareUrl(obsOutputUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY OBS URL</button>
-                    <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY STAGE URL</button>
-                    <button onClick={() => setBlackout(!blackout)} className={`h-12 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button>
                   </div>
-                </div>
-                {presenterControlsHasOverflow && (
-                  <>
-                    <div className={`pointer-events-none absolute top-0 left-0 h-16 w-14 bg-gradient-to-r from-zinc-900 via-zinc-900/80 to-transparent transition-opacity ${presenterControlsCanScrollLeft ? 'opacity-100' : 'opacity-0'}`} />
-                    <div className={`pointer-events-none absolute top-0 right-0 h-16 w-14 bg-gradient-to-l from-zinc-900 via-zinc-900/80 to-transparent transition-opacity ${presenterControlsCanScrollRight ? 'opacity-100' : 'opacity-0'}`} />
-                    <button
-                      onClick={() => scrollPresenterControlsBy(-320)}
-                      disabled={!presenterControlsCanScrollLeft}
-                      className="absolute left-1 top-8 -translate-y-1/2 h-7 w-7 rounded-full border border-zinc-700 bg-zinc-950/90 text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed"
-                      title="Scroll controls left"
-                    >
-                      <ArrowLeftIcon className="w-4 h-4 mx-auto" />
-                    </button>
-                    <button
-                      onClick={() => scrollPresenterControlsBy(320)}
-                      disabled={!presenterControlsCanScrollRight}
-                      className="absolute right-1 top-8 -translate-y-1/2 h-7 w-7 rounded-full border border-zinc-700 bg-zinc-950/90 text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed"
-                      title="Scroll controls right"
-                    >
-                      <ArrowRightIcon className="w-4 h-4 mx-auto" />
-                    </button>
-                  </>
-                )}
-                {presenterControlsHasOverflow && (
-                  <div className="px-3 md:px-6 pb-2 border-t border-zinc-800/80 bg-zinc-950/70 flex items-center gap-2">
-                    <span className="text-[9px] uppercase tracking-[0.2em] text-zinc-400 font-bold shrink-0">Controls</span>
-                    <button
-                      onClick={() => scrollPresenterControlsBy(-320)}
-                      disabled={!presenterControlsCanScrollLeft}
-                      className="h-6 px-2 rounded border border-zinc-700 bg-zinc-900 text-zinc-300 text-[10px] font-bold disabled:opacity-35"
-                    >
-                      Left
-                    </button>
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={Math.round(presenterControlsScrollPercent)}
-                      onChange={(e) => handlePresenterControlsSliderChange(Number(e.target.value))}
-                      className="flex-1 accent-blue-500"
-                      aria-label="Presenter toolbar scroll position"
-                    />
-                    <button
-                      onClick={() => scrollPresenterControlsBy(320)}
-                      disabled={!presenterControlsCanScrollRight}
-                      className="h-6 px-2 rounded border border-zinc-700 bg-zinc-900 text-zinc-300 text-[10px] font-bold disabled:opacity-35"
-                    >
-                      Right
-                    </button>
-                    <button
-                      onClick={openPresenterControlsHelp}
-                      className="h-6 px-2 rounded border border-cyan-800 bg-cyan-950/30 text-cyan-200 text-[10px] font-bold"
-                      title="How to use toolbar slider"
-                    >
-                      How to scroll
-                    </button>
-                  </div>
-                )}
-                {presenterControlsShowHint && presenterControlsHasOverflow && (
-                  <div className="absolute bottom-full right-3 mb-2 z-20 max-w-xs rounded border border-blue-900 bg-blue-950/95 shadow-xl p-2">
-                    <div className="text-[9px] uppercase tracking-[0.2em] text-blue-300 font-bold">More controls available</div>
-                    <div className="mt-1 text-[10px] text-blue-100 leading-relaxed">
-                      This row scrolls sideways. Use the slider or arrows to reveal buttons like COPY OBS URL.
-                    </div>
-                    <div className="mt-2 flex items-center justify-end gap-2">
-                      <button
-                        onClick={openPresenterControlsHelp}
-                        className="px-2 py-1 rounded border border-blue-700 bg-blue-900/50 text-[10px] text-blue-100 font-bold"
-                      >
-                        Show help
-                      </button>
-                      <button
-                        onClick={dismissPresenterControlsHint}
-                        className="px-2 py-1 rounded border border-zinc-700 bg-zinc-900 text-[10px] text-zinc-200 font-bold"
-                      >
-                        Got it
-                      </button>
+                  <div className="rounded-sm border border-zinc-800 bg-zinc-900/70 p-3">
+                    <div className="mb-2 text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Rundown + Output</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
+                        <span className="text-[10px] text-zinc-400">Preset</span>
+                        <select
+                          value={selectedSpeakerPresetId}
+                          onChange={(e) => setSelectedSpeakerPresetId(e.target.value)}
+                          className="bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200"
+                        >
+                          {(workspaceSettings.speakerTimerPresets || []).map((preset) => (
+                            <option key={preset.id} value={preset.id}>
+                              {preset.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={applySelectedPresetToCurrentCue}
+                          disabled={!selectedSpeakerPresetId || !(currentCueItemId || selectedItemId)}
+                          className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
+                        >
+                          Apply
+                        </button>
+                        <button
+                          onClick={openCreatePresetModal}
+                          className="text-[10px] px-2 py-1 bg-zinc-800 rounded"
+                        >
+                          Manage
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
+                        <span className="text-[10px] text-zinc-400">Rundown</span>
+                        <button
+                          onClick={() => moveCueByOffset(-1, { autoStart: false, goLiveItem: true })}
+                          disabled={!enabledTimerCues.length}
+                          className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
+                        >
+                          Prev
+                        </button>
+                        <button
+                          onClick={() => moveCueByOffset(1, { autoStart: false, goLiveItem: true })}
+                          disabled={!enabledTimerCues.length}
+                          className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
+                        >
+                          Next
+                        </button>
+                        <button
+                          onClick={() => currentCue && activateCueByItemId(currentCue.itemId, { autoStart: false, goLiveItem: true })}
+                          disabled={!currentCue}
+                          className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
+                        >
+                          Load
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
+                        <span className="text-[10px] text-zinc-400">Stage Grid</span>
+                        <select
+                          value={workspaceSettings.stageFlowLayout}
+                          onChange={(e) => {
+                            const next = e.target.value as StageFlowLayout;
+                            setWorkspaceSettings((prev) => ({
+                              ...prev,
+                              stageFlowLayout: VALID_STAGE_FLOW_LAYOUTS.includes(next) ? next : 'balanced',
+                            }));
+                          }}
+                          className="bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200"
+                          title="Stage display layout flow"
+                        >
+                          <option value="balanced">Balanced</option>
+                          <option value="speaker_focus">Speaker Focus</option>
+                          <option value="preview_focus">Preview Focus</option>
+                          <option value="minimal_next">Minimal Next</option>
+                        </select>
+                      </div>
+                      <button onClick={() => void copyShareUrl(obsOutputUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY OBS URL</button>
+                      <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY STAGE URL</button>
+                      <button onClick={() => setBlackout(!blackout)} className={`h-12 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button>
                     </div>
                   </div>
-                )}
                 </div>
               </div>
-              <div className={`w-full lg:w-72 bg-zinc-950 border-l border-zinc-900 flex flex-col h-64 lg:h-auto border-t lg:border-t-0 ${workspaceSettings.machineMode ? 'hidden' : (isElectronShell ? 'flex' : 'hidden md:flex')}`}>
-                <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-500 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950"><span>Live Queue</span>{activeItem && <span className="text-red-500 animate-pulse">* LIVE</span>}</div>
+              <div className={`w-full ${presenterQueueWidthClass} bg-zinc-950 border-l border-zinc-900 flex flex-col h-72 lg:h-auto border-t lg:border-t-0 ${workspaceSettings.machineMode ? 'hidden' : (isElectronShell ? 'flex' : 'hidden md:flex')}`}>
+                <div className="sticky top-0 z-20 h-10 px-3 border-b border-zinc-900 font-bold text-zinc-500 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950">
+                  <span>Live Queue</span>
+                  <div className="flex items-center gap-2">
+                    {activeItem && <span className="text-zinc-600">{presenterQueueSlides.length} slides</span>}
+                    {activeItem && <span className="text-red-500 animate-pulse">* LIVE</span>}
+                  </div>
+                </div>
                 {enabledTimerCues.length > 0 && (
                   <div className="px-2 py-2 border-b border-zinc-900 bg-zinc-950/60">
                     <div className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold mb-1">Rundown Cues</div>
-                    <div className="flex gap-1 overflow-x-auto pb-1">
+                    <div className="flex gap-1 overflow-x-auto pb-1 custom-scrollbar">
                       {enabledTimerCues.map((cue, idx) => (
                         <button
                           key={cue.itemId}
@@ -5014,9 +4911,83 @@ function App() {
                     </div>
                   </div>
                 )}
-                <div className="flex-1 overflow-y-auto p-3 grid grid-cols-3 lg:grid-cols-2 gap-2 content-start scroll-smooth">
-                  {activeItem?.slides.map((slide, idx) => (<div key={slide.id} ref={activeSlideIndex === idx ? activeSlideRef : null} onClick={() => { setActiveSlideIndex(idx); setBlackout(false); setIsPlaying(true); }} className={`cursor-pointer rounded-sm overflow-hidden border transition-all relative aspect-video ${activeSlideIndex === idx ? 'ring-2 ring-red-500 border-red-500 opacity-100' : 'border-zinc-800 opacity-50 hover:opacity-80'}`}><div className="absolute inset-0 pointer-events-none"><SlideRenderer slide={slide} item={activeItem} fitContainer={true} isThumbnail={true} /></div><div className="absolute bottom-0 left-0 right-0 bg-black/80 text-zinc-300 text-[9px] px-1 py-0.5 font-mono truncate border-t border-zinc-800">{idx + 1}. {slide.label}</div></div>))}
-                  {!activeItem && <div className="col-span-3 lg:col-span-2 text-center text-zinc-700 text-xs font-mono py-10 uppercase">NO_ACTIVE_ITEM</div>}
+                <div className="flex-1 overflow-y-auto p-3 space-y-4 scroll-smooth custom-scrollbar">
+                  {activeItem && activeSlide ? (
+                    <>
+                      <div className="sticky top-0 z-10 bg-zinc-950 pb-3">
+                        <div className="mb-2 text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Live Now</div>
+                        <button
+                          ref={activeSlideRef}
+                          onClick={() => { setActiveSlideIndex(presenterQueueActiveIndex); setBlackout(false); setIsPlaying(true); }}
+                          className="w-full text-left rounded-sm overflow-hidden border border-red-500 ring-1 ring-red-500/60 bg-zinc-900 shadow-lg shadow-red-950/20"
+                        >
+                          <div className="relative aspect-video">
+                            <div className="absolute inset-0 pointer-events-none">
+                              <SlideRenderer slide={activeSlide} item={activeItem} fitContainer={true} isThumbnail={true} />
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 px-2 py-1.5 border-t border-zinc-800 bg-black/80">
+                            <span className="truncate text-[10px] font-mono text-zinc-100">{presenterQueueActiveIndex + 1}. {activeSlide.label || `Slide ${presenterQueueActiveIndex + 1}`}</span>
+                            <span className="text-[9px] uppercase tracking-widest text-red-400 font-bold shrink-0">LIVE</span>
+                          </div>
+                        </button>
+                      </div>
+                      {presenterQueueUpNext.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Up Next</div>
+                          <div className="space-y-2">
+                            {presenterQueueUpNext.map(({ slide, idx }) => (
+                              <button
+                                key={slide.id}
+                                onClick={() => { setActiveSlideIndex(idx); setBlackout(false); setIsPlaying(true); }}
+                                className="w-full text-left rounded-sm overflow-hidden border border-zinc-800 hover:border-zinc-600 bg-zinc-900/60 transition-colors"
+                              >
+                                <div className="relative aspect-video">
+                                  <div className="absolute inset-0 pointer-events-none">
+                                    <SlideRenderer slide={slide} item={activeItem} fitContainer={true} isThumbnail={true} />
+                                  </div>
+                                </div>
+                                <div className="px-2 py-1.5 border-t border-zinc-800 bg-black/75">
+                                  <div className="truncate text-[10px] font-mono text-zinc-200">{idx + 1}. {slide.label || `Slide ${idx + 1}`}</div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">More In Queue</div>
+                        <div className={`space-y-2 pr-1 custom-scrollbar ${presenterQueueCompact ? 'max-h-[40vh] overflow-y-auto' : ''}`}>
+                          {presenterQueueRemaining.map(({ slide, idx }) => (
+                            <button
+                              key={slide.id}
+                              onClick={() => { setActiveSlideIndex(idx); setBlackout(false); setIsPlaying(true); }}
+                              className="w-full text-left rounded-sm border border-zinc-800 hover:border-zinc-600 bg-zinc-900/40 transition-colors overflow-hidden"
+                            >
+                              <div className="grid grid-cols-[5.75rem_minmax(0,1fr)] items-stretch">
+                                <div className="relative aspect-video border-r border-zinc-800">
+                                  <div className="absolute inset-0 pointer-events-none">
+                                    <SlideRenderer slide={slide} item={activeItem} fitContainer={true} isThumbnail={true} />
+                                  </div>
+                                </div>
+                                <div className="p-2 min-w-0">
+                                  <div className="truncate text-[10px] font-mono text-zinc-200">{idx + 1}. {slide.label || `Slide ${idx + 1}`}</div>
+                                  <div className="mt-1 text-[10px] text-zinc-500 truncate">{slide.content || activeItem.title}</div>
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                          {presenterQueueRemaining.length === 0 && (
+                            <div className="rounded-sm border border-dashed border-zinc-800 px-3 py-4 text-center text-[10px] uppercase tracking-widest text-zinc-600">
+                              Queue clear after live slide
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center text-zinc-700 text-xs font-mono py-10 uppercase">NO_ACTIVE_ITEM</div>
+                  )}
                 </div>
               </div>
             </div>
@@ -5262,47 +5233,6 @@ function App() {
       )}
 
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
-      {isPresenterControlsHelpOpen && (
-        <div className="fixed inset-0 z-[110] bg-black/70 backdrop-blur-sm p-4 flex items-center justify-center">
-          <div className="w-full max-w-lg rounded-xl border border-zinc-700 bg-zinc-950 shadow-2xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-zinc-100">Presenter Control Slider Help</h3>
-              <button
-                onClick={() => {
-                  setIsPresenterControlsHelpOpen(false);
-                  markPresenterControlsHintSeen();
-                }}
-                className="px-2 py-1 rounded border border-zinc-700 bg-zinc-900 text-zinc-300 text-[11px] font-bold"
-              >
-                Close
-              </button>
-            </div>
-            <div className="p-4 space-y-3 text-[12px] leading-relaxed text-zinc-300">
-              <p>
-                The bottom presenter row is horizontally scrollable. Some actions are to the far right, including
-                <span className="font-bold text-zinc-100"> COPY OBS URL</span>, <span className="font-bold text-zinc-100">COPY STAGE URL</span>, and <span className="font-bold text-zinc-100">BLACKOUT</span>.
-              </p>
-              <p>Use any of these methods:</p>
-              <ul className="list-disc pl-5 space-y-1">
-                <li>Click the left/right arrow buttons beside the toolbar.</li>
-                <li>Drag the Controls slider under the toolbar.</li>
-                <li>On trackpad/mouse, scroll horizontally (Shift + mouse wheel also works).</li>
-              </ul>
-            </div>
-            <div className="px-4 py-3 border-t border-zinc-800 flex justify-end">
-              <button
-                onClick={() => {
-                  setIsPresenterControlsHelpOpen(false);
-                  markPresenterControlsHintSeen();
-                }}
-                className="px-3 py-1.5 rounded border border-blue-700 bg-blue-900/40 text-blue-100 text-[11px] font-bold"
-              >
-                Understood
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       <ConnectModal
         isOpen={isConnectOpen}
         onClose={() => setIsConnectOpen(false)}
@@ -5367,3 +5297,4 @@ function App() {
 }
 
 export default App;
+
