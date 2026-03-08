@@ -1,5 +1,6 @@
 import type { GeneratedSlideData } from "../types";
 import { getServerApiBaseCandidates, getServerApiBaseUrl } from "./serverApi";
+import { getCachedSemanticReference, normalizeBibleReference, setCachedSemanticReference } from "./bibleLookup";
 
 type AiJson = {
   ok?: boolean;
@@ -220,16 +221,22 @@ export const semanticBibleSearch = async (query: string): Promise<string> => {
   const sanitizedQuery = String(query || "").trim();
   if (!sanitizedQuery) return "Psalm 23:1-4";
 
+  const exactReference = normalizeBibleReference(sanitizedQuery);
+  if (exactReference) return exactReference;
+
+  const cachedReference = getCachedSemanticReference(sanitizedQuery);
+  if (cachedReference) return cachedReference;
+
   const response = await postAi("/api/ai/semantic-bible-search", { query: sanitizedQuery }, 20000);
   const reference = extractBibleReference(response?.reference);
   const looksLikeDefaultJohn = reference ? JOHN_316_PATTERN.test(reference) : false;
   const userAskedForJohn316 = /john\s*3:16|for god so loved|eternal life|believe/i.test(sanitizedQuery);
 
-  if (response?.ok && reference && (!looksLikeDefaultJohn || userAskedForJohn316)) {
-    return reference;
-  }
-
-  return inferSemanticFallbackReference(sanitizedQuery);
+  const resolved = response?.ok && reference && (!looksLikeDefaultJohn || userAskedForJohn316)
+    ? reference
+    : inferSemanticFallbackReference(sanitizedQuery);
+  setCachedSemanticReference(sanitizedQuery, resolved);
+  return resolved;
 };
 
 export const generateVisionaryBackdrop = async (verseText: string): Promise<string | null> => {

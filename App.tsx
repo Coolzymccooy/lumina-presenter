@@ -64,7 +64,7 @@ import {
 import { parsePptxFile } from './services/pptxImport';
 import { copyTextToClipboard } from './services/clipboardService';
 import { dispatchAetherBridgeEvent } from './services/aetherBridge';
-import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon
+import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon, CheckIcon, XIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon
 
 // --- CONSTANTS ---
 const STORAGE_KEY = 'lumina_session_v1';
@@ -223,8 +223,7 @@ const looksLikeVideoUrl = (url: string): boolean => {
   return normalized.endsWith('.mp4')
     || normalized.endsWith('.webm')
     || normalized.endsWith('.mov')
-    || normalized.includes('/video/')
-    || normalized.startsWith('blob:');
+    || normalized.includes('/video/');
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
@@ -682,6 +681,8 @@ function App() {
   const [autoCueSeconds, setAutoCueSeconds] = useState(7);
   const [autoCueRemaining, setAutoCueRemaining] = useState(7);
   const [editingSlide, setEditingSlide] = useState<Slide | null>(null);
+  const [inlineSlideRename, setInlineSlideRename] = useState<{ itemId: string; slideId: string; value: string } | null>(null);
+  const inlineSlideRenameInputRef = useRef<HTMLInputElement | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
   const [isStageDisplayLive, setIsStageDisplayLive] = useState(false);
   const [lowerThirdsEnabled, setLowerThirdsEnabled] = useState(false);
@@ -753,6 +754,12 @@ function App() {
   const [runSheetFilesError, setRunSheetFilesError] = useState<string | null>(null);
   const [runSheetFileQuery, setRunSheetFileQuery] = useState('');
   const [runSheetArchiveTitle, setRunSheetArchiveTitle] = useState('');
+  const [draggedScheduleItemId, setDraggedScheduleItemId] = useState<string | null>(null);
+  const [scheduleDropIndicator, setScheduleDropIndicator] = useState<{ itemId: string; after: boolean } | null>(null);
+  const [draggedRunSheetSlide, setDraggedRunSheetSlide] = useState<{ itemId: string; slideId: string } | null>(null);
+  const [runSheetSlideDropIndicator, setRunSheetSlideDropIndicator] = useState<{ itemId: string; slideId: string; after: boolean } | null>(null);
+  const [draggedSelectedSlideId, setDraggedSelectedSlideId] = useState<string | null>(null);
+  const [selectedSlideDropIndicator, setSelectedSlideDropIndicator] = useState<{ slideId: string; after: boolean } | null>(null);
   const [selectedSpeakerPresetId, setSelectedSpeakerPresetId] = useState('');
   const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
   const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
@@ -2997,6 +3004,38 @@ function App() {
     setSchedule(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
   };
 
+  const reorderScheduleItems = useCallback((sourceId: string, targetId: string, placeAfter = false) => {
+    if (!sourceId || !targetId || sourceId === targetId) return;
+    const sourceIndex = schedule.findIndex((entry) => entry.id === sourceId);
+    const targetIndex = schedule.findIndex((entry) => entry.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    let nextIndex = targetIndex + (placeAfter ? 1 : 0);
+    if (sourceIndex < nextIndex) nextIndex -= 1;
+    if (sourceIndex === nextIndex) return;
+
+    pushHistory();
+    setSchedule((prev) => {
+      const next = [...prev];
+      const currentSourceIndex = next.findIndex((entry) => entry.id === sourceId);
+      if (currentSourceIndex < 0) return prev;
+      const [moved] = next.splice(currentSourceIndex, 1);
+      const boundedIndex = Math.max(0, Math.min(next.length, nextIndex));
+      next.splice(boundedIndex, 0, moved);
+      return next;
+    });
+  }, [schedule]);
+
+  const moveScheduleItemByOffset = useCallback((itemId: string, offset: number) => {
+    const currentIndex = schedule.findIndex((entry) => entry.id === itemId);
+    if (currentIndex < 0) return;
+    const nextIndex = clamp(currentIndex + offset, 0, schedule.length - 1);
+    if (currentIndex === nextIndex) return;
+    const target = schedule[nextIndex];
+    if (!target) return;
+    reorderScheduleItems(itemId, target.id, offset > 0);
+  }, [reorderScheduleItems, schedule]);
+
   const removeItem = (id: string) => {
     pushHistory();
     logActivity(user?.uid, 'DELETE_ITEM', { itemId: id });
@@ -3199,6 +3238,78 @@ function App() {
     const newSlides = selectedItem.slides.filter(s => s.id !== slideId);
     updateItem({ ...selectedItem, slides: newSlides });
   };
+
+  const reorderItemSlides = useCallback((itemId: string, sourceId: string, targetId: string, placeAfter = false) => {
+    if (!itemId || !sourceId || !targetId || sourceId === targetId) return;
+    const targetItem = schedule.find((entry) => entry.id === itemId);
+    if (!targetItem) return;
+    const sourceIndex = targetItem.slides.findIndex((entry) => entry.id === sourceId);
+    const targetIndex = targetItem.slides.findIndex((entry) => entry.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    let nextIndex = targetIndex + (placeAfter ? 1 : 0);
+    if (sourceIndex < nextIndex) nextIndex -= 1;
+    if (sourceIndex === nextIndex) return;
+
+    const nextSlides = [...targetItem.slides];
+    const [moved] = nextSlides.splice(sourceIndex, 1);
+    nextSlides.splice(Math.max(0, Math.min(nextSlides.length, nextIndex)), 0, moved);
+    updateItem({ ...targetItem, slides: nextSlides });
+  }, [schedule, updateItem]);
+
+  const reorderSelectedItemSlides = useCallback((sourceId: string, targetId: string, placeAfter = false) => {
+    if (!selectedItem) return;
+    reorderItemSlides(selectedItem.id, sourceId, targetId, placeAfter);
+  }, [selectedItem, reorderItemSlides]);
+
+  const moveSlideWithinItem = useCallback((itemId: string, slideId: string, offset: number) => {
+    const targetItem = schedule.find((entry) => entry.id === itemId);
+    if (!targetItem) return;
+    const currentIndex = targetItem.slides.findIndex((entry) => entry.id === slideId);
+    if (currentIndex < 0) return;
+    const nextIndex = clamp(currentIndex + offset, 0, targetItem.slides.length - 1);
+    if (currentIndex === nextIndex) return;
+    const targetSlide = targetItem.slides[nextIndex];
+    if (!targetSlide) return;
+    reorderItemSlides(itemId, slideId, targetSlide.id, offset > 0);
+  }, [schedule, reorderItemSlides]);
+
+  const startSlideLabelRename = useCallback((itemId: string, slideId: string, currentLabel: string) => {
+    setInlineSlideRename({
+      itemId,
+      slideId,
+      value: currentLabel.trim() || 'Slide',
+    });
+  }, []);
+
+  const handleRenameSlideLabel = useCallback((itemId: string, slideId: string, nextLabel: string) => {
+    const targetItem = schedule.find((entry) => entry.id === itemId);
+    if (!targetItem) return;
+    const targetSlide = targetItem.slides.find((entry) => entry.id === slideId);
+    if (!targetSlide) return;
+    const trimmed = String(nextLabel || '').trim();
+    setInlineSlideRename(null);
+    if (!trimmed) return;
+    updateItem({
+      ...targetItem,
+      slides: targetItem.slides.map((entry) => (
+        entry.id === slideId
+          ? { ...entry, label: trimmed }
+          : entry
+      )),
+    });
+  }, [schedule, updateItem]);
+
+  useEffect(() => {
+    if (!inlineSlideRename) return;
+    const focusHandle = window.setTimeout(() => {
+      const input = inlineSlideRenameInputRef.current;
+      if (!input) return;
+      input.focus();
+      input.select();
+    }, 0);
+    return () => window.clearTimeout(focusHandle);
+  }, [inlineSlideRename]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -3797,6 +3908,7 @@ function App() {
             isMuted={outputMuted}
             isProjector={true}
             lowerThirds={routingMode !== 'PROJECTOR'}
+            showSlideLabel={false}
             audienceOverlay={audienceDisplay}
             projectedAudienceQr={audienceQrProjection}
           />
@@ -3864,16 +3976,54 @@ function App() {
       {teamPlaylists.length > 0 && (<div className="px-3 py-2 text-[10px] text-emerald-400 border-b border-zinc-900">Cloud Playlists Synced: {teamPlaylists.length}</div>)}
       {schedule.map((item, idx) => (
         <div key={item.id} className="flex flex-col border-b border-zinc-900">
-          <div onClick={() => {
-            setSelectedItemId(item.id);
-            if (viewMode === 'PRESENTER') {
-              setBlackout(false);
-              if (Array.isArray(item.slides) && item.slides.length > 0) {
-                const currentIdx = activeItemId === item.id && activeSlideIndex >= 0 ? activeSlideIndex : 0;
-                goLive(item, currentIdx);
+          <div
+            draggable={viewMode === 'BUILDER'}
+            onDragStart={(e) => {
+              if (viewMode !== 'BUILDER') return;
+              setDraggedScheduleItemId(item.id);
+              setScheduleDropIndicator({ itemId: item.id, after: false });
+              e.dataTransfer.effectAllowed = 'move';
+              e.dataTransfer.setData('text/plain', item.id);
+            }}
+            onDragEnd={() => {
+              setDraggedScheduleItemId(null);
+              setScheduleDropIndicator(null);
+            }}
+            onDragOver={(e) => {
+              if (viewMode !== 'BUILDER' || !draggedScheduleItemId) return;
+              e.preventDefault();
+              const rect = e.currentTarget.getBoundingClientRect();
+              setScheduleDropIndicator({
+                itemId: item.id,
+                after: e.clientY > (rect.top + rect.height / 2),
+              });
+            }}
+            onDrop={(e) => {
+              if (viewMode !== 'BUILDER' || !draggedScheduleItemId) return;
+              e.preventDefault();
+              const rect = e.currentTarget.getBoundingClientRect();
+              reorderScheduleItems(draggedScheduleItemId, item.id, e.clientY > (rect.top + rect.height / 2));
+              setDraggedScheduleItemId(null);
+              setScheduleDropIndicator(null);
+            }}
+            onClick={() => {
+              setSelectedItemId(item.id);
+              if (viewMode === 'PRESENTER') {
+                setBlackout(false);
+                if (Array.isArray(item.slides) && item.slides.length > 0) {
+                  const currentIdx = activeItemId === item.id && activeSlideIndex >= 0 ? activeSlideIndex : 0;
+                  goLive(item, currentIdx);
+                }
               }
-            }
-          }} className={`px-3 py-3 cursor-pointer flex items-center justify-between group transition-colors ${selectedItemId === item.id ? 'bg-zinc-900 border-l-2 border-l-blue-600' : 'hover:bg-zinc-900/50 border-l-2 border-l-transparent'} ${activeItemId === item.id ? 'bg-red-950/20' : ''}`}>
+            }}
+            className={`px-3 py-3 cursor-pointer flex items-center justify-between group transition-colors border-l-2 ${
+              selectedItemId === item.id ? 'bg-zinc-900 border-l-blue-600' : 'hover:bg-zinc-900/50 border-l-transparent'
+            } ${activeItemId === item.id ? 'bg-red-950/20' : ''} ${
+              scheduleDropIndicator?.itemId === item.id && draggedScheduleItemId && draggedScheduleItemId !== item.id
+                ? (scheduleDropIndicator.after ? 'border-b-2 border-b-blue-500' : 'border-t-2 border-t-blue-500')
+                : ''
+            }`}
+          >
             <div className="flex flex-col truncate flex-1 min-w-0 pr-2">
               <span className={`font-medium text-sm truncate ${activeItemId === item.id ? 'text-red-500' : 'text-zinc-300'}`}>{item.title}</span>
               <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mt-1 flex items-center gap-1">{item.type}</span>
@@ -3882,6 +4032,30 @@ function App() {
               {activeItemId === item.id && <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse mr-2"></div>}
               {viewMode === 'BUILDER' ? (
                 <>
+                  <span
+                    className={`px-1.5 py-1 text-[9px] font-bold border rounded-sm ${
+                      draggedScheduleItemId === item.id ? 'border-blue-500 text-blue-300 bg-blue-950/20' : 'border-zinc-800 text-zinc-500'
+                    }`}
+                    title="Drag to reorder"
+                  >
+                    DRAG
+                  </span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); moveScheduleItemByOffset(item.id, -1); }}
+                    disabled={idx === 0}
+                    className="px-1.5 py-1 text-[9px] font-bold border border-zinc-800 rounded-sm text-zinc-400 disabled:opacity-25 hover:text-white"
+                    title="Move up"
+                  >
+                    UP
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); moveScheduleItemByOffset(item.id, 1); }}
+                    disabled={idx === schedule.length - 1}
+                    className="px-1.5 py-1 text-[9px] font-bold border border-zinc-800 rounded-sm text-zinc-400 disabled:opacity-25 hover:text-white"
+                    title="Move down"
+                  >
+                    DN
+                  </button>
                   <button
                     onClick={(e) => { e.stopPropagation(); void handleArchiveSingleRunSheetItem(item.id); }}
                     className="p-1 hover:text-blue-300 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -3899,8 +4073,161 @@ function App() {
           {selectedItemId === item.id && item.slides.length > 0 && (
             <div className="bg-zinc-950 border-b border-zinc-900">
               {item.slides.map((slide, sIdx) => (
-                <div key={slide.id} className={`pl-8 pr-3 py-2 text-xs text-zinc-500 hover:text-zinc-200 cursor-pointer border-l-2 ${activeItemId === item.id && activeSlideIndex === sIdx ? 'text-red-400 font-bold border-l-red-600 bg-red-950/10' : 'border-l-transparent hover:bg-zinc-900/30'}`} onClick={(e) => { e.stopPropagation(); if (viewMode === 'PRESENTER') goLive(item, sIdx); }}>
-                  <div className="flex justify-between items-center"><span className="truncate flex-1 font-mono text-[10px] opacity-80">{slide.label || `SLIDE ${sIdx + 1}`}</span>{activeItemId === item.id && activeSlideIndex === sIdx && <span className="text-[9px] uppercase tracking-widest text-red-600 font-bold">LIVE</span>}</div>
+                <div
+                  key={slide.id}
+                  draggable={viewMode === 'BUILDER' && selectedItemId === item.id}
+                  onDragStart={(e) => {
+                    if (viewMode !== 'BUILDER' || selectedItemId !== item.id) return;
+                    setDraggedRunSheetSlide({ itemId: item.id, slideId: slide.id });
+                    setRunSheetSlideDropIndicator({ itemId: item.id, slideId: slide.id, after: false });
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', slide.id);
+                  }}
+                  onDragEnd={() => {
+                    setDraggedRunSheetSlide(null);
+                    setRunSheetSlideDropIndicator(null);
+                  }}
+                  onDragOver={(e) => {
+                    if (viewMode !== 'BUILDER' || !draggedRunSheetSlide || draggedRunSheetSlide.itemId !== item.id) return;
+                    e.preventDefault();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setRunSheetSlideDropIndicator({
+                      itemId: item.id,
+                      slideId: slide.id,
+                      after: e.clientY > (rect.top + rect.height / 2),
+                    });
+                  }}
+                  onDrop={(e) => {
+                    if (viewMode !== 'BUILDER' || !draggedRunSheetSlide || draggedRunSheetSlide.itemId !== item.id) return;
+                    e.preventDefault();
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    reorderItemSlides(item.id, draggedRunSheetSlide.slideId, slide.id, e.clientY > (rect.top + rect.height / 2));
+                    setDraggedRunSheetSlide(null);
+                    setRunSheetSlideDropIndicator(null);
+                  }}
+                  className={`pl-8 pr-3 py-2 text-xs text-zinc-500 hover:text-zinc-200 cursor-pointer border-l-2 ${activeItemId === item.id && activeSlideIndex === sIdx ? 'text-red-400 font-bold border-l-red-600 bg-red-950/10' : 'border-l-transparent hover:bg-zinc-900/30'} ${
+                    runSheetSlideDropIndicator?.itemId === item.id && runSheetSlideDropIndicator.slideId === slide.id && draggedRunSheetSlide && draggedRunSheetSlide.slideId !== slide.id
+                      ? (runSheetSlideDropIndicator.after ? 'border-b-2 border-b-blue-500' : 'border-t-2 border-t-blue-500')
+                      : ''
+                  }`}
+                  onClick={(e) => { e.stopPropagation(); if (viewMode === 'PRESENTER') goLive(item, sIdx); }}
+                >
+                  <div className="flex justify-between items-center gap-2">
+                      {inlineSlideRename?.itemId === item.id && inlineSlideRename.slideId === slide.id ? (
+                      <div className="flex flex-1 items-center gap-1">
+                        <input
+                          ref={inlineSlideRenameInputRef}
+                          autoFocus
+                          type="text"
+                          value={inlineSlideRename.value}
+                          onMouseDown={(e) => { e.stopPropagation(); }}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                          onChange={(e) => {
+                            const nextValue = e.target.value;
+                            setInlineSlideRename((current) => (
+                              current && current.itemId === item.id && current.slideId === slide.id
+                                ? { ...current, value: nextValue }
+                                : current
+                            ));
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleRenameSlideLabel(item.id, slide.id, inlineSlideRename.value);
+                            } else if (e.key === 'Escape') {
+                              e.preventDefault();
+                              setInlineSlideRename(null);
+                            }
+                          }}
+                          className="h-7 flex-1 rounded border border-cyan-700 bg-zinc-950 px-2 text-[11px] font-mono text-zinc-100 outline-none"
+                          title="Press Enter or click save to store the name. Press Escape or X to cancel."
+                          data-testid={`runsheet-slide-rename-input-${slide.id}`}
+                        />
+                        <button
+                          type="button"
+                          onMouseDown={(e) => { e.stopPropagation(); }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleRenameSlideLabel(item.id, slide.id, inlineSlideRename.value);
+                          }}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded border border-emerald-700 bg-zinc-950 text-emerald-300 hover:bg-emerald-950/30"
+                          title="Save name"
+                          aria-label="Save slide name"
+                        >
+                          <CheckIcon className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setInlineSlideRename(null);
+                          }}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded border border-zinc-700 bg-zinc-950 text-zinc-300 hover:bg-zinc-900"
+                          title="Cancel rename"
+                          aria-label="Cancel slide rename"
+                        >
+                          <XIcon className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="truncate flex-1 font-mono text-[10px] opacity-80" data-testid={`runsheet-slide-label-${slide.id}`}>{slide.label || `SLIDE ${sIdx + 1}`}</span>
+                    )}
+                    <div className="flex items-center gap-1">
+                      {viewMode === 'BUILDER' && selectedItemId === item.id && (
+                        <>
+                        <span
+                          className={`px-1.5 py-1 text-[9px] font-bold border rounded-sm ${
+                            draggedRunSheetSlide?.itemId === item.id && draggedRunSheetSlide.slideId === slide.id
+                              ? 'border-blue-500 text-blue-300 bg-blue-950/20'
+                              : 'border-zinc-800 text-zinc-500'
+                          }`}
+                          title="Drag inside this item only"
+                        >
+                          DRAG
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveSlideWithinItem(item.id, slide.id, -1); }}
+                          disabled={sIdx === 0}
+                          className="px-1.5 py-1 text-[9px] font-bold border border-zinc-800 rounded-sm text-zinc-400 disabled:opacity-25 hover:text-white"
+                          title="Move slide up"
+                          data-testid={`runsheet-slide-up-${slide.id}`}
+                        >
+                          UP
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); moveSlideWithinItem(item.id, slide.id, 1); }}
+                          disabled={sIdx === item.slides.length - 1}
+                          className="px-1.5 py-1 text-[9px] font-bold border border-zinc-800 rounded-sm text-zinc-400 disabled:opacity-25 hover:text-white"
+                          title="Move slide down"
+                          data-testid={`runsheet-slide-down-${slide.id}`}
+                        >
+                          DN
+                        </button>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            startSlideLabelRename(item.id, slide.id, slide.label || `Slide ${sIdx + 1}`);
+                          }}
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                          className="inline-flex items-center justify-center rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-zinc-400 hover:border-cyan-700 hover:text-cyan-300"
+                          title="Rename slide/image"
+                          aria-label={`Rename ${slide.label || `Slide ${sIdx + 1}`}`}
+                          data-testid={`runsheet-slide-rename-${slide.id}`}
+                        >
+                          <EditIcon className="w-3 h-3" />
+                        </button>
+                        </>
+                      )}
+                      {activeItemId === item.id && activeSlideIndex === sIdx && <span className="text-[9px] uppercase tracking-widest text-red-600 font-bold">LIVE</span>}
+                    </div>
+                  </div>
                   <div className="truncate opacity-70 mt-0.5 font-sans">{slide.content.substring(0, 40)}</div>
                 </div>
               ))}
@@ -4237,9 +4564,113 @@ function App() {
                     <div className="flex-1 overflow-y-auto p-6 bg-zinc-950">
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {selectedItem.slides.map((slide, idx) => (
-                          <div key={slide.id} className="group relative">
+                          <div
+                            key={slide.id}
+                            draggable
+                            onDragStart={(e) => {
+                              setDraggedSelectedSlideId(slide.id);
+                              setSelectedSlideDropIndicator({ slideId: slide.id, after: false });
+                              e.dataTransfer.effectAllowed = 'move';
+                              e.dataTransfer.setData('text/plain', slide.id);
+                            }}
+                            onDragEnd={() => {
+                              setDraggedSelectedSlideId(null);
+                              setSelectedSlideDropIndicator(null);
+                            }}
+                            onDragOver={(e) => {
+                              if (!draggedSelectedSlideId) return;
+                              e.preventDefault();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setSelectedSlideDropIndicator({
+                                slideId: slide.id,
+                                after: e.clientY > (rect.top + rect.height / 2),
+                              });
+                            }}
+                            onDrop={(e) => {
+                              if (!draggedSelectedSlideId) return;
+                              e.preventDefault();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              reorderSelectedItemSlides(draggedSelectedSlideId, slide.id, e.clientY > (rect.top + rect.height / 2));
+                              setDraggedSelectedSlideId(null);
+                              setSelectedSlideDropIndicator(null);
+                            }}
+                            className="group relative"
+                          >
                             <div className="aspect-video bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 group-hover:border-blue-500/50 transition-all"><SlideRenderer slide={slide} item={selectedItem} fitContainer={true} isThumbnail={true} /></div>
-                            <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1"><button onClick={() => handleEditSlide(slide)} className="p-1 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-blue-400 text-zinc-400"><EditIcon className="w-3 h-3" /></button><button onClick={(e) => handleDeleteSlide(slide.id, e)} className="p-1 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-red-400 text-zinc-400"><TrashIcon className="w-3 h-3" /></button></div>
+                            {selectedSlideDropIndicator?.slideId === slide.id && draggedSelectedSlideId && draggedSelectedSlideId !== slide.id && (
+                              <div className={`absolute left-0 right-0 h-1 bg-blue-500 rounded-full ${selectedSlideDropIndicator.after ? 'bottom-0' : 'top-0'}`} />
+                            )}
+                            <div className="absolute left-1 top-1 max-w-[70%]">
+                              {inlineSlideRename?.itemId === selectedItem.id && inlineSlideRename.slideId === slide.id ? (
+                                <div className="flex items-center gap-1">
+                                  <input
+                                    ref={inlineSlideRenameInputRef}
+                                    autoFocus
+                                    type="text"
+                                    value={inlineSlideRename.value}
+                                    onMouseDown={(e) => { e.stopPropagation(); }}
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                    onChange={(e) => {
+                                      const nextValue = e.target.value;
+                                      setInlineSlideRename((current) => (
+                                        current && current.itemId === selectedItem.id && current.slideId === slide.id
+                                          ? { ...current, value: nextValue }
+                                          : current
+                                      ));
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleRenameSlideLabel(selectedItem.id, slide.id, inlineSlideRename.value);
+                                      } else if (e.key === 'Escape') {
+                                        e.preventDefault();
+                                        setInlineSlideRename(null);
+                                      }
+                                    }}
+                                    className="h-7 w-full rounded border border-cyan-700 bg-black/90 px-2 text-[10px] font-mono text-zinc-100 outline-none"
+                                    title="Press Enter or click save to store the name. Press Escape or X to cancel."
+                                    data-testid={`thumbnail-slide-rename-input-${slide.id}`}
+                                  />
+                                  <button
+                                    type="button"
+                                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleRenameSlideLabel(selectedItem.id, slide.id, inlineSlideRename.value);
+                                    }}
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded border border-emerald-700 bg-black/90 text-emerald-300 hover:bg-emerald-950/40"
+                                    title="Save name"
+                                    aria-label="Save slide name"
+                                  >
+                                    <CheckIcon className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setInlineSlideRename(null);
+                                    }}
+                                    className="inline-flex h-7 w-7 items-center justify-center rounded border border-zinc-700 bg-black/90 text-zinc-300 hover:bg-zinc-900"
+                                    title="Cancel rename"
+                                    aria-label="Cancel slide rename"
+                                  >
+                                    <XIcon className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="px-1.5 py-0.5 bg-black/75 border border-zinc-700 rounded text-[9px] font-mono text-zinc-300 truncate" data-testid={`thumbnail-slide-label-${slide.id}`}>
+                                  {slide.label || `Slide ${idx + 1}`}
+                                </div>
+                              )}
+                            </div>
+                            <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1">
+                              <button type="button" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); startSlideLabelRename(selectedItem.id, slide.id, slide.label || `Slide ${idx + 1}`); }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="p-1 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-cyan-300 text-zinc-400" title="Rename slide/image" data-testid={`thumbnail-slide-rename-${slide.id}`}><EditIcon className="w-3 h-3" /></button>
+                              <button onClick={() => handleEditSlide(slide)} className="p-1 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-blue-400 text-zinc-400" title="Edit slide"><EditIcon className="w-3 h-3" /></button>
+                              <button onClick={(e) => handleDeleteSlide(slide.id, e)} className="p-1 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-red-400 text-zinc-400" title="Delete slide"><TrashIcon className="w-3 h-3" /></button>
+                            </div>
                           </div>
                         ))}
                         <button onClick={() => { setEditingSlide(null); setIsSlideEditorOpen(true); }} className="aspect-video border border-dashed border-zinc-800 rounded-sm flex flex-col items-center justify-center text-zinc-600 hover:text-zinc-400 bg-zinc-900/20"><PlusIcon className="w-6 h-6 mb-2" /><span className="text-xs font-medium uppercase tracking-wide">Add Slide</span></button>
@@ -4554,7 +4985,7 @@ function App() {
                   isMuted={outputMuted}
                   isProjector={true}
                   lowerThirds={routingMode !== 'PROJECTOR'}
-                  showSlideLabel={true}
+                  showSlideLabel={false}
                   showProjectorHelper={false}
                   audienceOverlay={audienceDisplay}
                   projectedAudienceQr={audienceQrProjection}

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Slide, ServiceItem, MediaType, AudienceDisplayState, AudienceQrProjectionState } from "../types";
 
-import { getMedia, getCachedMedia } from "../services/localMedia";
+import { getMediaAsset, getCachedMediaAsset } from "../services/localMedia";
 import { DEFAULT_BACKGROUNDS } from "../constants";
 
 interface SlideRendererProps {
@@ -58,8 +58,7 @@ function looksLikeDirectVideo(url: string): boolean {
     normalized.endsWith(".mp4") ||
     normalized.endsWith(".webm") ||
     normalized.endsWith(".mov") ||
-    normalized.includes("/video/") ||
-    normalized.startsWith("blob:")
+    normalized.includes("/video/")
   );
 }
 
@@ -134,22 +133,28 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   const [legacyLocalMediaMissing, setLegacyLocalMediaMissing] = useState(false);
   const [isYoutubeReady, setIsYoutubeReady] = useState(false);
 
+  const slideBackgroundUrl = useMemo(() => safeString(slide?.backgroundUrl), [slide?.backgroundUrl]);
+  const itemBackgroundUrl = useMemo(() => safeString(item?.theme?.backgroundUrl), [item?.theme?.backgroundUrl]);
   const rawBgUrl = useMemo(() => {
-    return safeString(slide?.backgroundUrl) || safeString(item?.theme?.backgroundUrl) || "";
-  }, [slide?.backgroundUrl, item?.theme?.backgroundUrl]);
+    return slideBackgroundUrl || itemBackgroundUrl || "";
+  }, [slideBackgroundUrl, itemBackgroundUrl]);
 
   const hasBackground = !!rawBgUrl;
 
   // Prevent loading spinner flashes for cached local:// media
   const [resolvedUrl, setResolvedUrl] = useState<string>(() => {
     if (!hasBackground) return "";
-    if (rawBgUrl.startsWith("local://")) return getCachedMedia(rawBgUrl) || "";
+    if (rawBgUrl.startsWith("local://")) return getCachedMediaAsset(rawBgUrl)?.url || "";
     return rawBgUrl;
+  });
+  const [resolvedLocalKind, setResolvedLocalKind] = useState<"image" | "video" | "other" | null>(() => {
+    if (!hasBackground || !rawBgUrl.startsWith("local://")) return null;
+    return getCachedMediaAsset(rawBgUrl)?.kind || null;
   });
 
   const [isLoading, setIsLoading] = useState<boolean>(() => {
     if (!hasBackground) return false;
-    return rawBgUrl.startsWith("local://") && !getCachedMedia(rawBgUrl);
+    return rawBgUrl.startsWith("local://") && !getCachedMediaAsset(rawBgUrl);
   });
 
   // Resolve local:// URLs async (only if a background exists)
@@ -160,6 +165,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       if (!hasBackground) {
         if (!active) return;
         setResolvedUrl("");
+        setResolvedLocalKind(null);
         setIsLoading(false);
         setMediaError(false);
         setLegacyLocalMediaMissing(false);
@@ -169,6 +175,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       if (!rawBgUrl.startsWith("local://")) {
         if (!active) return;
         setResolvedUrl(rawBgUrl);
+        setResolvedLocalKind(null);
         setIsLoading(false);
         setMediaError(false);
         setLegacyLocalMediaMissing(false);
@@ -176,10 +183,11 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       }
 
       // local://
-      const cached = getCachedMedia(rawBgUrl);
+      const cached = getCachedMediaAsset(rawBgUrl);
       if (cached) {
         if (!active) return;
-        setResolvedUrl(cached);
+        setResolvedUrl(cached.url);
+        setResolvedLocalKind(cached.kind);
         setIsLoading(false);
         setMediaError(false);
         setLegacyLocalMediaMissing(false);
@@ -188,21 +196,24 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
 
       setIsLoading(true);
       try {
-        const url = await getMedia(rawBgUrl);
+        const asset = await getMediaAsset(rawBgUrl);
         if (!active) return;
 
-        if (url) {
-          setResolvedUrl(url);
+        if (asset?.url) {
+          setResolvedUrl(asset.url);
+          setResolvedLocalKind(asset.kind);
           setMediaError(false);
           setLegacyLocalMediaMissing(false);
         } else {
           setResolvedUrl("");
+          setResolvedLocalKind(null);
           setMediaError(true);
           setLegacyLocalMediaMissing(true);
         }
       } catch {
         if (!active) return;
         setResolvedUrl("");
+        setResolvedLocalKind(null);
         setMediaError(true);
         setLegacyLocalMediaMissing(true);
       } finally {
@@ -222,10 +233,36 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
 
   const mediaType: MediaType = useMemo(() => {
     if (!hasBackground) return "image";
-    if (isYoutube) return "video";
-    if (looksLikeDirectVideo(resolvedUrl || rawBgUrl)) return "video";
-    return (slide?.mediaType || item?.theme?.mediaType || "image") as MediaType;
-  }, [hasBackground, isYoutube, slide?.mediaType, item?.theme?.mediaType, resolvedUrl, rawBgUrl]);
+    const effectiveUrl = resolvedUrl || rawBgUrl;
+    if (slideBackgroundUrl) {
+      if (slide?.mediaType === "color" || effectiveUrl.startsWith("#")) return "color";
+      if (slide?.mediaType === "video") return "video";
+      if (slide?.mediaType === "image") return "image";
+      if (rawBgUrl.startsWith("local://") && resolvedLocalKind === "video") return "video";
+      if (rawBgUrl.startsWith("local://") && resolvedLocalKind === "image") return "image";
+      if (isYoutube) return "video";
+      if (looksLikeDirectVideo(effectiveUrl)) return "video";
+      return "image";
+    }
+    if (itemBackgroundUrl) {
+      if (item?.theme?.mediaType === "color" || effectiveUrl.startsWith("#")) return "color";
+      if (item?.theme?.mediaType === "video") return "video";
+      if (item?.theme?.mediaType === "image") return "image";
+      if (rawBgUrl.startsWith("local://") && resolvedLocalKind === "video") return "video";
+      if (rawBgUrl.startsWith("local://") && resolvedLocalKind === "image") return "image";
+      if (isYoutube) return "video";
+      if (looksLikeDirectVideo(effectiveUrl)) return "video";
+    }
+    if (effectiveUrl.startsWith("#")) return "color";
+    if (looksLikeDirectVideo(effectiveUrl)) return "video";
+    return "image";
+  }, [hasBackground, isYoutube, slide?.mediaType, item?.theme?.mediaType, resolvedUrl, rawBgUrl, slideBackgroundUrl, itemBackgroundUrl, resolvedLocalKind]);
+
+  const imageFit = useMemo<'cover' | 'contain'>(() => {
+    if (slide?.mediaFit === 'contain' || slide?.mediaFit === 'cover') return slide.mediaFit;
+    if (mediaType === 'image' && rawBgUrl.startsWith('local://')) return 'contain';
+    return 'cover';
+  }, [slide?.mediaFit, mediaType, rawBgUrl]);
 
   // Reset errors when slide changes
   useEffect(() => {
@@ -441,6 +478,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     if (mediaType === "video" && resolvedUrl) {
       return (
         <video
+          data-testid="slide-renderer-video"
           key={resolvedUrl}
           ref={htmlVideoRef}
           src={resolvedUrl}
@@ -456,8 +494,33 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
 
     // Image (never crop)
     if (resolvedUrl) {
+      if (imageFit === "contain") {
+        return (
+          <div className="w-full h-full relative overflow-hidden bg-black">
+            <div
+              data-testid="slide-renderer-image-backdrop"
+              className="absolute inset-0 bg-center bg-cover scale-110 blur-2xl opacity-90"
+              style={{ backgroundImage: `url(${resolvedUrl})` }}
+            />
+            <div className="absolute inset-0 bg-black/20" />
+            <div className="relative z-10 w-full h-full flex items-center justify-center">
+            <img
+              data-testid="slide-renderer-image"
+              data-media-fit="contain"
+              src={resolvedUrl}
+              alt=""
+              className="w-full h-full object-contain"
+              draggable={false}
+              onError={handleMediaError}
+            />
+            </div>
+          </div>
+        );
+      }
       return (
         <img
+          data-testid="slide-renderer-image"
+          data-media-fit="cover"
           src={resolvedUrl}
           alt=""
           className="w-full h-full object-cover"

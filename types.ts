@@ -15,6 +15,7 @@ export interface Slide {
   label?: string; // e.g., "Verse 1", "Chorus"
   backgroundUrl?: string; // Specific background for this slide, overrides item default
   mediaType?: MediaType; // Explicitly define type to avoid guessing
+  mediaFit?: 'cover' | 'contain';
   notes?: string; // Presenter notes
 }
 

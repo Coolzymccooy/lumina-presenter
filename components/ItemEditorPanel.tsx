@@ -114,7 +114,7 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
               {DEFAULT_BACKGROUNDS.slice(0, 5).map((url, i) => (
                   <button 
                     key={i}
-                    onClick={() => updateTheme({ backgroundUrl: url })}
+                    onClick={() => updateTheme({ backgroundUrl: url, mediaType: 'image' })}
                     className={`w-6 h-6 rounded-sm border ${item.theme.backgroundUrl === url ? 'border-blue-500 ring-1 ring-blue-500' : 'border-zinc-800 opacity-60 hover:opacity-100'} bg-cover bg-center transition-all`}
                     style={{ backgroundImage: `url(${url})` }}
                   />

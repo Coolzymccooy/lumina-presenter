@@ -3,14 +3,13 @@ import { BibleIcon, SearchIcon, PlayIcon, SparklesIcon } from './Icons';
 import { ServiceItem, ItemType, MediaType } from '../types';
 import { DEFAULT_BACKGROUNDS } from '../constants';
 import { semanticBibleSearch, transcribeSermonChunk, type TranscribeSermonChunkResult } from '../services/geminiService';
-
-interface Verse {
-  book_id: string;
-  book_name: string;
-  chapter: number;
-  verse: number;
-  text: string;
-}
+import {
+  BIBLE_BOOKS,
+  buildStructuredBibleReference,
+  lookupBibleReference,
+  normalizeBibleReference,
+  type BibleVerse as Verse,
+} from '../services/bibleLookup';
 
 interface BibleBrowserProps {
   onAddRequest: (item: ServiceItem) => void;
@@ -61,31 +60,6 @@ const VERSIONS = [
   { id: 'darby', name: 'Darby Translation' },
   { id: 'dra', name: 'Douay-Rheims 1899' },
   { id: 'webbe', name: 'WEB British Edition' },
-];
-
-const BIBLE_BOOKS: { name: string; chapters: number }[] = [
-  { name: 'Genesis', chapters: 50 }, { name: 'Exodus', chapters: 40 }, { name: 'Leviticus', chapters: 27 },
-  { name: 'Numbers', chapters: 36 }, { name: 'Deuteronomy', chapters: 34 }, { name: 'Joshua', chapters: 24 },
-  { name: 'Judges', chapters: 21 }, { name: 'Ruth', chapters: 4 }, { name: '1 Samuel', chapters: 31 },
-  { name: '2 Samuel', chapters: 24 }, { name: '1 Kings', chapters: 22 }, { name: '2 Kings', chapters: 25 },
-  { name: '1 Chronicles', chapters: 29 }, { name: '2 Chronicles', chapters: 36 }, { name: 'Ezra', chapters: 10 },
-  { name: 'Nehemiah', chapters: 13 }, { name: 'Esther', chapters: 10 }, { name: 'Job', chapters: 42 },
-  { name: 'Psalms', chapters: 150 }, { name: 'Proverbs', chapters: 31 }, { name: 'Ecclesiastes', chapters: 12 },
-  { name: 'Song of Solomon', chapters: 8 }, { name: 'Isaiah', chapters: 66 }, { name: 'Jeremiah', chapters: 52 },
-  { name: 'Lamentations', chapters: 5 }, { name: 'Ezekiel', chapters: 48 }, { name: 'Daniel', chapters: 12 },
-  { name: 'Hosea', chapters: 14 }, { name: 'Joel', chapters: 3 }, { name: 'Amos', chapters: 9 },
-  { name: 'Obadiah', chapters: 1 }, { name: 'Jonah', chapters: 4 }, { name: 'Micah', chapters: 7 },
-  { name: 'Nahum', chapters: 3 }, { name: 'Habakkuk', chapters: 3 }, { name: 'Zephaniah', chapters: 3 },
-  { name: 'Haggai', chapters: 2 }, { name: 'Zechariah', chapters: 14 }, { name: 'Malachi', chapters: 4 },
-  { name: 'Matthew', chapters: 28 }, { name: 'Mark', chapters: 16 }, { name: 'Luke', chapters: 24 },
-  { name: 'John', chapters: 21 }, { name: 'Acts', chapters: 28 }, { name: 'Romans', chapters: 16 },
-  { name: '1 Corinthians', chapters: 16 }, { name: '2 Corinthians', chapters: 13 }, { name: 'Galatians', chapters: 6 },
-  { name: 'Ephesians', chapters: 6 }, { name: 'Philippians', chapters: 4 }, { name: 'Colossians', chapters: 4 },
-  { name: '1 Thessalonians', chapters: 5 }, { name: '2 Thessalonians', chapters: 3 }, { name: '1 Timothy', chapters: 6 },
-  { name: '2 Timothy', chapters: 4 }, { name: 'Titus', chapters: 3 }, { name: 'Philemon', chapters: 1 },
-  { name: 'Hebrews', chapters: 13 }, { name: 'James', chapters: 5 }, { name: '1 Peter', chapters: 5 },
-  { name: '2 Peter', chapters: 3 }, { name: '1 John', chapters: 5 }, { name: '2 John', chapters: 1 },
-  { name: '3 John', chapters: 1 }, { name: 'Jude', chapters: 1 }, { name: 'Revelation', chapters: 22 },
 ];
 
 const AUTO_DEBOUNCE_MS = 2500;
@@ -219,6 +193,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   speechLocaleMode,
   onSpeechLocaleModeChange,
 }) => {
+  const [referenceInput, setReferenceInput] = useState('');
   const [bookInput, setBookInput] = useState('');
   const [selectedBook, setSelectedBook] = useState<{ name: string; chapters: number } | null>(null);
   const [chapter, setChapter] = useState<number>(1);
@@ -418,13 +393,36 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     setChapter(1);
     setVerseFrom(1);
     setVerseTo(1);
+    setReferenceInput(buildStructuredBibleReference(book.name, 1, 1, 1));
     setShowBookDropdown(false);
   };
 
   const buildQuery = () => {
     if (!selectedBook) return '';
-    return `${selectedBook.name} ${chapter}:${verseFrom}${verseTo > verseFrom ? `-${verseTo}` : ''}`;
+    return buildStructuredBibleReference(selectedBook.name, chapter, verseFrom, verseTo);
   };
+
+  const syncStructuredSelection = useCallback((reference: string) => {
+    const normalized = normalizeBibleReference(reference);
+    if (!normalized) return;
+    const matchedBook = [...BIBLE_BOOKS]
+      .sort((a, b) => b.name.length - a.name.length)
+      .find((book) => normalized.toLowerCase().startsWith(book.name.toLowerCase()));
+    if (!matchedBook) return;
+    const remainder = normalized.slice(matchedBook.name.length).trim();
+    const match = remainder.match(/^(\d{1,3})(?::(\d{1,3})(?:-(\d{1,3}))?)?$/);
+    if (!match) return;
+
+    const nextChapter = Math.max(1, Number(match[1] || 1));
+    const nextVerseFrom = Math.max(1, Number(match[2] || 1));
+    const nextVerseTo = Math.max(nextVerseFrom, Number(match[3] || nextVerseFrom));
+
+    setSelectedBook(matchedBook);
+    setBookInput(matchedBook.name);
+    setChapter(nextChapter);
+    setVerseFrom(nextVerseFrom);
+    setVerseTo(nextVerseTo);
+  }, []);
 
   const createServiceItem = useCallback((verses: Verse[]): ServiceItem => {
     const title = `${verses[0].book_name} ${verses[0].chapter}:${verses[0].verse}${verses.length > 1 ? `-${verses[verses.length - 1].verse}` : ''}`;
@@ -458,24 +456,23 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
 
     try {
       let finalQuery = query.trim();
-      if (useSemantic) {
+      const exactReference = normalizeBibleReference(finalQuery);
+      if (exactReference) {
+        finalQuery = exactReference;
+      } else if (useSemantic) {
         setAiLoading(true);
         finalQuery = await semanticBibleSearch(finalQuery);
       }
-      const lookup = async (version: string): Promise<Verse[]> => {
-        const res = await fetch(`https://bible-api.com/${encodeURIComponent(finalQuery)}?translation=${version}`);
-        const data = await res.json();
-        return Array.isArray(data?.verses) ? data.verses as Verse[] : [];
-      };
-
-      let verses = await lookup(selectedVersion);
-      if (!verses.length && selectedVersion !== 'kjv') {
-        verses = await lookup('kjv');
-      }
+      const verses = await lookupBibleReference(finalQuery, selectedVersion);
       if (verses.length) {
         setResults(verses);
         setSelectedBg(DEFAULT_BACKGROUNDS[1]);
         setSelectedMediaType('image');
+        const normalizedReference = normalizeBibleReference(finalQuery);
+        if (normalizedReference) {
+          setReferenceInput(normalizedReference);
+          syncStructuredSelection(normalizedReference);
+        }
         if (silent) setError(null);
         return verses;
       }
@@ -495,7 +492,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       }
       setAiLoading(false);
     }
-  }, [selectedVersion]);
+  }, [selectedVersion, syncStructuredSelection]);
 
   const scheduleAutoProcess = useCallback(() => {
     clearTimer(processTimerRef);
@@ -965,7 +962,20 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
 
   const handleStructuredSearch = () => {
     const q = buildQuery();
-    if (q) fetchScripture(q, false);
+    if (!q) return;
+    setReferenceInput(q);
+    void fetchScripture(q, false);
+  };
+
+  const handleManualSearch = () => {
+    const exactReference = normalizeBibleReference(referenceInput);
+    if (exactReference) {
+      setReferenceInput(exactReference);
+      syncStructuredSelection(exactReference);
+      void fetchScripture(exactReference, false);
+      return;
+    }
+    handleStructuredSearch();
   };
 
   const chapterCount = selectedBook?.chapters ?? 150;
@@ -1101,6 +1111,17 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
         ) : (
           <div className="space-y-2">
             <div className="relative">
+              <SearchIcon className="absolute left-2 top-2.5 w-3.5 h-3.5 text-blue-500" />
+              <input
+                type="text"
+                className="w-full bg-zinc-900 border border-blue-900/70 focus:border-blue-500 rounded-sm py-2 pl-8 pr-3 text-xs text-white focus:outline-none font-mono"
+                placeholder="Direct reference (e.g. John 3:16-19)"
+                value={referenceInput}
+                onChange={(e) => setReferenceInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleManualSearch(); }}
+              />
+            </div>
+            <div className="relative">
               <SearchIcon className="absolute left-2 top-2.5 w-3.5 h-3.5 text-zinc-600" />
               <input
                 ref={bookInputRef}
@@ -1126,13 +1147,56 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
               )}
             </div>
 
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-0.5">
+                <label className="text-[8px] text-zinc-600 uppercase tracking-wider px-0.5">Version</label>
+                <select
+                  value={selectedVersion}
+                  onChange={(e) => setSelectedVersion(e.target.value)}
+                  className="bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 py-1.5 px-2 rounded-sm focus:outline-none focus:border-blue-600"
+                >
+                  {VERSIONS.map((v) => (
+                    <option key={v.id} value={v.id}>{v.name} ({v.id.toUpperCase()})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-0.5">
+                <label className="text-[8px] text-zinc-600 uppercase tracking-wider px-0.5">Quick book</label>
+                <select
+                  value={selectedBook?.name || ''}
+                  onChange={(e) => {
+                    const next = BIBLE_BOOKS.find((book) => book.name === e.target.value) || null;
+                    if (next) {
+                      selectBook(next);
+                      setReferenceInput(buildStructuredBibleReference(next.name, 1, 1, 1));
+                    } else {
+                      setSelectedBook(null);
+                      setBookInput('');
+                    }
+                  }}
+                  className="bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 py-1.5 px-2 rounded-sm focus:outline-none focus:border-blue-600"
+                >
+                  <option value="">All Bible books</option>
+                  {BIBLE_BOOKS.map((book) => (
+                    <option key={book.name} value={book.name}>{book.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {selectedBook && (
               <div className="grid grid-cols-3 gap-1.5">
                 <div className="flex flex-col gap-0.5">
                   <label className="text-[8px] text-zinc-600 uppercase tracking-wider px-0.5">Chapter</label>
                   <select
                     value={chapter}
-                    onChange={(e) => { setChapter(Number(e.target.value)); setVerseFrom(1); setVerseTo(1); }}
+                    onChange={(e) => {
+                      const nextChapter = Number(e.target.value);
+                      setChapter(nextChapter);
+                      setVerseFrom(1);
+                      setVerseTo(1);
+                      setReferenceInput(buildStructuredBibleReference(selectedBook.name, nextChapter, 1, 1));
+                    }}
                     className="bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 py-1.5 px-2 rounded-sm focus:outline-none focus:border-blue-600"
                   >
                     {Array.from({ length: chapterCount }, (_, i) => i + 1).map((n) => (
@@ -1144,7 +1208,13 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                   <label className="text-[8px] text-zinc-600 uppercase tracking-wider px-0.5">From verse</label>
                   <select
                     value={verseFrom}
-                    onChange={(e) => { const v = Number(e.target.value); setVerseFrom(v); if (verseTo < v) setVerseTo(v); }}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      setVerseFrom(v);
+                      const nextVerseTo = verseTo < v ? v : verseTo;
+                      if (verseTo < v) setVerseTo(v);
+                      setReferenceInput(buildStructuredBibleReference(selectedBook.name, chapter, v, nextVerseTo));
+                    }}
                     className="bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 py-1.5 px-2 rounded-sm focus:outline-none focus:border-blue-600"
                   >
                     {Array.from({ length: 200 }, (_, i) => i + 1).map((n) => (
@@ -1156,7 +1226,11 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                   <label className="text-[8px] text-zinc-600 uppercase tracking-wider px-0.5">To verse</label>
                   <select
                     value={verseTo}
-                    onChange={(e) => setVerseTo(Number(e.target.value))}
+                    onChange={(e) => {
+                      const nextVerseTo = Number(e.target.value);
+                      setVerseTo(nextVerseTo);
+                      setReferenceInput(buildStructuredBibleReference(selectedBook.name, chapter, verseFrom, nextVerseTo));
+                    }}
                     className="bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 py-1.5 px-2 rounded-sm focus:outline-none focus:border-blue-600"
                   >
                     {Array.from({ length: 200 }, (_, i) => i + 1).filter((n) => n >= verseFrom).map((n) => (
@@ -1176,21 +1250,12 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
         )}
 
         <div className="flex gap-2">
-          <select
-            value={selectedVersion}
-            onChange={(e) => setSelectedVersion(e.target.value)}
-            className="flex-1 bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-400 py-1 px-2 rounded-sm focus:outline-none"
-          >
-            {VERSIONS.map((v) => (
-              <option key={v.id} value={v.id}>{v.name} ({v.id.toUpperCase()})</option>
-            ))}
-          </select>
           <button
-            onClick={() => (isVisionaryMode ? fetchScripture(aiQuery, true) : handleStructuredSearch())}
-            disabled={isVisionaryMode ? !aiQuery.trim() : !selectedBook}
-            className="px-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white rounded-sm text-[9px] font-bold transition-all active:scale-95"
+            onClick={() => void (isVisionaryMode ? fetchScripture(aiQuery, true) : handleManualSearch())}
+            disabled={isVisionaryMode ? !aiQuery.trim() : !(normalizeBibleReference(referenceInput) || selectedBook)}
+            className="flex-1 px-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white rounded-sm text-[9px] font-bold transition-all active:scale-95"
           >
-            SEARCH
+            {isVisionaryMode ? 'AI SEARCH' : 'SEARCH PASSAGE'}
           </button>
         </div>
       </div>

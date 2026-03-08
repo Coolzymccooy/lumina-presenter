@@ -339,7 +339,7 @@ export const OutputRoute: React.FC = () => {
           isMuted={display.outputMuted}
           isProjector={true}
           lowerThirds={display.lowerThirdsEnabled}
-          showSlideLabel={true}
+          showSlideLabel={false}
           showProjectorHelper={false}
           audienceOverlay={display.audienceOverlay || undefined}
           projectedAudienceQr={display.projectedAudienceQr || undefined}

@@ -34,6 +34,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
   const [label, setLabel] = useState('');
   const [bgUrl, setBgUrl] = useState('');
   const [mediaType, setMediaType] = useState<MediaType>('image');
+  const [mediaFit, setMediaFit] = useState<'cover' | 'contain'>('cover');
   const [activeTab, setActiveTab] = useState<'image'|'video'|'color'>('image');
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -58,12 +59,14 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
         setLabel(slide.label || '');
         setBgUrl(slide.backgroundUrl || '');
         setMediaType(slide.mediaType || 'image');
+        setMediaFit(slide.mediaFit || ((slide.backgroundUrl || '').startsWith('local://') && (slide.mediaType || 'image') === 'image' ? 'contain' : 'cover'));
         if (slide.mediaType) setActiveTab(slide.mediaType);
       } else {
         setContent('');
         setLabel('New Slide');
         setBgUrl('');
         setMediaType('image');
+        setMediaFit('cover');
         setActiveTab('image');
       }
     }
@@ -114,7 +117,8 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
       content,
       label,
       backgroundUrl: bgUrl || undefined,
-      mediaType: bgUrl ? finalMediaType : undefined
+      mediaType: bgUrl ? finalMediaType : undefined,
+      mediaFit: bgUrl && finalMediaType === 'image' ? mediaFit : undefined,
     };
     onSave(newSlide);
     onClose();
@@ -123,6 +127,11 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
   const handleMediaSelect = (url: string, type: MediaType) => {
     setBgUrl(url);
     setMediaType(type);
+    if (type !== 'image') {
+      setMediaFit('cover');
+    } else if (url.startsWith('local://') && !slide?.mediaFit) {
+      setMediaFit('contain');
+    }
     setUploadError(null);
     setPptxError(null);
   };
@@ -130,27 +139,60 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
   const clearBackground = () => {
     setBgUrl('');
     setMediaType('image');
+    setMediaFit('cover');
     setUploadError(null);
     setPptxError(null);
     setPptxStatus('');
   };
 
+  const buildUploadedSlide = (file: File, localId: string, index: number): Slide => {
+    const fileName = file.name.replace(/\.[^.]+$/, '').trim() || `Slide ${index + 1}`;
+    const isVideo = file.type.startsWith('video/');
+    return {
+      id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
+      label: fileName,
+      content: '',
+      backgroundUrl: localId,
+      mediaType: isVideo ? 'video' : 'image',
+      mediaFit: isVideo ? undefined : 'contain',
+    };
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     setUploadError(null);
-    const file = event.target.files?.[0];
-    
-    if (file) {
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+
+    if (files.length > 0) {
       setIsUploading(true);
       try {
-        // Save to IndexedDB (No size limit here practically)
+        if (files.length > 1 && onInsertSlides) {
+          const uploadedSlides: Slide[] = [];
+          for (let idx = 0; idx < files.length; idx += 1) {
+            const file = files[idx];
+            const localId = await saveMedia(file);
+            uploadedSlides.push(buildUploadedSlide(file, localId, idx));
+          }
+          onInsertSlides(uploadedSlides, slide?.id || null);
+          onClose();
+          return;
+        }
+
+        const file = files[0];
         const localId = await saveMedia(file);
+        const fileName = file.name.replace(/\.[^.]+$/, '').trim();
         setBgUrl(localId);
+        if (!slide && (!label.trim() || label.trim().toLowerCase() === 'new slide') && fileName) {
+          setLabel(fileName);
+        }
 
         if (file.type.startsWith('video/')) {
             setMediaType('video');
+            setMediaFit('cover');
             setActiveTab('video');
         } else {
             setMediaType('image');
+            setMediaFit('contain');
             setActiveTab('image');
         }
       } catch (err) {
@@ -168,6 +210,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
     setBgUrl(importedSlide.backgroundUrl || '');
     const nextType: MediaType = importedSlide.mediaType || 'image';
     setMediaType(nextType);
+    setMediaFit(importedSlide.mediaFit || ((importedSlide.backgroundUrl || '').startsWith('local://') && nextType === 'image' ? 'contain' : 'cover'));
     setActiveTab(nextType === 'video' ? 'video' : nextType === 'color' ? 'color' : 'image');
   };
 
@@ -318,6 +361,32 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
                  />
               ))}
             </div>
+
+            {activeTab === 'image' && (
+              <div className="mb-3 flex items-center justify-between gap-3 rounded-sm border border-zinc-800 bg-zinc-900/60 px-3 py-2">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Image Fit</div>
+                  <div className="text-[10px] text-zinc-500">Use `FIT TO SCREEN` to keep the full image inside the slide frame.</div>
+                </div>
+                <div className="flex items-center gap-1 rounded-sm border border-zinc-800 bg-zinc-950 p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setMediaFit('cover')}
+                    className={`px-3 py-1 text-[10px] font-bold rounded-sm transition-colors ${mediaFit === 'cover' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                  >
+                    FILL FRAME
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMediaFit('contain')}
+                    data-testid="slide-editor-fit-to-screen"
+                    className={`px-3 py-1 text-[10px] font-bold rounded-sm transition-colors ${mediaFit === 'contain' ? 'bg-cyan-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                  >
+                    FIT TO SCREEN
+                  </button>
+                </div>
+              </div>
+            )}
             
             <div className="flex flex-col gap-2">
                 <div className="flex gap-2">
@@ -347,6 +416,8 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
                       ref={fileInputRef} 
                       onChange={handleFileUpload} 
                       className="hidden" 
+                      data-testid="slide-editor-upload-input"
+                      multiple
                       accept="image/*,video/*"
                     />
                     <button 
@@ -407,7 +478,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
                          {activeTab === 'video' || (previewUrl.startsWith('blob:') && mediaType === 'video') ? (
                              <video src={previewUrl} className="w-full h-full object-cover" muted />
                          ) : (
-                             <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: `url(${previewUrl})` }} />
+                             <div className={`w-full h-full bg-center bg-no-repeat ${mediaFit === 'contain' ? 'bg-contain bg-black' : 'bg-cover'}`} style={{ backgroundImage: `url(${previewUrl})` }} />
                          )}
                          <div className="absolute bottom-0 left-0 bg-black/70 text-white text-[8px] px-1">PREVIEW</div>
                     </div>
@@ -430,6 +501,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
           <button 
             onClick={handleSave}
             disabled={isUploading || isImportingPptx}
+            data-testid="slide-editor-confirm"
             className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-sm text-xs font-bold tracking-wide transition-all shadow-sm disabled:opacity-50"
           >
             CONFIRM
