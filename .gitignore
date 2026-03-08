@@ -35,6 +35,8 @@ test-results/
 server/data/*.sqlite
 server/data/*.sqlite-shm
 server/data/*.sqlite-wal
+server/data/vis-media/
+server/data/workspace-media/
 package-lock.json
 pnpm-lock.yaml
 

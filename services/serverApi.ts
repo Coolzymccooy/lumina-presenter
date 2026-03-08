@@ -74,7 +74,7 @@ const shouldRetryWithNextApiBase = (status: number) => (
 );
 const CONNECTION_CLIENT_ID_PREFIX = 'lumina_conn_client_v1';
 
-type ActorLike = {
+export type ActorLike = {
   uid?: string | null;
   email?: string | null;
   getIdToken?: () => Promise<string>;
@@ -293,6 +293,56 @@ const fileToBase64 = async (file: File) => {
     };
     reader.readAsDataURL(file);
   });
+};
+
+const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let idx = 0; idx < bytes.length; idx += chunkSize) {
+    const chunk = bytes.subarray(idx, idx + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
+};
+
+export const uploadWorkspaceMedia = async (
+  workspaceId: string,
+  user: ActorLike,
+  media: File | { name: string; mimeType: string; buffer: ArrayBuffer }
+) => {
+  const headers = await buildHeaders(user, false);
+  if (!headers) return null;
+
+  const fileName = media instanceof File ? media.name : String(media.name || 'upload.bin');
+  const mimeType = media instanceof File
+    ? (media.type || 'application/octet-stream')
+    : (String(media.mimeType || '').trim() || 'application/octet-stream');
+  const base64 = media instanceof File
+    ? await fileToBase64(media)
+    : arrayBufferToBase64(media.buffer);
+
+  return await requestJson<{
+    ok: boolean;
+    url?: string;
+    relativeUrl?: string;
+    mimeType?: string;
+    size?: number;
+    error?: string;
+    message?: string;
+  }>(
+    `/api/workspaces/${encodeURIComponent(workspaceId)}/media`,
+    {
+      method: 'POST',
+      user,
+      body: {
+        name: fileName,
+        mimeType,
+        base64,
+      },
+      timeoutMs: 20000,
+    }
+  );
 };
 
 export type VisualPptxImportResponse = {

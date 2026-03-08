@@ -17,6 +17,14 @@ export interface LocalMediaAsset {
   url: string;
 }
 
+export interface LocalMediaBinary {
+  id: string;
+  name: string;
+  mimeType: string;
+  kind: LocalMediaKind;
+  buffer: ArrayBuffer;
+}
+
 interface StoredMediaRecord {
   name?: unknown;
   type?: unknown;
@@ -69,6 +77,34 @@ const normalizeStoredMedia = (id: string, stored: unknown): LocalMediaAsset | nu
     mimeType,
     kind: getMediaKind(mimeType),
     url: URL.createObjectURL(blob),
+  };
+};
+
+const normalizeStoredBinary = async (id: string, stored: unknown): Promise<LocalMediaBinary | null> => {
+  if (stored instanceof Blob || stored instanceof File) {
+    const mimeType = stored.type || 'application/octet-stream';
+    return {
+      id,
+      name: stored instanceof File ? stored.name : '',
+      mimeType,
+      kind: getMediaKind(mimeType),
+      buffer: await stored.arrayBuffer(),
+    };
+  }
+
+  if (!stored || typeof stored !== 'object') return null;
+  const record = stored as StoredMediaRecord;
+  const buffer = toArrayBuffer(record.buffer);
+  if (!buffer) return null;
+  const mimeType = typeof record.type === 'string' && record.type.trim()
+    ? record.type
+    : 'application/octet-stream';
+  return {
+    id,
+    name: typeof record.name === 'string' ? record.name : '',
+    mimeType,
+    kind: getMediaKind(mimeType),
+    buffer,
   };
 };
 
@@ -165,6 +201,22 @@ export const getMediaAsset = async (localUrl: string): Promise<LocalMediaAsset |
 export const getMedia = async (localUrl: string): Promise<string | null> => {
   const asset = await getMediaAsset(localUrl);
   return asset?.url || null;
+};
+
+export const getMediaBinary = async (localUrl: string): Promise<LocalMediaBinary | null> => {
+  if (!localUrl.startsWith('local://')) return null;
+  const id = localUrl.replace('local://', '');
+  const db = await initDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_NAME, 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.get(id);
+
+    request.onsuccess = () => {
+      void normalizeStoredBinary(id, request.result).then(resolve).catch(reject);
+    };
+    request.onerror = () => reject(request.error);
+  });
 };
 
 export const getCachedMediaAsset = (localUrl: string): LocalMediaAsset | null => {

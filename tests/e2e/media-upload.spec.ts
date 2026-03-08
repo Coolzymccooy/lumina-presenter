@@ -119,9 +119,18 @@ test('uploaded local PNG renders as an image in builder', async ({ page }) => {
 
   await expect(page.getByText('Add New Slide')).not.toBeVisible();
   await expect(page.locator('[data-testid^="runsheet-slide-label-"]').first()).toHaveText('test-image');
-  await expect(page.locator('[data-testid="slide-renderer-image"][src^="blob:"]').first()).toBeVisible();
-  await expect(page.locator('[data-testid="slide-renderer-image"][src^="blob:"]').first()).toHaveAttribute('data-media-fit', 'contain');
+  const renderedImage = page.locator('[data-testid="slide-renderer-image"]').first();
+  await expect(renderedImage).toBeVisible();
+  await expect(renderedImage).toHaveAttribute('data-media-fit', 'contain');
   await expect(page.locator('[data-testid="slide-renderer-image-backdrop"]').first()).toBeVisible();
+
+  await page.waitForFunction((storageKey) => {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    const slideUrl = parsed?.schedule?.[0]?.slides?.[0]?.backgroundUrl || '';
+    return typeof slideUrl === 'string' && slideUrl.includes('/media/workspaces/');
+  }, STORAGE_KEY);
 
   await expect(page.locator('[data-testid="slide-renderer-video"]')).toHaveCount(0);
 });
@@ -159,7 +168,7 @@ test('multi-image upload inserts multiple image slides with labels', async ({ pa
   const labels = page.locator('[data-testid^="runsheet-slide-label-"]');
   await expect(labels).toHaveCount(3);
   await expect(labels).toHaveText(['test-1', 'test-2', 'test-3']);
-  await expect(page.locator('[data-testid="slide-renderer-image"][src^="blob:"]')).toHaveCount(3);
+  await expect(page.locator('[data-testid="slide-renderer-image"]')).toHaveCount(3);
 });
 
 test('runsheet slide rename responds directly from the nested list', async ({ page }) => {

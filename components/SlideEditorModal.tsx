@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Slide, MediaType } from '../types';
 import { DEFAULT_BACKGROUNDS, VIDEO_BACKGROUNDS, SOLID_COLORS } from '../constants';
 import { saveMedia, getMedia } from '../services/localMedia';
+import { uploadWorkspaceMedia, type ActorLike } from '../services/serverApi';
 
 interface SlideEditorModalProps {
   isOpen: boolean;
@@ -12,6 +13,8 @@ interface SlideEditorModalProps {
   onImportPowerPointVisual?: (file: File) => Promise<Slide[]>;
   onImportPowerPointText?: (file: File) => Promise<Slide[]>;
   onInsertSlides?: (slides: Slide[], replaceCurrentId?: string | null) => void;
+  workspaceId?: string;
+  user?: ActorLike;
 }
 
 const getYoutubeId = (url: string) => {
@@ -29,6 +32,8 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
   onImportPowerPointVisual,
   onImportPowerPointText,
   onInsertSlides,
+  workspaceId,
+  user,
 }) => {
   const [content, setContent] = useState('');
   const [label, setLabel] = useState('');
@@ -158,6 +163,16 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
     };
   };
 
+  const persistUploadedMedia = async (file: File) => {
+    const safeWorkspaceId = String(workspaceId || '').trim();
+    if (safeWorkspaceId && user?.uid) {
+      const uploaded = await uploadWorkspaceMedia(safeWorkspaceId, user, file);
+      const sharedUrl = String(uploaded?.url || '').trim();
+      if (uploaded?.ok && sharedUrl) return sharedUrl;
+    }
+    return await saveMedia(file);
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     setUploadError(null);
     const files = Array.from(event.target.files || []);
@@ -170,8 +185,8 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
           const uploadedSlides: Slide[] = [];
           for (let idx = 0; idx < files.length; idx += 1) {
             const file = files[idx];
-            const localId = await saveMedia(file);
-            uploadedSlides.push(buildUploadedSlide(file, localId, idx));
+            const backgroundUrl = await persistUploadedMedia(file);
+            uploadedSlides.push(buildUploadedSlide(file, backgroundUrl, idx));
           }
           onInsertSlides(uploadedSlides, slide?.id || null);
           onClose();
@@ -179,7 +194,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
         }
 
         const file = files[0];
-        const localId = await saveMedia(file);
+        const localId = await persistUploadedMedia(file);
         const fileName = file.name.replace(/\.[^.]+$/, '').trim();
         setBgUrl(localId);
         if (!slide && (!label.trim() || label.trim().toLowerCase() === 'new slide') && fileName) {

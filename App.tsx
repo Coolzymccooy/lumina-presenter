@@ -41,7 +41,7 @@ import { RemoteControl } from './components/RemoteControl';
 import { logActivity, analyzeSentimentContext } from './services/analytics';
 import { auth, isFirebaseConfigured, subscribeToState, subscribeToTeamPlaylists, updateLiveState, upsertTeamPlaylist } from './services/firebase';
 import { onAuthStateChanged } from "firebase/auth";
-import { clearMediaCache, saveMedia } from './services/localMedia';
+import { clearMediaCache, getMediaBinary, saveMedia } from './services/localMedia';
 import {
   archiveRunSheetFile,
   deleteRunSheetFile,
@@ -59,7 +59,8 @@ import {
   reuseRunSheetFile,
   saveServerSessionState,
   saveWorkspaceSettings,
-  saveWorkspaceSnapshot
+  saveWorkspaceSnapshot,
+  uploadWorkspaceMedia,
 } from './services/serverApi';
 import { parsePptxFile } from './services/pptxImport';
 import { copyTextToClipboard } from './services/clipboardService';
@@ -227,6 +228,34 @@ const looksLikeVideoUrl = (url: string): boolean => {
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const replaceMediaUrlAcrossSchedule = (entries: ServiceItem[], sourceUrl: string, nextUrl: string) => {
+  let changed = false;
+  const nextSchedule = entries.map((entry) => {
+    const themeChanged = entry.theme.backgroundUrl === sourceUrl;
+    const nextTheme = themeChanged
+      ? { ...entry.theme, backgroundUrl: nextUrl, mediaType: entry.theme.mediaType || 'image' }
+      : entry.theme;
+    let slideChanged = false;
+    const nextSlides = entry.slides.map((slide) => {
+      if (slide.backgroundUrl !== sourceUrl) return slide;
+      slideChanged = true;
+      return {
+        ...slide,
+        backgroundUrl: nextUrl,
+        mediaType: slide.mediaType || 'image',
+      };
+    });
+    if (!themeChanged && !slideChanged) return entry;
+    changed = true;
+    return {
+      ...entry,
+      theme: nextTheme,
+      slides: nextSlides,
+    };
+  });
+  return changed ? nextSchedule : entries;
+};
 
 const normalizeStageTimerLayout = (value: unknown): StageTimerLayout => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return DEFAULT_STAGE_TIMER_LAYOUT;
@@ -721,6 +750,7 @@ function App() {
   const outputHeartbeatPauseUntilRef = useRef(0);
   const stageHeartbeatFailureRef = useRef(0);
   const stageHeartbeatPauseUntilRef = useRef(0);
+  const pendingSharedMediaUploadsRef = useRef<Set<string>>(new Set());
 
   const [audienceDisplay, setAudienceDisplay] = useState<AudienceDisplayState>(() => {
     const saved = initialSavedState;
@@ -1666,6 +1696,45 @@ function App() {
     }, 180);
     return () => window.clearTimeout(id);
   }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, audienceQrProjection, stageAlert, stageMessageCenter, workspaceSettings, user]);
+
+  useEffect(() => {
+    const safeWorkspaceId = String(workspaceId || '').trim();
+    if (!safeWorkspaceId || !user?.uid) return;
+
+    const localUrls = new Set<string>();
+    for (const item of schedule) {
+      const themeUrl = String(item.theme?.backgroundUrl || '').trim();
+      if (themeUrl.startsWith('local://')) localUrls.add(themeUrl);
+      for (const slide of item.slides) {
+        const slideUrl = String(slide.backgroundUrl || '').trim();
+        if (slideUrl.startsWith('local://')) localUrls.add(slideUrl);
+      }
+    }
+    if (!localUrls.size) return;
+
+    for (const localUrl of localUrls) {
+      if (pendingSharedMediaUploadsRef.current.has(localUrl)) continue;
+      pendingSharedMediaUploadsRef.current.add(localUrl);
+      void (async () => {
+        try {
+          const media = await getMediaBinary(localUrl);
+          if (!media?.buffer) return;
+          const uploaded = await uploadWorkspaceMedia(safeWorkspaceId, user, {
+            name: media.name || `${media.id}.${media.kind === 'image' ? 'png' : 'bin'}`,
+            mimeType: media.mimeType || 'application/octet-stream',
+            buffer: media.buffer,
+          });
+          const sharedUrl = String(uploaded?.url || '').trim();
+          if (!uploaded?.ok || !sharedUrl) return;
+          setSchedule((prev) => replaceMediaUrlAcrossSchedule(prev, localUrl, sharedUrl));
+        } catch {
+          // Keep the local asset when shared-media upload is unavailable.
+        } finally {
+          pendingSharedMediaUploadsRef.current.delete(localUrl);
+        }
+      })();
+    }
+  }, [schedule, workspaceId, user]);
 
 
 
@@ -2810,7 +2879,8 @@ function App() {
           throw new Error(`Visual import slide ${idx + 1} is missing image data.`);
         }
         const imageFile = base64ToFile(entry.imageBase64, fileName, 'image/png');
-        backgroundUrl = await saveMedia(imageFile);
+        const uploaded = user?.uid ? await uploadWorkspaceMedia(workspaceId, user, imageFile) : null;
+        backgroundUrl = String(uploaded?.url || '').trim() || await saveMedia(imageFile);
       }
       slides.push({
         id: `${now}-pptx-visual-${idx + 1}`,
@@ -5289,6 +5359,8 @@ function App() {
         onImportPowerPointVisual={importPowerPointVisualSlidesForSlideEditor}
         onImportPowerPointText={importPowerPointTextSlidesForSlideEditor}
         onInsertSlides={handleInsertSlidesFromEditor}
+        workspaceId={workspaceId}
+        user={user}
       />
     </div >
   );

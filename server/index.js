@@ -139,10 +139,18 @@ const DATA_DIR = path.dirname(DB_PATH);
 const VIS_MEDIA_DIR = process.env.LUMINA_VIS_MEDIA_DIR
   ? path.resolve(process.env.LUMINA_VIS_MEDIA_DIR)
   : path.join(DATA_DIR, "vis-media");
+const WORKSPACE_MEDIA_DIR = process.env.LUMINA_WORKSPACE_MEDIA_DIR
+  ? path.resolve(process.env.LUMINA_WORKSPACE_MEDIA_DIR)
+  : path.join(DATA_DIR, "workspace-media");
 const VIS_MEDIA_BASE_PATH = (() => {
   const raw = String(process.env.LUMINA_VIS_MEDIA_BASE_PATH || "/media/vis").trim();
   const normalized = `/${raw.replace(/^\/+|\/+$/g, "")}`;
   return normalized === "/" ? "/media/vis" : normalized;
+})();
+const WORKSPACE_MEDIA_BASE_PATH = (() => {
+  const raw = String(process.env.LUMINA_WORKSPACE_MEDIA_BASE_PATH || "/media/workspaces").trim();
+  const normalized = `/${raw.replace(/^\/+|\/+$/g, "")}`;
+  return normalized === "/" ? "/media/workspaces" : normalized;
 })();
 const VIS_MEDIA_KEEP_IMPORTS_PER_WORKSPACE = Math.max(
   1,
@@ -260,9 +268,14 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: JSON_LIMIT }));
 fs.mkdirSync(VIS_MEDIA_DIR, { recursive: true });
+fs.mkdirSync(WORKSPACE_MEDIA_DIR, { recursive: true });
 app.use(
   VIS_MEDIA_BASE_PATH,
   express.static(VIS_MEDIA_DIR, { index: false, fallthrough: false }),
+);
+app.use(
+  WORKSPACE_MEDIA_BASE_PATH,
+  express.static(WORKSPACE_MEDIA_DIR, { index: false, fallthrough: false }),
 );
 
 const now = () => Date.now();
@@ -285,6 +298,17 @@ const cleanupDir = (dirPath) => {
 const sanitizeFilename = (name, fallback = "import.pptx") => {
   const safe = String(name || "").replace(/[^a-zA-Z0-9._-]/g, "_");
   return safe || fallback;
+};
+const inferExtensionFromMimeType = (mimeType) => {
+  const normalized = String(mimeType || "").trim().toLowerCase();
+  if (normalized === "image/png") return ".png";
+  if (normalized === "image/jpeg") return ".jpg";
+  if (normalized === "image/webp") return ".webp";
+  if (normalized === "image/gif") return ".gif";
+  if (normalized === "video/mp4") return ".mp4";
+  if (normalized === "video/webm") return ".webm";
+  if (normalized === "video/quicktime") return ".mov";
+  return "";
 };
 const sanitizePathSegment = (name, fallback = "item") => {
   const safe = String(name || "").replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -1218,6 +1242,44 @@ app.get("/api/workspaces/:workspaceId/snapshots/latest", requireActor, (req, res
   } catch (error) {
     if (error?.code === 403) return res.status(403).json({ ok: false, error: "FORBIDDEN" });
     return res.status(500).json({ ok: false, error: "SNAPSHOT_READ_FAILED", message: String(error?.message || error) });
+  }
+});
+
+app.post("/api/workspaces/:workspaceId/media", requireActor, (req, res) => {
+  try {
+    const workspaceId = req.params.workspaceId;
+    const actor = req.actor;
+    ensureWorkspaceForWrite(workspaceId, actor, { allowOperator: true });
+
+    const name = sanitizeFilename(req.body?.name || "upload.bin", "upload.bin");
+    const mimeType = String(req.body?.mimeType || "application/octet-stream").trim() || "application/octet-stream";
+    const base64Payload = parseBase64Payload(req.body?.base64);
+    const content = decodeBase64(base64Payload);
+    if (!content.length) {
+      return res.status(400).json({ ok: false, error: "MEDIA_EMPTY", message: "Upload payload was empty." });
+    }
+
+    const workspaceDir = path.join(WORKSPACE_MEDIA_DIR, sanitizePathSegment(workspaceId, "workspace"));
+    fs.mkdirSync(workspaceDir, { recursive: true });
+    const ext = path.extname(name) || inferExtensionFromMimeType(mimeType) || ".bin";
+    const digest = createHash("sha256").update(content).digest("hex").slice(0, 24);
+    const fileName = `${digest}${ext}`;
+    const absolutePath = path.join(workspaceDir, fileName);
+    fs.writeFileSync(absolutePath, content);
+
+    const relativeUrl = `${WORKSPACE_MEDIA_BASE_PATH}/${encodeURIComponent(sanitizePathSegment(workspaceId, "workspace"))}/${encodeURIComponent(fileName)}`;
+    const url = `${getRequestOrigin(req)}${relativeUrl}`;
+    return res.json({
+      ok: true,
+      name,
+      mimeType,
+      size: content.length,
+      url,
+      relativeUrl,
+    });
+  } catch (error) {
+    if (error?.code === 403) return res.status(403).json({ ok: false, error: "FORBIDDEN" });
+    return res.status(500).json({ ok: false, error: "MEDIA_UPLOAD_FAILED", message: String(error?.message || error) });
   }
 });
 
