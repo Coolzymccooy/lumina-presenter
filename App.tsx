@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { INITIAL_SCHEDULE, MOCK_SONGS, DEFAULT_BACKGROUNDS, GOSPEL_TRACKS, GospelTrack } from './constants';
 import {
   ServiceItem,
@@ -581,7 +581,9 @@ function App() {
     return !hasSeen;
   });
   const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES'>('SCHEDULE');
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1440));
   const isSettingsHydratedRef = useRef(false);
+  const studioShellRef = useRef<HTMLDivElement | null>(null);
 
   const parseJson = <T,>(raw: string | null, fallback: T): T => {
     if (raw === null) return fallback;
@@ -1521,6 +1523,12 @@ function App() {
     }
   }, [viewMode, activeSidebarTab]);
 
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // --- AUDIO PLAYER EFFECT ---
   useEffect(() => {
     if (!audioRef.current) {
@@ -1776,19 +1784,24 @@ function App() {
     || looksLikeVideoUrl(activeBackgroundUrl)
   );
   const sidebarExpanded = sidebarPinned || isSidebarHovering;
-  const sidebarRailWidthClass = `${sidebarExpanded ? 'w-52' : 'w-12'} transition-[width] duration-200 ease-out`;
+  const presenterShellTight = viewMode === 'PRESENTER' && viewportWidth < 1720;
+  const presenterShellVeryTight = viewMode === 'PRESENTER' && viewportWidth < 1540;
+  const sidebarRailWidth = sidebarExpanded ? (presenterShellTight ? 176 : 208) : 48;
+  const sidebarPanelWidth = viewMode === 'PRESENTER'
+    ? (presenterShellVeryTight ? 320 : presenterShellTight ? 336 : 360)
+    : 360;
+  const sidebarRailWidthClass = 'transition-[width] duration-200 ease-out';
   const sidebarLabelClass = `${sidebarExpanded ? 'opacity-100' : 'opacity-0'} transition-opacity whitespace-nowrap`;
-  const sidebarPanelWidthClass = isElectronShell
-    ? (viewMode === 'PRESENTER' && sidebarExpanded ? 'w-72 min-w-[18rem]' : 'w-80 min-w-[20rem]')
-    : 'w-[calc(100vw-3rem)] max-w-80 md:w-80';
   const presenterQueueSlides = activeItem?.slides || [];
   const presenterQueueActiveIndex = activeItem && activeItem.slides.length > 0
     ? clamp(activeSlideIndex, 0, activeItem.slides.length - 1)
     : -1;
   const presenterQueueCompact = presenterQueueSlides.length > 10;
-  const presenterQueueWidthClass = presenterQueueCompact
-    ? (sidebarExpanded ? 'lg:w-80 xl:w-[22rem]' : 'lg:w-[22rem] xl:w-[24rem]')
-    : (sidebarExpanded ? 'lg:w-72' : 'lg:w-80');
+  const presenterQueueWidth = workspaceSettings.machineMode
+    ? 0
+    : presenterQueueCompact
+      ? (presenterShellVeryTight ? 280 : presenterShellTight ? 304 : 336)
+      : (presenterShellVeryTight ? 288 : presenterShellTight ? 304 : 320);
   const presenterQueueUpNext = useMemo(() => {
     if (presenterQueueActiveIndex < 0) return [];
     const upNextCount = presenterQueueCompact ? 3 : 4;
@@ -3792,7 +3805,7 @@ function App() {
     return () => window.clearInterval(id);
   }, [autoCueEnabled, autoCueSeconds, viewMode, activeItemId, nextSlide, activeItem]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     setIsSidebarHovering(false);
     if (typeof window !== 'undefined') {
       window.scrollTo({ left: 0, top: window.scrollY, behavior: 'auto' });
@@ -3800,8 +3813,11 @@ function App() {
     try {
       document.documentElement.scrollLeft = 0;
       document.body.scrollLeft = 0;
+      if (studioShellRef.current) {
+        studioShellRef.current.scrollLeft = 0;
+      }
     } catch {}
-  }, [viewMode, sidebarPinned]);
+  }, [viewMode, sidebarPinned, activeSidebarTab, viewportWidth]);
 
   // ✅ Launch Output handler (opens window synchronously from user gesture — popup-safe)
   const handleToggleOutput = () => {
@@ -4405,38 +4421,51 @@ function App() {
         </div>
       )}
 
-      <div className={`flex-1 flex overflow-hidden min-w-0 overflow-x-hidden ${isElectronShell ? '' : 'mb-16 md:mb-0'}`}>
-        {/* Sidebar with Tabs (Hidden on Mobile unless Builder Mode) */}
-        <div
-          className={`group flex flex-col h-full bg-zinc-900/50 border-r border-zinc-800 shrink-0 overflow-hidden z-20 ${sidebarRailWidthClass}`}
-          onMouseEnter={() => setIsSidebarHovering(true)}
-          onMouseLeave={() => setIsSidebarHovering(false)}
-        >
-          <div className="flex items-center justify-between p-1 border-b border-zinc-800/80">
-            <span className={`px-2 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 ${sidebarLabelClass}`}>Studio</span>
-            <button
-              onClick={() => setSidebarPinned((prev) => !prev)}
-              className={`h-9 w-9 shrink-0 rounded-sm border transition-colors flex items-center justify-center ${sidebarPinned ? 'border-blue-700 bg-blue-950/40 text-blue-300' : 'border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300'}`}
-              title={sidebarPinned ? 'Unpin navigation' : 'Pin navigation open'}
-              aria-label={sidebarPinned ? 'Unpin navigation' : 'Pin navigation open'}
-            >
-              <PinIcon className="w-4 h-4" />
-            </button>
+      <div
+        ref={studioShellRef}
+        className={`flex-1 flex overflow-hidden min-w-0 overflow-x-hidden ${isElectronShell ? '' : 'mb-16 md:mb-0'}`}
+        data-testid="studio-shell"
+        onScroll={(e) => {
+          if (e.currentTarget.scrollLeft !== 0) {
+            e.currentTarget.scrollLeft = 0;
+          }
+        }}
+      >
+        <div className="flex shrink-0 min-w-0 h-full border-r border-zinc-900">
+          {/* Sidebar with Tabs (Hidden on Mobile unless Builder Mode) */}
+          <div
+            className={`group flex flex-col h-full bg-zinc-900/50 border-r border-zinc-800 shrink-0 overflow-hidden z-20 ${sidebarRailWidthClass}`}
+            style={{ width: sidebarRailWidth }}
+            data-testid="studio-sidebar-rail"
+            onMouseEnter={() => setIsSidebarHovering(true)}
+            onMouseLeave={() => setIsSidebarHovering(false)}
+          >
+            <div className="flex items-center justify-between p-1 border-b border-zinc-800/80">
+              <span className={`px-2 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 ${sidebarLabelClass}`}>Studio</span>
+              <button
+                onClick={() => setSidebarPinned((prev) => !prev)}
+                className={`h-9 w-9 shrink-0 rounded-sm border transition-colors flex items-center justify-center ${sidebarPinned ? 'border-blue-700 bg-blue-950/40 text-blue-300' : 'border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300'}`}
+                title={sidebarPinned ? 'Unpin navigation' : 'Pin navigation open'}
+                aria-label={sidebarPinned ? 'Unpin navigation' : 'Pin navigation open'}
+                data-testid="studio-sidebar-pin"
+              >
+                <PinIcon className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex flex-col flex-1 p-1 gap-1">
+              <button onClick={() => setActiveSidebarTab('SCHEDULE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'SCHEDULE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="SCHEDULE"><MonitorIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Schedule</span></button>
+              <button onClick={() => setActiveSidebarTab('FILES')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'FILES' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="RUN SHEET FILES"><CopyIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Files</span></button>
+              <button onClick={() => setActiveSidebarTab('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIO MIXER"><Volume2Icon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audio Mixer</span></button>
+              <button onClick={() => setActiveSidebarTab('BIBLE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'BIBLE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="BIBLE LIBRARY"><BibleIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Bible Hub</span></button>
+              <button onClick={() => setActiveSidebarTab('AUDIENCE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIENCE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIENCE STUDIO"><ChatIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audience</span></button>
+            </div>
+            <div className="p-1 border-t border-zinc-800">
+              <button onClick={() => setIsProfileOpen(true)} className="w-full p-2.5 rounded-sm flex items-center gap-3 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors" title="SETTINGS"><Settings className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Settings</span></button>
+            </div>
           </div>
-          <div className="flex flex-col flex-1 p-1 gap-1">
-            <button onClick={() => setActiveSidebarTab('SCHEDULE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'SCHEDULE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="SCHEDULE"><MonitorIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Schedule</span></button>
-            <button onClick={() => setActiveSidebarTab('FILES')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'FILES' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="RUN SHEET FILES"><CopyIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Files</span></button>
-            <button onClick={() => setActiveSidebarTab('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIO MIXER"><Volume2Icon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audio Mixer</span></button>
-            <button onClick={() => setActiveSidebarTab('BIBLE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'BIBLE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="BIBLE LIBRARY"><BibleIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Bible Hub</span></button>
-            <button onClick={() => setActiveSidebarTab('AUDIENCE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIENCE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIENCE STUDIO"><ChatIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audience</span></button>
-          </div>
-          <div className="p-1 border-t border-zinc-800">
-            <button onClick={() => setIsProfileOpen(true)} className="w-full p-2.5 rounded-sm flex items-center gap-3 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors" title="SETTINGS"><Settings className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Settings</span></button>
-          </div>
-        </div>
 
-        {/* SIDEBAR PANEL */}
-        <div className={`flex flex-col bg-zinc-950 border-r border-zinc-900 shrink-0 ${sidebarPanelWidthClass}`}>
+          {/* SIDEBAR PANEL */}
+          <div className="flex flex-col bg-zinc-950 shrink-0 min-w-0" style={{ width: sidebarPanelWidth }}>
           {activeSidebarTab === 'SCHEDULE' && (
             <>
               <div className="p-3 border-b border-zinc-900 flex items-center justify-between shrink-0">
@@ -4562,6 +4591,7 @@ function App() {
               />
             </div>
           )}
+        </div>
         </div>
 
         {/* ... (Existing Builder/Presenter Logic) ... */}
@@ -4703,7 +4733,7 @@ function App() {
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex flex-col lg:flex-row bg-black min-w-0">
+            <div className="flex-1 flex flex-col lg:flex-row bg-black min-w-0 overflow-hidden">
               <div className="flex-1 flex flex-col relative min-w-0">
                 <div className={`flex-1 relative flex items-center bg-zinc-950 overflow-hidden border-r border-zinc-900 ${isElectronShell ? 'justify-start px-4' : 'justify-center'}`}>
                   <div className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group">
@@ -4887,7 +4917,10 @@ function App() {
                   </div>
                 </div>
               </div>
-              <div className={`w-full ${presenterQueueWidthClass} bg-zinc-950 border-l border-zinc-900 flex flex-col h-72 lg:h-auto border-t lg:border-t-0 ${workspaceSettings.machineMode ? 'hidden' : (isElectronShell ? 'flex' : 'hidden md:flex')}`}>
+              <div
+                className={`w-full bg-zinc-950 border-l border-zinc-900 flex flex-col h-72 lg:h-auto border-t lg:border-t-0 shrink-0 min-w-0 ${workspaceSettings.machineMode ? 'hidden' : (isElectronShell ? 'flex' : 'hidden md:flex')}`}
+                style={workspaceSettings.machineMode ? undefined : { width: presenterQueueWidth }}
+              >
                 <div className="sticky top-0 z-20 h-10 px-3 border-b border-zinc-900 font-bold text-zinc-500 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950">
                   <span>Live Queue</span>
                   <div className="flex items-center gap-2">

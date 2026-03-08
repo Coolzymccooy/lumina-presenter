@@ -262,3 +262,55 @@ test('runsheet inner collection reorders slides without leaving the item', async
   await page.getByTestId(`runsheet-slide-up-${slideC}`).click();
   await expect(labels).toHaveText(['Bravo', 'Charlie', 'Alpha']);
 });
+
+test('pinned studio sidebar remains accessible across present and build mode switches', async ({ page }) => {
+  test.setTimeout(120_000);
+  const key = uniqueKey();
+  const { state } = buildBuilderState(key, [
+    {
+      id: `slide-${key}`,
+      label: 'Intro',
+      content: 'Welcome to service',
+      backgroundUrl: '',
+      mediaType: 'image',
+    },
+  ]);
+
+  await seedState(page, state);
+  await enterStudio(page, key);
+
+  await page.getByTestId('studio-sidebar-pin').click();
+  await expect(page.getByText('Schedule')).toBeVisible();
+  await expect(page.getByText('Files')).toBeVisible();
+  await expect(page.getByText('Audio Mixer')).toBeVisible();
+  await expect(page.getByText('Bible Hub')).toBeVisible();
+  await expect(page.getByText('Audience')).toBeVisible();
+
+  await page.getByRole('button', { name: 'PRESENT' }).click();
+  await expect(page.getByText('Live Queue')).toBeVisible();
+  await expect(page.getByText('Schedule')).toBeVisible();
+  await expect(page.getByText('Files')).toBeVisible();
+  await expect(page.getByText('Audio Mixer')).toBeVisible();
+
+  await page.getByRole('button', { name: 'BUILD' }).click();
+  await expect(page.getByText('Run Sheet')).toBeVisible();
+  await expect(page.getByText('Schedule')).toBeVisible();
+  await expect(page.getByText('Files')).toBeVisible();
+  await expect(page.getByText('Audio Mixer')).toBeVisible();
+  await expect(page.getByText('Bible Hub')).toBeVisible();
+  await expect(page.getByText('Audience')).toBeVisible();
+
+  const shellMetrics = await page.getByTestId('studio-shell').evaluate((node) => ({
+    scrollLeft: node.scrollLeft,
+    clientWidth: node.clientWidth,
+    scrollWidth: node.scrollWidth,
+  }));
+  expect(shellMetrics.scrollLeft).toBe(0);
+
+  const railMetrics = await page.getByTestId('studio-sidebar-rail').evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return { left: rect.left, width: rect.width };
+  });
+  expect(railMetrics.left).toBeGreaterThanOrEqual(0);
+  expect(railMetrics.width).toBeGreaterThan(120);
+});
