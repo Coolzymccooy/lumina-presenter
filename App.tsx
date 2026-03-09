@@ -21,7 +21,6 @@ import {
 } from './types';
 import { SlideRenderer } from './components/SlideRenderer';
 import { AIModal } from './components/AIModal';
-import { SlideEditorModal } from './components/SlideEditorModal';
 import { ItemEditorPanel } from './components/ItemEditorPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { HelpModal } from './components/HelpModal';
@@ -38,6 +37,7 @@ import { AudienceStudio } from './components/AudienceStudio'; // NEW
 import { ConnectModal } from './components/ConnectModal'; // NEW
 import { StageDisplay } from './components/StageDisplay';
 import { RemoteControl } from './components/RemoteControl';
+import { SmartSlideEditor } from './components/slide-layout/editor/SmartSlideEditor';
 import { logActivity, analyzeSentimentContext } from './services/analytics';
 import { auth, isFirebaseConfigured, subscribeToState, subscribeToTeamPlaylists, updateLiveState, upsertTeamPlaylist } from './services/firebase';
 import { onAuthStateChanged } from "firebase/auth";
@@ -3251,40 +3251,16 @@ function App() {
     if (command === 'UNMUTE') setOutputMuted(false);
   }, [nextSlide, prevSlide, stopProgramVideo]);
 
-  const handleSaveSlideFromEditor = (slideToSave: Slide) => {
+  const handleSaveSlidesFromEditor = useCallback((slidesToSave: Slide[], selectedSlideId?: string | null) => {
     if (!selectedItem) return;
-    const slideExists = selectedItem.slides.find((entry) => entry.id === slideToSave.id);
-    const nextSlides = slideExists
-      ? selectedItem.slides.map((entry) => (entry.id === slideToSave.id ? slideToSave : entry))
-      : [...selectedItem.slides, slideToSave];
-    updateItem({ ...selectedItem, slides: nextSlides });
-    setIsSlideEditorOpen(false);
-  };
-
-  const handleInsertSlidesFromEditor = (slidesToInsert: Slide[], replaceCurrentId?: string | null) => {
-    if (!selectedItem || !slidesToInsert.length) return;
-    const incoming = slidesToInsert.map((entry, idx) => ({
-      ...entry,
-      id: entry.id || `${Date.now()}-import-${idx + 1}`,
+    const normalizedSlides = slidesToSave.map((slide, index) => ({
+      ...slide,
+      id: slide.id || `${Date.now()}-smart-slide-${index + 1}`,
     }));
-
-    const nextSlides = [...selectedItem.slides];
-    if (replaceCurrentId) {
-      const targetIndex = nextSlides.findIndex((entry) => entry.id === replaceCurrentId);
-      if (targetIndex >= 0) {
-        const [first, ...rest] = incoming;
-        const replacement = { ...first, id: replaceCurrentId };
-        nextSlides.splice(targetIndex, 1, replacement, ...rest);
-      } else {
-        nextSlides.push(...incoming);
-      }
-    } else {
-      nextSlides.push(...incoming);
-    }
-
-    updateItem({ ...selectedItem, slides: nextSlides });
+    updateItem({ ...selectedItem, slides: normalizedSlides });
     setIsSlideEditorOpen(false);
-  };
+    setEditingSlide(null);
+  }, [selectedItem, updateItem]);
 
   const handleEditSlide = (slide: Slide) => {
     setEditingSlide(slide);
@@ -5314,14 +5290,18 @@ function App() {
           />
         )
       }
-      <SlideEditorModal
+      <SmartSlideEditor
         isOpen={isSlideEditorOpen}
-        onClose={() => setIsSlideEditorOpen(false)}
-        slide={editingSlide}
-        onSave={handleSaveSlideFromEditor}
+        item={selectedItem}
+        mode={editingSlide ? 'edit' : 'add'}
+        initialSlideId={editingSlide?.id || null}
+        onClose={() => {
+          setIsSlideEditorOpen(false);
+          setEditingSlide(null);
+        }}
+        onSaveSlides={handleSaveSlidesFromEditor}
         onImportPowerPointVisual={importPowerPointVisualSlidesForSlideEditor}
         onImportPowerPointText={importPowerPointTextSlidesForSlideEditor}
-        onInsertSlides={handleInsertSlidesFromEditor}
         workspaceId={workspaceId}
         user={user}
       />
