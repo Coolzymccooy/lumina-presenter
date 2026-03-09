@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen, session, Menu, shell, ipcMain, clipboard } from 'electron';
+import { app, BrowserWindow, screen, session, Menu, shell, ipcMain, clipboard, dialog } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -11,6 +11,21 @@ const SHOULD_OPEN_DEVTOOLS = process.env.LUMINA_OPEN_DEVTOOLS === '1';
 const RELEASES_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases';
 const TRUSTED_DEV_ORIGINS = new Set(['http://localhost:5173', 'http://127.0.0.1:5173']);
 const MEDIA_PERMISSIONS = new Set(['media', 'microphone', 'camera']);
+const UPDATE_CHECK_INTERVAL_MS = 1000 * 60 * 60 * 4;
+
+let mainWindowRef = null;
+let autoUpdaterRef = null;
+let updateCheckTimer = null;
+let updaterInitialized = false;
+let updatePromptActive = false;
+let lastUpdateCheckWasManual = false;
+let updateStatus = {
+  state: 'idle',
+  version: null,
+  progress: 0,
+  message: 'Idle',
+  releaseName: null,
+};
 
 // Content Security Policy â€” allows Firebase, Google APIs, and the Lumina API.
 const CSP = [
@@ -78,6 +93,68 @@ function installClipboardHandlers() {
   });
 }
 
+function setUpdateStatus(next) {
+  updateStatus = {
+    ...updateStatus,
+    ...next,
+  };
+  if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
+  mainWindowRef.webContents.send('app-update:status', updateStatus);
+}
+
+async function promptForDownloadedUpdate(info) {
+  if (!mainWindowRef || mainWindowRef.isDestroyed() || !autoUpdaterRef || updatePromptActive) return;
+  updatePromptActive = true;
+  try {
+    const detailParts = [];
+    if (info?.version) detailParts.push(`Version ${info.version} is ready.`);
+    detailParts.push('Restart Lumina Presenter to install the update now, or do it later.');
+    const result = await dialog.showMessageBox(mainWindowRef, {
+      type: 'info',
+      buttons: ['Restart and Install', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+      title: 'Update Ready',
+      message: 'A new Lumina update has been downloaded.',
+      detail: detailParts.join(' '),
+    });
+    if (result.response === 0) {
+      autoUpdaterRef.quitAndInstall(false, true);
+    }
+  } catch (error) {
+    console.warn('Failed to show update prompt:', error?.message || error);
+  } finally {
+    updatePromptActive = false;
+  }
+}
+
+function scheduleUpdateChecks() {
+  if (updateCheckTimer) {
+    clearInterval(updateCheckTimer);
+  }
+  updateCheckTimer = setInterval(() => {
+    void checkForUpdatesSafely();
+  }, UPDATE_CHECK_INTERVAL_MS);
+}
+
+function installUpdaterIpcHandlers() {
+  ipcMain.handle('app-update:get-status', () => updateStatus);
+  ipcMain.handle('app-update:check-now', async () => {
+    await checkForUpdatesSafely(true);
+    return updateStatus;
+  });
+  ipcMain.handle('app-update:install-now', async () => {
+    if (!autoUpdaterRef) return false;
+    autoUpdaterRef.quitAndInstall(false, true);
+    return true;
+  });
+  ipcMain.handle('app-update:open-releases', async () => {
+    await shell.openExternal(RELEASES_URL);
+    return true;
+  });
+}
+
 function createWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
   // app.isPackaged = true when running from the installed/portable build.
@@ -97,6 +174,7 @@ function createWindow() {
     backgroundColor: '#000000',
     show: false,
   });
+  mainWindowRef = mainWindow;
 
   // Desktop UX: pressing Esc restores a maximized/fullscreen window back to normal.
   mainWindow.webContents.on('before-input-event', (event, input) => {
@@ -135,9 +213,13 @@ function createWindow() {
     // Check for updates on launch
     if (isProd) {
       void checkForUpdatesSafely();
+      scheduleUpdateChecks();
     }
   });
-  mainWindow.on('closed', () => { app.quit(); });
+  mainWindow.on('closed', () => {
+    mainWindowRef = null;
+    app.quit();
+  });
 }
 
 function installApplicationMenu() {
@@ -233,18 +315,80 @@ async function loadMainContent(mainWindow, isProd) {
   await mainWindow.loadFile(DIST_INDEX_PATH);
 }
 
+function ensureAutoUpdaterInitialized() {
+  if (updaterInitialized || !app.isPackaged) return;
+  updaterInitialized = true;
+}
+
 // Best-effort update check. Works only in packaged builds with publish config.
-async function checkForUpdatesSafely() {
+async function checkForUpdatesSafely(isManual = false) {
+  if (!app.isPackaged) return;
+  lastUpdateCheckWasManual = isManual;
   try {
     const { autoUpdater } = await import('electron-updater');
+    autoUpdaterRef = autoUpdater;
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
-    autoUpdater.on('error', (err) => console.warn('autoUpdater error:', err?.message || err));
-    autoUpdater.on('update-available', info => console.log('Update available:', info?.version || info));
-    autoUpdater.on('update-downloaded', info => console.log('Update downloaded:', info?.version || info));
+    if (!updaterInitialized) {
+      autoUpdater.on('checking-for-update', () => {
+        setUpdateStatus({
+          state: 'checking',
+          message: 'Checking for updates...',
+          progress: 0,
+        });
+      });
+      autoUpdater.on('update-available', (info) => {
+        setUpdateStatus({
+          state: 'available',
+          version: info?.version || null,
+          releaseName: info?.releaseName || null,
+          message: info?.version ? `Downloading ${info.version}...` : 'Downloading update...',
+          progress: 0,
+        });
+      });
+      autoUpdater.on('download-progress', (progress) => {
+        const percent = Number.isFinite(progress?.percent) ? Math.max(0, Math.min(100, Math.round(progress.percent))) : 0;
+        setUpdateStatus({
+          state: 'downloading',
+          progress: percent,
+          message: `Downloading update... ${percent}%`,
+        });
+      });
+      autoUpdater.on('update-not-available', () => {
+        setUpdateStatus({
+          state: 'not-available',
+          progress: 0,
+          message: lastUpdateCheckWasManual ? 'You already have the latest version.' : 'App is up to date.',
+        });
+      });
+      autoUpdater.on('update-downloaded', (info) => {
+        setUpdateStatus({
+          state: 'downloaded',
+          version: info?.version || null,
+          releaseName: info?.releaseName || null,
+          progress: 100,
+          message: info?.version ? `Version ${info.version} is ready to install.` : 'Update downloaded and ready to install.',
+        });
+        void promptForDownloadedUpdate(info);
+      });
+      autoUpdater.on('error', (err) => {
+        const message = err?.message || String(err || 'unknown error');
+        console.warn('autoUpdater error:', message);
+        setUpdateStatus({
+          state: 'error',
+          message: `Update check failed: ${message}`,
+        });
+      });
+      ensureAutoUpdaterInitialized();
+    }
     await autoUpdater.checkForUpdates();
   } catch (err) {
-    console.warn('Auto-update not available:', err?.message || err);
+    const message = err?.message || String(err || 'unknown error');
+    console.warn('Auto-update not available:', message);
+    setUpdateStatus({
+      state: 'error',
+      message: `Auto-update unavailable: ${message}`,
+    });
   }
 }
 
@@ -252,6 +396,7 @@ app.whenReady().then(() => {
   installApplicationMenu();
   installMediaPermissionHandlers();
   installClipboardHandlers();
+  installUpdaterIpcHandlers();
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -260,4 +405,11 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('before-quit', () => {
+  if (updateCheckTimer) {
+    clearInterval(updateCheckTimer);
+    updateCheckTimer = null;
+  }
 });

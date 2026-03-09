@@ -108,6 +108,15 @@ type WorkspaceSettings = {
 };
 
 type AetherBridgeStatusTone = 'neutral' | 'ok' | 'error';
+type DesktopUpdateState = 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'not-available' | 'error';
+
+type DesktopUpdateStatus = {
+  state: DesktopUpdateState;
+  version?: string | null;
+  progress?: number;
+  message?: string;
+  releaseName?: string | null;
+};
 
 type SmokeTestResult = {
   name: string;
@@ -572,6 +581,12 @@ function App() {
   const [saveError, setSaveError] = useState<boolean>(false);
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [syncIssue, setSyncIssue] = useState<string | null>(null);
+  const [desktopUpdateStatus, setDesktopUpdateStatus] = useState<DesktopUpdateStatus>({
+    state: 'idle',
+    progress: 0,
+    message: 'Idle',
+  });
+  const [dismissedUpdateKey, setDismissedUpdateKey] = useState<string | null>(null);
 
   // ✅ Projector popout window handle (opened in click handler to avoid popup blockers)
   const [outputWin, setOutputWin] = useState<Window | null>(null);
@@ -584,6 +599,51 @@ function App() {
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1440));
   const isSettingsHydratedRef = useRef(false);
   const studioShellRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!window.electron?.updates) return undefined;
+    let mounted = true;
+    void window.electron.updates.getStatus?.().then((status) => {
+      if (!mounted || !status) return;
+      setDesktopUpdateStatus(status);
+    });
+    const unsubscribe = window.electron.updates.onStatus?.((status) => {
+      if (!mounted || !status) return;
+      setDesktopUpdateStatus(status);
+      if (status.state === 'downloaded' && status.version) {
+        setDismissedUpdateKey((prev) => (prev === status.version ? prev : null));
+      }
+    });
+    return () => {
+      mounted = false;
+      unsubscribe?.();
+    };
+  }, []);
+
+  const handleDesktopUpdateCheckNow = useCallback(async () => {
+    const status = await window.electron?.updates?.checkNow?.();
+    if (status) {
+      setDesktopUpdateStatus(status);
+      setDismissedUpdateKey(null);
+    }
+  }, []);
+
+  const handleDesktopUpdateInstallNow = useCallback(async () => {
+    await window.electron?.updates?.installNow?.();
+  }, []);
+
+  const handleDesktopUpdateOpenReleases = useCallback(async () => {
+    await window.electron?.updates?.openReleases?.();
+  }, []);
+
+  const currentUpdateKey = useMemo(
+    () => desktopUpdateStatus.version || desktopUpdateStatus.releaseName || desktopUpdateStatus.state,
+    [desktopUpdateStatus.releaseName, desktopUpdateStatus.state, desktopUpdateStatus.version]
+  );
+
+  const showDesktopUpdateBanner = isElectronShell
+    && ['available', 'downloading', 'downloaded', 'error'].includes(desktopUpdateStatus.state)
+    && dismissedUpdateKey !== currentUpdateKey;
 
   const parseJson = <T,>(raw: string | null, fallback: T): T => {
     if (raw === null) return fallback;
@@ -4318,6 +4378,15 @@ function App() {
 
         {/* RIGHT: COMMAND CENTER */}
         <div className="flex items-center gap-2">
+          {isElectronShell && desktopUpdateStatus.state === 'downloaded' && (
+            <button
+              onClick={handleDesktopUpdateInstallNow}
+              className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-emerald-600/60 bg-emerald-950/30 text-emerald-300 text-[10px] font-black tracking-widest hover:bg-emerald-950/50 transition-all"
+              title={desktopUpdateStatus.message || 'Update ready to install'}
+            >
+              <CheckIcon className="w-3.5 h-3.5" /> UPDATE READY
+            </button>
+          )}
           <div className="flex items-center bg-black/30 p-1 rounded-xl border border-zinc-800/40 gap-1 mr-2">
             <button
               onClick={() => {
@@ -4387,6 +4456,57 @@ function App() {
           </div>
         </div>
       </header>
+
+      {showDesktopUpdateBanner && (
+        <div className="mx-4 mt-3 rounded-2xl border border-cyan-900/60 bg-zinc-950/95 shadow-2xl shadow-black/30">
+          <div className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
+            <div className="min-w-0">
+              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Desktop Update</div>
+              <div className="mt-1 text-sm font-semibold text-zinc-100">
+                {desktopUpdateStatus.state === 'downloaded'
+                  ? `Version ${desktopUpdateStatus.version || 'update'} is ready to install.`
+                  : desktopUpdateStatus.state === 'downloading'
+                    ? `Downloading ${desktopUpdateStatus.version || 'update'}${desktopUpdateStatus.progress ? ` (${desktopUpdateStatus.progress}%)` : ''}.`
+                    : desktopUpdateStatus.state === 'available'
+                      ? `New version ${desktopUpdateStatus.version || ''} found.`
+                      : 'Desktop update check failed.'}
+              </div>
+              <div className="mt-1 text-xs text-zinc-400 truncate">
+                {desktopUpdateStatus.message || 'Lumina will prompt you when the update is ready.'}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {desktopUpdateStatus.state === 'downloaded' ? (
+                <button
+                  onClick={handleDesktopUpdateInstallNow}
+                  className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-[10px] font-black tracking-widest hover:bg-emerald-500 transition-all"
+                >
+                  RESTART & INSTALL
+                </button>
+              ) : (
+                <button
+                  onClick={handleDesktopUpdateCheckNow}
+                  className="px-3 py-2 rounded-lg border border-zinc-700 text-zinc-200 text-[10px] font-black tracking-widest hover:border-zinc-500 transition-all"
+                >
+                  CHECK NOW
+                </button>
+              )}
+              <button
+                onClick={handleDesktopUpdateOpenReleases}
+                className="px-3 py-2 rounded-lg border border-zinc-700 text-zinc-300 text-[10px] font-black tracking-widest hover:border-zinc-500 transition-all"
+              >
+                RELEASE NOTES
+              </button>
+              <button
+                onClick={() => setDismissedUpdateKey(currentUpdateKey)}
+                className="px-3 py-2 rounded-lg border border-zinc-800 text-zinc-500 text-[10px] font-black tracking-widest hover:text-zinc-300 hover:border-zinc-600 transition-all"
+              >
+                LATER
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MOBILE NAV BAR (Visible only on small screens) */}
       {!isElectronShell && (
