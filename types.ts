@@ -9,14 +9,101 @@ export enum ItemType {
 
 export type MediaType = 'image' | 'video' | 'color';
 
+export type SlideType = 'custom' | 'lyrics' | 'scripture' | 'announcement' | 'offering';
+export type SlideElementType = 'text';
+export type SlideElementRole = 'title' | 'subtitle' | 'body' | 'reference' | 'footer' | 'note';
+export type TextAlign = 'left' | 'center' | 'right';
+export type VerticalAlign = 'top' | 'middle' | 'bottom';
+export type TextTransform = 'none' | 'uppercase' | 'lowercase' | 'capitalize';
+export type TextListStyle = 'none' | 'disc' | 'circle' | 'square' | 'decimal';
+export type SlideEditorTool = 'select' | 'add-text';
+
+export interface ElementFrame {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  zIndex: number;
+  rotation?: number;
+}
+
+export interface TextElementStyle {
+  fontFamily?: string;
+  fontSize?: number;
+  fontWeight?: number | string;
+  fontStyle?: 'normal' | 'italic';
+  textDecoration?: string;
+  color?: string;
+  textAlign?: TextAlign;
+  verticalAlign?: VerticalAlign;
+  lineHeight?: number;
+  letterSpacing?: number;
+  textTransform?: TextTransform;
+  outlineColor?: string;
+  outlineWidth?: number;
+  shadow?: string;
+  backgroundColor?: string;
+  opacity?: number;
+  borderRadius?: number;
+  padding?: number;
+  listStyleType?: TextListStyle;
+  listIndent?: number;
+}
+
+export interface BaseSlideElement {
+  id: string;
+  type: SlideElementType;
+  role?: SlideElementRole;
+  name: string;
+  frame: ElementFrame;
+  visible: boolean;
+  locked: boolean;
+}
+
+export interface TextSlideElement extends BaseSlideElement {
+  type: 'text';
+  content: string;
+  style: TextElementStyle;
+}
+
+export type SlideElement = TextSlideElement;
+
+export interface SlideMetadata {
+  templateId?: string;
+  notes?: string;
+}
+
+export interface LayoutPreset {
+  id: string;
+  label: string;
+  description?: string;
+  defaultSlideType: SlideType;
+  createElements: () => SlideElement[];
+}
+
+export interface SlideEditorState {
+  currentSlideId: string | null;
+  selectedElementId: string | null;
+  hoveredElementId: string | null;
+  slides: Slide[];
+  activeTool: SlideEditorTool;
+  showSafeArea: boolean;
+  showGrid: boolean;
+  snapEnabled: boolean;
+}
+
 export interface Slide {
   id: string;
   content: string; // The text content
   label?: string; // e.g., "Verse 1", "Chorus"
+  type?: SlideType;
+  layoutType?: string;
+  elements?: SlideElement[];
   backgroundUrl?: string; // Specific background for this slide, overrides item default
   mediaType?: MediaType; // Explicitly define type to avoid guessing
   mediaFit?: 'cover' | 'contain';
   notes?: string; // Presenter notes
+  metadata?: SlideMetadata;
 }
 
 export interface TimerCue {

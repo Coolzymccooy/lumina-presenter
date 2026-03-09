@@ -314,3 +314,116 @@ test('pinned studio sidebar remains accessible across present and build mode swi
   expect(railMetrics.left).toBeGreaterThanOrEqual(0);
   expect(railMetrics.width).toBeGreaterThan(120);
 });
+
+test('smart slide editor supports preset selection, typing into inspector, and saving', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  const key = uniqueKey();
+  const { state } = buildBuilderState(key, []);
+
+  await seedState(page, state);
+  await enterStudio(page, key);
+
+  await page.getByRole('button', { name: /add slide/i }).click();
+  await expect(page.getByText('Smart Layout Slide Editor')).toBeVisible();
+
+  await page.getByTestId('smart-preset-title-body').click();
+  await expect(page.getByTestId('smart-element-content')).toBeVisible();
+  await expect(page.getByTestId('smart-element-content')).toHaveValue(/Slide Title/i);
+
+  await page.getByTestId('smart-slide-label').fill('Sunday Welcome');
+  await page.getByTestId('smart-element-content').fill('Welcome to Sunday Service');
+  await page.getByTestId('smart-element-font-family').selectOption({ label: 'Georgia' });
+  await page.getByTestId('smart-element-font-size').fill('72');
+  await page.getByTestId('smart-element-italic').click();
+  await page.getByTestId('smart-element-underline').click();
+  await page.getByTestId('smart-element-line-height').fill('1.3');
+  await page.getByTestId('smart-element-letter-spacing').fill('1.5');
+  await page.getByTestId('smart-element-text-align').selectOption('center');
+
+  const canvasText = page.getByText('Welcome to Sunday Service', { exact: true }).first();
+  await expect(canvasText).toHaveCSS('font-style', 'italic');
+  await expect(canvasText).toHaveCSS('text-decoration-line', 'underline');
+  await expect.poll(async () => canvasText.evaluate((node) => window.getComputedStyle(node).fontFamily)).toContain('Georgia');
+
+  await page.getByTestId('slide-editor-confirm').click();
+
+  await expect(page.getByText('Smart Layout Slide Editor')).not.toBeVisible();
+  await expect(page.locator('[data-testid^="runsheet-slide-label-"]').first()).toHaveText('Sunday Welcome');
+  await expect(page.getByText('Welcome to Sunday Service', { exact: true })).toBeVisible();
+});
+
+test('smart slide editor supports multiple bullet points and numbered lists', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  const key = uniqueKey();
+  const { state } = buildBuilderState(key, []);
+
+  await seedState(page, state);
+  await enterStudio(page, key);
+
+  await page.getByRole('button', { name: /add slide/i }).click();
+  await expect(page.getByText('Smart Layout Slide Editor')).toBeVisible();
+
+  await page.getByTestId('smart-preset-title-body').click();
+  await page.getByTestId('smart-element-content').fill('Prayer\nWorship\nOffering');
+  await page.getByTestId('smart-element-bullets').click();
+  await expect(page.locator('[data-testid^="slide-text-list-item-"]')).toHaveCount(3);
+
+  await page.getByTestId('smart-element-numbered').click();
+  const list = page.locator('[data-testid^="slide-text-list-"]').first();
+  await expect.poll(async () => list.evaluate((node) => window.getComputedStyle(node).listStyleType)).toBe('decimal');
+
+  await page.getByTestId('slide-editor-confirm').click();
+  await expect(page.getByText('Smart Layout Slide Editor')).not.toBeVisible();
+  await expect(page.getByText('Prayer')).toBeVisible();
+  await expect(page.getByText('Worship')).toBeVisible();
+  await expect(page.getByText('Offering')).toBeVisible();
+});
+
+test('smart slide editor keeps uploaded media slides free of auto text blocks', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  const key = uniqueKey();
+  const { state } = buildBuilderState(key, []);
+
+  await seedState(page, state);
+  await enterStudio(page, key);
+
+  await page.getByRole('button', { name: /add slide/i }).click();
+  await expect(page.getByText('Smart Layout Slide Editor')).toBeVisible();
+
+  await page.getByTestId('slide-editor-upload-input').setInputFiles({
+    name: 'smart-media.png',
+    mimeType: 'image/png',
+    buffer: ICON_PNG,
+  });
+
+  await expect(page.getByText('Select a text block to edit its content and style.')).toBeVisible();
+  await expect(page.getByTestId('smart-element-content')).toHaveCount(0);
+  await page.getByRole('button', { name: 'SAVE' }).click();
+
+  await expect(page.getByText('Smart Layout Slide Editor')).not.toBeVisible();
+  await expect(page.locator('[data-testid^="runsheet-slide-label-"]').first()).toHaveText('smart-media');
+  await expect(page.locator('[data-testid="slide-renderer-image"]').first()).toBeVisible();
+});
+
+test('smart slide editor stacked layout keeps inspector visible and editable on tighter screens', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1500, height: 900 });
+  const key = uniqueKey();
+  const { state } = buildBuilderState(key, []);
+
+  await seedState(page, state);
+  await enterStudio(page, key);
+
+  await page.getByRole('button', { name: /add slide/i }).click();
+  await expect(page.getByText('Smart Layout Slide Editor')).toBeVisible();
+  await page.getByTestId('smart-preset-title-body').click();
+  await expect(page.getByTestId('smart-slide-label')).toBeVisible();
+  await expect(page.getByTestId('smart-element-content')).toBeVisible();
+  await page.getByTestId('smart-slide-label').fill('Stacked Layout');
+  await page.getByTestId('smart-element-content').fill('Inspector remains usable.');
+  await expect(page.getByTestId('smart-slide-label')).toHaveValue('Stacked Layout');
+  await expect(page.getByTestId('smart-element-content')).toHaveValue('Inspector remains usable.');
+});

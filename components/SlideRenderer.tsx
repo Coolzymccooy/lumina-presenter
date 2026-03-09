@@ -3,6 +3,8 @@ import { Slide, ServiceItem, MediaType, AudienceDisplayState, AudienceQrProjecti
 
 import { getMediaAsset, getCachedMediaAsset } from "../services/localMedia";
 import { DEFAULT_BACKGROUNDS } from "../constants";
+import { ElementRenderer } from "./slide-layout/render/ElementRenderer";
+import { getRenderableElements } from "./slide-layout/utils/slideHydration";
 
 interface SlideRendererProps {
   slide: Slide | null;
@@ -374,6 +376,15 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   const contentText = safeString(slide.content);
   const hasReadableText = contentText.trim().length > 0;
   const textPx = computeTextPx(item.theme?.fontSize, contentText);
+  const hasStructuredElements = Array.isArray(slide.elements) && slide.elements.length > 0;
+  const structuredElements = useMemo(
+    () => (hasStructuredElements ? getRenderableElements(slide, item) : []),
+    [hasStructuredElements, slide, item]
+  );
+  const hasRenderableStructuredText = structuredElements.some(
+    (element) => element.type === "text" && element.visible !== false && safeString(element.content).trim().length > 0
+  );
+  const hasTextOverlay = hasStructuredElements ? hasRenderableStructuredText : hasReadableText;
 
   const textLayerStyle: React.CSSProperties = {
     fontFamily: item.theme?.fontFamily || "system-ui, sans-serif",
@@ -540,17 +551,26 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   // look pixel-identical — only the overall scale changes, never the layout.
 
   if (isThumbnail) {
-    // Thumbnail: simple scaled-down wrapper without all the canvas machinery
     return (
-      <div className="relative overflow-hidden w-full aspect-video bg-black select-none">
-        <div className="absolute inset-0">{renderMedia()}</div>
-        {hasReadableText && hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
-          <div className="absolute inset-0 bg-black/20" />
-        )}
-        <div className="absolute inset-0 flex items-center justify-center p-2 text-center" style={textLayerStyle}>
-          <div className="text-[0.65rem] whitespace-pre-wrap break-words leading-tight max-w-[92%]">{contentText}</div>
-        </div>
-      </div>
+      <ScaledCanvas
+        fitContainer={true}
+        slide={slide}
+        item={item}
+        contentText={contentText}
+        hasReadableText={hasReadableText}
+        hasStructuredElements={hasStructuredElements}
+        structuredElements={structuredElements}
+        hasTextOverlay={hasTextOverlay}
+        textPx={textPx}
+        textLayerStyle={textLayerStyle}
+        lowerThirds={false}
+        showSlideLabel={false}
+        renderMedia={renderMedia}
+        mediaType={mediaType}
+        hasBackground={hasBackground}
+        mediaError={mediaError}
+        isLoading={isLoading}
+      />
     );
   }
 
@@ -561,6 +581,9 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       item={item}
       contentText={contentText}
       hasReadableText={hasReadableText}
+      hasStructuredElements={hasStructuredElements}
+      structuredElements={structuredElements}
+      hasTextOverlay={hasTextOverlay}
       textPx={textPx}
       textLayerStyle={textLayerStyle}
       lowerThirds={lowerThirds}
@@ -584,6 +607,9 @@ interface ScaledCanvasProps {
   item: ServiceItem;
   contentText: string;
   hasReadableText: boolean;
+  hasStructuredElements: boolean;
+  structuredElements: ReturnType<typeof getRenderableElements>;
+  hasTextOverlay: boolean;
   textPx: number;
   textLayerStyle: React.CSSProperties;
   lowerThirds: boolean;
@@ -598,7 +624,7 @@ interface ScaledCanvasProps {
 }
 
 const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
-  fitContainer, slide, item, contentText, hasReadableText, textPx, textLayerStyle,
+  fitContainer, slide, item, contentText, hasReadableText, hasStructuredElements, structuredElements, hasTextOverlay, textPx, textLayerStyle,
   lowerThirds, showSlideLabel, renderMedia, mediaType, hasBackground, mediaError, isLoading,
   audienceOverlay, projectedAudienceQr,
 }) => {
@@ -654,7 +680,7 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
         <div style={{ position: "absolute", inset: 0 }}>{renderMedia()}</div>
 
         {/* Soft overlay */}
-        {hasReadableText && hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
+        {hasTextOverlay && hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.2)" }} />
         )}
 
@@ -663,64 +689,75 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
           style={{
             position: "absolute",
             inset: 0,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: lowerThirds ? "flex-end" : "center",
-            padding: lowerThirds ? `0 ${CANVAS_W * 0.04}px ${CANVAS_H * 0.07}px` : `${CANVAS_H * 0.08}px ${CANVAS_W * 0.04}px`,
-            textAlign: "center",
             ...textLayerStyle,
           }}
         >
-          {lowerThirds ? (
-            <div style={{ width: "100%", maxWidth: "92%", textAlign: "center" }}>
-              <div
-                style={{
-                  display: "inline-block",
-                  maxWidth: "100%",
-                  padding: `${labelPadH * 2}px ${labelPadV * 4}px`,
-                  borderRadius: 20,
-                  background: "rgba(0,0,0,0.60)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  backdropFilter: "blur(8px)",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: Math.round(textPx * 0.58),
-                    lineHeight: 1.3,
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {contentText}
-                </div>
-              </div>
-            </div>
+          {hasStructuredElements ? (
+            <ElementRenderer elements={structuredElements} layoutMode="absolute" />
           ) : (
             <div
               style={{
-                flex: 1,
-                width: "100%",
+                position: "absolute",
+                inset: 0,
                 display: "flex",
+                flexDirection: "column",
                 alignItems: "center",
-                justifyContent: "center",
+                justifyContent: lowerThirds ? "flex-end" : "center",
+                padding: lowerThirds ? `0 ${CANVAS_W * 0.04}px ${CANVAS_H * 0.07}px` : `${CANVAS_H * 0.08}px ${CANVAS_W * 0.04}px`,
+                textAlign: "center",
               }}
             >
-              <div
-                style={{
-                  width: "100%",
-                  maxWidth: "92%",
-                  fontSize: textPx,
-                  lineHeight: 1.35,
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                  textAlign: "center",
-                  overflow: "hidden",
-                }}
-              >
-                {contentText}
-              </div>
+              {lowerThirds ? (
+                <div style={{ width: "100%", maxWidth: "92%", textAlign: "center" }}>
+                  <div
+                    style={{
+                      display: "inline-block",
+                      maxWidth: "100%",
+                      padding: `${labelPadH * 2}px ${labelPadV * 4}px`,
+                      borderRadius: 20,
+                      background: "rgba(0,0,0,0.60)",
+                      border: "1px solid rgba(255,255,255,0.15)",
+                      backdropFilter: "blur(8px)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: Math.round(textPx * 0.58),
+                        lineHeight: 1.3,
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {contentText}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    flex: 1,
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "100%",
+                      maxWidth: "92%",
+                      fontSize: textPx,
+                      lineHeight: 1.35,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                      textAlign: "center",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {contentText}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
