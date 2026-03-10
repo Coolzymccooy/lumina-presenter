@@ -14,7 +14,7 @@ const RELEASES_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases'
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isAuthenticated, hasSavedSession = false }) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [latestTag, setLatestTag] = useState('v2.2.19');
+  const [latestTag, setLatestTag] = useState('v2.2.20');
   const [downloadUrls, setDownloadUrls] = useState({ installer: RELEASES_URL, msi: RELEASES_URL, portable: RELEASES_URL, macDmg: RELEASES_URL });
 
   const isMacClient = typeof window !== 'undefined' && /mac/i.test(`${window.navigator.platform || ''} ${window.navigator.userAgent || ''}`);
