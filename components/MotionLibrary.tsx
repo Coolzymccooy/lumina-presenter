@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PlayIcon } from './Icons';
 import { DEFAULT_BACKGROUNDS, VIDEO_BACKGROUNDS } from '../constants';
 import { MediaType } from '../types';
+import { searchPexelsMotion } from '../services/serverApi';
 
 type MotionTab = 'curated' | 'stills' | 'pexels' | 'pixabay';
 
@@ -43,27 +44,6 @@ const CURATED_STILL_ASSETS: MotionAsset[] = DEFAULT_BACKGROUNDS.map((url, idx) =
   attribution: 'Built-in',
 }));
 
-const pickBestVideo = (files: any[]): string | null => {
-  if (!Array.isArray(files) || !files.length) return null;
-  const mp4 = files.filter((f) => String(f?.file_type || '').toLowerCase().includes('mp4'));
-  const pool = mp4.length ? mp4 : files;
-  // Avoid huge files that can freeze weak clients; prefer practical 720p-1080p sources.
-  const preferred = pool
-    .filter((entry) => {
-      const width = Number(entry?.width) || 0;
-      return width > 0 && width <= 1920;
-    })
-    .sort((a, b) => {
-      const aw = Number(a?.width) || 0;
-      const bw = Number(b?.width) || 0;
-      const aScore = Math.abs(1280 - aw);
-      const bScore = Math.abs(1280 - bw);
-      return aScore - bScore;
-    });
-  const candidate = preferred[0] || pool[0];
-  return candidate?.link || candidate?.url || null;
-};
-
 export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose }) => {
   const [activeTab, setActiveTab] = useState<MotionTab>('curated');
   const [queryInput, setQueryInput] = useState('worship background');
@@ -73,14 +53,13 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
   const [error, setError] = useState('');
   const cacheRef = useRef<Record<string, MotionAsset[]>>({});
 
-  const pexelsKey = (import.meta.env.VITE_PEXELS_API_KEY as string | undefined)?.trim();
   const pixabayKey = (import.meta.env.VITE_PIXABAY_API_KEY as string | undefined)?.trim();
 
   const providerStatus = useMemo(() => {
-    if (activeTab === 'pexels') return pexelsKey ? '' : 'Missing VITE_PEXELS_API_KEY in .env.local';
-    if (activeTab === 'pixabay') return pixabayKey ? '' : 'Missing VITE_PIXABAY_API_KEY in .env.local';
+    if (activeTab === 'pexels') return '';
+    if (activeTab === 'pixabay') return pixabayKey ? '' : 'Missing VITE_PIXABAY_API_KEY in the frontend build environment';
     return '';
-  }, [activeTab, pexelsKey, pixabayKey]);
+  }, [activeTab, pixabayKey]);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -109,12 +88,6 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
         return;
       }
 
-      if (activeTab === 'pexels' && !pexelsKey) {
-        setLoading(false);
-        setAssets(CURATED_VIDEO_ASSETS);
-        return;
-      }
-
       if (activeTab === 'pixabay' && !pixabayKey) {
         setLoading(false);
         setAssets(CURATED_VIDEO_ASSETS);
@@ -133,24 +106,19 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
       setLoading(true);
       try {
         if (activeTab === 'pexels') {
-          const res = await fetch(
-            `https://api.pexels.com/videos/search?query=${encodeURIComponent(debouncedQuery || 'worship background')}&per_page=12&orientation=landscape`,
-            {
-              headers: { Authorization: pexelsKey as string },
-              signal: controller.signal,
-            }
-          );
-          if (!res.ok) throw new Error(`Pexels request failed: ${res.status}`);
-          const data = await res.json();
-          const parsed: MotionAsset[] = (data?.videos || [])
-            .map((video: any, idx: number) => ({
-              id: `pexels-${video?.id || idx}`,
-              name: video?.user?.name || `Pexels #${video?.id || idx}`,
-              thumb: video?.image || DEFAULT_BACKGROUNDS[idx % DEFAULT_BACKGROUNDS.length],
-              url: pickBestVideo(video?.video_files || []),
-              mediaType: 'video' as const,
+          const data = await searchPexelsMotion(debouncedQuery || 'worship background', 12);
+          if (!data?.ok) {
+            throw new Error(data?.message || data?.error || 'Pexels request failed');
+          }
+          const parsed: MotionAsset[] = (data.assets || [])
+            .map((asset, idx) => ({
+              id: asset.id,
+              name: asset.name || `Pexels #${idx + 1}`,
+              thumb: asset.thumb || DEFAULT_BACKGROUNDS[idx % DEFAULT_BACKGROUNDS.length],
+              url: asset.url,
+              mediaType: asset.mediaType,
               provider: 'pexels' as const,
-              attribution: video?.url || 'Pexels',
+              attribution: asset.attribution || 'Pexels',
             }))
             .filter((item: MotionAsset) => !!item.url);
 
@@ -214,7 +182,7 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
       window.clearTimeout(requestTimeout);
       controller.abort();
     };
-  }, [activeTab, debouncedQuery, pexelsKey, pixabayKey]);
+  }, [activeTab, debouncedQuery, pixabayKey]);
 
   return (
     <div className="fixed inset-0 bg-black/85 z-[140] p-3 md:p-6 overflow-hidden">

@@ -133,8 +133,8 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
 
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-8 gap-2 border border-zinc-800 rounded-sm p-2 bg-zinc-900/50">
-        <label className="lg:col-span-1 flex items-center gap-2 text-[10px] uppercase tracking-wider text-zinc-400 font-bold">
+      <div className="grid grid-cols-1 gap-2 rounded-xl border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(24,24,27,0.82),rgba(10,10,14,0.96))] p-2.5 shadow-[0_14px_28px_rgba(0,0,0,0.2)] sm:grid-cols-2 xl:grid-cols-12">
+        <label className="flex items-center gap-2 rounded-lg border border-blue-900/40 bg-blue-950/20 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-300 sm:col-span-2 xl:col-span-2">
           <input
             type="checkbox"
             checked={!!item.timerCue?.enabled}
@@ -143,13 +143,13 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
           />
           Cue Timer
         </label>
-        <div className="lg:col-span-2">
-          <div className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Speaker Preset</div>
-          <div className="flex items-center gap-1">
+        <div className="min-w-0 sm:col-span-2 xl:col-span-3">
+          <div className="mb-1 text-[9px] font-bold uppercase tracking-[0.16em] text-zinc-500">Speaker Preset</div>
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1">
             <select
               value={item.timerCue?.presetId || ''}
               onChange={(e) => updateTimerCue({ presetId: e.target.value || '' })}
-              className="flex-1 bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-200"
+              className="min-w-0 rounded-md border border-zinc-700 bg-zinc-950/90 px-2 py-2 text-[11px] text-zinc-200 shadow-inner shadow-black/20"
             >
               <option value="">None</option>
               {speakerPresets.map((preset) => (
@@ -162,34 +162,34 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
               type="button"
               onClick={() => applyPreset(item.timerCue?.presetId || '')}
               disabled={!item.timerCue?.presetId}
-              className="px-2 py-1 text-[10px] font-bold rounded border border-zinc-700 text-zinc-200 bg-zinc-800 disabled:opacity-40"
+              className="rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-2 text-[10px] font-bold tracking-[0.12em] text-zinc-200 disabled:opacity-40"
             >
               APPLY
             </button>
           </div>
         </div>
-        <div className="lg:col-span-1">
-          <div className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Duration (sec)</div>
+        <div className="xl:col-span-2">
+          <div className="mb-1 text-[9px] font-bold uppercase tracking-[0.16em] text-zinc-500">Duration (sec)</div>
           <input
             type="number"
             min={10}
             max={7200}
             value={Math.max(10, Number(item.timerCue?.durationSec || defaultTimerCue.durationSec))}
             onChange={(e) => updateTimerCue({ durationSec: Math.max(10, Math.min(7200, Number(e.target.value) || 10)) })}
-            className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-200"
+            className="w-full rounded-md border border-zinc-700 bg-zinc-950/90 px-2 py-2 text-[11px] text-zinc-200 shadow-inner shadow-black/20"
           />
         </div>
-        <div className="lg:col-span-2">
-          <div className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Speaker</div>
+        <div className="min-w-0 sm:col-span-2 xl:col-span-3">
+          <div className="mb-1 text-[9px] font-bold uppercase tracking-[0.16em] text-zinc-500">Speaker</div>
           <input
             type="text"
             value={item.timerCue?.speakerName || ''}
             onChange={(e) => updateTimerCue({ speakerName: e.target.value })}
             placeholder="Optional speaker name"
-            className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-200"
+            className="w-full rounded-md border border-zinc-700 bg-zinc-950/90 px-2 py-2 text-[11px] text-zinc-200 shadow-inner shadow-black/20"
           />
         </div>
-        <label className="lg:col-span-1 flex items-center gap-2 text-[10px] uppercase tracking-wider text-zinc-400 font-bold">
+        <label className="flex items-center gap-2 rounded-lg border border-cyan-900/40 bg-cyan-950/10 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-300 xl:col-span-1">
           <input
             type="checkbox"
             checked={!!item.timerCue?.autoStartNext}
@@ -198,28 +198,31 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
           />
           Auto Next
         </label>
-        <div className="lg:col-span-1 flex items-end gap-1">
-          <div className="flex-1">
-            <div className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Amber %</div>
+        <div className="sm:col-span-2 xl:col-span-1">
+          <div className="mb-1 text-[9px] font-bold uppercase tracking-[0.16em] text-zinc-500">Cue Thresholds</div>
+          <div className="grid grid-cols-2 gap-1">
+            <div className="min-w-0 rounded-lg border border-amber-900/30 bg-amber-950/10 p-2">
+              <div className="mb-1 text-[9px] uppercase tracking-[0.14em] text-amber-300/80">Amber %</div>
             <input
               type="number"
               min={1}
               max={99}
               value={Math.max(1, Math.min(99, Number(item.timerCue?.amberPercent ?? defaultTimerCue.amberPercent)))}
               onChange={(e) => updateTimerCue({ amberPercent: Math.max(1, Math.min(99, Number(e.target.value) || 25)) })}
-              className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-200"
+              className="w-full rounded-md border border-zinc-700 bg-zinc-950/90 px-2 py-1.5 text-[11px] text-zinc-200"
             />
           </div>
-          <div className="flex-1">
-            <div className="text-[9px] text-zinc-500 uppercase font-bold mb-1">Red %</div>
+            <div className="min-w-0 rounded-lg border border-red-900/30 bg-red-950/10 p-2">
+              <div className="mb-1 text-[9px] uppercase tracking-[0.14em] text-red-300/80">Red %</div>
             <input
               type="number"
               min={1}
               max={99}
               value={Math.max(1, Math.min(99, Number(item.timerCue?.redPercent ?? defaultTimerCue.redPercent)))}
               onChange={(e) => updateTimerCue({ redPercent: Math.max(1, Math.min(99, Number(e.target.value) || 10)) })}
-              className="w-full bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-200"
+              className="w-full rounded-md border border-zinc-700 bg-zinc-950/90 px-2 py-1.5 text-[11px] text-zinc-200"
             />
+            </div>
           </div>
         </div>
       </div>

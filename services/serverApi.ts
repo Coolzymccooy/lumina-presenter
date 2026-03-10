@@ -185,6 +185,37 @@ const requestJson = async <T,>(path: string, options: RequestOptions = {}): Prom
 export const getServerApiBaseUrl = () => activeApiBaseUrl || INITIAL_API_BASE_URL;
 export const getServerApiBaseCandidates = () => getApiBaseCandidates();
 
+export type RemoteMotionAsset = {
+  id: string;
+  name: string;
+  thumb: string;
+  url: string;
+  mediaType: 'video' | 'image';
+  provider: 'pexels' | 'pixabay' | 'curated' | 'stills';
+  attribution?: string;
+};
+
+export type PexelsMotionSearchResponse = {
+  ok: boolean;
+  assets: RemoteMotionAsset[];
+  cached?: boolean;
+  error?: string;
+  message?: string;
+  status?: number;
+};
+
+export const searchPexelsMotion = async (query: string, perPage = 12) => {
+  const params = new URLSearchParams();
+  const normalizedQuery = String(query || '').trim() || 'worship background';
+  params.set('query', normalizedQuery);
+  params.set('per_page', String(perPage));
+  return await requestJson<PexelsMotionSearchResponse>(`/api/media/pexels/videos?${params.toString()}`, {
+    method: 'GET',
+    allowAnonymous: true,
+    timeoutMs: 12000,
+  });
+};
+
 export const resolveWorkspaceId = (user: ActorLike, fallback = 'default-workspace') => {
   const uid = String(user?.uid || '').trim();
   return uid || fallback;

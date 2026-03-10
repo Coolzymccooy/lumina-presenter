@@ -40,11 +40,18 @@ const PPTX_VIS_CACHE_VERSION = (() => {
   const safe = String(process.env.LUMINA_VIS_CACHE_VERSION || "v4").replace(/[^a-zA-Z0-9._-]/g, "_");
   return safe || "v4";
 })();
+const PEXELS_API_KEY = String(process.env.PEXELS_API_KEY || process.env.VITE_PEXELS_API_KEY || "").trim();
+const PEXELS_API_BASE_URL = "https://api.pexels.com/videos/search";
+const PEXELS_QUERY_MAX_LENGTH = 120;
+const PEXELS_DEFAULT_PER_PAGE = 12;
+const PEXELS_MAX_PER_PAGE = 24;
+const PEXELS_CACHE_TTL_MS = 10 * 60 * 1000;
 const execFileAsync = promisify(execFile);
 let sofficeVersionLine = "unknown";
 let pdftocairoVersionLine = "unknown";
 let cachedPdfToPng = null;
 let cachedPdfToPngLoadError = null;
+const PEXELS_SEARCH_CACHE = new Map();
 
 const loadPdfToPngConverter = async () => {
   if (typeof cachedPdfToPng === "function") return cachedPdfToPng;
@@ -67,6 +74,51 @@ const firstNonEmptyLine = (input) =>
     .split(/\r?\n/)
     .map((line) => line.trim())
     .find(Boolean) || "";
+
+const normalizePexelsQuery = (input) => {
+  const compact = String(input || "").replace(/\s+/g, " ").trim();
+  return compact.slice(0, PEXELS_QUERY_MAX_LENGTH) || "worship background";
+};
+
+const normalizePexelsPerPage = (input) => {
+  const value = Number(input);
+  if (!Number.isFinite(value)) return PEXELS_DEFAULT_PER_PAGE;
+  return Math.max(1, Math.min(PEXELS_MAX_PER_PAGE, Math.round(value)));
+};
+
+const pickBestPexelsVideoUrl = (files) => {
+  if (!Array.isArray(files) || !files.length) return null;
+  const mp4 = files.filter((file) => String(file?.file_type || "").toLowerCase().includes("mp4"));
+  const pool = mp4.length ? mp4 : files;
+  const preferred = pool
+    .filter((entry) => {
+      const width = Number(entry?.width) || 0;
+      return width > 0 && width <= 1920;
+    })
+    .sort((left, right) => {
+      const leftWidth = Number(left?.width) || 0;
+      const rightWidth = Number(right?.width) || 0;
+      return Math.abs(1280 - leftWidth) - Math.abs(1280 - rightWidth);
+    });
+  const candidate = preferred[0] || pool[0];
+  return candidate?.link || candidate?.url || null;
+};
+
+const mapPexelsVideos = (videos) => (
+  Array.isArray(videos)
+    ? videos
+      .map((video, idx) => ({
+        id: `pexels-${video?.id || idx}`,
+        name: String(video?.user?.name || `Pexels #${video?.id || idx}`),
+        thumb: String(video?.image || ""),
+        url: pickBestPexelsVideoUrl(video?.video_files || []),
+        mediaType: "video",
+        provider: "pexels",
+        attribution: String(video?.url || "Pexels"),
+      }))
+      .filter((entry) => entry.url)
+    : []
+);
 
 const logSofficeAvailability = async () => {
   try {
@@ -768,6 +820,69 @@ const checkTranscribeRateLimit = (bucketKey) => {
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "lumina-server-api", db: DB_PATH, now: now() });
+});
+
+app.get("/api/media/pexels/videos", async (req, res) => {
+  if (!PEXELS_API_KEY) {
+    return res.status(503).json({
+      ok: false,
+      error: "PEXELS_API_KEY_MISSING",
+      message: "Pexels search is not configured on the server.",
+    });
+  }
+
+  const query = normalizePexelsQuery(req.query?.query);
+  const perPage = normalizePexelsPerPage(req.query?.per_page);
+  const cacheKey = `${query.toLowerCase()}::${perPage}`;
+  const cached = PEXELS_SEARCH_CACHE.get(cacheKey);
+  const ts = now();
+  if (cached && cached.expiresAt > ts) {
+    return res.json({ ok: true, assets: cached.assets, cached: true });
+  }
+
+  try {
+    const upstreamUrl = new URL(PEXELS_API_BASE_URL);
+    upstreamUrl.searchParams.set("query", query);
+    upstreamUrl.searchParams.set("per_page", String(perPage));
+    upstreamUrl.searchParams.set("orientation", "landscape");
+
+    const upstreamResponse = await fetch(upstreamUrl, {
+      headers: {
+        Authorization: PEXELS_API_KEY,
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!upstreamResponse.ok) {
+      const status = upstreamResponse.status;
+      const message = status === 401 || status === 403
+        ? "Pexels authentication failed on the server."
+        : status === 429
+          ? "Pexels rate limit reached. Try again shortly."
+          : `Pexels request failed with HTTP ${status}.`;
+      return res.status(status === 429 ? 429 : 502).json({
+        ok: false,
+        error: "PEXELS_UPSTREAM_FAILED",
+        message,
+        upstreamStatus: status,
+      });
+    }
+
+    const payload = await upstreamResponse.json().catch(() => null);
+    const assets = mapPexelsVideos(payload?.videos || []);
+    PEXELS_SEARCH_CACHE.set(cacheKey, {
+      assets,
+      expiresAt: ts + PEXELS_CACHE_TTL_MS,
+    });
+    return res.json({ ok: true, assets, cached: false });
+  } catch (error) {
+    const isTimeout = error?.name === "TimeoutError" || error?.name === "AbortError";
+    return res.status(isTimeout ? 504 : 502).json({
+      ok: false,
+      error: isTimeout ? "PEXELS_TIMEOUT" : "PEXELS_PROXY_FAILED",
+      message: isTimeout ? "Pexels request timed out." : "Could not reach Pexels from the server.",
+    });
+  }
 });
 
 app.post("/api/ai/generate-slides", async (req, res) => {

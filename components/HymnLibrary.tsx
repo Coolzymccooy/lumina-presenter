@@ -124,9 +124,10 @@ export const HymnLibrary: React.FC<HymnLibraryProps> = ({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 min-w-0 flex-col overflow-y-auto custom-scrollbar p-3">
-        <div className="flex min-h-0 min-w-0 flex-col gap-4">
-          <section className="min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900/60">
+      <div className="flex min-h-0 flex-1 min-w-0 flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar p-3 pb-32">
+          <div className="flex min-h-0 min-w-0 flex-col gap-4">
+            <section className="min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900/60">
             <div className="border-b border-zinc-800 px-4 py-3">
               <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Bundled Library</div>
               <div className="mt-1 text-xs text-zinc-400">Search by title, first line, tune, author, or theme.</div>
@@ -326,33 +327,45 @@ export const HymnLibrary: React.FC<HymnLibraryProps> = ({
                 </div>
               </section>
 
-              <section className="min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900/60 p-4">
-                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Insert</div>
-                <div className="mt-2 text-sm text-zinc-400">
-                  Generated hymn items are inserted after the currently selected run-sheet item and keep a style snapshot so later preset changes do not rewrite scheduled services.
-                </div>
-                <div className="mt-4 flex flex-col gap-2">
-                  <button
-                    data-testid="hymn-insert-button"
-                    type="button"
-                    onClick={() => applyInsertion(false)}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm font-black tracking-wider text-zinc-100 hover:border-zinc-500"
-                  >
-                    <PlusIcon className="h-4 w-4" /> INSERT INTO RUN SHEET
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyInsertion(true)}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-600 bg-blue-600/20 px-4 py-3 text-sm font-black tracking-wider text-blue-200 hover:bg-blue-600/30"
-                  >
-                    <PlayIcon className="h-4 w-4" /> INSERT AND GO LIVE
-                  </button>
-                </div>
-                {status && <div className="mt-3 text-[11px] text-emerald-300">{status}</div>}
-              </section>
             </>
           )}
         </div>
+      </div>
+      {selectedHymn && preview && suggestion && (
+        <div className="border-t border-zinc-800/80 bg-zinc-950/95 px-3 pb-3 pt-2 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/80">
+          <section className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-3 shadow-[0_-12px_28px_rgba(0,0,0,0.24)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Insert</div>
+                <div className="mt-1 pr-2 text-[11px] leading-4 text-zinc-400">
+                  Insert after the selected run-sheet item and keep this hymn&apos;s style snapshot locked for the scheduled service.
+                </div>
+              </div>
+              <div className="shrink-0 rounded-full border border-zinc-800 bg-zinc-950 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+                {preview.generatedSlides.length} slides
+              </div>
+            </div>
+            <div className="mt-3 flex flex-col gap-2">
+              <button
+                data-testid="hymn-insert-button"
+                type="button"
+                onClick={() => applyInsertion(false)}
+                className="inline-flex min-w-0 items-center justify-center gap-2 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-[12px] font-black tracking-[0.08em] text-zinc-100 hover:border-zinc-500"
+              >
+                <PlusIcon className="h-4 w-4 shrink-0" /> <span className="whitespace-normal text-center">Insert Into Run Sheet</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => applyInsertion(true)}
+                className="inline-flex min-w-0 items-center justify-center gap-2 rounded-xl border border-blue-600 bg-blue-600/20 px-3 py-2.5 text-[12px] font-black tracking-[0.08em] text-blue-200 hover:bg-blue-600/30"
+              >
+                <PlayIcon className="h-4 w-4 shrink-0" /> <span className="whitespace-normal text-center">Insert And Go Live</span>
+              </button>
+            </div>
+            {status && <div className="mt-2 text-[11px] text-emerald-300">{status}</div>}
+          </section>
+        </div>
+      )}
       </div>
     </div>
   );

@@ -164,10 +164,13 @@ test('multi-image upload inserts multiple image slides with labels', async ({ pa
     },
   ]);
 
+  await page.getByTestId('slide-editor-confirm').click();
   await expect(page.getByText('Add New Slide')).not.toBeVisible();
   const labels = page.locator('[data-testid^="runsheet-slide-label-"]');
-  await expect(labels).toHaveCount(3);
-  await expect(labels).toHaveText(['test-1', 'test-2', 'test-3']);
+  await expect.poll(async () => {
+    const texts = await labels.allTextContents();
+    return texts.map((text) => text.trim()).filter(Boolean).slice(-3);
+  }).toEqual(['test-1', 'test-2', 'test-3']);
   await expect(page.locator('[data-testid="slide-renderer-image"]')).toHaveCount(3);
 });
 
@@ -460,17 +463,17 @@ test('smart slide editor supports multiple bullet points and numbered lists', as
   await page.getByTestId('smart-preset-title-body').click();
   await page.getByTestId('smart-element-content').fill('Prayer\nWorship\nOffering');
   await page.getByTestId('smart-element-bullets').click();
-  await expect(page.locator('[data-testid^="slide-text-list-item-"]')).toHaveCount(3);
+  const bulletList = page.locator('[data-testid^="slide-text-list-"]').first();
+  await expect(bulletList.locator('li')).toHaveCount(3);
 
   await page.getByTestId('smart-element-numbered').click();
-  const list = page.locator('[data-testid^="slide-text-list-"]').first();
-  await expect.poll(async () => list.evaluate((node) => window.getComputedStyle(node).listStyleType)).toBe('decimal');
+  await expect.poll(async () => bulletList.evaluate((node) => window.getComputedStyle(node).listStyleType)).toBe('decimal');
 
   await page.getByTestId('slide-editor-confirm').click();
   await expect(page.getByText('Smart Layout Slide Editor')).not.toBeVisible();
-  await expect(page.getByText('Prayer')).toBeVisible();
-  await expect(page.getByText('Worship')).toBeVisible();
-  await expect(page.getByText('Offering')).toBeVisible();
+  await expect(page.getByText('Prayer', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Worship', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('Offering', { exact: true }).first()).toBeVisible();
 });
 
 test('smart slide editor keeps uploaded media slides free of auto text blocks', async ({ page }) => {

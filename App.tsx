@@ -4887,31 +4887,41 @@ function App() {
                     <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-500 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">PREVIEW <button onClick={() => setIsPreviewMuted(!isPreviewMuted)} className={`ml-2 hover:text-white transition-colors ${isPreviewMuted ? 'text-red-400' : 'text-green-400'}`}>{isPreviewMuted ? <VolumeXIcon className="w-3 h-3" /> : <Volume2Icon className="w-3 h-3" />}</button></div>
                   </div>
                 </div>
-                <div className="border-t border-zinc-800 bg-zinc-950 px-3 py-3 md:px-6 space-y-3">
-                  <div className="rounded-sm border border-zinc-800 bg-zinc-900/70 p-3">
-                    <div className="mb-2 text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Transport</div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button onClick={prevSlide} className="h-12 w-14 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center border border-zinc-700 active:scale-95 transition-transform"><ArrowLeftIcon className="w-5 h-5" /></button>
-                      <button onClick={nextSlide} className="h-12 min-w-[7rem] px-4 rounded-sm bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-bold text-sm tracking-wide active:scale-95 transition-transform"><ArrowRightIcon className="w-5 h-5 mr-1" /> NEXT</button>
-                      {isActiveVideo && (
-                        <div className="flex items-center gap-2 bg-zinc-950 rounded-sm p-1 border border-zinc-800">
-                          <button onClick={() => triggerSeek(-10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><RewindIcon className="w-4 h-4" /></button>
-                          <button onClick={() => setIsPlaying(!isPlaying)} className={`p-2.5 rounded-sm ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-green-900/50 text-green-400'}`}>{isPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4 fill-current" />}</button>
-                          <button onClick={() => triggerSeek(10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><ForwardIcon className="w-4 h-4" /></button>
-                        </div>
-                      )}
-                      <button onClick={() => { if (routingMode !== 'PROJECTOR') setLowerThirdsEnabled((prev) => !prev); }} title={routingMode === 'PROJECTOR' ? 'Projector mode keeps full-screen text (lower thirds disabled).' : 'Toggle lower thirds overlay'} className={`h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border ${lowerThirdsEnabled ? 'bg-blue-950 text-blue-400 border-blue-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800'} ${routingMode === 'PROJECTOR' ? 'opacity-60 cursor-not-allowed' : ''}`}>LOWER THIRDS</button>
-                      <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} className="h-12 min-w-[8rem] px-2 bg-zinc-950 border border-zinc-800 text-zinc-300 text-xs rounded-sm">
-                        <option value="PROJECTOR">Projector</option>
-                        <option value="STREAM">Stream</option>
-                        <option value="LOBBY">Lobby</option>
-                      </select>
+                <div className="border-t border-zinc-800 bg-zinc-950 px-3 py-3 md:px-6">
+                  <div className="grid gap-3 xl:grid-cols-2">
+                    <div className="rounded-xl border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(24,24,27,0.82),rgba(10,10,14,0.96))] p-3 shadow-[0_16px_30px_rgba(0,0,0,0.22)]">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Transport</div>
+                        <div className="rounded-full border border-blue-900/40 bg-blue-950/20 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.16em] text-blue-200">Live Flow</div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button onClick={prevSlide} className="h-11 w-12 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center border border-zinc-700 active:scale-95 transition-transform"><ArrowLeftIcon className="w-5 h-5" /></button>
+                        <button onClick={nextSlide} className="h-11 min-w-[8rem] px-4 rounded-sm bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-bold text-sm tracking-wide active:scale-95 transition-transform"><ArrowRightIcon className="w-5 h-5 mr-1" /> NEXT</button>
+                        {isActiveVideo && (
+                          <div className="flex items-center gap-1 rounded-sm border border-zinc-800 bg-zinc-950 p-1">
+                            <button onClick={() => triggerSeek(-10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><RewindIcon className="w-4 h-4" /></button>
+                            <button onClick={() => setIsPlaying(!isPlaying)} className={`p-2.5 rounded-sm ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-green-900/50 text-green-400'}`}>{isPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4 fill-current" />}</button>
+                            <button onClick={() => triggerSeek(10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><ForwardIcon className="w-4 h-4" /></button>
+                          </div>
+                        )}
+                        <button onClick={() => { if (routingMode !== 'PROJECTOR') setLowerThirdsEnabled((prev) => !prev); }} title={routingMode === 'PROJECTOR' ? 'Projector mode keeps full-screen text (lower thirds disabled).' : 'Toggle lower thirds overlay'} className={`h-11 px-3 rounded-sm font-bold text-[10px] tracking-wider border ${lowerThirdsEnabled ? 'bg-blue-950 text-blue-400 border-blue-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800'} ${routingMode === 'PROJECTOR' ? 'opacity-60 cursor-not-allowed' : ''}`}>LOWER THIRDS</button>
+                        <label className="flex h-11 min-w-[10rem] items-center gap-2 rounded-sm border border-zinc-800 bg-zinc-950 px-3">
+                          <span className="text-[10px] uppercase tracking-wider text-zinc-500">Route</span>
+                          <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} className="min-w-0 flex-1 bg-transparent text-zinc-300 text-xs outline-none">
+                            <option value="PROJECTOR">Projector</option>
+                            <option value="STREAM">Stream</option>
+                            <option value="LOBBY">Lobby</option>
+                          </select>
+                        </label>
+                      </div>
                     </div>
-                  </div>
-                  <div className="rounded-sm border border-zinc-800 bg-zinc-900/70 p-3">
-                    <div className="mb-2 text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Timer + Cue</div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
+                    <div className="rounded-xl border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(24,24,27,0.82),rgba(10,10,14,0.96))] p-3 shadow-[0_16px_30px_rgba(0,0,0,0.22)]">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Timer + Cue</div>
+                        <div className="rounded-full border border-cyan-900/40 bg-cyan-950/15 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.16em] text-cyan-200">Cue Engine</div>
+                      </div>
+                      <div className="grid gap-2 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.95fr)_minmax(0,1fr)]">
+                        <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-11 min-w-0">
                         <select value={timerMode} onChange={(e) => {
                           const mode = e.target.value as 'COUNTDOWN' | 'ELAPSED';
                           setTimerMode(mode);
@@ -4938,7 +4948,8 @@ function App() {
                           setTimerSeconds(timerMode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0);
                         }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">Reset</button>
                       </div>
-                      <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
+                        </div>
+                        <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-11 min-w-0">
                         <span className="text-[10px] text-zinc-400">Cue</span>
                         <input
                           type="number"
@@ -4960,8 +4971,8 @@ function App() {
                         >
                           {autoCueEnabled ? `On ${autoCueRemaining}s` : 'Off'}
                         </button>
-                      </div>
-                      <div className="min-w-[10rem] rounded-sm border border-zinc-800 bg-zinc-950 px-3 py-2">
+                        </div>
+                        <div className="min-w-0 rounded-sm border border-zinc-800 bg-zinc-950 px-3 py-2">
                         <div className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">Current Cue</div>
                         <div className="mt-1 text-[11px] text-zinc-200 truncate">
                           {currentCue
@@ -4970,84 +4981,89 @@ function App() {
                         </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="rounded-sm border border-zinc-800 bg-zinc-900/70 p-3">
-                    <div className="mb-2 text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Rundown + Output</div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
-                        <span className="text-[10px] text-zinc-400">Preset</span>
-                        <select
-                          value={selectedSpeakerPresetId}
-                          onChange={(e) => setSelectedSpeakerPresetId(e.target.value)}
-                          className="bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200"
-                        >
-                          {(workspaceSettings.speakerTimerPresets || []).map((preset) => (
-                            <option key={preset.id} value={preset.id}>
-                              {preset.name}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={applySelectedPresetToCurrentCue}
-                          disabled={!selectedSpeakerPresetId || !(currentCueItemId || selectedItemId)}
-                          className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
-                        >
-                          Apply
-                        </button>
-                        <button
-                          onClick={openCreatePresetModal}
-                          className="text-[10px] px-2 py-1 bg-zinc-800 rounded"
-                        >
-                          Manage
-                        </button>
+                    <div className="rounded-xl border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(24,24,27,0.82),rgba(10,10,14,0.96))] p-3 xl:col-span-2 shadow-[0_16px_30px_rgba(0,0,0,0.22)]">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Rundown + Output</div>
+                        <div className="rounded-full border border-emerald-900/40 bg-emerald-950/15 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.16em] text-emerald-200">Stage Ops</div>
                       </div>
-                      <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
-                        <span className="text-[10px] text-zinc-400">Rundown</span>
-                        <button
-                          onClick={() => moveCueByOffset(-1, { autoStart: false, goLiveItem: true })}
-                          disabled={!enabledTimerCues.length}
-                          className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
-                        >
-                          Prev
-                        </button>
-                        <button
-                          onClick={() => moveCueByOffset(1, { autoStart: false, goLiveItem: true })}
-                          disabled={!enabledTimerCues.length}
-                          className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
-                        >
-                          Next
-                        </button>
-                        <button
-                          onClick={() => currentCue && activateCueByItemId(currentCue.itemId, { autoStart: false, goLiveItem: true })}
-                          disabled={!currentCue}
-                          className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
-                        >
-                          Load
-                        </button>
+                      <div className="grid gap-2 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]">
+                        <div className="flex min-w-0 items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-11">
+                          <span className="text-[10px] text-zinc-400">Preset</span>
+                          <select
+                            value={selectedSpeakerPresetId}
+                            onChange={(e) => setSelectedSpeakerPresetId(e.target.value)}
+                            className="min-w-0 flex-1 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200"
+                          >
+                            {(workspaceSettings.speakerTimerPresets || []).map((preset) => (
+                              <option key={preset.id} value={preset.id}>
+                                {preset.name}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={applySelectedPresetToCurrentCue}
+                            disabled={!selectedSpeakerPresetId || !(currentCueItemId || selectedItemId)}
+                            className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
+                          >
+                            Apply
+                          </button>
+                          <button
+                            onClick={openCreatePresetModal}
+                            className="text-[10px] px-2 py-1 bg-zinc-800 rounded"
+                          >
+                            Manage
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-11">
+                          <span className="text-[10px] text-zinc-400">Rundown</span>
+                          <button
+                            onClick={() => moveCueByOffset(-1, { autoStart: false, goLiveItem: true })}
+                            disabled={!enabledTimerCues.length}
+                            className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
+                          >
+                            Prev
+                          </button>
+                          <button
+                            onClick={() => moveCueByOffset(1, { autoStart: false, goLiveItem: true })}
+                            disabled={!enabledTimerCues.length}
+                            className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
+                          >
+                            Next
+                          </button>
+                          <button
+                            onClick={() => currentCue && activateCueByItemId(currentCue.itemId, { autoStart: false, goLiveItem: true })}
+                            disabled={!currentCue}
+                            className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
+                          >
+                            Load
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-11">
+                          <span className="text-[10px] text-zinc-400">Stage Grid</span>
+                          <select
+                            value={workspaceSettings.stageFlowLayout}
+                            onChange={(e) => {
+                              const next = e.target.value as StageFlowLayout;
+                              setWorkspaceSettings((prev) => ({
+                                ...prev,
+                                stageFlowLayout: VALID_STAGE_FLOW_LAYOUTS.includes(next) ? next : 'balanced',
+                              }));
+                            }}
+                            className="min-w-0 flex-1 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200"
+                            title="Stage display layout flow"
+                          >
+                            <option value="balanced">Balanced</option>
+                            <option value="speaker_focus">Speaker Focus</option>
+                            <option value="preview_focus">Preview Focus</option>
+                            <option value="minimal_next">Minimal Next</option>
+                          </select>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-12">
-                        <span className="text-[10px] text-zinc-400">Stage Grid</span>
-                        <select
-                          value={workspaceSettings.stageFlowLayout}
-                          onChange={(e) => {
-                            const next = e.target.value as StageFlowLayout;
-                            setWorkspaceSettings((prev) => ({
-                              ...prev,
-                              stageFlowLayout: VALID_STAGE_FLOW_LAYOUTS.includes(next) ? next : 'balanced',
-                            }));
-                          }}
-                          className="bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200"
-                          title="Stage display layout flow"
-                        >
-                          <option value="balanced">Balanced</option>
-                          <option value="speaker_focus">Speaker Focus</option>
-                          <option value="preview_focus">Preview Focus</option>
-                          <option value="minimal_next">Minimal Next</option>
-                        </select>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <button onClick={() => void copyShareUrl(obsOutputUrl)} className="h-10 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY OBS URL</button>
+                        <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-10 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY STAGE URL</button>
+                        <button onClick={() => setBlackout(!blackout)} className={`h-10 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button>
                       </div>
-                      <button onClick={() => void copyShareUrl(obsOutputUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY OBS URL</button>
-                      <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-12 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY STAGE URL</button>
-                      <button onClick={() => setBlackout(!blackout)} className={`h-12 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button>
                     </div>
                   </div>
                 </div>
