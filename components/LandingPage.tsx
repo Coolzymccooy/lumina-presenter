@@ -19,12 +19,17 @@ const RELEASES_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases'
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isAuthenticated, hasSavedSession = false }) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [latestTag, setLatestTag] = useState('v2.2.17');
+  const [latestTag, setLatestTag] = useState('v2.2.18');
   const [downloadUrls, setDownloadUrls] = useState({
     installer: RELEASES_URL,
     msi: RELEASES_URL,
     portable: RELEASES_URL,
+    macDmg: RELEASES_URL,
   });
+  const isMacClient = typeof window !== 'undefined'
+    && /mac/i.test(`${window.navigator.platform || ''} ${window.navigator.userAgent || ''}`);
+  const primaryDesktopUrl = isMacClient ? downloadUrls.macDmg : downloadUrls.installer;
+  const primaryDesktopLabel = isMacClient ? 'Download for macOS' : 'Download for Windows';
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -59,10 +64,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
         const portable = findAssetUrl([
           /lumina[-\s]?presenter(?!.*setup).*\.exe$/i,
         ]);
+        const macDmg = findAssetUrl([
+          /lumina[-\s]?presenter.*\.dmg$/i,
+        ]);
 
         if (!cancelled) {
           if (tagName) setLatestTag(tagName);
-          setDownloadUrls({ installer, msi, portable });
+          setDownloadUrls({ installer, msi, portable, macDmg });
         }
       } catch {
         // Keep release page fallback links.
@@ -115,8 +123,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
           <a href="#features" onClick={() => setMobileMenuOpen(false)} className="text-2xl font-bold">Features</a>
           <a href="#download" onClick={() => setMobileMenuOpen(false)} className="text-2xl font-bold">Desktop App</a>
           <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="text-2xl font-bold">How it works</a>
-          <a href={downloadUrls.installer} className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold mt-2 text-center flex items-center justify-center gap-2">
-            <Download size={18} /> Download for Windows
+          <a href={primaryDesktopUrl} className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold mt-2 text-center flex items-center justify-center gap-2">
+            <Download size={18} /> {primaryDesktopLabel}
           </a>
           <button onClick={onEnter} className="w-full py-4 bg-purple-600 text-white rounded-xl font-bold">
             {isAuthenticated && hasSavedSession ? 'Resume Session' : isAuthenticated ? 'Enter Workspace' : 'Sign In'}
@@ -153,10 +161,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
-              href={downloadUrls.installer}
+              href={primaryDesktopUrl}
               className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold text-lg hover:opacity-90 transition-all shadow-xl shadow-purple-900/30 flex items-center gap-3"
             >
-              <Download size={20} /> Download for Windows
+              <Download size={20} /> {primaryDesktopLabel}
             </a>
             <button
               onClick={onEnter}
@@ -165,7 +173,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
               {isAuthenticated && hasSavedSession ? 'Resume Session' : 'Use in Browser'} <ArrowRight size={18} />
             </button>
           </div>
-          <p className="text-xs text-gray-600 mt-4">Windows 10/11 - x64 - {latestTag} - Free</p>
+          <p className="text-xs text-gray-600 mt-4">Windows + macOS desktop builds - {latestTag} - Free</p>
         </div>
 
         {/* Hero Image */}
@@ -205,7 +213,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
               <span className="text-xs font-medium text-blue-300 tracking-wide uppercase">Native Desktop App</span>
             </div>
             <h2 className="text-3xl md:text-5xl font-bold mb-6">Present Without Internet.<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Even in the Basement.</span></h2>
-            <p className="text-gray-400 max-w-2xl mx-auto">The Lumina desktop app runs entirely on your Windows PC — no browser, no internet required during service. Everything is cached locally so your worship experience never drops.</p>
+            <p className="text-gray-400 max-w-2xl mx-auto">The Lumina desktop app runs locally on Windows and macOS - no browser, no internet required during service. Everything is cached locally so your worship experience never drops.</p>
           </div>
 
           {/* Offline vs Online comparison */}
@@ -264,7 +272,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
           </div>
 
           {/* Download Cards */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto mb-10">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-6 max-w-7xl mx-auto mb-10">
             <a
               href={downloadUrls.installer}
               className="group p-6 rounded-2xl border border-blue-500/40 bg-blue-500/5 hover:bg-blue-500/10 hover:border-blue-400 transition-all flex flex-col items-center text-center gap-4"
@@ -278,6 +286,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
               </div>
               <div className="flex items-center gap-2 text-blue-400 text-sm font-semibold">
                 Download .exe <ArrowRight size={14} />
+              </div>
+            </a>
+
+            <a
+              href={downloadUrls.macDmg}
+              className="group p-6 rounded-2xl border border-sky-500/30 bg-sky-500/5 hover:bg-sky-500/10 hover:border-sky-400 transition-all flex flex-col items-center text-center gap-4"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-sky-600/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Laptop size={28} className="text-sky-400" />
+              </div>
+              <div>
+                <div className="font-bold text-lg mb-1">macOS DMG</div>
+                <div className="text-xs text-gray-400">Native desktop build · release asset depends on the current runner architecture</div>
+              </div>
+              <div className="flex items-center gap-2 text-sky-400 text-sm font-semibold">
+                Download .dmg <ArrowRight size={14} />
               </div>
             </a>
 
@@ -335,8 +359,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
             <h3 className="font-bold text-sm text-gray-300 mb-4 uppercase tracking-wider flex items-center gap-2"><Shield size={14} className="text-green-400" /> How to install in 3 steps</h3>
             <ol className="space-y-3">
               {[
-                { n: '1', t: 'Download the installer', d: 'Click "Windows Installer" above and save the .exe file.' },
-                { n: '2', t: 'Run it (ignore the warning)', d: 'Windows may show a "publisher unknown" warning — click "More info" then "Run anyway". We are not yet code-signed.' },
+                { n: '1', t: 'Download the desktop build', d: 'Choose Windows Installer or macOS DMG above and save the package.' },
+                { n: '2', t: 'Open it and complete install', d: 'Unsigned builds may show a platform warning until code signing and notarization are enabled.' },
                 { n: '3', t: 'Sign in once', d: 'The first launch requires internet to authenticate. After that the app works fully offline.' },
               ].map(s => (
                 <li key={s.n} className="flex items-start gap-4">
@@ -367,7 +391,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
               { icon: Shield, title: 'Pastor Alerts', desc: 'Send admin-only messages to the stage display for time cues and emergency communication.' },
               { icon: Layout, title: 'Smart Ticker', desc: 'Run approved audience messages as a clean right-to-left ticker across your live output.' },
               { icon: Monitor, title: 'Multi-Screen Output', desc: 'Drive Projector, Launch Live, and Stage Display together with synchronized content states.' },
-              { icon: HardDrive, title: 'Desktop Offline Ready', desc: 'After first sign-in, run prebuilt services locally on Windows with no internet dependency.' },
+              { icon: HardDrive, title: 'Desktop Offline Ready', desc: 'After first sign-in, run prebuilt services locally on Windows or macOS with no internet dependency.' },
               { icon: Cloud, title: 'Bible + AI Workflow', desc: 'Combine scripture slides, AI-assisted content creation, and cloud sync for faster preparation.' },
             ].map((feature, i) => (
               <div key={i} className="p-8 bg-white/[0.03] border border-white/5 rounded-2xl hover:bg-white/[0.06] transition-all group">
@@ -461,8 +485,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
           <h2 className="text-3xl md:text-5xl font-bold mb-6">Ready to go live?</h2>
           <p className="text-gray-400 mb-10">Download the desktop app for offline presenting, or sign in to the web version right now.</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a href={downloadUrls.installer} className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold text-lg hover:opacity-90 transition-all flex items-center gap-3 shadow-xl shadow-purple-900/30">
-              <Download size={20} /> Download for Windows
+            <a href={primaryDesktopUrl} className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold text-lg hover:opacity-90 transition-all flex items-center gap-3 shadow-xl shadow-purple-900/30">
+              <Download size={20} /> {primaryDesktopLabel}
             </a>
             <button onClick={onEnter} className="px-8 py-4 bg-white/5 border border-white/10 text-white rounded-xl font-bold text-lg hover:bg-white/10 transition-all flex items-center gap-2">
               Latest Version {latestTag}

@@ -1,7 +1,7 @@
 {
   "name": "lumina-presenter",
   "private": true,
-  "version": "2.2.17",
+  "version": "2.2.18",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,6 +15,8 @@
     "dist:win": "npm run build && electron-builder --win --publish never",
     "dist:win:ci": "npm run build && electron-builder --win --publish never --config.directories.output=release",
     "dist:win:publish": "npm run build && electron-builder --win --publish always",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist:mac:ci": "npm run build && electron-builder --mac --publish never --config.directories.output=release",
     "test:e2e": "node scripts/run-e2e.mjs",
     "test:e2e:smoke": "node scripts/run-e2e.mjs --grep @smoke",
     "test:e2e:headed": "node scripts/run-e2e.mjs --headed",
@@ -87,6 +89,18 @@
       ],
       "icon": "public/icon.png"
     },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "public/icon.png",
+      "target": [
+        {
+          "target": "dmg"
+        },
+        {
+          "target": "zip"
+        }
+      ]
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
@@ -99,6 +113,9 @@
     },
     "msi": {
       "artifactName": "Lumina-Presenter-${version}.msi"
+    },
+    "dmg": {
+      "artifactName": "Lumina-Presenter-${version}.${ext}"
     },
     "publish": {
       "provider": "github",
