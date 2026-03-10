@@ -3,6 +3,8 @@ import { BibleIcon, SearchIcon, PlayIcon, SparklesIcon } from './Icons';
 import { ServiceItem, ItemType, MediaType } from '../types';
 import { DEFAULT_BACKGROUNDS } from '../constants';
 import { semanticBibleSearch, transcribeSermonChunk, type TranscribeSermonChunkResult } from '../services/geminiService';
+import { createBundledTopicBibleMemoryProvider, type BibleMemoryQueryOrigin } from '../services/bibleMemory.ts';
+import { resolveBibleIntent } from '../services/bibleIntentResolver.ts';
 import {
   BIBLE_BOOKS,
   buildStructuredBibleReference,
@@ -79,6 +81,7 @@ const BENIGN_SPEECH_ERRORS = new Set(['no-speech', 'aborted']);
 const TRANSIENT_SPEECH_ERRORS = new Set(['network']);
 const PERMISSION_SPEECH_ERRORS = new Set(['not-allowed', 'service-not-allowed']);
 const DEVICE_SPEECH_ERRORS = new Set(['audio-capture']);
+const LOCAL_FIRST_BIBLE_INTENT_ENABLED = /^(1|true|yes|on)$/i.test(String(import.meta.env.VITE_ENABLE_LOCAL_FIRST_BIBLE_INTENT || '').trim());
 
 const getQueryParam = (key: string): string => {
   if (typeof window === 'undefined') return '';
@@ -258,6 +261,69 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const lastBrowserProbeAtRef = useRef(0);
   const fallbackClientIdRef = useRef(createFallbackClientId());
   const fallbackContextRef = useRef(getFallbackSessionContext());
+  const bibleMemoryProviderRef = useRef(createBundledTopicBibleMemoryProvider());
+
+  const resolveSemanticReference = useCallback(async (
+    rawQuery: string,
+    origin: BibleMemoryQueryOrigin,
+    contextHints: string[] = []
+  ): Promise<{ reference: string | null; shouldProjectInstantly: boolean }> => {
+    const trimmedQuery = String(rawQuery || '').trim();
+    if (!trimmedQuery) {
+      return {
+        reference: null,
+        shouldProjectInstantly: false,
+      };
+    }
+
+    const exactReference = normalizeBibleReference(trimmedQuery);
+    if (exactReference) {
+      return {
+        reference: exactReference,
+        shouldProjectInstantly: true,
+      };
+    }
+
+    if (!LOCAL_FIRST_BIBLE_INTENT_ENABLED) {
+      return {
+        reference: await semanticBibleSearch(trimmedQuery),
+        shouldProjectInstantly: true,
+      };
+    }
+
+    const resolution = await resolveBibleIntent({
+      rawText: trimmedQuery,
+      translationId: selectedVersion,
+      origin,
+      allowRemoteRerank: true,
+      preferInstantProject: origin !== 'voice_partial',
+      contextHints,
+      recentReferences: [referenceInput, lastReferenceRef.current.reference].filter(Boolean),
+    }, {
+      memoryProvider: bibleMemoryProviderRef.current,
+      remoteResolver: {
+        id: 'gemini-semantic-search',
+        resolve: async (input) => {
+          const startedAt = Date.now();
+          const reference = await semanticBibleSearch(input.rawText);
+          const normalizedReference = normalizeBibleReference(reference);
+          if (!normalizedReference) return null;
+          return {
+            reference: normalizedReference,
+            confidence: 0.84,
+            model: 'gemini-semantic-search',
+            reason: 'Remote semantic rerank after local memory scoring.',
+            latencyMs: Math.max(0, Date.now() - startedAt),
+          };
+        },
+      },
+    });
+
+    return {
+      reference: resolution.chosen?.reference || null,
+      shouldProjectInstantly: resolution.shouldProjectInstantly,
+    };
+  }, [referenceInput, selectedVersion]);
 
   useEffect(() => {
     autoProjectRef.current = autoProjectEnabled;
@@ -461,7 +527,15 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
         finalQuery = exactReference;
       } else if (useSemantic) {
         setAiLoading(true);
-        finalQuery = await semanticBibleSearch(finalQuery);
+        const semanticResolution = await resolveSemanticReference(finalQuery, 'typed', [finalQuery]);
+        if (!semanticResolution.reference) {
+          if (!silent) {
+            setError('No scripture match found. Try a clearer topic or direct reference.');
+            setResults([]);
+          }
+          return [];
+        }
+        finalQuery = semanticResolution.reference;
       }
       const verses = await lookupBibleReference(finalQuery, selectedVersion);
       if (verses.length) {
@@ -492,7 +566,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       }
       setAiLoading(false);
     }
-  }, [selectedVersion, syncStructuredSelection]);
+  }, [resolveSemanticReference, selectedVersion, syncStructuredSelection]);
 
   const scheduleAutoProcess = useCallback(() => {
     clearTimer(processTimerRef);
@@ -748,7 +822,8 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     setAutoBusy(true);
     setAutoError(null);
     try {
-      const reference = await semanticBibleSearch(transcript);
+      const semanticResolution = await resolveSemanticReference(transcript, 'voice_final', [transcript]);
+      const reference = semanticResolution.reference;
       if (!reference) return;
       setAutoReference(reference);
       setAiQuery(reference);
@@ -766,7 +841,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
 
       lastReferenceRef.current = { reference, at: Date.now() };
 
-      if (autoProjectRef.current) {
+      if (autoProjectRef.current && semanticResolution.shouldProjectInstantly) {
         onProjectRequest(createServiceItem(verses));
       }
     } catch {
@@ -775,7 +850,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       autoBusyRef.current = false;
       setAutoBusy(false);
     }
-  }, [createServiceItem, fetchScripture, onProjectRequest]);
+  }, [createServiceItem, fetchScripture, onProjectRequest, resolveSemanticReference]);
 
   useEffect(() => {
     processAutoTranscriptRef.current = processAutoTranscript;

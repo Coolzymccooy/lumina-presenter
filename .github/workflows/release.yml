@@ -90,13 +90,33 @@ jobs:
         run: npm ci
 
       - name: Build macOS artifacts
-        run: npm run dist:mac:ci
         env:
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_LINK_SECRET: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD_SECRET: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID_SECRET: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD_SECRET: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID_SECRET: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [[ -n "$CSC_LINK_SECRET" ]]; then
+            export CSC_LINK="$CSC_LINK_SECRET"
+            if [[ -n "$CSC_KEY_PASSWORD_SECRET" ]]; then
+              export CSC_KEY_PASSWORD="$CSC_KEY_PASSWORD_SECRET"
+            fi
+
+            if [[ -n "$APPLE_ID_SECRET" && -n "$APPLE_APP_SPECIFIC_PASSWORD_SECRET" && -n "$APPLE_TEAM_ID_SECRET" ]]; then
+              export APPLE_ID="$APPLE_ID_SECRET"
+              export APPLE_APP_SPECIFIC_PASSWORD="$APPLE_APP_SPECIFIC_PASSWORD_SECRET"
+              export APPLE_TEAM_ID="$APPLE_TEAM_ID_SECRET"
+              echo "Building signed and notarized macOS artifacts."
+            else
+              echo "Building signed macOS artifacts without notarization."
+            fi
+          else
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+            echo "Building unsigned macOS artifacts because signing secrets are not configured."
+          fi
+
+          npm run dist:mac:ci
 
       - name: Publish GitHub release (non-draft)
         uses: softprops/action-gh-release@v2

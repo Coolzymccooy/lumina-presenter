@@ -43,7 +43,19 @@ export const BIBLE_BOOKS: BibleBook[] = [
   { name: '3 John', chapters: 1 }, { name: 'Jude', chapters: 1 }, { name: 'Revelation', chapters: 22 },
 ];
 
-const BOOKS_BY_LENGTH = [...BIBLE_BOOKS].sort((a, b) => b.name.length - a.name.length);
+const BIBLE_BOOK_ALIASES: Array<{ alias: string; canonicalName: string }> = [
+  { alias: 'Psalm', canonicalName: 'Psalms' },
+];
+
+const BOOK_MATCHERS = [
+  ...BIBLE_BOOKS.map((book) => ({ match: book.name, canonicalBook: book })),
+  ...BIBLE_BOOK_ALIASES
+    .map((entry) => ({
+      match: entry.alias,
+      canonicalBook: BIBLE_BOOKS.find((book) => book.name === entry.canonicalName) || null,
+    }))
+    .filter((entry): entry is { match: string; canonicalBook: BibleBook } => Boolean(entry.canonicalBook)),
+].sort((a, b) => b.match.length - a.match.length);
 
 const safeStorageGet = (key: string): string | null => {
   if (typeof window === 'undefined') return null;
@@ -95,10 +107,10 @@ export const normalizeBibleReference = (input: string): string | null => {
   if (!compact) return null;
 
   const lower = compact.toLowerCase();
-  const match = BOOKS_BY_LENGTH.find((book) => lower.startsWith(book.name.toLowerCase()));
+  const match = BOOK_MATCHERS.find((entry) => lower.startsWith(entry.match.toLowerCase()));
   if (!match) return null;
 
-  const remainder = compact.slice(match.name.length).trim();
+  const remainder = compact.slice(match.match.length).trim();
   if (!remainder) return null;
 
   const chapterVerseMatch = remainder.match(/^(\d{1,3})(?::(\d{1,3})(?:-(\d{1,3}))?)?$/);
@@ -109,13 +121,13 @@ export const normalizeBibleReference = (input: string): string | null => {
   const verseToRaw = chapterVerseMatch[3];
 
   if (!Number.isFinite(chapter) || chapter < 1) return null;
-  if (!verseFromRaw) return `${match.name} ${chapter}`;
+  if (!verseFromRaw) return `${match.canonicalBook.name} ${chapter}`;
 
   const verseFrom = Number(verseFromRaw);
   const verseTo = verseToRaw ? Number(verseToRaw) : verseFrom;
   if (!Number.isFinite(verseFrom) || verseFrom < 1) return null;
   if (!Number.isFinite(verseTo) || verseTo < verseFrom) return null;
-  return `${match.name} ${chapter}:${verseFrom}${verseTo > verseFrom ? `-${verseTo}` : ''}`;
+  return `${match.canonicalBook.name} ${chapter}:${verseFrom}${verseTo > verseFrom ? `-${verseTo}` : ''}`;
 };
 
 export const getCachedBibleVerses = (reference: string, version: string): BibleVerse[] | null => {
