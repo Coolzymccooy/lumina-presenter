@@ -315,6 +315,98 @@ test('pinned studio sidebar remains accessible across present and build mode swi
   expect(railMetrics.width).toBeGreaterThan(120);
 });
 
+test('public domain hymn library stays inside the sidebar and inserts into the run sheet', async ({ page }) => {
+  test.setTimeout(120_000);
+  const key = uniqueKey();
+  const { state } = buildBuilderState(key, [
+    {
+      id: `slide-${key}`,
+      label: 'Intro',
+      content: 'Welcome to service',
+      backgroundUrl: '',
+      mediaType: 'image',
+    },
+  ]);
+
+  await seedState(page, state);
+  await enterStudio(page, key);
+
+  await page.getByTestId('studio-sidebar-pin').click();
+  await page.getByTitle('HYMN LIBRARY').click();
+  await expect(page.getByTestId('hymn-library')).toBeVisible();
+
+  const searchInput = page.getByPlaceholder('Search title, first line, author, tune, theme...');
+  await searchInput.fill('Abide with Me');
+  await page.getByTestId('hymn-result-abide-with-me').click();
+  await expect(page.getByTestId('hymn-insert-button')).toBeVisible();
+
+  const layoutMetrics = await page.locator('[data-testid="hymn-library"]').evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return {
+      clientWidth: node.clientWidth,
+      scrollWidth: node.scrollWidth,
+      left: rect.left,
+      right: rect.right,
+    };
+  });
+  const panelMetrics = await page.getByTestId('studio-sidebar-panel').evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return {
+      left: rect.left,
+      right: rect.right,
+      width: rect.width,
+    };
+  });
+
+  expect(layoutMetrics.scrollWidth).toBeLessThanOrEqual(layoutMetrics.clientWidth + 1);
+  expect(layoutMetrics.left).toBeGreaterThanOrEqual(panelMetrics.left - 1);
+  expect(layoutMetrics.right).toBeLessThanOrEqual(panelMetrics.right + 1);
+  expect(panelMetrics.width).toBeGreaterThan(240);
+
+  await page.getByTestId('hymn-insert-button').click();
+  await page.getByTitle('SCHEDULE').click();
+  await expect(page.getByTestId('studio-sidebar-panel').getByText('Abide with Me', { exact: true }).first()).toBeVisible();
+});
+
+test('present mode can launch a queued item without tripping React hook order', async ({ page }) => {
+  test.setTimeout(120_000);
+  const key = uniqueKey();
+  const hookErrors: string[] = [];
+  const captureHookError = (text: string) => {
+    if (text.includes('React error #300') || text.includes('Rendered fewer hooks than expected')) {
+      hookErrors.push(text);
+    }
+  };
+
+  page.on('pageerror', (error) => captureHookError(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') {
+      captureHookError(message.text());
+    }
+  });
+
+  const { state } = buildBuilderState(key, [
+    {
+      id: `slide-${key}`,
+      label: 'Intro',
+      content: 'Welcome to service',
+      backgroundUrl: '',
+      mediaType: 'image',
+    },
+  ]);
+
+  await seedState(page, state);
+  await enterStudio(page, key);
+
+  await page.getByRole('button', { name: 'PRESENT' }).click();
+  await expect(page.getByText('Live Queue')).toBeVisible();
+
+  await page.getByText('Media Item').first().click();
+  await expect(page.getByRole('button', { name: /Welcome to service 1\. Intro/i })).toBeVisible();
+  await expect(page.getByText('Something went wrong')).toHaveCount(0);
+  expect(hookErrors).toEqual([]);
+});
+
 test('smart slide editor supports preset selection, typing into inspector, and saving', async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 1920, height: 1080 });

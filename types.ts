@@ -1,6 +1,9 @@
 
+import type { HymnGeneratedItemMetadata, HymnGeneratedSlideMetadata } from './types/hymns.ts';
+
 export enum ItemType {
   SONG = 'SONG',
+  HYMN = 'HYMN',
   SCRIPTURE = 'SCRIPTURE',
   MEDIA = 'MEDIA',
   ANNOUNCEMENT = 'ANNOUNCEMENT',
@@ -9,7 +12,7 @@ export enum ItemType {
 
 export type MediaType = 'image' | 'video' | 'color';
 
-export type SlideType = 'custom' | 'lyrics' | 'scripture' | 'announcement' | 'offering';
+export type SlideType = 'custom' | 'lyrics' | 'scripture' | 'announcement' | 'offering' | 'hymn';
 export type SlideElementType = 'text';
 export type SlideElementRole = 'title' | 'subtitle' | 'body' | 'reference' | 'footer' | 'note';
 export type TextAlign = 'left' | 'center' | 'right';
@@ -71,6 +74,13 @@ export type SlideElement = TextSlideElement;
 export interface SlideMetadata {
   templateId?: string;
   notes?: string;
+  hymn?: HymnGeneratedSlideMetadata;
+}
+
+export interface ServiceItemMetadata {
+  createdAt?: number;
+  source?: 'manual' | 'ai' | 'bible' | 'hymn-library' | 'import' | 'audience';
+  hymn?: HymnGeneratedItemMetadata;
 }
 
 export interface LayoutPreset {
@@ -190,6 +200,7 @@ export interface ServiceItem {
   title: string;
   type: ItemType;
   slides: Slide[];
+  metadata?: ServiceItemMetadata;
   timerCue?: TimerCue;
   theme: {
     backgroundUrl: string;

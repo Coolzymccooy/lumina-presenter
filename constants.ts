@@ -1,5 +1,6 @@
 
-import { ItemType, ServiceItem } from './types';
+import { ItemType } from './types.ts';
+import type { ServiceItem } from './types.ts';
 
 export interface GospelTrack {
   id: string;

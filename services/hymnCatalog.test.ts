@@ -1,0 +1,35 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  bundledHymnCatalogProvider,
+  darkLicensedHymnCatalogProvider,
+  listAllHymnCatalogProviders,
+  listCatalogHymns,
+  listVisibleHymnCatalogProviders,
+  searchCatalogHymns,
+} from './hymnCatalog.ts';
+
+test('catalog registry keeps the licensed adapter dark by default', () => {
+  const allProviders = listAllHymnCatalogProviders();
+  const visibleProviders = listVisibleHymnCatalogProviders();
+
+  assert.ok(allProviders.some((provider) => provider.id === darkLicensedHymnCatalogProvider.id));
+  assert.ok(visibleProviders.every((provider) => provider.id !== darkLicensedHymnCatalogProvider.id));
+  assert.equal(darkLicensedHymnCatalogProvider.availability, 'dark');
+  assert.equal(darkLicensedHymnCatalogProvider.isVisibleInLibrary, false);
+});
+
+test('catalog listing continues to use the bundled provider only', () => {
+  const hymns = listCatalogHymns();
+
+  assert.ok(hymns.length >= 25);
+  assert.ok(hymns.every((hymn) => hymn.librarySource.kind === 'bundled-pd'));
+});
+
+test('catalog search remains stable while the licensed adapter is dark', () => {
+  const results = searchCatalogHymns('Amazing Grace');
+
+  assert.ok(results.length > 0);
+  assert.equal(results[0]?.hymn.id, 'amazing-grace');
+  assert.equal(bundledHymnCatalogProvider.availability, 'active');
+});

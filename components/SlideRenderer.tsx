@@ -364,6 +364,11 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     const seed = `${item?.id || "item"}:${slide?.id || "slide"}`;
     return DEFAULT_BACKGROUNDS[hashSeed(seed) % DEFAULT_BACKGROUNDS.length];
   }, [item?.id, slide?.id]);
+  const hasStructuredElements = Array.isArray(slide?.elements) && slide.elements.length > 0;
+  const structuredElements = useMemo(
+    () => (hasStructuredElements && slide ? getRenderableElements(slide, item) : []),
+    [hasStructuredElements, slide, item]
+  );
 
   if (!slide || !item) {
     return (
@@ -376,11 +381,6 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   const contentText = safeString(slide.content);
   const hasReadableText = contentText.trim().length > 0;
   const textPx = computeTextPx(item.theme?.fontSize, contentText);
-  const hasStructuredElements = Array.isArray(slide.elements) && slide.elements.length > 0;
-  const structuredElements = useMemo(
-    () => (hasStructuredElements ? getRenderableElements(slide, item) : []),
-    [hasStructuredElements, slide, item]
-  );
   const hasRenderableStructuredText = structuredElements.some(
     (element) => element.type === "text" && element.visible !== false && safeString(element.content).trim().length > 0
   );

@@ -35,6 +35,7 @@ import { WelcomeAnimation } from './components/WelcomeAnimation';
 import { AudienceSubmit } from './components/AudienceSubmit'; // NEW
 import { AudienceStudio } from './components/AudienceStudio'; // NEW
 import { ConnectModal } from './components/ConnectModal'; // NEW
+import { HymnLibrary } from './components/HymnLibrary';
 import { StageDisplay } from './components/StageDisplay';
 import { RemoteControl } from './components/RemoteControl';
 import { SmartSlideEditor } from './components/slide-layout/editor/SmartSlideEditor';
@@ -65,6 +66,7 @@ import {
 import { parsePptxFile } from './services/pptxImport';
 import { copyTextToClipboard } from './services/clipboardService';
 import { dispatchAetherBridgeEvent } from './services/aetherBridge';
+import type { RunSheetInsertionResult } from './services/runSheetInsertion';
 import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon, CheckIcon, XIcon, PinIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon
 
 // --- CONSTANTS ---
@@ -595,7 +597,7 @@ function App() {
     const hasSeen = localStorage.getItem('lumina_onboarding_v2.2.0');
     return !hasSeen;
   });
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES'>('SCHEDULE');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES'>('SCHEDULE');
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1440));
   const isSettingsHydratedRef = useRef(false);
   const studioShellRef = useRef<HTMLDivElement | null>(null);
@@ -3193,6 +3195,20 @@ function App() {
     setIsPlaying(true);
     logActivity(user?.uid, 'PRESENTATION_START', { itemTitle: item.title });
   };
+  const handleApplyHymnInsertion = (result: RunSheetInsertionResult, options?: { goLive?: boolean }) => {
+    pushHistory();
+    setSchedule(result.schedule);
+    setSelectedItemId(result.selectedItemId);
+    setActiveSidebarTab('SCHEDULE');
+    logActivity(user?.uid, 'ADD_HYMN', {
+      hymnId: result.insertedItem.metadata?.hymn?.hymnId,
+      title: result.insertedItem.title,
+      slideCount: result.insertedItem.slides.length,
+    });
+    if (options?.goLive) {
+      goLive(result.insertedItem, 0);
+    }
+  };
   const handleProjectAudienceMessage = (text: string, label?: string) => {
     const existingIdx = schedule.findIndex(i => i.id === 'audience-live-item');
     const newItem: ServiceItem = {
@@ -4550,6 +4566,7 @@ function App() {
             </div>
             <div className="flex flex-col flex-1 p-1 gap-1">
               <button onClick={() => setActiveSidebarTab('SCHEDULE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'SCHEDULE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="SCHEDULE"><MonitorIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Schedule</span></button>
+              <button onClick={() => setActiveSidebarTab('HYMNS')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'HYMNS' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="HYMN LIBRARY"><MusicIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Hymns</span></button>
               <button onClick={() => setActiveSidebarTab('FILES')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'FILES' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="RUN SHEET FILES"><CopyIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Files</span></button>
               <button onClick={() => setActiveSidebarTab('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIO MIXER"><Volume2Icon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audio Mixer</span></button>
               <button onClick={() => setActiveSidebarTab('BIBLE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'BIBLE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="BIBLE LIBRARY"><BibleIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Bible Hub</span></button>
@@ -4561,7 +4578,7 @@ function App() {
           </div>
 
           {/* SIDEBAR PANEL */}
-          <div className="flex flex-col bg-zinc-950 shrink-0 min-w-0" style={{ width: sidebarPanelWidth }}>
+          <div data-testid="studio-sidebar-panel" className="flex flex-col bg-zinc-950 shrink-0 min-w-0" style={{ width: sidebarPanelWidth }}>
           {activeSidebarTab === 'SCHEDULE' && (
             <>
               <div className="p-3 border-b border-zinc-900 flex items-center justify-between shrink-0">
@@ -4649,6 +4666,15 @@ function App() {
               </div>
             </div>
           )}
+          {activeSidebarTab === 'HYMNS' && (
+            <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+              <HymnLibrary
+                schedule={schedule}
+                selectedItemId={selectedItemId}
+                onApplyInsertion={handleApplyHymnInsertion}
+              />
+            </div>
+          )}
           {activeSidebarTab === 'AUDIO' && <AudioLibrary currentTrackId={currentTrack?.id} isPlaying={isAudioPlaying} progress={audioProgress} onPlay={handlePlayTrack} onToggle={() => setIsAudioPlaying(!isAudioPlaying)} onStop={stopAudio} onVolumeChange={setAudioVolume} volume={audioVolume} />}
           {activeSidebarTab === 'BIBLE' && (
             <div className="flex-1 overflow-hidden flex flex-col">
@@ -4697,6 +4723,19 @@ function App() {
               <div className="w-56 bg-zinc-900/30 border-r border-zinc-900 flex flex-col hidden lg:flex">
                 <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex items-center">Library</div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveSidebarTab('HYMNS')}
+                    className="w-full rounded-sm border border-emerald-900/60 bg-emerald-950/20 px-3 py-2 text-left transition-colors hover:border-emerald-700/60 hover:bg-emerald-950/30"
+                  >
+                    <div className="flex items-center gap-2">
+                      <MusicIcon className="h-4 w-4 text-emerald-300" />
+                      <div className="min-w-0">
+                        <div className="text-xs font-black uppercase tracking-[0.16em] text-emerald-200">Hymn Library</div>
+                        <div className="mt-1 text-[11px] text-emerald-100/70">Search, generate, and insert hymn slides.</div>
+                      </div>
+                    </div>
+                  </button>
                   {MOCK_SONGS.map((song, i) => (<div key={i} className="p-2 bg-zinc-900 rounded-sm cursor-pointer hover:bg-zinc-800 border border-zinc-800/50" onClick={() => setIsAIModalOpen(true)}><div className="font-bold text-xs text-zinc-300">{song.title}</div></div>))}
                 </div>
               </div>
