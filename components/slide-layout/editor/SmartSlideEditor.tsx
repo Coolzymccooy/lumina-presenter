@@ -126,11 +126,13 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
   const [pptxError, setPptxError] = useState<string | null>(null);
   const [pptxStatus, setPptxStatus] = useState('');
   const [isImportingPptx, setIsImportingPptx] = useState(false);
+  const [pendingAsyncTaskCount, setPendingAsyncTaskCount] = useState(0);
   const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [presetsCollapsed, setPresetsCollapsed] = useState(false);
   const uploadRef = useRef<HTMLInputElement | null>(null);
   const pptxVisualRef = useRef<HTMLInputElement | null>(null);
   const pptxTextRef = useRef<HTMLInputElement | null>(null);
+  const pendingAsyncTaskCountRef = useRef(0);
 
   useEffect(() => {
     if (!isOpen || !item) return;
@@ -153,6 +155,8 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
     setUploadError(null);
     setPptxError(null);
     setPptxStatus('');
+    pendingAsyncTaskCountRef.current = 0;
+    setPendingAsyncTaskCount(0);
   }, [isOpen, item, initialSlideId, mode]);
 
   useEffect(() => {
@@ -220,6 +224,16 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
       if (uploaded?.ok && sharedUrl) return sharedUrl;
     }
     return saveMedia(file);
+  };
+
+  const beginAsyncTask = () => {
+    pendingAsyncTaskCountRef.current += 1;
+    setPendingAsyncTaskCount(pendingAsyncTaskCountRef.current);
+  };
+
+  const endAsyncTask = () => {
+    pendingAsyncTaskCountRef.current = Math.max(0, pendingAsyncTaskCountRef.current - 1);
+    setPendingAsyncTaskCount(pendingAsyncTaskCountRef.current);
   };
 
   const addSlideFromPreset = (presetId?: string) => {
@@ -357,6 +371,7 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
     event.target.value = '';
     if (!files.length || !item) return;
     setUploadError(null);
+    beginAsyncTask();
     setIsUploading(true);
     try {
       if (files.length > 1) {
@@ -391,6 +406,7 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
       setUploadError('Failed to save media.');
     } finally {
       setIsUploading(false);
+      endAsyncTask();
     }
   };
 
@@ -402,6 +418,7 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
     if (!importer) return;
     setPptxError(null);
     setPptxStatus(mode === 'visual' ? 'Importing PowerPoint visuals...' : 'Importing PowerPoint text...');
+    beginAsyncTask();
     setIsImportingPptx(true);
     try {
       const importedSlides = await importer(file);
@@ -416,6 +433,7 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
       setPptxStatus('');
     } finally {
       setIsImportingPptx(false);
+      endAsyncTask();
     }
   };
 
@@ -453,6 +471,16 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
   }, [currentSlide, isOpen, selectedElement]);
 
   if (!isOpen || !item) return null;
+
+  const editorBusy = isUploading || isImportingPptx || pendingAsyncTaskCount > 0;
+  const handleRequestClose = () => {
+    if (pendingAsyncTaskCountRef.current > 0) return;
+    onClose();
+  };
+  const handleConfirmSave = () => {
+    if (pendingAsyncTaskCountRef.current > 0) return;
+    onSaveSlides(slides.map((slide) => buildStructuredSlide(slide, item)), currentSlideId);
+  };
 
   const presetsColumn = (
     <aside className="flex h-full min-h-0 flex-col border-r border-zinc-800 bg-[#05070e]">
@@ -581,9 +609,9 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
             {uploadError && <span className="text-xs text-rose-300">{uploadError}</span>}
             {pptxError && <span className="text-xs text-rose-300">{pptxError}</span>}
             {pptxStatus && <span className="text-xs text-cyan-300">{pptxStatus}</span>}
-            {(isUploading || isImportingPptx) && <span className="text-xs text-zinc-500">WORKING...</span>}
-            <button type="button" onClick={onClose} className="rounded border border-zinc-700 bg-zinc-900 px-4 py-2 text-xs font-bold text-zinc-300">ESC</button>
-            <button type="button" data-testid="slide-editor-confirm" onClick={() => onSaveSlides(slides.map((slide) => buildStructuredSlide(slide, item)), currentSlideId)} className="rounded border border-blue-500 bg-blue-600 px-5 py-2 text-xs font-bold text-white">SAVE</button>
+            {editorBusy && <span className="text-xs text-zinc-500">WORKING...</span>}
+            <button type="button" onClick={handleRequestClose} disabled={editorBusy} className="rounded border border-zinc-700 bg-zinc-900 px-4 py-2 text-xs font-bold text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40">ESC</button>
+            <button type="button" data-testid="slide-editor-confirm" onClick={handleConfirmSave} disabled={editorBusy} className="rounded border border-blue-500 bg-blue-600 px-5 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:border-blue-900 disabled:bg-blue-950 disabled:text-blue-300/70">SAVE</button>
           </div>
         </div>
 

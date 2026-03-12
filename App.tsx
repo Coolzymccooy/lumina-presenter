@@ -155,6 +155,13 @@ type RunSheetFileRecord = {
   lastUsedAt: number | null;
 };
 
+type HydrationStudioState = {
+  schedule: ServiceItem[];
+  selectedItemId: string;
+  activeItemId: string | null;
+  activeSlideIndex: number;
+};
+
 const DEFAULT_STAGE_TIMER_LAYOUT: StageTimerLayout = {
   x: 24,
   y: 24,
@@ -179,6 +186,20 @@ const VALID_CONNECTION_ROLES: ConnectionRole[] = ['controller', 'output', 'stage
 const VALID_STAGE_TIMER_VARIANTS: StageTimerVariant[] = ['top-right', 'top-left', 'bottom-right', 'compact-bar'];
 const VALID_STAGE_MESSAGE_CATEGORIES: StageMessageCategory[] = ['urgent', 'timing', 'logistics'];
 const VALID_STAGE_FLOW_LAYOUTS: StageFlowLayout[] = ['balanced', 'speaker_focus', 'preview_focus', 'minimal_next'];
+
+const areServiceItemCollectionsEqual = (
+  left: ServiceItem[] | null | undefined,
+  right: ServiceItem[] | null | undefined
+) => {
+  if (left === right) return true;
+  if (!Array.isArray(left) || !Array.isArray(right)) return false;
+  if (left.length !== right.length) return false;
+  try {
+    return JSON.stringify(left) === JSON.stringify(right);
+  } catch {
+    return false;
+  }
+};
 
 const DEFAULT_SPEAKER_TIMER_PRESETS: SpeakerTimerPreset[] = [
   {
@@ -1047,6 +1068,12 @@ function App() {
     const saved = initialSavedState;
     return saved?.activeSlideIndex ?? -1;
   });
+  const studioHydrationStateRef = useRef<HydrationStudioState>({
+    schedule: initialSavedState?.schedule || INITIAL_SCHEDULE,
+    selectedItemId: initialSavedState?.selectedItemId || (initialSavedState?.schedule || INITIAL_SCHEDULE)[0]?.id || '',
+    activeItemId: typeof initialSavedState?.activeItemId === 'string' ? initialSavedState.activeItemId : null,
+    activeSlideIndex: initialSavedState?.activeSlideIndex ?? -1,
+  });
 
   const [blackout, setBlackout] = useState(() => {
     const saved = initialSavedState;
@@ -1134,6 +1161,33 @@ function App() {
   const cloudPlaylistId = useMemo(() => (
     user?.uid ? buildCloudPlaylistId(user.uid) : ''
   ), [user?.uid]);
+  useEffect(() => {
+    studioHydrationStateRef.current = {
+      schedule,
+      selectedItemId,
+      activeItemId,
+      activeSlideIndex,
+    };
+  }, [schedule, selectedItemId, activeItemId, activeSlideIndex]);
+  const applyHydratedStudioState = useCallback((incoming: Partial<HydrationStudioState>) => {
+    const current = studioHydrationStateRef.current;
+    if (Array.isArray(incoming.schedule) && incoming.schedule.length > 0 && !areServiceItemCollectionsEqual(incoming.schedule, current.schedule)) {
+      setSchedule(incoming.schedule);
+    }
+    if (typeof incoming.selectedItemId === 'string' && incoming.selectedItemId !== current.selectedItemId) {
+      setSelectedItemId(incoming.selectedItemId);
+    }
+    if (typeof incoming.activeItemId === 'string') {
+      if (incoming.activeItemId !== current.activeItemId) {
+        setActiveItemId(incoming.activeItemId);
+      }
+    } else if (incoming.activeItemId === null && current.activeItemId !== null) {
+      setActiveItemId(null);
+    }
+    if (typeof incoming.activeSlideIndex === 'number' && incoming.activeSlideIndex !== current.activeSlideIndex) {
+      setActiveSlideIndex(incoming.activeSlideIndex);
+    }
+  }, []);
 
   const reportSyncFailure = useCallback((source: string, error: unknown, meta: Record<string, any> = {}) => {
     const message = error instanceof Error ? error.message : String(error || 'Unknown sync failure');
@@ -1485,20 +1539,12 @@ function App() {
       if (localUpdatedAt > snapshot.updatedAt) return;
 
       const payload = snapshot.payload;
-      if (Array.isArray(payload.schedule) && payload.schedule.length > 0) {
-        setSchedule(payload.schedule);
-      }
-      if (typeof payload.selectedItemId === 'string') {
-        setSelectedItemId(payload.selectedItemId);
-      }
-      if (typeof payload.activeItemId === 'string') {
-        setActiveItemId(payload.activeItemId);
-      } else {
-        setActiveItemId(null);
-      }
-      if (typeof payload.activeSlideIndex === 'number') {
-        setActiveSlideIndex(payload.activeSlideIndex);
-      }
+      applyHydratedStudioState({
+        schedule: Array.isArray(payload.schedule) && payload.schedule.length > 0 ? payload.schedule : undefined,
+        selectedItemId: typeof payload.selectedItemId === 'string' ? payload.selectedItemId : undefined,
+        activeItemId: typeof payload.activeItemId === 'string' ? payload.activeItemId : null,
+        activeSlideIndex: typeof payload.activeSlideIndex === 'number' ? payload.activeSlideIndex : undefined,
+      });
       if (payload.audienceQrProjection && typeof payload.audienceQrProjection === 'object') {
         const incomingQrProjection = sanitizeAudienceQrProjectionState(payload.audienceQrProjection);
         setAudienceQrProjection((prev) => (
@@ -1536,7 +1582,7 @@ function App() {
         }
       }
     })();
-  }, [workspaceId, user?.uid, user]);
+  }, [workspaceId, user?.uid, user, applyHydratedStudioState]);
 
   useEffect(() => {
     try {
@@ -3474,25 +3520,22 @@ function App() {
 
           if (Array.isArray(preferred.items) && preferred.items.length > 0) {
             const nextSchedule = preferred.items as ServiceItem[];
-            setSchedule(nextSchedule);
-
             const preferredSelected = typeof preferred.selectedItemId === 'string' ? preferred.selectedItemId : '';
             const selectedExists = nextSchedule.some((item) => item.id === preferredSelected);
-            setSelectedItemId(selectedExists ? preferredSelected : nextSchedule[0]?.id || '');
-
             const preferredActiveItemId = typeof preferred.activeItemId === 'string' ? preferred.activeItemId : null;
             const activeItem = preferredActiveItemId
               ? nextSchedule.find((item) => item.id === preferredActiveItemId)
               : null;
-            if (activeItem) {
-              const rawActiveIndex = typeof preferred.activeSlideIndex === 'number' ? preferred.activeSlideIndex : 0;
-              const boundedIndex = Math.max(0, Math.min(activeItem.slides.length - 1, rawActiveIndex));
-              setActiveItemId(activeItem.id);
-              setActiveSlideIndex(activeItem.slides.length > 0 ? boundedIndex : -1);
-            } else {
-              setActiveItemId(null);
-              setActiveSlideIndex(-1);
-            }
+            const rawActiveIndex = typeof preferred.activeSlideIndex === 'number' ? preferred.activeSlideIndex : 0;
+            const boundedIndex = activeItem
+              ? Math.max(0, Math.min(activeItem.slides.length - 1, rawActiveIndex))
+              : -1;
+            applyHydratedStudioState({
+              schedule: nextSchedule,
+              selectedItemId: selectedExists ? preferredSelected : nextSchedule[0]?.id || '',
+              activeItemId: activeItem ? activeItem.id : null,
+              activeSlideIndex: activeItem && activeItem.slides.length > 0 ? boundedIndex : -1,
+            });
           }
 
           if (preferred.stageMessageCenter && typeof preferred.stageMessageCenter === 'object') {
@@ -3549,7 +3592,7 @@ function App() {
     return () => {
       unsubPlaylists();
     };
-  }, [user?.uid, cloudPlaylistId, reportSyncFailure]);
+  }, [user?.uid, cloudPlaylistId, reportSyncFailure, applyHydratedStudioState]);
 
   useEffect(() => {
     if (!isFirebaseConfigured() || !user?.uid || !cloudBootstrapComplete) return;
@@ -4046,8 +4089,8 @@ function App() {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
 
-  const ScheduleList = () => (
-    <div className="flex-1 overflow-y-auto bg-zinc-950">
+  const renderScheduleList = () => (
+    <div className="flex-1 overflow-y-auto bg-zinc-950" data-testid="runsheet-list">
       {teamPlaylists.length > 0 && (<div className="px-3 py-2 text-[10px] text-emerald-400 border-b border-zinc-900">Cloud Playlists Synced: {teamPlaylists.length}</div>)}
       {schedule.map((item, idx) => (
         <div key={item.id} className="flex flex-col border-b border-zinc-900">
@@ -4589,7 +4632,7 @@ function App() {
                   <button onClick={addEmptyItem} className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-sm transition-colors"><PlusIcon className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
-              <ScheduleList />
+              {renderScheduleList()}
             </>
           )}
           {activeSidebarTab === 'FILES' && (

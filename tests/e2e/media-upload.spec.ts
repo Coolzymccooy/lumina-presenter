@@ -410,6 +410,67 @@ test('present mode can launch a queued item without tripping React hook order', 
   expect(hookErrors).toEqual([]);
 });
 
+test('present mode preserves runsheet scroll while hydration settles', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1440, height: 800 });
+  const key = uniqueKey();
+  const schedule = Array.from({ length: 24 }, (_, idx) => ({
+    id: `item-${key}-${idx}`,
+    title: `Item ${idx + 1}`,
+    type: idx % 2 === 0 ? 'ANNOUNCEMENT' : 'SONG',
+    slides: [
+      {
+        id: `slide-${key}-${idx}`,
+        label: `Slide ${idx + 1}`,
+        content: `Content ${idx + 1}`,
+        backgroundUrl: '',
+        mediaType: 'image',
+      },
+    ],
+    theme: {
+      backgroundUrl: '',
+      mediaType: 'image',
+      fontFamily: 'sans-serif',
+      textColor: '#ffffff',
+      shadow: true,
+      fontSize: 'medium',
+    },
+  }));
+  const state = {
+    schedule,
+    selectedItemId: schedule[0].id,
+    viewMode: 'PRESENTER',
+    activeItemId: schedule[0].id,
+    activeSlideIndex: 0,
+    blackout: false,
+    isPlaying: true,
+    outputMuted: false,
+    routingMode: 'PROJECTOR',
+    updatedAt: Date.now(),
+  };
+
+  await seedState(page, state);
+  await enterStudio(page, key);
+
+  await page.getByRole('button', { name: 'PRESENT' }).click();
+  await expect(page.getByText('Live Queue')).toBeVisible();
+
+  const runsheet = page.getByTestId('runsheet-list');
+  const runsheetMetrics = await runsheet.evaluate((node) => ({
+    clientHeight: node.clientHeight,
+    scrollHeight: node.scrollHeight,
+  }));
+  expect(runsheetMetrics.scrollHeight).toBeGreaterThan(runsheetMetrics.clientHeight);
+
+  await runsheet.evaluate((node) => {
+    node.scrollTop = 900;
+  });
+  await page.waitForTimeout(2500);
+
+  const scrollTop = await runsheet.evaluate((node) => node.scrollTop);
+  expect(scrollTop).toBeGreaterThan(400);
+});
+
 test('smart slide editor supports preset selection, typing into inspector, and saving', async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 1920, height: 1080 });
