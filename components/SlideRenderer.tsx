@@ -695,20 +695,25 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
           {hasStructuredElements ? (
             <ElementRenderer elements={structuredElements} layoutMode="absolute" />
           ) : slide.layoutType === 'ticker' ? (
-            /* ── Ticker layout: verse scrolls in a bottom band ──────────── */
+            /* ── Ticker layout: centered text + scrolling ticker band at bottom ── */
             <>
               <style>{`@keyframes lumina-ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }`}</style>
-              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: CANVAS_H * 0.16, background: "linear-gradient(180deg, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.88) 30%)", display: "flex", alignItems: "center", overflow: "hidden" }}>
-                {/* Fixed reference badge on the left */}
+              {/* Centered verse text */}
+              <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: `${CANVAS_H * 0.06}px ${CANVAS_W * 0.06}px ${CANVAS_H * 0.22}px` }}>
+                <div style={{ width: "100%", maxWidth: "92%", fontSize: textPx, lineHeight: 1.35, whiteSpace: "pre-wrap", wordBreak: "break-word", textAlign: "center", overflow: "hidden" }}>
+                  {contentText}
+                </div>
+              </div>
+              {/* Ticker band at bottom */}
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: CANVAS_H * 0.14, background: "linear-gradient(180deg, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.88) 30%)", display: "flex", alignItems: "center", overflow: "hidden" }}>
                 {slide.label && (
                   <div style={{ position: "relative", zIndex: 2, padding: `0 ${CANVAS_W * 0.025}px`, display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
-                    <div style={{ width: 4, height: CANVAS_H * 0.08, background: "#3b82f6", borderRadius: 4 }} />
-                    <span style={{ fontFamily: '"Inter", "Segoe UI", system-ui, sans-serif', fontSize: Math.round(CANVAS_H * 0.028), fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#93c5fd", textShadow: "0 1px 4px rgba(0,0,0,0.9)", whiteSpace: "nowrap" }}>{slide.label}</span>
+                    <div style={{ width: 4, height: CANVAS_H * 0.07, background: "#3b82f6", borderRadius: 4 }} />
+                    <span style={{ fontFamily: '"Inter", "Segoe UI", system-ui, sans-serif', fontSize: Math.round(CANVAS_H * 0.024), fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#93c5fd", textShadow: "0 1px 4px rgba(0,0,0,0.9)", whiteSpace: "nowrap" }}>{slide.label}</span>
                   </div>
                 )}
-                {/* Scrolling verse text */}
                 <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
-                  <div style={{ display: "inline-block", whiteSpace: "nowrap", animation: `lumina-ticker ${Math.max(12, contentText.length * 0.18)}s linear infinite`, fontSize: Math.round(CANVAS_H * 0.038), fontFamily: '"Georgia", "Times New Roman", serif', fontStyle: "italic", fontWeight: 400, color: "rgba(255,255,255,0.95)", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
+                  <div style={{ display: "inline-block", whiteSpace: "nowrap", animation: `lumina-ticker ${Math.max(12, contentText.length * 0.18)}s linear infinite`, fontSize: Math.round(CANVAS_H * 0.032), fontFamily: '"Georgia", "Times New Roman", serif', fontStyle: "italic", fontWeight: 400, color: "rgba(255,255,255,0.92)", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
                     {contentText}
                   </div>
                 </div>

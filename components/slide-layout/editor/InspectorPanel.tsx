@@ -10,6 +10,7 @@ interface InspectorPanelProps {
   onUpdateElement: (elementId: string, updater: (element: TextSlideElement) => TextSlideElement) => void;
   onApplyPreset: (presetId: string) => void;
   onTriggerUpload: () => void;
+  onTriggerFolderUpload: () => void;
   onTriggerPptxVisual: () => void;
   onTriggerPptxText: () => void;
   onClearBackground: () => void;
@@ -74,6 +75,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
   onUpdateElement,
   onApplyPreset,
   onTriggerUpload,
+  onTriggerFolderUpload,
   onTriggerPptxVisual,
   onTriggerPptxText,
   onClearBackground,
@@ -573,11 +575,14 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
               </div>
             </Section>
 
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-3">
-              <div className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Media Tools</div>
+            <div className="rounded-lg border border-cyan-900/50 bg-zinc-900/70 p-3 sticky top-0 z-10 shadow-lg shadow-black/30">
+              <div className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-500">Media Tools</div>
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={onTriggerUpload} className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-[10px] font-bold text-zinc-100 hover:border-cyan-600 hover:text-white">
                   Upload Media
+                </button>
+                <button type="button" onClick={onTriggerFolderUpload} className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-[10px] font-bold text-zinc-100 hover:border-cyan-600 hover:text-white">
+                  Upload Folder
                 </button>
                 <button type="button" onClick={onTriggerPptxVisual} className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-[10px] font-bold text-zinc-200 hover:border-zinc-500 hover:text-white">
                   PPTX Visual
@@ -585,7 +590,7 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 <button type="button" onClick={onTriggerPptxText} className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-[10px] font-bold text-zinc-200 hover:border-zinc-500 hover:text-white">
                   PPTX Text
                 </button>
-                <button type="button" onClick={onClearBackground} className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-[10px] font-bold text-zinc-400 hover:border-rose-600 hover:text-rose-200">
+                <button type="button" onClick={onClearBackground} className="col-span-2 rounded border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-[10px] font-bold text-zinc-400 hover:border-rose-600 hover:text-rose-200">
                   Clear Media
                 </button>
               </div>

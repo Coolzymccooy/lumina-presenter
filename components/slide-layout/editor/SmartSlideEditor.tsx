@@ -130,6 +130,7 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
   const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [presetsCollapsed, setPresetsCollapsed] = useState(false);
   const uploadRef = useRef<HTMLInputElement | null>(null);
+  const folderUploadRef = useRef<HTMLInputElement | null>(null);
   const pptxVisualRef = useRef<HTMLInputElement | null>(null);
   const pptxTextRef = useRef<HTMLInputElement | null>(null);
   const pendingAsyncTaskCountRef = useRef(0);
@@ -597,6 +598,8 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
   const editorShell = (
     <div className="fixed inset-0 z-[120] bg-black/95 backdrop-blur-sm">
       <input ref={uploadRef} type="file" className="hidden" multiple accept="image/*,video/*" data-testid="slide-editor-upload-input" onChange={handleBackgroundUpload} />
+      {/* @ts-expect-error webkitdirectory is a non-standard attribute */}
+      <input ref={folderUploadRef} type="file" className="hidden" multiple accept="image/*,video/*" webkitdirectory="" onChange={handleBackgroundUpload} data-testid="slide-editor-folder-upload-input" />
       <input ref={pptxVisualRef} type="file" className="hidden" accept=".pptx,.ppt,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint" onChange={(event) => handlePowerPointImport(event, 'visual')} />
       <input ref={pptxTextRef} type="file" className="hidden" accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint" onChange={(event) => handlePowerPointImport(event, 'text')} />
       <div className="flex h-full min-h-0 flex-col">
@@ -646,6 +649,7 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
                   onUpdateElement={updateElement}
                   onApplyPreset={handleApplyPreset}
                   onTriggerUpload={() => uploadRef.current?.click()}
+                  onTriggerFolderUpload={() => folderUploadRef.current?.click()}
                   onTriggerPptxVisual={() => pptxVisualRef.current?.click()}
                   onTriggerPptxText={() => pptxTextRef.current?.click()}
                   onClearBackground={() => updateCurrentSlide((slide) => ({ ...slide, backgroundUrl: '', mediaType: 'image', mediaFit: 'cover' }))}
@@ -680,6 +684,7 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
               onUpdateElement={updateElement}
               onApplyPreset={handleApplyPreset}
               onTriggerUpload={() => uploadRef.current?.click()}
+              onTriggerFolderUpload={() => folderUploadRef.current?.click()}
               onTriggerPptxVisual={() => pptxVisualRef.current?.click()}
               onTriggerPptxText={() => pptxTextRef.current?.click()}
               onClearBackground={() => updateCurrentSlide((slide) => ({ ...slide, backgroundUrl: '', mediaType: 'image', mediaFit: 'cover' }))}

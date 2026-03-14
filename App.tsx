@@ -5839,7 +5839,7 @@ function App() {
                   isMuted={outputMuted}
                   isProjector={true}
                   lowerThirds={routingMode !== 'PROJECTOR'}
-                  showSlideLabel={false}
+                  showSlideLabel={true}
                   showProjectorHelper={false}
                   audienceOverlay={audienceDisplay}
                   projectedAudienceQr={audienceQrProjection}
