@@ -4693,7 +4693,7 @@ function App() {
         />
       );
     }
-    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} onClose={() => setViewState('landing')} />;
   }
 
   const renderScheduleList = () => (

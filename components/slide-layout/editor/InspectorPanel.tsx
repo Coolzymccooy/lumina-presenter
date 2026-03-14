@@ -89,6 +89,27 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Inspector</div>
         <div className="mt-1 text-xs text-zinc-200">{slide?.label || 'New Slide'}</div>
       </div>
+      {/* Media Tools — pinned outside scroll area so it's always visible */}
+      <div className="shrink-0 border-b border-cyan-900/40 bg-zinc-900/70 px-3 py-2.5">
+        <div className="mb-2 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-500">Media Tools</div>
+        <div className="grid grid-cols-3 gap-1.5">
+          <button type="button" onClick={onTriggerUpload} className="rounded border border-zinc-700 bg-zinc-900 px-2 py-2 text-[9px] font-bold text-zinc-100 hover:border-cyan-600 hover:text-white transition-colors">
+            Upload Media
+          </button>
+          <button type="button" onClick={onTriggerFolderUpload} className="rounded border border-zinc-700 bg-zinc-900 px-2 py-2 text-[9px] font-bold text-zinc-100 hover:border-cyan-600 hover:text-white transition-colors">
+            Upload Folder
+          </button>
+          <button type="button" onClick={onClearBackground} className="rounded border border-zinc-700 bg-zinc-900 px-2 py-2 text-[9px] font-bold text-zinc-400 hover:border-rose-600 hover:text-rose-200 transition-colors">
+            Clear Media
+          </button>
+          <button type="button" onClick={onTriggerPptxVisual} className="rounded border border-zinc-700 bg-zinc-900 px-2 py-2 text-[9px] font-bold text-zinc-200 hover:border-zinc-500 hover:text-white transition-colors">
+            PPTX Visual
+          </button>
+          <button type="button" onClick={onTriggerPptxText} className="rounded border border-zinc-700 bg-zinc-900 px-2 py-2 text-[9px] font-bold text-zinc-200 hover:border-zinc-500 hover:text-white transition-colors">
+            PPTX Text
+          </button>
+        </div>
+      </div>
       <div className="flex-1 space-y-3 overflow-y-auto p-3 custom-scrollbar">
         {showCompactTextEditor ? (
           <>
@@ -574,27 +595,6 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                 </select>
               </div>
             </Section>
-
-            <div className="rounded-lg border border-cyan-900/50 bg-zinc-900/70 p-3 sticky top-0 z-10 shadow-lg shadow-black/30">
-              <div className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-500">Media Tools</div>
-              <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={onTriggerUpload} className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-[10px] font-bold text-zinc-100 hover:border-cyan-600 hover:text-white">
-                  Upload Media
-                </button>
-                <button type="button" onClick={onTriggerFolderUpload} className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-[10px] font-bold text-zinc-100 hover:border-cyan-600 hover:text-white">
-                  Upload Folder
-                </button>
-                <button type="button" onClick={onTriggerPptxVisual} className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-[10px] font-bold text-zinc-200 hover:border-zinc-500 hover:text-white">
-                  PPTX Visual
-                </button>
-                <button type="button" onClick={onTriggerPptxText} className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-[10px] font-bold text-zinc-200 hover:border-zinc-500 hover:text-white">
-                  PPTX Text
-                </button>
-                <button type="button" onClick={onClearBackground} className="col-span-2 rounded border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-[10px] font-bold text-zinc-400 hover:border-rose-600 hover:text-rose-200">
-                  Clear Media
-                </button>
-              </div>
-            </div>
 
             <Section title="Background" defaultOpen={!showCompactTextEditor}>
               <div className="relative aspect-[16/7] overflow-hidden rounded border border-zinc-800 bg-black">

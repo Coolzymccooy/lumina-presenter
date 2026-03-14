@@ -368,10 +368,40 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
   };
 
   const handleBackgroundUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
+    const MAX_FILE_SIZE_MB = 100;
+    const MAX_FILE_COUNT = 50;
+    const ALLOWED_TYPES = /^(image\/(jpeg|png|gif|webp|svg\+xml|bmp|avif)|video\/(mp4|webm|quicktime|x-msvideo|x-matroska))$/i;
+
+    const rawFiles = Array.from(event.target.files || []);
     event.target.value = '';
-    if (!files.length || !item) return;
+    if (!rawFiles.length || !item) return;
     setUploadError(null);
+
+    // Filter to supported media types only
+    const supported = rawFiles.filter(f => ALLOWED_TYPES.test(f.type));
+    const skippedCount = rawFiles.length - supported.length;
+
+    if (supported.length === 0) {
+      setUploadError(`No supported media files found. Accepted: images (JPG, PNG, GIF, WebP, SVG, AVIF) and videos (MP4, WebM, MOV, AVI, MKV).${skippedCount > 0 ? ` ${skippedCount} file(s) skipped.` : ''}`);
+      return;
+    }
+
+    // Enforce file count limit
+    const files = supported.slice(0, MAX_FILE_COUNT);
+    const truncatedCount = supported.length - files.length;
+
+    // Check individual file sizes
+    const oversized = files.filter(f => f.size > MAX_FILE_SIZE_MB * 1024 * 1024);
+    if (oversized.length > 0) {
+      const names = oversized.slice(0, 3).map(f => `${f.name} (${(f.size / (1024 * 1024)).toFixed(1)}MB)`).join(', ');
+      setUploadError(`${oversized.length} file(s) exceed ${MAX_FILE_SIZE_MB}MB limit: ${names}${oversized.length > 3 ? '...' : ''}`);
+      return;
+    }
+
+    const warnings: string[] = [];
+    if (skippedCount > 0) warnings.push(`${skippedCount} unsupported file(s) skipped`);
+    if (truncatedCount > 0) warnings.push(`limited to first ${MAX_FILE_COUNT} files (${truncatedCount} extra skipped)`);
+
     beginAsyncTask();
     setIsUploading(true);
     try {
@@ -385,6 +415,7 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
         const firstUploaded = uploadedSlides[0] || null;
         setCurrentSlideId(firstUploaded?.id || currentSlideId);
         setSelectedElementId(null);
+        if (warnings.length > 0) setUploadError(warnings.join('. ') + '.');
       } else {
         const file = files[0];
         const url = await persistUploadedMedia(file);

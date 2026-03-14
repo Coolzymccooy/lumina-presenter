@@ -5,6 +5,7 @@ import { logActivity } from '../services/analytics';
 
 interface LoginScreenProps {
   onLoginSuccess: (user: any) => void;
+  onClose?: () => void;
 }
 
 const GoogleMark = () => (
@@ -16,7 +17,7 @@ const GoogleMark = () => (
   </svg>
 );
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onClose }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -97,6 +98,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       </div>
 
       <div className="w-full max-w-md bg-zinc-900/50 backdrop-blur-md border border-zinc-800 rounded-sm p-8 relative z-10 shadow-2xl">
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-sm text-zinc-500 hover:text-white hover:bg-zinc-800 transition-colors"
+            aria-label="Close"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="4" x2="12" y2="12"/><line x1="12" y1="4" x2="4" y2="12"/></svg>
+          </button>
+        )}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-mono font-bold text-white tracking-tighter mb-2">LUMINA</h1>
           <p className="text-zinc-500 text-xs uppercase tracking-widest">Presentation Platform</p>
