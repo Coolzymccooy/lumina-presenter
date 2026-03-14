@@ -68,7 +68,7 @@ import { parsePptxFile } from './services/pptxImport';
 import { copyTextToClipboard } from './services/clipboardService';
 import { dispatchAetherBridgeEvent } from './services/aetherBridge';
 import type { RunSheetInsertionResult } from './services/runSheetInsertion';
-import { PlayIcon, PauseIcon, RewindIcon, ForwardIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon, ArrowDownIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon, CheckIcon, XIcon, PinIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon, RewindIcon, ForwardIcon, PauseIcon
+import { PlayIcon, PauseIcon, RewindIcon, ForwardIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon, ArrowDownIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon, CheckIcon, XIcon, PinIcon, MinimizeIcon, MaximizeIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon, RewindIcon, ForwardIcon, PauseIcon
 
 // --- CONSTANTS ---
 const STORAGE_KEY = 'lumina_session_v1';
@@ -1081,6 +1081,7 @@ function App() {
   const [presetStudioPosition, setPresetStudioPosition] = useState<{ x: number; y: number } | null>(null);
   const [presetStudioSaveState, setPresetStudioSaveState] = useState<{ at: number; mode: 'saved' | 'updated' } | null>(null);
   const [presetStudioWidthMode, setPresetStudioWidthMode] = useState<'standard' | 'wide'>('standard');
+  const [presetStudioMinimized, setPresetStudioMinimized] = useState(false);
   // Handle Auto-Rotate Logic
   useEffect(() => {
     if (!audienceDisplay.autoRotate || audienceDisplay.queue.length === 0) return;
@@ -1253,11 +1254,6 @@ function App() {
     };
     setPresetStudioPosition({ x: rect.left, y: rect.top });
     setPresetStudioDragging(true);
-    try {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    } catch {
-      // ignore capture errors
-    }
     event.preventDefault();
   };
   useEffect(() => {
@@ -1265,12 +1261,12 @@ function App() {
     const onPointerMove = (event: PointerEvent) => {
       const card = presetStudioCardRef.current;
       if (!card) return;
-      const margin = 12;
-      const maxX = Math.max(margin, window.innerWidth - card.offsetWidth - margin);
-      const maxY = Math.max(margin, window.innerHeight - card.offsetHeight - margin);
+      const minVisible = 48;
+      const rawX = event.clientX - presetStudioDragOffsetRef.current.x;
+      const rawY = event.clientY - presetStudioDragOffsetRef.current.y;
       setPresetStudioPosition({
-        x: clamp(event.clientX - presetStudioDragOffsetRef.current.x, margin, maxX),
-        y: clamp(event.clientY - presetStudioDragOffsetRef.current.y, margin, maxY),
+        x: clamp(rawX, -(card.offsetWidth - minVisible), window.innerWidth - minVisible),
+        y: clamp(rawY, 0, window.innerHeight - minVisible),
       });
     };
     const onPointerUp = () => setPresetStudioDragging(false);
@@ -1303,6 +1299,7 @@ function App() {
     if (isPresetModalOpen) return;
     setPresetStudioDragging(false);
     setPresetStudioPosition(null);
+    setPresetStudioMinimized(false);
   }, [isPresetModalOpen]);
 
   const filteredRunSheetFiles = useMemo(() => {
@@ -2380,82 +2377,45 @@ function App() {
     ? 'max-w-[min(96vw,1680px)]'
     : 'max-w-6xl';
   const presetStudioBodyGridClass = presetStudioIsWide
-    ? 'grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[340px_minmax(0,1fr)]'
-    : 'grid min-h-0 flex-1 grid-cols-1 2xl:grid-cols-[360px_minmax(0,1fr)]';
+    ? 'grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[300px_minmax(0,1fr)]'
+    : 'grid min-h-0 flex-1 grid-cols-1 2xl:grid-cols-[320px_minmax(0,1fr)]';
   const presetStudioEditorGridClass = presetStudioIsWide
-    ? 'grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1.12fr)_380px]'
-    : 'grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]';
+    ? 'grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1.12fr)_340px]'
+    : 'grid gap-4 xl:grid-cols-[minmax(0,1fr)_280px]';
   const presetStudioHeroGridClass = presetStudioIsWide
-    ? 'grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-4'
-    : 'grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-start';
+    ? 'grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px] xl:gap-3'
+    : 'grid gap-2 sm:grid-cols-[minmax(0,1fr)_200px] sm:items-start';
   const presetStudioHeroTimerClass = presetStudioIsWide
-    ? 'mt-2 max-w-full whitespace-nowrap text-[clamp(2.75rem,5vw,5rem)] font-semibold leading-[0.88] tracking-tight text-white'
-    : 'mt-1 max-w-full whitespace-nowrap text-[clamp(1.9rem,6vw,3.25rem)] font-semibold leading-[0.86] tracking-tight text-white';
-  const presetStudioHeroSectionPaddingClass = presetStudioIsWide ? 'p-3.5 md:p-4' : 'p-2.5';
+    ? 'mt-1 max-w-full whitespace-nowrap text-[clamp(2.25rem,4.5vw,4rem)] font-semibold leading-[0.88] tracking-tight text-white'
+    : 'mt-1 max-w-full whitespace-nowrap text-[clamp(1.75rem,5.5vw,2.75rem)] font-semibold leading-[0.86] tracking-tight text-white';
+  const presetStudioHeroSectionPaddingClass = presetStudioIsWide ? 'p-3 md:p-3.5' : 'p-2';
   const presetStudioHeroBehaviorCardClass = presetStudioIsWide
-    ? 'min-w-0 rounded-[22px] border border-white/10 bg-black/25 p-3'
-    : 'min-w-0 rounded-[16px] border border-white/10 bg-black/25 p-2';
-  const presetStudioHeroBehaviorCopy = presetStudioIsWide
-    ? 'Presenter-mode preview before this preset hits the shared library.'
-    : 'Ready for presenter mode.';
+    ? 'min-w-0 rounded-[18px] border border-white/10 bg-black/25 p-2.5'
+    : 'min-w-0 rounded-[14px] border border-white/10 bg-black/25 p-2';
+  const presetStudioHeroBehaviorCopy = '';
   const presetStudioHeroSummaryGridClass = presetStudioIsWide
-    ? 'mt-3.5 grid gap-2.5 sm:grid-cols-3'
-    : 'mt-3 grid gap-2 sm:grid-cols-3';
+    ? 'mt-2.5 grid gap-2 sm:grid-cols-3'
+    : 'mt-2 grid gap-1.5 sm:grid-cols-3';
   const presetStudioHeroSummaryCardClass = presetStudioIsWide
-    ? 'rounded-[20px] border border-white/10 bg-black/20 p-3'
-    : 'rounded-[18px] border border-white/10 bg-black/20 p-2.5';
+    ? 'rounded-[16px] border border-white/10 bg-black/20 p-2.5'
+    : 'rounded-[14px] border border-white/10 bg-black/20 p-2';
   const presetStudioHeroSummaryValueClass = presetStudioIsWide
-    ? 'mt-1.5 text-2xl font-semibold text-white'
-    : 'mt-1 text-[1.65rem] font-semibold leading-none text-white';
-  const presetStudioHeroEyebrow = editingPresetId
-    ? (presetStudioIsWide ? 'Refining preset' : 'Preset summary')
-    : 'New timer concept';
-  const presetStudioLibraryCopy = presetStudioIsWide
-    ? 'Pick a saved preset to refine it, duplicate it into a new draft, or apply it to the currently selected cue.'
-    : 'Pick, duplicate, or apply a preset to the active cue.';
-  const presetStudioRunwayCopy = presetStudioIsWide ? 'Full-green time before wrap-up begins.' : 'Before wrap-up.';
-  const presetStudioAmberCopy = presetStudioIsWide ? 'Caution band between wrap-up and hard stop.' : 'Caution band.';
-  const presetStudioRedCopy = presetStudioIsWide ? 'Final portion reserved for a hard landing.' : 'Hard stop.';
-  const presetStudioFlightPlanCopies = presetStudioIsWide
-    ? {
-      amber: 'Elapsed from cue start.',
-      red: 'Hard-stop pressure begins here.',
-      finish: 'Visible red time at the finish.',
-    }
-    : {
-      amber: 'Cue start mark.',
-      red: 'Hard-stop mark.',
-      finish: 'Visible red time.',
-    };
-  const presetStudioOperatorNotes = presetStudioIsWide
-    ? [
-      'Strong presets feel intentional: enough green runway to settle the room, enough amber to coach the landing, and a red finish that is impossible to miss.',
-      'Presets stay available across studio, presenter, and stage because they ride in workspace settings.',
-    ]
-    : [
-      'Presets stay available across studio, presenter, and stage.',
-    ];
-  const presetStudioCommitCopy = presetStudioIsWide
-    ? 'Save the current timer profile into your library, then apply it from the control bar or directly from a preset card.'
-    : 'Save this timer, then apply it from the bar or preset card.';
-  const presetStudioNameHelperCopy = presetStudioIsWide
-    ? 'Name the cue profile the way your operators will recognize it under pressure.'
-    : 'How operators will spot this preset quickly.';
-  const presetStudioSpeakerHelperCopy = presetStudioIsWide
-    ? 'Optional speaker label that can carry straight into the timer cue when you apply the preset.'
-    : 'Optional speaker label for the cue.';
-  const presetStudioDurationHeading = presetStudioIsWide
-    ? 'Dial in the exact room you want to give the speaker.'
-    : 'Set the speaking time.';
-  const presetStudioThresholdHeading = presetStudioIsWide
-    ? 'Shape how the timer turns from calm to caution to finish.'
-    : 'Set warning and hard-stop timing.';
-  const presetStudioCueBehaviorHeading = presetStudioIsWide
-    ? 'Choose how the next handoff should feel operationally.'
-    : 'Choose the handoff behavior.';
-  const presetStudioCueBehaviorSectionCopy = presetStudioIsWide
-    ? 'Use this when your timer cues should automatically step forward in presenter mode after the current speaker slot wraps.'
-    : 'Turn this on if the next timer cue should advance automatically.';
+    ? 'mt-1 text-xl font-semibold text-white'
+    : 'mt-0.5 text-lg font-semibold leading-none text-white';
+  const presetStudioHeroEyebrow = editingPresetId ? 'Editing' : 'New preset';
+  const presetStudioLibraryCopy = '';
+  const presetStudioRunwayCopy = '';
+  const presetStudioAmberCopy = '';
+  const presetStudioRedCopy = '';
+  const presetStudioFlightPlanCopies = { amber: '', red: '', finish: '' };
+  const presetStudioOperatorNotes = ['Presets persist across studio, presenter, and stage.'];
+  const presetStudioCommitCopy = '';
+  const presetStudioNameHelperCopy = '';
+  const presetStudioSpeakerHelperCopy = '';
+  const presetStudioDurationHeading = '';
+  const presetStudioThresholdHeading = '';
+  const presetStudioCueBehaviorHeading = '';
+  const presetStudioCueBehaviorSectionCopy = '';
   const syncIssueDisplay = useMemo(() => {
     if (!syncIssue) return null;
     const issue = String(syncIssue || '').trim();
@@ -5952,7 +5912,7 @@ function App() {
           <div
             ref={presetStudioCardRef}
             data-testid="speaker-preset-studio"
-            className={`pointer-events-auto absolute w-full overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.24),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(34,211,238,0.16),transparent_32%),linear-gradient(180deg,rgba(24,24,27,0.98),rgba(9,9,11,0.99))] shadow-[0_32px_120px_rgba(0,0,0,0.45)] ${presetStudioShellWidthClass}`}
+            className={`pointer-events-auto absolute w-full overflow-hidden rounded-[24px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.24),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(34,211,238,0.16),transparent_32%),linear-gradient(180deg,rgba(24,24,27,0.98),rgba(9,9,11,0.99))] shadow-[0_32px_120px_rgba(0,0,0,0.45)] transition-[max-width] duration-300 ${presetStudioMinimized ? 'max-w-sm' : presetStudioShellWidthClass}`}
             style={presetStudioPosition
               ? { left: presetStudioPosition.x, top: presetStudioPosition.y, transform: 'none' }
               : { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
@@ -5962,91 +5922,93 @@ function App() {
               <div
                 data-testid="speaker-preset-studio-drag-handle"
                 onPointerDown={beginPresetStudioDrag}
-                className={`flex flex-wrap items-start justify-between gap-4 border-b border-white/10 bg-zinc-950/82 px-5 py-5 backdrop-blur-xl md:px-6 ${presetStudioDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                className={`flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-zinc-950/82 px-4 py-3 backdrop-blur-xl md:px-5 ${presetStudioDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
               >
-                <div className="max-w-3xl">
-                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.32em] text-cyan-200/70">
-                    <SparklesIcon className="h-3.5 w-3.5" />
-                    Stage Timer Studio
-                  </div>
-                  <h3 className="mt-3 text-xl font-semibold tracking-tight text-white md:text-2xl">Speaker Timer Presets</h3>
-                  <p className="mt-2 text-sm leading-6 text-zinc-300">
-                    Design polished speaker timing blocks with a clean runway, amber wrap-up zone, and a decisive red finish.
-                  </p>
-                </div>
-                <div data-no-preset-drag className="flex flex-wrap items-center gap-2">
-                  <div className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-100">
-                    {speakerTimerPresets.length} presets saved
-                  </div>
-                  <div className="inline-flex items-center rounded-full border border-white/10 bg-black/25 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                    <button
-                      type="button"
-                      data-testid="speaker-preset-width-standard"
-                      aria-pressed={!presetStudioIsWide}
-                      onClick={() => setPresetStudioWidthMode('standard')}
-                      className={`rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] transition ${
-                        presetStudioIsWide
-                          ? 'text-zinc-400 hover:text-zinc-200'
-                          : 'bg-white text-zinc-950 shadow-[0_10px_24px_rgba(255,255,255,0.18)]'
-                      }`}
-                    >
-                      Standard
-                    </button>
-                    <button
-                      type="button"
-                      data-testid="speaker-preset-width-wide"
-                      aria-pressed={presetStudioIsWide}
-                      onClick={() => setPresetStudioWidthMode('wide')}
-                      className={`rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] transition ${
-                        presetStudioIsWide
-                          ? 'bg-cyan-200 text-cyan-950 shadow-[0_10px_24px_rgba(34,211,238,0.22)]'
-                          : 'text-zinc-400 hover:text-zinc-200'
-                      }`}
-                    >
-                      Wide view
-                    </button>
-                  </div>
-                  {presetStudioSaveLabel && (
-                    <div
-                      data-testid="speaker-preset-studio-status"
-                      className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100"
-                    >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <SparklesIcon className="h-3.5 w-3.5 shrink-0 text-cyan-200/70" />
+                  <h3 className="truncate text-sm font-semibold tracking-tight text-white md:text-base">Speaker Timer Presets</h3>
+                  {presetStudioMinimized && presetStudioSaveLabel && (
+                    <div className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-emerald-100">
                       {presetStudioSaveLabel}
                     </div>
                   )}
+                </div>
+                <div data-no-preset-drag className="flex items-center gap-1.5">
+                  {!presetStudioMinimized && (
+                    <>
+                      <div className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.14em] text-cyan-100">
+                        {speakerTimerPresets.length} saved
+                      </div>
+                      <div className="inline-flex items-center rounded-full border border-white/10 bg-black/25 p-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                        <button
+                          type="button"
+                          data-testid="speaker-preset-width-standard"
+                          aria-pressed={!presetStudioIsWide}
+                          onClick={() => setPresetStudioWidthMode('standard')}
+                          className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.14em] transition ${
+                            presetStudioIsWide
+                              ? 'text-zinc-400 hover:text-zinc-200'
+                              : 'bg-white text-zinc-950 shadow-[0_10px_24px_rgba(255,255,255,0.18)]'
+                          }`}
+                        >
+                          Std
+                        </button>
+                        <button
+                          type="button"
+                          data-testid="speaker-preset-width-wide"
+                          aria-pressed={presetStudioIsWide}
+                          onClick={() => setPresetStudioWidthMode('wide')}
+                          className={`rounded-full px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.14em] transition ${
+                            presetStudioIsWide
+                              ? 'bg-cyan-200 text-cyan-950 shadow-[0_10px_24px_rgba(34,211,238,0.22)]'
+                              : 'text-zinc-400 hover:text-zinc-200'
+                          }`}
+                        >
+                          Wide
+                        </button>
+                      </div>
+                      {presetStudioSaveLabel && (
+                        <div
+                          data-testid="speaker-preset-studio-status"
+                          className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.14em] text-emerald-100"
+                        >
+                          {presetStudioSaveLabel}
+                        </div>
+                      )}
+                      <button
+                        onClick={openCreatePresetModal}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1.5 text-[10px] font-semibold text-cyan-100 transition hover:border-cyan-300/50 hover:bg-cyan-500/15"
+                      >
+                        <PlusIcon className="h-3 w-3" />
+                        New
+                      </button>
+                    </>
+                  )}
                   <button
-                    onClick={openCreatePresetModal}
-                    className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3.5 py-2 text-[11px] font-semibold text-cyan-100 transition hover:border-cyan-300/50 hover:bg-cyan-500/15"
+                    onClick={() => setPresetStudioMinimized((v) => !v)}
+                    className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 p-1.5 text-zinc-300 transition hover:border-white/20 hover:bg-white/10"
+                    title={presetStudioMinimized ? 'Expand' : 'Minimize'}
                   >
-                    <PlusIcon className="h-3.5 w-3.5" />
-                    New preset
+                    {presetStudioMinimized ? <MaximizeIcon className="h-3.5 w-3.5" /> : <MinimizeIcon className="h-3.5 w-3.5" />}
                   </button>
                   <button
                     onClick={closeSpeakerPresetStudio}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-[11px] font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/10"
+                    className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 p-1.5 text-zinc-300 transition hover:border-white/20 hover:bg-white/10"
+                    title="Close"
                   >
                     <XIcon className="h-3.5 w-3.5" />
-                    Close
                   </button>
                 </div>
               </div>
-              <div className={presetStudioBodyGridClass}>
-                <aside className="min-h-0 overflow-y-auto border-b border-white/10 bg-black/20 p-4 custom-scrollbar md:p-5 xl:border-b-0 xl:border-r xl:border-white/10">
-                  <div className="sticky top-0 z-10 rounded-[24px] border border-white/10 bg-zinc-950/80 p-4 backdrop-blur-xl">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-cyan-200/70">Preset Library</div>
-                        <div className="mt-2 text-sm font-semibold text-white">Keep every speaker handoff consistent.</div>
-                      </div>
-                      <div className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold text-zinc-200">
-                        {presetTargetItemId ? 'Cue ready' : 'Browse mode'}
-                      </div>
+              {!presetStudioMinimized && (<><div className={presetStudioBodyGridClass}>
+                <aside className="min-h-0 overflow-y-auto border-b border-white/10 bg-black/20 p-3 custom-scrollbar md:p-4 xl:border-b-0 xl:border-r xl:border-white/10">
+                  <div className="sticky top-0 z-10 flex items-center justify-between gap-2 rounded-[18px] border border-white/10 bg-zinc-950/80 px-3 py-2.5 backdrop-blur-xl">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-cyan-200/70">Library</div>
+                    <div className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-semibold text-zinc-300">
+                      {presetTargetItemId ? 'Cue ready' : 'Browse'}
                     </div>
-                    <p className="mt-3 text-xs leading-5 text-zinc-400">
-                      {presetStudioLibraryCopy}
-                    </p>
                   </div>
-                  <div className="mt-4 space-y-3 pr-1">
+                  <div className="mt-3 space-y-2 pr-1">
                     {speakerTimerPresets.map((preset) => {
                       const isLoaded = editingPresetId === preset.id;
                       const isSelected = activePresetCardId === preset.id;
@@ -6056,65 +6018,65 @@ function App() {
                       return (
                         <div
                           key={preset.id}
-                          className={`rounded-[24px] border p-3 shadow-[0_16px_40px_rgba(0,0,0,0.16)] transition ${
+                          className={`rounded-[18px] border p-2.5 shadow-[0_12px_32px_rgba(0,0,0,0.16)] transition ${
                             isSelected
                               ? 'border-cyan-300/40 bg-[linear-gradient(180deg,rgba(8,47,73,0.45),rgba(9,9,11,0.78))]'
                               : 'border-white/10 bg-[linear-gradient(180deg,rgba(39,39,42,0.7),rgba(9,9,11,0.88))] hover:border-white/20'
                           }`}
                         >
                           <button type="button" onClick={() => openEditPresetModal(preset)} className="w-full text-left">
-                            <div className="flex items-start justify-between gap-3">
+                            <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0">
-                                <div className="truncate text-[15px] font-semibold text-white">{preset.name}</div>
-                                <div className="mt-1 truncate text-xs text-zinc-400">{preset.speakerName || 'Open speaker slot'}</div>
+                                <div className="truncate text-[13px] font-semibold text-white">{preset.name}</div>
+                                <div className="truncate text-[11px] text-zinc-400">{preset.speakerName || 'Open slot'}</div>
                               </div>
-                              <div className="flex flex-col items-end gap-1">
+                              <div className="flex items-center gap-1">
                                 {isLoaded && (
-                                  <span className="rounded-full border border-cyan-400/30 bg-cyan-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-cyan-100">
-                                    Editing
+                                  <span className="rounded-full border border-cyan-400/30 bg-cyan-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.14em] text-cyan-100">
+                                    Edit
                                   </span>
                                 )}
                                 {selectedSpeakerPresetId === preset.id && (
-                                  <span className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-emerald-100">
+                                  <span className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.14em] text-emerald-100">
                                     Live
                                   </span>
                                 )}
                               </div>
                             </div>
-                            <div className="mt-4 flex items-end justify-between gap-3">
-                              <div className="text-3xl font-semibold tracking-tight text-white">{formatTimer(preset.durationSec)}</div>
-                              <div className="text-right text-[11px] leading-5 text-zinc-400">
-                                <div>Amber {formatTimer(amberRemainingSec)} left</div>
-                                <div>Red {formatTimer(redRemainingSec)} left</div>
+                            <div className="mt-2 flex items-end justify-between gap-2">
+                              <div className="text-2xl font-semibold tracking-tight text-white">{formatTimer(preset.durationSec)}</div>
+                              <div className="text-right text-[10px] leading-4 text-zinc-500">
+                                <div>{formatTimer(amberRemainingSec)} amb</div>
+                                <div>{formatTimer(redRemainingSec)} red</div>
                               </div>
                             </div>
-                            <div className="mt-4">{renderSpeakerPresetThresholdBar(presetThresholds.amberPercent, presetThresholds.redPercent, { compact: true })}</div>
+                            <div className="mt-2">{renderSpeakerPresetThresholdBar(presetThresholds.amberPercent, presetThresholds.redPercent, { compact: true })}</div>
                           </button>
-                          <div className="mt-3 flex flex-wrap gap-2">
+                          <div className="mt-2 flex flex-wrap gap-1.5">
                             <button
                               onClick={() => {
                                 setSelectedSpeakerPresetId(preset.id);
                                 if (presetTargetItemId) applySpeakerPresetToItem(presetTargetItemId, preset.id);
                               }}
                               disabled={!presetTargetItemId}
-                              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-semibold text-emerald-100 transition hover:border-emerald-300/45 hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-40"
+                              className="inline-flex items-center gap-1 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[9px] font-semibold text-emerald-100 transition hover:border-emerald-300/45 hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-40"
                             >
-                              <CheckIcon className="h-3.5 w-3.5" />
+                              <CheckIcon className="h-3 w-3" />
                               Apply
                             </button>
                             <button
                               onClick={() => duplicateSpeakerPresetDraft(preset)}
-                              className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/10"
+                              className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/10"
                             >
-                              <CopyIcon className="h-3.5 w-3.5" />
-                              Duplicate
+                              <CopyIcon className="h-3 w-3" />
+                              Copy
                             </button>
                             <button
                               onClick={() => deleteSpeakerPreset(preset.id)}
-                              className="inline-flex items-center gap-1.5 rounded-full border border-rose-400/25 bg-rose-500/10 px-3 py-1.5 text-[10px] font-semibold text-rose-100 transition hover:border-rose-300/45 hover:bg-rose-500/15"
+                              className="inline-flex items-center gap-1 rounded-full border border-rose-400/25 bg-rose-500/10 px-2.5 py-1 text-[9px] font-semibold text-rose-100 transition hover:border-rose-300/45 hover:bg-rose-500/15"
                             >
-                              <TrashIcon className="h-3.5 w-3.5" />
-                              Delete
+                              <TrashIcon className="h-3 w-3" />
+                              Del
                             </button>
                           </div>
                         </div>
@@ -6125,17 +6087,17 @@ function App() {
 
                 <div
                   data-testid="speaker-preset-studio-editor-scroll"
-                  className="min-h-0 overflow-y-auto p-4 custom-scrollbar md:p-5 xl:p-6"
+                  className="min-h-0 overflow-y-auto p-3 custom-scrollbar md:p-4 xl:p-4"
                 >
                   <div className={presetStudioEditorGridClass}>
-                    <div className="space-y-5">
+                    <div className="space-y-3">
                       <section
                         data-testid="speaker-preset-studio-hero"
-                        className={`sticky top-0 z-20 overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.2),transparent_40%),linear-gradient(180deg,rgba(15,23,42,0.92),rgba(9,9,11,0.98))] shadow-[0_24px_80px_rgba(0,0,0,0.26)] backdrop-blur-xl ${presetStudioHeroSectionPaddingClass}`}
+                        className={`sticky top-0 z-20 overflow-hidden rounded-[22px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.2),transparent_40%),linear-gradient(180deg,rgba(15,23,42,0.92),rgba(9,9,11,0.98))] shadow-[0_24px_80px_rgba(0,0,0,0.26)] backdrop-blur-xl ${presetStudioHeroSectionPaddingClass}`}
                       >
                         <div className={presetStudioHeroGridClass}>
                           <div className="min-w-0">
-                            <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-cyan-200/70">
+                            <div className="text-[9px] font-bold uppercase tracking-[0.28em] text-cyan-200/60">
                               {presetStudioHeroEyebrow}
                             </div>
                             <div
@@ -6144,119 +6106,105 @@ function App() {
                             >
                               {formatTimer(presetDraftDurationSec)}
                             </div>
-                            <div className="mt-1 break-words text-[1rem] font-semibold leading-tight text-white sm:text-lg md:text-[1.28rem]">{presetDraftDisplayName}</div>
-                            <div className="mt-0.5 break-words text-sm text-zinc-300">{presetDraftSpeakerLabel}</div>
+                            <div className="mt-0.5 break-words text-sm font-semibold leading-tight text-white sm:text-base">{presetDraftDisplayName}</div>
+                            <div className="break-words text-xs text-zinc-400">{presetDraftSpeakerLabel}</div>
                           </div>
                           <div className={presetStudioHeroBehaviorCardClass}>
-                            <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500">Cue behavior</div>
-                            <div className="mt-1.5 flex flex-wrap gap-1.5">
-                              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold text-zinc-100">
-                                {presetDraft.autoStartNextDefault ? 'Auto-start next cue' : 'Manual transition'}
+                            <div className="flex flex-wrap gap-1.5">
+                              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-semibold text-zinc-100">
+                                {presetDraft.autoStartNextDefault ? 'Auto-next' : 'Manual'}
                               </span>
-                              <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-semibold text-cyan-100">
-                                {presetDraftThresholds.amberPercent}% / {presetDraftThresholds.redPercent}% finish markers
+                              <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-semibold text-cyan-100">
+                                {presetDraftThresholds.amberPercent}% / {presetDraftThresholds.redPercent}%
                               </span>
                             </div>
-                            <p className="mt-2 text-[11px] leading-5 text-zinc-400">
-                              {presetStudioHeroBehaviorCopy}
-                            </p>
                           </div>
                         </div>
-                        <div className="mt-3">{renderSpeakerPresetThresholdBar(presetDraftThresholds.amberPercent, presetDraftThresholds.redPercent)}</div>
+                        <div className="mt-2">{renderSpeakerPresetThresholdBar(presetDraftThresholds.amberPercent, presetDraftThresholds.redPercent)}</div>
                         <div className={presetStudioHeroSummaryGridClass}>
                           <div className={presetStudioHeroSummaryCardClass}>
-                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Runway</div>
+                            <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-zinc-500">Runway</div>
                             <div className={presetStudioHeroSummaryValueClass}>{formatTimer(presetDraftRunwaySec)}</div>
-                            <div className="mt-1 text-[11px] leading-5 text-zinc-400">{presetStudioRunwayCopy}</div>
                           </div>
                           <div className={presetStudioHeroSummaryCardClass}>
-                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Amber window</div>
+                            <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-zinc-500">Amber</div>
                             <div className={presetStudioHeroSummaryValueClass}>{formatTimer(presetDraftAmberWindowSec)}</div>
-                            <div className="mt-1 text-[11px] leading-5 text-zinc-400">{presetStudioAmberCopy}</div>
                           </div>
                           <div className={presetStudioHeroSummaryCardClass}>
-                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Red finish</div>
+                            <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-zinc-500">Red</div>
                             <div className={presetStudioHeroSummaryValueClass}>{formatTimer(presetDraftRedRemainingSec)}</div>
-                            <div className="mt-1 text-[11px] leading-5 text-zinc-400">{presetStudioRedCopy}</div>
                           </div>
                         </div>
                       </section>
 
-                      <section className="grid gap-4 md:grid-cols-2">
-                        <label className="rounded-[24px] border border-white/10 bg-zinc-950/70 p-5">
-                          <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">Preset name</div>
+                      <section className="grid gap-3 md:grid-cols-2">
+                        <label className="rounded-[18px] border border-white/10 bg-zinc-950/70 p-3.5">
+                          <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-zinc-500">Preset name</div>
                           <input
                             data-testid="speaker-preset-name-input"
                             value={presetDraft.name}
                             onChange={(e) => setPresetDraft((prev) => ({ ...prev, name: e.target.value }))}
                             placeholder="Sunday message main"
-                            className="mt-4 w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-cyan-300/45"
+                            className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-cyan-300/45"
                           />
-                          <div className="mt-3 text-xs text-zinc-400">{presetStudioNameHelperCopy}</div>
                         </label>
-                        <label className="rounded-[24px] border border-white/10 bg-zinc-950/70 p-5">
-                          <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">Default speaker</div>
+                        <label className="rounded-[18px] border border-white/10 bg-zinc-950/70 p-3.5">
+                          <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-zinc-500">Speaker</div>
                           <input
                             value={presetDraft.speakerName || ''}
                             onChange={(e) => setPresetDraft((prev) => ({ ...prev, speakerName: e.target.value }))}
                             placeholder="Pastor Jordan"
-                            className="mt-4 w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-cyan-300/45"
+                            className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-cyan-300/45"
                           />
-                          <div className="mt-3 text-xs text-zinc-400">{presetStudioSpeakerHelperCopy}</div>
                         </label>
                       </section>
 
-                      <section className="rounded-[24px] border border-white/10 bg-zinc-950/70 p-5">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">Duration</div>
-                            <div className="mt-2 text-lg font-semibold text-white">{presetStudioDurationHeading}</div>
-                          </div>
-                          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-zinc-200">
-                            Max 02:00:00
-                          </div>
+                      <section className="rounded-[18px] border border-white/10 bg-zinc-950/70 p-3.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-zinc-500">Duration</div>
+                          <div className="text-[9px] font-semibold text-zinc-500">Max 2h</div>
                         </div>
-                        <div className="mt-5 grid grid-cols-3 gap-3">
-                          <label className="rounded-[20px] border border-white/10 bg-black/20 p-4">
-                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Hours</div>
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                          <label className="rounded-[14px] border border-white/10 bg-black/20 p-3">
+                            <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-500">Hrs</div>
                             <input
                               type="number"
                               min={0}
                               max={2}
                               value={presetDraftHours}
                               onChange={(e) => updatePresetDurationSegment('hours', Number(e.target.value) || 0)}
-                              className="mt-3 w-full rounded-2xl border border-white/10 bg-black/30 px-3 py-3 text-center text-2xl font-semibold text-white outline-none transition focus:border-cyan-300/45"
+                              className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-2 py-2 text-center text-xl font-semibold text-white outline-none transition focus:border-cyan-300/45"
                             />
                           </label>
-                          <label className="rounded-[20px] border border-white/10 bg-black/20 p-4">
-                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Minutes</div>
+                          <label className="rounded-[14px] border border-white/10 bg-black/20 p-3">
+                            <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-500">Min</div>
                             <input
                               type="number"
                               min={0}
                               max={59}
                               value={presetDraftMinutes}
                               onChange={(e) => updatePresetDurationSegment('minutes', Number(e.target.value) || 0)}
-                              className="mt-3 w-full rounded-2xl border border-white/10 bg-black/30 px-3 py-3 text-center text-2xl font-semibold text-white outline-none transition focus:border-cyan-300/45"
+                              className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-2 py-2 text-center text-xl font-semibold text-white outline-none transition focus:border-cyan-300/45"
                             />
                           </label>
-                          <label className="rounded-[20px] border border-white/10 bg-black/20 p-4">
-                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Seconds</div>
+                          <label className="rounded-[14px] border border-white/10 bg-black/20 p-3">
+                            <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-500">Sec</div>
                             <input
                               type="number"
                               min={0}
                               max={59}
                               value={presetDraftSeconds}
                               onChange={(e) => updatePresetDurationSegment('seconds', Number(e.target.value) || 0)}
-                              className="mt-3 w-full rounded-2xl border border-white/10 bg-black/30 px-3 py-3 text-center text-2xl font-semibold text-white outline-none transition focus:border-cyan-300/45"
+                              className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-2 py-2 text-center text-xl font-semibold text-white outline-none transition focus:border-cyan-300/45"
                             />
                           </label>
                         </div>
-                        <div className="mt-4 flex flex-wrap gap-2">
+                        <div className="mt-3 flex flex-wrap gap-1.5">
                           {[300, 600, 900, 1200, 2100].map((durationSec) => (
                             <button
                               key={durationSec}
                               onClick={() => setPresetDraft((prev) => ({ ...prev, durationSec }))}
-                              className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                              className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold transition ${
                                 presetDraftDurationSec === durationSec
                                   ? 'border-cyan-300/40 bg-cyan-500/15 text-cyan-100'
                                   : 'border-white/10 bg-white/5 text-zinc-200 hover:border-white/20 hover:bg-white/10'
@@ -6268,26 +6216,22 @@ function App() {
                         </div>
                       </section>
 
-                      <section className="rounded-[24px] border border-white/10 bg-zinc-950/70 p-5">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">Wrap-up thresholds</div>
-                        <div className="mt-2 text-lg font-semibold text-white">{presetStudioThresholdHeading}</div>
-                        <div className="mt-5 grid gap-4">
-                          <div className="rounded-[20px] border border-white/10 bg-black/20 p-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <div className="text-sm font-semibold text-white">Amber wrap-up</div>
-                                <div className="mt-1 text-xs text-zinc-400">The timer shifts to amber for the final portion of the message.</div>
-                              </div>
-                              <div className="flex items-center gap-2">
+                      <section className="rounded-[18px] border border-white/10 bg-zinc-950/70 p-3.5">
+                        <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-zinc-500">Thresholds</div>
+                        <div className="mt-3 grid gap-3">
+                          <div className="rounded-[14px] border border-white/10 bg-black/20 p-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="text-xs font-semibold text-amber-200/90">Amber</div>
+                              <div className="flex items-center gap-1.5">
                                 <input
                                   type="number"
                                   min={1}
                                   max={99}
                                   value={presetDraftThresholds.amberPercent}
                                   onChange={(e) => updatePresetThresholdDraft('amber', Number(e.target.value) || 1)}
-                                  className="w-16 rounded-xl border border-white/10 bg-black/30 px-2 py-2 text-center text-sm font-semibold text-white outline-none transition focus:border-amber-300/45"
+                                  className="w-14 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-center text-xs font-semibold text-white outline-none transition focus:border-amber-300/45"
                                 />
-                                <span className="text-xs text-zinc-500">% left</span>
+                                <span className="text-[10px] text-zinc-500">%</span>
                               </div>
                             </div>
                             <input
@@ -6296,27 +6240,24 @@ function App() {
                               max={99}
                               value={presetDraftThresholds.amberPercent}
                               onChange={(e) => updatePresetThresholdDraft('amber', Number(e.target.value) || 1)}
-                              className="mt-4 w-full accent-amber-400"
+                              className="mt-2 w-full accent-amber-400"
                             />
-                            <div className="mt-2 text-xs text-zinc-400">Amber begins with {formatTimer(presetDraftAmberRemainingSec)} remaining.</div>
+                            <div className="mt-1 text-[10px] text-zinc-500">Starts at {formatTimer(presetDraftAmberRemainingSec)} left</div>
                           </div>
 
-                          <div className="rounded-[20px] border border-white/10 bg-black/20 p-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <div className="text-sm font-semibold text-white">Red finish</div>
-                                <div className="mt-1 text-xs text-zinc-400">Reserve the last slice of time for a clear hard-stop signal.</div>
-                              </div>
-                              <div className="flex items-center gap-2">
+                          <div className="rounded-[14px] border border-white/10 bg-black/20 p-3">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="text-xs font-semibold text-rose-200/90">Red</div>
+                              <div className="flex items-center gap-1.5">
                                 <input
                                   type="number"
                                   min={1}
                                   max={presetDraftThresholds.amberPercent}
                                   value={presetDraftThresholds.redPercent}
                                   onChange={(e) => updatePresetThresholdDraft('red', Number(e.target.value) || 1)}
-                                  className="w-16 rounded-xl border border-white/10 bg-black/30 px-2 py-2 text-center text-sm font-semibold text-white outline-none transition focus:border-rose-300/45"
+                                  className="w-14 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-center text-xs font-semibold text-white outline-none transition focus:border-rose-300/45"
                                 />
-                                <span className="text-xs text-zinc-500">% left</span>
+                                <span className="text-[10px] text-zinc-500">%</span>
                               </div>
                             </div>
                             <input
@@ -6325,127 +6266,93 @@ function App() {
                               max={presetDraftThresholds.amberPercent}
                               value={presetDraftThresholds.redPercent}
                               onChange={(e) => updatePresetThresholdDraft('red', Number(e.target.value) || 1)}
-                              className="mt-4 w-full accent-rose-400"
+                              className="mt-2 w-full accent-rose-400"
                             />
-                            <div className="mt-2 text-xs text-zinc-400">Red begins with {formatTimer(presetDraftRedRemainingSec)} remaining.</div>
+                            <div className="mt-1 text-[10px] text-zinc-500">Starts at {formatTimer(presetDraftRedRemainingSec)} left</div>
                           </div>
-                        </div>
-                        <div className="mt-4 rounded-[20px] border border-white/10 bg-black/20 px-4 py-3 text-xs text-zinc-400">
-                          {presetDraftAmberZonePercent > 0
-                            ? `${formatTimer(presetDraftAmberWindowSec)} lives in the amber lane between caution and hard stop.`
-                            : 'Amber and red begin together. Raise amber or lower red if you want a softer warning runway.'}
                         </div>
                       </section>
 
-                      <section className="rounded-[24px] border border-white/10 bg-zinc-950/70 p-5">
-                        <div className="flex flex-wrap items-start justify-between gap-4">
-                          <div>
-                            <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">Cue behavior</div>
-                            <div className="mt-2 text-lg font-semibold text-white">{presetStudioCueBehaviorHeading}</div>
-                          </div>
-                          <label className="inline-flex items-center gap-3 rounded-full border border-cyan-400/25 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100">
+                      <section className="rounded-[18px] border border-white/10 bg-zinc-950/70 p-3.5">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-zinc-500">Cue behavior</div>
+                          <label className="inline-flex items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-500/10 px-3 py-1.5 text-[11px] font-semibold text-cyan-100">
                             <input
                               type="checkbox"
                               checked={!!presetDraft.autoStartNextDefault}
                               onChange={(e) => setPresetDraft((prev) => ({ ...prev, autoStartNextDefault: e.target.checked }))}
-                              className="h-4 w-4 accent-cyan-500"
+                              className="h-3.5 w-3.5 accent-cyan-500"
                             />
-                            Auto-start next cue by default
+                            Auto-start next
                           </label>
                         </div>
-                        <p className="mt-3 text-sm leading-6 text-zinc-400">
-                          {presetStudioCueBehaviorSectionCopy}
-                        </p>
                       </section>
                     </div>
 
                     <div
                       data-testid="speaker-preset-studio-commit-rail"
-                      className="space-y-4 xl:sticky xl:top-4 xl:self-start xl:flex xl:max-h-[calc(88vh-2rem)] xl:flex-col"
+                      className="space-y-3 xl:sticky xl:top-3 xl:self-start xl:flex xl:max-h-[calc(88vh-1.5rem)] xl:flex-col"
                     >
-                      <div className="space-y-4 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-1 custom-scrollbar">
-                        <section className="rounded-[24px] border border-white/10 bg-zinc-950/78 p-4">
-                          <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">Flight plan</div>
-                          <div className="mt-3 space-y-2.5">
-                            <div className="rounded-[18px] border border-white/10 bg-black/20 px-3.5 py-3">
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Amber starts at</div>
-                                <div className="text-xl font-semibold text-white">{formatTimer(presetDraftRunwaySec)}</div>
-                              </div>
-                              <div className="mt-1 text-[11px] leading-5 text-zinc-400">{presetStudioFlightPlanCopies.amber}</div>
+                      <div className="space-y-3 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-1 custom-scrollbar">
+                        <section className="rounded-[18px] border border-white/10 bg-zinc-950/78 p-3">
+                          <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-zinc-500">Flight plan</div>
+                          <div className="mt-2 space-y-1.5">
+                            <div className="flex items-center justify-between gap-2 rounded-[12px] border border-white/10 bg-black/20 px-3 py-2">
+                              <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-500">Amber at</div>
+                              <div className="text-base font-semibold text-white">{formatTimer(presetDraftRunwaySec)}</div>
                             </div>
-                            <div className="rounded-[18px] border border-white/10 bg-black/20 px-3.5 py-3">
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Red starts at</div>
-                                <div className="text-xl font-semibold text-white">{formatTimer(presetDraftRedStartSec)}</div>
-                              </div>
-                              <div className="mt-1 text-[11px] leading-5 text-zinc-400">{presetStudioFlightPlanCopies.red}</div>
+                            <div className="flex items-center justify-between gap-2 rounded-[12px] border border-white/10 bg-black/20 px-3 py-2">
+                              <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-500">Red at</div>
+                              <div className="text-base font-semibold text-white">{formatTimer(presetDraftRedStartSec)}</div>
                             </div>
-                            <div className="rounded-[18px] border border-white/10 bg-black/20 px-3.5 py-3">
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Hard-stop remaining</div>
-                                <div className="text-xl font-semibold text-white">{formatTimer(presetDraftRedRemainingSec)}</div>
-                              </div>
-                              <div className="mt-1 text-[11px] leading-5 text-zinc-400">{presetStudioFlightPlanCopies.finish}</div>
+                            <div className="flex items-center justify-between gap-2 rounded-[12px] border border-white/10 bg-black/20 px-3 py-2">
+                              <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-500">Hard-stop</div>
+                              <div className="text-base font-semibold text-white">{formatTimer(presetDraftRedRemainingSec)}</div>
                             </div>
                           </div>
                         </section>
 
-                        <section className="rounded-[24px] border border-white/10 bg-zinc-950/78 p-4">
-                          <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">Operator notes</div>
-                          <div className="mt-3 space-y-2 text-[13px] leading-6 text-zinc-300">
+                        <section className="rounded-[18px] border border-white/10 bg-zinc-950/78 px-3 py-2.5">
+                          <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-zinc-500">Notes</div>
+                          <div className="mt-1.5 text-[11px] leading-5 text-zinc-400">
                             {presetStudioOperatorNotes.map((note, index) => (
-                              <p key={`${index}-${note}`} className={index === 0 ? '' : 'text-zinc-400'}>
-                                {note}
-                              </p>
+                              <p key={`${index}-${note}`}>{note}</p>
                             ))}
                           </div>
                         </section>
                       </div>
 
-                      <section className="rounded-[24px] border border-cyan-400/20 bg-[linear-gradient(180deg,rgba(8,47,73,0.46),rgba(9,9,11,0.92))] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.24)] xl:shrink-0">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-200/70">Commit</div>
+                      <section className="rounded-[18px] border border-cyan-400/20 bg-[linear-gradient(180deg,rgba(8,47,73,0.46),rgba(9,9,11,0.92))] p-3 shadow-[0_20px_60px_rgba(0,0,0,0.24)] xl:shrink-0">
+                        <div className="flex items-center justify-between gap-2">
                           {presetStudioSaveLabel && (
-                            <div className="rounded-full border border-emerald-400/25 bg-emerald-500/12 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100">
+                            <div className="rounded-full border border-emerald-400/25 bg-emerald-500/12 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-emerald-100">
                               {presetStudioSaveLabel}
                             </div>
                           )}
                         </div>
-                        <div className="mt-2 text-xl font-semibold text-white">
-                          {editingPresetId ? 'Update this preset' : 'Save this preset'}
-                        </div>
-                        <p className="mt-2 text-[13px] leading-6 text-zinc-300">
-                          {presetStudioCommitCopy}
-                        </p>
-                        <div className="mt-3 space-y-2">
+                        <div className="mt-1.5 space-y-1.5">
                           <button
                             data-testid="speaker-preset-save"
                             onClick={savePresetDraft}
-                            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-cyan-200/40 bg-[linear-gradient(180deg,rgba(34,211,238,0.28),rgba(8,145,178,0.26))] px-4 py-2.5 text-sm font-semibold text-cyan-50 transition hover:border-cyan-100/60 hover:bg-[linear-gradient(180deg,rgba(34,211,238,0.36),rgba(8,145,178,0.34))]"
+                            className="flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-200/40 bg-[linear-gradient(180deg,rgba(34,211,238,0.28),rgba(8,145,178,0.26))] px-3 py-2 text-xs font-semibold text-cyan-50 transition hover:border-cyan-100/60 hover:bg-[linear-gradient(180deg,rgba(34,211,238,0.36),rgba(8,145,178,0.34))]"
                           >
-                            <CheckIcon className="h-4 w-4" />
-                            {editingPresetId ? 'Update preset' : 'Save preset'}
+                            <CheckIcon className="h-3.5 w-3.5" />
+                            {editingPresetId ? 'Update' : 'Save'}
                           </button>
                           <button
                             onClick={openCreatePresetModal}
-                            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/10"
+                            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/10"
                           >
-                            <EditIcon className="h-4 w-4" />
-                            Start a fresh draft
+                            <EditIcon className="h-3.5 w-3.5" />
+                            New draft
                           </button>
                           <button
                             onClick={closeSpeakerPresetStudio}
-                            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-transparent px-4 py-2.5 text-sm font-semibold text-zinc-300 transition hover:border-white/20 hover:bg-white/5"
+                            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-transparent px-3 py-1.5 text-xs font-semibold text-zinc-400 transition hover:border-white/20 hover:bg-white/5"
                           >
-                            <XIcon className="h-4 w-4" />
-                            Close studio
+                            <XIcon className="h-3.5 w-3.5" />
+                            Close
                           </button>
-                        </div>
-                        <div className="mt-3 rounded-[18px] border border-white/10 bg-black/20 px-4 py-2.5 text-[11px] leading-5 text-zinc-400">
-                          {presetTargetItemId
-                            ? 'A cue is selected, so any saved or card-applied preset can be used immediately.'
-                            : 'Select a cue in the rundown to apply a preset after saving.'}
                         </div>
                       </section>
                     </div>
@@ -6526,6 +6433,7 @@ function App() {
                   </button>
                 </div>
               </div>
+              </>)}
             </div>
           </div>
         </div>
