@@ -28,8 +28,8 @@ const CURATED_VIDEO_ASSETS: MotionAsset[] = VIDEO_BACKGROUNDS.map((url, idx) => 
     : `Motion Loop ${idx + 1}`,
   thumb: DEFAULT_BACKGROUNDS[idx % DEFAULT_BACKGROUNDS.length],
   url,
-  mediaType: 'video',
-  provider: 'curated',
+  mediaType: 'video' as MediaType,
+  provider: 'curated' as const,
   attribution: url.startsWith('/assets/') ? 'Local library' : 'Built-in',
 }))
   .filter((asset) => /\.(mp4|webm|mov)(\?|$)/i.test(asset.url));

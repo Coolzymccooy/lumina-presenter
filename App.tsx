@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
 import { INITIAL_SCHEDULE, MOCK_SONGS, DEFAULT_BACKGROUNDS, GOSPEL_TRACKS, GospelTrack } from './constants';
 import {
@@ -12,6 +11,8 @@ import {
   StageAlertLayout,
   StageTimerLayout,
   StageTimerVariant,
+  StageTimerFlashColor,
+  StageTimerFlashState,
   ConnectionRole,
   StageMessage,
   StageMessageCategory,
@@ -67,12 +68,13 @@ import { parsePptxFile } from './services/pptxImport';
 import { copyTextToClipboard } from './services/clipboardService';
 import { dispatchAetherBridgeEvent } from './services/aetherBridge';
 import type { RunSheetInsertionResult } from './services/runSheetInsertion';
-import { PlayIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon, CheckIcon, XIcon, PinIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon
+import { PlayIcon, PauseIcon, RewindIcon, ForwardIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon, ArrowDownIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon, CheckIcon, XIcon, PinIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon, RewindIcon, ForwardIcon, PauseIcon
 
 // --- CONSTANTS ---
 const STORAGE_KEY = 'lumina_session_v1';
 const SETTINGS_KEY = 'lumina_workspace_settings_v1';
 const SETTINGS_UPDATED_AT_KEY = 'lumina_workspace_settings_updated_at_v1';
+const SETTINGS_INTENT_KEY = 'lumina_workspace_settings_intent_v1';
 const LIVE_STATE_QUEUE_KEY = 'lumina_live_state_queue_v1';
 const RUNSHEET_FILES_LOCAL_KEY_PREFIX = 'lumina_runsheet_files_local_v1';
 const AETHER_TOKEN_KEY_PREFIX = 'lumina_aether_bridge_token_v1';
@@ -84,6 +86,7 @@ const SILENT_AUDIO_B64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2
 const PUBLIC_WEB_APP_ORIGIN = 'https://lumina-presenter.vercel.app';
 const getWorkspaceSettingsKey = (workspace: string) => `${SETTINGS_KEY}:${workspace || 'default-workspace'}`;
 const getWorkspaceSettingsUpdatedAtKey = (workspace: string) => `${SETTINGS_UPDATED_AT_KEY}:${workspace || 'default-workspace'}`;
+const getWorkspaceSettingsIntentKey = (workspace: string) => `${SETTINGS_INTENT_KEY}:${workspace || 'default-workspace'}`;
 const getAetherTokenKey = (workspace: string) => `${AETHER_TOKEN_KEY_PREFIX}:${workspace || 'default-workspace'}`;
 
 type WorkspaceSettings = {
@@ -108,6 +111,12 @@ type WorkspaceSettings = {
   aetherSceneBlackout: string;
   aetherSceneLobby: string;
 };
+
+type ProtectedWorkspaceFieldKey = 'remoteAdminEmails' | 'sessionId';
+type WorkspaceSettingsIntentMetadata = Partial<Record<ProtectedWorkspaceFieldKey, {
+  value: string;
+  updatedAt: number;
+}>>;
 
 type AetherBridgeStatusTone = 'neutral' | 'ok' | 'error';
 type DesktopUpdateState = 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'not-available' | 'error';
@@ -137,6 +146,7 @@ type CloudPlaylistRecord = {
   stageAlert?: StageAlertState;
   stageMessageCenter?: StageMessageCenterState;
   audienceQrProjection?: AudienceQrProjectionState;
+  stageTimerFlash?: StageTimerFlashState;
   workspaceSettings?: Partial<WorkspaceSettings>;
   workspaceSettingsUpdatedAt?: number;
 };
@@ -186,6 +196,7 @@ const VALID_CONNECTION_ROLES: ConnectionRole[] = ['controller', 'output', 'stage
 const VALID_STAGE_TIMER_VARIANTS: StageTimerVariant[] = ['top-right', 'top-left', 'bottom-right', 'compact-bar'];
 const VALID_STAGE_MESSAGE_CATEGORIES: StageMessageCategory[] = ['urgent', 'timing', 'logistics'];
 const VALID_STAGE_FLOW_LAYOUTS: StageFlowLayout[] = ['balanced', 'speaker_focus', 'preview_focus', 'minimal_next'];
+const VALID_STAGE_TIMER_FLASH_COLORS: StageTimerFlashColor[] = ['white', 'amber', 'red', 'cyan'];
 
 const areServiceItemCollectionsEqual = (
   left: ServiceItem[] | null | undefined,
@@ -259,6 +270,26 @@ const looksLikeVideoUrl = (url: string): boolean => {
 };
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+const normalizeSessionIdSetting = (value: unknown) => {
+  const trimmed = typeof value === 'string' ? value.trim() : '';
+  return trimmed || 'live';
+};
+
+const normalizeRemoteAdminEmailsSetting = (value: unknown) => (
+  typeof value === 'string' ? value : ''
+);
+
+const isFallbackSessionId = (value: string) => normalizeSessionIdSetting(value).toLowerCase() === 'live';
+
+const normalizeSpeakerTimerThresholds = (amberPercent: number, redPercent: number) => {
+  const safeAmber = clamp(Number.isFinite(amberPercent) ? Math.round(amberPercent) : 25, 1, 99);
+  const safeRed = clamp(Number.isFinite(redPercent) ? Math.round(redPercent) : 10, 1, safeAmber);
+  return {
+    amberPercent: safeAmber,
+    redPercent: safeRed,
+  };
+};
 
 const replaceMediaUrlAcrossSchedule = (entries: ServiceItem[], sourceUrl: string, nextUrl: string) => {
   let changed = false;
@@ -335,12 +366,10 @@ const sanitizeSpeakerTimerPreset = (value: unknown): SpeakerTimerPreset | null =
   const durationSec = typeof raw.durationSec === 'number' && Number.isFinite(raw.durationSec)
     ? clamp(Math.round(raw.durationSec), 10, 7200)
     : 300;
-  const amberPercent = typeof raw.amberPercent === 'number' && Number.isFinite(raw.amberPercent)
-    ? clamp(Math.round(raw.amberPercent), 1, 99)
-    : 25;
-  const redPercent = typeof raw.redPercent === 'number' && Number.isFinite(raw.redPercent)
-    ? clamp(Math.round(raw.redPercent), 1, 99)
-    : 10;
+  const { amberPercent, redPercent } = normalizeSpeakerTimerThresholds(
+    typeof raw.amberPercent === 'number' && Number.isFinite(raw.amberPercent) ? raw.amberPercent : 25,
+    typeof raw.redPercent === 'number' && Number.isFinite(raw.redPercent) ? raw.redPercent : 10,
+  );
   const speakerName = typeof raw.speakerName === 'string' ? raw.speakerName.trim() : '';
   return {
     id,
@@ -378,8 +407,8 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
     safe.visionarySpeechLocaleMode = raw.visionarySpeechLocaleMode;
   }
   if (raw.theme === 'dark' || raw.theme === 'light' || raw.theme === 'midnight') safe.theme = raw.theme;
-  if (typeof raw.remoteAdminEmails === 'string') safe.remoteAdminEmails = raw.remoteAdminEmails;
-  if (typeof raw.sessionId === 'string') safe.sessionId = raw.sessionId;
+  if (typeof raw.remoteAdminEmails === 'string') safe.remoteAdminEmails = normalizeRemoteAdminEmailsSetting(raw.remoteAdminEmails);
+  if (typeof raw.sessionId === 'string') safe.sessionId = normalizeSessionIdSetting(raw.sessionId);
   if (raw.stageProfile === 'classic' || raw.stageProfile === 'compact' || raw.stageProfile === 'high_contrast') {
     safe.stageProfile = raw.stageProfile;
   }
@@ -406,6 +435,64 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
   if (typeof raw.aetherSceneBlackout === 'string') safe.aetherSceneBlackout = raw.aetherSceneBlackout.slice(0, 120);
   if (typeof raw.aetherSceneLobby === 'string') safe.aetherSceneLobby = raw.aetherSceneLobby.slice(0, 120);
   return safe;
+};
+
+const sanitizeWorkspaceSettingsIntent = (value: unknown): WorkspaceSettingsIntentMetadata => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const raw = value as Record<string, unknown>;
+  const safe: WorkspaceSettingsIntentMetadata = {};
+  (['remoteAdminEmails', 'sessionId'] as ProtectedWorkspaceFieldKey[]).forEach((field) => {
+    const entry = raw[field];
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return;
+    const payload = entry as Record<string, unknown>;
+    if (typeof payload.value !== 'string') return;
+    const updatedAt = Number(payload.updatedAt || 0);
+    if (!Number.isFinite(updatedAt) || updatedAt <= 0) return;
+    safe[field] = {
+      value: field === 'sessionId'
+        ? normalizeSessionIdSetting(payload.value)
+        : normalizeRemoteAdminEmailsSetting(payload.value),
+      updatedAt,
+    };
+  });
+  return safe;
+};
+
+const buildWorkspaceSettingsIntentPatch = (
+  settings: Partial<WorkspaceSettings>,
+  updatedAt: number
+): WorkspaceSettingsIntentMetadata => {
+  const patch: WorkspaceSettingsIntentMetadata = {};
+  if (!Number.isFinite(updatedAt) || updatedAt <= 0) return patch;
+  if (Object.prototype.hasOwnProperty.call(settings, 'remoteAdminEmails')) {
+    patch.remoteAdminEmails = {
+      value: normalizeRemoteAdminEmailsSetting(settings.remoteAdminEmails),
+      updatedAt,
+    };
+  }
+  if (Object.prototype.hasOwnProperty.call(settings, 'sessionId')) {
+    patch.sessionId = {
+      value: normalizeSessionIdSetting(settings.sessionId),
+      updatedAt,
+    };
+  }
+  return patch;
+};
+
+const mergeWorkspaceSettingsIntent = (
+  current: WorkspaceSettingsIntentMetadata,
+  incoming: WorkspaceSettingsIntentMetadata
+): WorkspaceSettingsIntentMetadata => {
+  const next: WorkspaceSettingsIntentMetadata = { ...current };
+  (['remoteAdminEmails', 'sessionId'] as ProtectedWorkspaceFieldKey[]).forEach((field) => {
+    const candidate = incoming[field];
+    if (!candidate) return;
+    const existing = next[field];
+    if (!existing || candidate.updatedAt >= existing.updatedAt) {
+      next[field] = candidate;
+    }
+  });
+  return next;
 };
 
 const DEFAULT_AUDIENCE_DISPLAY: AudienceDisplayState = {
@@ -435,6 +522,12 @@ const DEFAULT_STAGE_MESSAGE_CENTER: StageMessageCenterState = {
   queue: [],
   activeMessageId: null,
   lastSentAt: 0,
+};
+
+const DEFAULT_STAGE_TIMER_FLASH: StageTimerFlashState = {
+  active: false,
+  color: 'white',
+  updatedAt: 0,
 };
 
 const sanitizeAudienceDisplayState = (value: unknown): AudienceDisplayState => {
@@ -484,6 +577,21 @@ const sanitizeStageAlertState = (value: unknown): StageAlertState => {
     text: typeof raw.text === 'string' ? raw.text : '',
     updatedAt: typeof raw.updatedAt === 'number' && Number.isFinite(raw.updatedAt) ? raw.updatedAt : 0,
     author: typeof raw.author === 'string' && raw.author.trim() ? raw.author.trim() : null,
+  };
+};
+
+const sanitizeStageTimerFlashState = (value: unknown): StageTimerFlashState => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return DEFAULT_STAGE_TIMER_FLASH;
+  }
+  const raw = value as Record<string, unknown>;
+  const color = typeof raw.color === 'string' && VALID_STAGE_TIMER_FLASH_COLORS.includes(raw.color as StageTimerFlashColor)
+    ? raw.color as StageTimerFlashColor
+    : DEFAULT_STAGE_TIMER_FLASH.color;
+  return {
+    active: !!raw.active,
+    color,
+    updatedAt: typeof raw.updatedAt === 'number' && Number.isFinite(raw.updatedAt) ? raw.updatedAt : 0,
   };
 };
 
@@ -571,16 +679,6 @@ declare global {
   }
 }
 
-const PauseIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>
-);
-const RewindIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="11 19 2 12 11 5 11 19"></polygon><polygon points="22 19 13 12 22 5 22 19"></polygon></svg>
-);
-const ForwardIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="13 19 22 12 13 5 13 19"></polygon><polygon points="2 19 11 12 2 5 2 19"></polygon></svg>
-);
-
 function App() {
   // @ts-ignore
   const isElectronShell = !!window.electron?.isElectron;
@@ -622,6 +720,8 @@ function App() {
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1440));
   const isSettingsHydratedRef = useRef(false);
   const studioShellRef = useRef<HTMLDivElement | null>(null);
+  const workspaceSettingsIntentRef = useRef<WorkspaceSettingsIntentMetadata>({});
+  const pendingProtectedSettingsSaveRef = useRef<WorkspaceSettingsIntentMetadata>({});
 
   useEffect(() => {
     if (!window.electron?.updates) return undefined;
@@ -711,6 +811,7 @@ function App() {
     return !!saved?.sidebarPinned;
   });
   const [isSidebarHovering, setIsSidebarHovering] = useState(false);
+  const [presenterSidebarDrawerOpen, setPresenterSidebarDrawerOpen] = useState(false);
 
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isSlideEditorOpen, setIsSlideEditorOpen] = useState(false);
@@ -760,7 +861,7 @@ function App() {
     const params = new URLSearchParams(window.location.search || window.location.hash.split('?')[1] || '');
     const urlSession = params.get('session');
     if (urlSession && viewState === 'audience') return urlSession.trim();
-    return (workspaceSettings.sessionId || 'live').trim() || 'live';
+    return normalizeSessionIdSetting(workspaceSettings.sessionId);
   }, [workspaceSettings.sessionId, viewState]);
 
   const workspaceId = useMemo(() => {
@@ -786,6 +887,93 @@ function App() {
     () => normalizeConnectionTargetRoles(workspaceSettings.connectionTargetRoles),
     [workspaceSettings.connectionTargetRoles]
   );
+  const persistWorkspaceSettingsCache = useCallback((
+    settings: WorkspaceSettings,
+    updatedAt: number,
+    intent: WorkspaceSettingsIntentMetadata = workspaceSettingsIntentRef.current
+  ) => {
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      localStorage.setItem(SETTINGS_UPDATED_AT_KEY, String(updatedAt));
+      localStorage.setItem(SETTINGS_INTENT_KEY, JSON.stringify(intent));
+      localStorage.setItem(getWorkspaceSettingsKey(workspaceId), JSON.stringify(settings));
+      localStorage.setItem(getWorkspaceSettingsUpdatedAtKey(workspaceId), String(updatedAt));
+      localStorage.setItem(getWorkspaceSettingsIntentKey(workspaceId), JSON.stringify(intent));
+      setSaveError(false);
+    } catch (error: any) {
+      if (error?.name === 'QuotaExceededError' || error?.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+        setSaveError(true);
+      }
+    }
+  }, [workspaceId]);
+  const mergeIncomingWorkspaceSettings = useCallback((
+    previous: WorkspaceSettings,
+    incoming: Partial<WorkspaceSettings>,
+    incomingUpdatedAt = 0
+  ): WorkspaceSettings => {
+    const next: WorkspaceSettings = {
+      ...previous,
+      ...incoming,
+    };
+
+    if (Object.prototype.hasOwnProperty.call(incoming, 'sessionId')) {
+      next.sessionId = normalizeSessionIdSetting(incoming.sessionId);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(incoming, 'remoteAdminEmails')) {
+      next.remoteAdminEmails = normalizeRemoteAdminEmailsSetting(incoming.remoteAdminEmails);
+    }
+
+    (['remoteAdminEmails', 'sessionId'] as ProtectedWorkspaceFieldKey[]).forEach((field) => {
+      if (!Object.prototype.hasOwnProperty.call(incoming, field)) return;
+      const incomingValue = field === 'sessionId'
+        ? normalizeSessionIdSetting(incoming.sessionId)
+        : normalizeRemoteAdminEmailsSetting(incoming.remoteAdminEmails);
+      const currentValue = field === 'sessionId'
+        ? normalizeSessionIdSetting(previous.sessionId)
+        : normalizeRemoteAdminEmailsSetting(previous.remoteAdminEmails);
+      const intent = workspaceSettingsIntentRef.current[field];
+      const currentIsProtected = field === 'sessionId'
+        ? !isFallbackSessionId(currentValue)
+        : !!currentValue.trim();
+      const incomingIsFallback = field === 'sessionId'
+        ? isFallbackSessionId(incomingValue)
+        : !incomingValue.trim();
+      const intentValue = intent
+        ? (field === 'sessionId' ? normalizeSessionIdSetting(intent.value) : normalizeRemoteAdminEmailsSetting(intent.value))
+        : '';
+      const intentIsProtected = field === 'sessionId'
+        ? !isFallbackSessionId(intentValue)
+        : !!intentValue.trim();
+      if (incomingIsFallback && currentIsProtected && intentIsProtected && (intent?.updatedAt || 0) >= incomingUpdatedAt) {
+        next[field] = previous[field] as any;
+      }
+    });
+
+    return next;
+  }, []);
+  const handleWorkspaceSettingsSave = useCallback((patch: Partial<WorkspaceSettings>) => {
+    const updatedAt = Date.now();
+    const normalizedPatch: Partial<WorkspaceSettings> = {
+      ...patch,
+    };
+    if (Object.prototype.hasOwnProperty.call(normalizedPatch, 'sessionId')) {
+      normalizedPatch.sessionId = normalizeSessionIdSetting(normalizedPatch.sessionId);
+    }
+    if (Object.prototype.hasOwnProperty.call(normalizedPatch, 'remoteAdminEmails')) {
+      normalizedPatch.remoteAdminEmails = normalizeRemoteAdminEmailsSetting(normalizedPatch.remoteAdminEmails);
+    }
+
+    const intentPatch = buildWorkspaceSettingsIntentPatch(normalizedPatch, updatedAt);
+    if (Object.keys(intentPatch).length > 0) {
+      workspaceSettingsIntentRef.current = mergeWorkspaceSettingsIntent(workspaceSettingsIntentRef.current, intentPatch);
+      pendingProtectedSettingsSaveRef.current = intentPatch;
+    }
+
+    const nextSettings = mergeIncomingWorkspaceSettings(workspaceSettings, normalizedPatch, updatedAt);
+    persistWorkspaceSettingsCache(nextSettings, updatedAt);
+    setWorkspaceSettings(nextSettings);
+  }, [mergeIncomingWorkspaceSettings, persistWorkspaceSettingsCache, workspaceSettings]);
   const [isMotionLibOpen, setIsMotionLibOpen] = useState(false); // NEW
   const [isTemplateOpen, setIsTemplateOpen] = useState(false);
   const [isLyricsImportOpen, setIsLyricsImportOpen] = useState(false);
@@ -849,6 +1037,10 @@ function App() {
     const saved = initialSavedState;
     return sanitizeAudienceQrProjectionState(saved?.audienceQrProjection);
   });
+  const [stageTimerFlash, setStageTimerFlash] = useState<StageTimerFlashState>(() => {
+    const saved = initialSavedState;
+    return sanitizeStageTimerFlashState(saved?.stageTimerFlash);
+  });
   const [stageAlert, setStageAlert] = useState<StageAlertState>(() => {
     const saved = initialSavedState;
     const direct = sanitizeStageAlertState(saved?.stageAlert);
@@ -883,6 +1075,12 @@ function App() {
   const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
   const [editingPresetId, setEditingPresetId] = useState<string | null>(null);
   const [presetDraft, setPresetDraft] = useState<SpeakerTimerPreset>(() => createSpeakerPresetDraft());
+  const presetStudioCardRef = useRef<HTMLDivElement | null>(null);
+  const presetStudioDragOffsetRef = useRef({ x: 0, y: 0 });
+  const [presetStudioDragging, setPresetStudioDragging] = useState(false);
+  const [presetStudioPosition, setPresetStudioPosition] = useState<{ x: number; y: number } | null>(null);
+  const [presetStudioSaveState, setPresetStudioSaveState] = useState<{ at: number; mode: 'saved' | 'updated' } | null>(null);
+  const [presetStudioWidthMode, setPresetStudioWidthMode] = useState<'standard' | 'wide'>('standard');
   // Handle Auto-Rotate Logic
   useEffect(() => {
     if (!audienceDisplay.autoRotate || audienceDisplay.queue.length === 0) return;
@@ -912,6 +1110,13 @@ function App() {
       return next;
     });
   };
+  const updateStageTimerFlash = useCallback((patch: Partial<StageTimerFlashState>) => {
+    setStageTimerFlash((prev) => sanitizeStageTimerFlashState({
+      ...prev,
+      ...patch,
+      updatedAt: typeof patch.updatedAt === 'number' ? patch.updatedAt : Date.now(),
+    }));
+  }, []);
   const nextStageMessageId = () => `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const handleQueueStageMessage = (input: {
     text: string;
@@ -1017,6 +1222,88 @@ function App() {
       setSelectedSpeakerPresetId(presets[0].id);
     }
   }, [workspaceSettings.speakerTimerPresets, selectedSpeakerPresetId]);
+  const closeSpeakerPresetStudio = useCallback(() => {
+    setIsPresetModalOpen(false);
+    setPresetStudioDragging(false);
+    setPresetStudioPosition(null);
+  }, []);
+  const clampPresetStudioToViewport = useCallback(() => {
+    const card = presetStudioCardRef.current;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    const margin = 12;
+    const maxX = Math.max(margin, window.innerWidth - rect.width - margin);
+    const maxY = Math.max(margin, window.innerHeight - rect.height - margin);
+    setPresetStudioPosition((prev) => {
+      if (!prev) return prev;
+      return {
+        x: clamp(prev.x, margin, maxX),
+        y: clamp(prev.y, margin, maxY),
+      };
+    });
+  }, []);
+  const beginPresetStudioDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest('[data-no-preset-drag]')) return;
+    const card = presetStudioCardRef.current;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    presetStudioDragOffsetRef.current = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+    setPresetStudioPosition({ x: rect.left, y: rect.top });
+    setPresetStudioDragging(true);
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // ignore capture errors
+    }
+    event.preventDefault();
+  };
+  useEffect(() => {
+    if (!presetStudioDragging) return;
+    const onPointerMove = (event: PointerEvent) => {
+      const card = presetStudioCardRef.current;
+      if (!card) return;
+      const margin = 12;
+      const maxX = Math.max(margin, window.innerWidth - card.offsetWidth - margin);
+      const maxY = Math.max(margin, window.innerHeight - card.offsetHeight - margin);
+      setPresetStudioPosition({
+        x: clamp(event.clientX - presetStudioDragOffsetRef.current.x, margin, maxX),
+        y: clamp(event.clientY - presetStudioDragOffsetRef.current.y, margin, maxY),
+      });
+    };
+    const onPointerUp = () => setPresetStudioDragging(false);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+  }, [presetStudioDragging]);
+  useEffect(() => {
+    if (!isPresetModalOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeSpeakerPresetStudio();
+    };
+    const onResize = () => clampPresetStudioToViewport();
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('resize', onResize);
+    window.setTimeout(clampPresetStudioToViewport, 0);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [isPresetModalOpen, closeSpeakerPresetStudio, clampPresetStudioToViewport]);
+  useEffect(() => {
+    if (!isPresetModalOpen) return;
+    window.setTimeout(clampPresetStudioToViewport, 0);
+  }, [isPresetModalOpen, presetStudioWidthMode, clampPresetStudioToViewport]);
+  useEffect(() => {
+    if (isPresetModalOpen) return;
+    setPresetStudioDragging(false);
+    setPresetStudioPosition(null);
+  }, [isPresetModalOpen]);
 
   const filteredRunSheetFiles = useMemo(() => {
     const query = runSheetFileQuery.trim().toLowerCase();
@@ -1131,7 +1418,7 @@ function App() {
   const [audioProgress, setAudioProgress] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const activeSlideRef = useRef<HTMLDivElement>(null);
+  const activeSlideRef = useRef<HTMLButtonElement>(null);
   const antiSleepAudioRef = useRef<HTMLAudioElement>(null);
   const hasInitializedRemoteSnapshotRef = useRef(false);
   const hasHydratedCloudStateRef = useRef(false);
@@ -1211,7 +1498,7 @@ function App() {
   }, []);
 
   const buildSyncPausedMessage = useCallback((seconds: number) => {
-    return `Live sync paused for ${seconds}s (permissions). Presenter continues locally.`;
+    return `Cloud sync will retry in ${seconds}s. Lumina is still presenting locally on this machine.`;
   }, []);
 
   const resetSyncBackoff = useCallback(() => {
@@ -1308,7 +1595,7 @@ function App() {
     } else {
       resetSyncBackoff();
       if (!firebaseOk && serverOk) {
-        setSyncIssue('Firebase sync denied; server sync active.');
+        setSyncIssue('Cloud sharing needs permission. This booth is still live through the local Lumina server.');
       } else {
         setSyncIssue(null);
       }
@@ -1402,12 +1689,19 @@ function App() {
     // 1. First, try to load from local cache for instant UI
     try {
       const savedSettings = localStorage.getItem(SETTINGS_KEY);
+      const savedIntent = sanitizeWorkspaceSettingsIntent(parseJson(localStorage.getItem(SETTINGS_INTENT_KEY), null));
+      const savedUpdatedAt = Number(localStorage.getItem(SETTINGS_UPDATED_AT_KEY) || '0');
+      const normalizedUpdatedAt = Number.isFinite(savedUpdatedAt) ? savedUpdatedAt : 0;
+      workspaceSettingsIntentRef.current = mergeWorkspaceSettingsIntent(workspaceSettingsIntentRef.current, savedIntent);
       if (savedSettings) {
         const parsed = sanitizeWorkspaceSettings(JSON.parse(savedSettings));
-        setWorkspaceSettings((prev) => ({ ...prev, ...parsed }));
+        workspaceSettingsIntentRef.current = mergeWorkspaceSettingsIntent(
+          buildWorkspaceSettingsIntentPatch(parsed, normalizedUpdatedAt),
+          workspaceSettingsIntentRef.current
+        );
+        setWorkspaceSettings((prev) => mergeIncomingWorkspaceSettings(prev, parsed, normalizedUpdatedAt));
       }
-      const savedUpdatedAt = Number(localStorage.getItem(SETTINGS_UPDATED_AT_KEY) || '0');
-      workspaceSettingsUpdatedAtRef.current = Number.isFinite(savedUpdatedAt) ? savedUpdatedAt : 0;
+      workspaceSettingsUpdatedAtRef.current = normalizedUpdatedAt;
     } catch (error) {
       console.warn('Failed to load local workspace settings', error);
     } finally {
@@ -1420,19 +1714,26 @@ function App() {
   useEffect(() => {
     if (!workspaceId) return;
     try {
+      const scopedIntent = sanitizeWorkspaceSettingsIntent(parseJson(localStorage.getItem(getWorkspaceSettingsIntentKey(workspaceId)), null));
+      workspaceSettingsIntentRef.current = mergeWorkspaceSettingsIntent(workspaceSettingsIntentRef.current, scopedIntent);
       const scopedSettings = localStorage.getItem(getWorkspaceSettingsKey(workspaceId));
+      const scopedUpdatedAt = Number(localStorage.getItem(getWorkspaceSettingsUpdatedAtKey(workspaceId)) || '0');
+      const normalizedUpdatedAt = Number.isFinite(scopedUpdatedAt) ? scopedUpdatedAt : 0;
       if (scopedSettings) {
         const parsed = sanitizeWorkspaceSettings(JSON.parse(scopedSettings));
-        setWorkspaceSettings((prev) => ({ ...prev, ...parsed }));
+        workspaceSettingsIntentRef.current = mergeWorkspaceSettingsIntent(
+          buildWorkspaceSettingsIntentPatch(parsed, normalizedUpdatedAt),
+          workspaceSettingsIntentRef.current
+        );
+        setWorkspaceSettings((prev) => mergeIncomingWorkspaceSettings(prev, parsed, normalizedUpdatedAt));
       }
-      const scopedUpdatedAt = Number(localStorage.getItem(getWorkspaceSettingsUpdatedAtKey(workspaceId)) || '0');
-      if (Number.isFinite(scopedUpdatedAt) && scopedUpdatedAt > workspaceSettingsUpdatedAtRef.current) {
-        workspaceSettingsUpdatedAtRef.current = scopedUpdatedAt;
+      if (normalizedUpdatedAt > workspaceSettingsUpdatedAtRef.current) {
+        workspaceSettingsUpdatedAtRef.current = normalizedUpdatedAt;
       }
     } catch (error) {
       console.warn('Failed to load workspace-scoped settings cache', error);
     }
-  }, [workspaceId]);
+  }, [mergeIncomingWorkspaceSettings, workspaceId]);
 
   // 2. Load from server on login.
   // Only apply server settings when server payload is at least as fresh as local cache.
@@ -1454,12 +1755,10 @@ function App() {
           }
 
           setWorkspaceSettings((prev) => {
-            const merged = { ...prev, ...serverSettings };
-            localStorage.setItem(SETTINGS_KEY, JSON.stringify(merged));
-            localStorage.setItem(SETTINGS_UPDATED_AT_KEY, String(serverUpdatedAt || Date.now()));
-            localStorage.setItem(getWorkspaceSettingsKey(workspaceId), JSON.stringify(merged));
-            localStorage.setItem(getWorkspaceSettingsUpdatedAtKey(workspaceId), String(serverUpdatedAt || Date.now()));
-            workspaceSettingsUpdatedAtRef.current = serverUpdatedAt || Date.now();
+            const effectiveUpdatedAt = serverUpdatedAt || Date.now();
+            const merged = mergeIncomingWorkspaceSettings(prev, serverSettings, effectiveUpdatedAt);
+            persistWorkspaceSettingsCache(merged, effectiveUpdatedAt);
+            workspaceSettingsUpdatedAtRef.current = effectiveUpdatedAt;
             isSettingsHydratedRef.current = true;
             return merged;
           });
@@ -1487,14 +1786,7 @@ function App() {
 
     const persistSettings = async () => {
       // 1. Save to local first for speed
-      try {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(workspaceSettings));
-        localStorage.setItem(SETTINGS_UPDATED_AT_KEY, String(updatedAt));
-        localStorage.setItem(getWorkspaceSettingsKey(workspaceId), JSON.stringify(workspaceSettings));
-        localStorage.setItem(getWorkspaceSettingsUpdatedAtKey(workspaceId), String(updatedAt));
-      } catch (e) {
-        setSaveError(true);
-      }
+      persistWorkspaceSettingsCache(workspaceSettings, updatedAt);
 
       // 2. Save to server if logged in and settings are hydrated (never wipe with defaults)
       if (user?.uid && !isRecentServerLoad && isSettingsHydratedRef.current) {
@@ -1506,6 +1798,20 @@ function App() {
             try {
               localStorage.setItem(getWorkspaceSettingsUpdatedAtKey(workspaceId), String(remoteUpdatedAt));
               localStorage.setItem(SETTINGS_UPDATED_AT_KEY, String(remoteUpdatedAt));
+              const pendingIntent = pendingProtectedSettingsSaveRef.current;
+              if (Object.keys(pendingIntent).length > 0) {
+                workspaceSettingsIntentRef.current = mergeWorkspaceSettingsIntent(workspaceSettingsIntentRef.current, {
+                  remoteAdminEmails: pendingIntent.remoteAdminEmails
+                    ? { ...pendingIntent.remoteAdminEmails, updatedAt: remoteUpdatedAt }
+                    : undefined,
+                  sessionId: pendingIntent.sessionId
+                    ? { ...pendingIntent.sessionId, updatedAt: remoteUpdatedAt }
+                    : undefined,
+                });
+                localStorage.setItem(SETTINGS_INTENT_KEY, JSON.stringify(workspaceSettingsIntentRef.current));
+                localStorage.setItem(getWorkspaceSettingsIntentKey(workspaceId), JSON.stringify(workspaceSettingsIntentRef.current));
+                pendingProtectedSettingsSaveRef.current = {};
+              }
             } catch {
               // ignore local metadata write error
             }
@@ -1522,7 +1828,7 @@ function App() {
     };
 
     persistSettings();
-  }, [workspaceSettings, user, workspaceId]);
+  }, [persistWorkspaceSettingsCache, workspaceSettings, user, workspaceId]);
 
   useEffect(() => {
     if (!user?.uid || hasHydratedServerSnapshotRef.current) return;
@@ -1553,6 +1859,14 @@ function App() {
             : prev
         ));
       }
+      if (payload.stageTimerFlash && typeof payload.stageTimerFlash === 'object') {
+        const incomingFlash = sanitizeStageTimerFlashState(payload.stageTimerFlash);
+        setStageTimerFlash((prev) => (
+          incomingFlash.updatedAt >= (prev.updatedAt || 0)
+            ? incomingFlash
+            : prev
+        ));
+      }
       if (payload.stageMessageCenter && typeof payload.stageMessageCenter === 'object') {
         const incomingCenter = sanitizeStageMessageCenterState(payload.stageMessageCenter);
         if (incomingCenter.queue.length || incomingCenter.activeMessageId || incomingCenter.lastSentAt) {
@@ -1577,7 +1891,7 @@ function App() {
           const snapshotSettings = sanitizeWorkspaceSettings(payload.workspaceSettings);
           if (Object.keys(snapshotSettings).length > 0) {
             workspaceSettingsUpdatedAtRef.current = snapshotSettingsUpdatedAt;
-            setWorkspaceSettings((prev) => ({ ...prev, ...snapshotSettings }));
+            setWorkspaceSettings((prev) => mergeIncomingWorkspaceSettings(prev, snapshotSettings, snapshotSettingsUpdatedAt));
           }
         }
       }
@@ -1625,11 +1939,7 @@ function App() {
     }
   }, [viewMode]);
 
-  useEffect(() => {
-    if (viewMode === 'PRESENTER' && activeSidebarTab !== 'SCHEDULE') {
-      setActiveSidebarTab('SCHEDULE');
-    }
-  }, [viewMode, activeSidebarTab]);
+  // Removed: Auto-reset sidebar to SCHEDULE in Presenter mode
 
   useEffect(() => {
     const handleResize = () => setViewportWidth(window.innerWidth);
@@ -1746,6 +2056,7 @@ function App() {
         currentCueItemId,
         audienceDisplay,
         audienceQrProjection,
+        stageTimerFlash,
         stageAlert,
         stageMessageCenter,
         workspaceSettings,
@@ -1759,7 +2070,7 @@ function App() {
       }
     }, 180);
     return () => window.clearTimeout(id);
-  }, [schedule, selectedItemId, viewMode, sidebarPinned, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, audienceQrProjection, stageAlert, stageMessageCenter, workspaceSettings, user]);
+  }, [schedule, selectedItemId, viewMode, sidebarPinned, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, audienceQrProjection, stageTimerFlash, stageAlert, stageMessageCenter, workspaceSettings, user]);
 
   useEffect(() => {
     const safeWorkspaceId = String(workspaceId || '').trim();
@@ -1811,6 +2122,7 @@ function App() {
       workspaceSettings,
       workspaceSettingsUpdatedAt: settingsUpdatedAt,
       audienceQrProjection,
+      stageTimerFlash,
       stageMessageCenter,
       stageAlert: legacyAlertFromMessageCenter(stageMessageCenter),
       controllerOwnerUid: user.uid,
@@ -1828,6 +2140,7 @@ function App() {
           workspaceSettings,
           workspaceSettingsUpdatedAt: settingsUpdatedAt,
           audienceQrProjection,
+          stageTimerFlash,
           stageMessageCenter,
           updatedAt,
         });
@@ -1839,6 +2152,7 @@ function App() {
           workspaceSettings,
           workspaceSettingsUpdatedAt: settingsUpdatedAt,
           audienceQrProjection,
+          stageTimerFlash,
           stageMessageCenter,
           updatedAt,
         });
@@ -1853,6 +2167,7 @@ function App() {
     activeSlideIndex,
     workspaceSettings,
     audienceQrProjection,
+    stageTimerFlash,
     stageMessageCenter,
     user?.uid,
     user?.email,
@@ -1867,7 +2182,7 @@ function App() {
 
   useEffect(() => {
     if (viewMode === 'PRESENTER' && activeSlideRef.current) {
-      activeSlideRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      activeSlideRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
     }
   }, [activeSlideIndex, activeItemId, viewMode]);
 
@@ -1891,10 +2206,14 @@ function App() {
     || (!activeSlide.mediaType && activeItem?.theme.mediaType === 'video')
     || looksLikeVideoUrl(activeBackgroundUrl)
   );
-  const sidebarExpanded = sidebarPinned || isSidebarHovering;
+  const presenterSidebarCompact = isElectronShell && viewMode === 'PRESENTER' && viewportWidth < 1500;
   const presenterShellTight = viewMode === 'PRESENTER' && viewportWidth < 1720;
   const presenterShellVeryTight = viewMode === 'PRESENTER' && viewportWidth < 1540;
-  const sidebarRailWidth = sidebarExpanded ? (presenterShellTight ? 176 : 208) : 48;
+  const sidebarExpanded = presenterSidebarCompact ? false : (sidebarPinned || isSidebarHovering);
+  const presenterSidebarDrawerVisible = presenterSidebarCompact && (sidebarPinned || presenterSidebarDrawerOpen);
+  const sidebarRailWidth = presenterSidebarCompact
+    ? 48
+    : (sidebarExpanded ? (presenterShellTight ? 176 : 208) : 48);
   const sidebarPanelWidth = viewMode === 'PRESENTER'
     ? (presenterShellVeryTight ? 320 : presenterShellTight ? 336 : 360)
     : 360;
@@ -1905,11 +2224,30 @@ function App() {
     ? clamp(activeSlideIndex, 0, activeItem.slides.length - 1)
     : -1;
   const presenterQueueCompact = presenterQueueSlides.length > 10;
+  const presenterInlineQueueTight = isElectronShell && viewMode === 'PRESENTER' && !presenterSidebarCompact && viewportWidth < 1700;
   const presenterQueueWidth = workspaceSettings.machineMode
     ? 0
     : presenterQueueCompact
-      ? (presenterShellVeryTight ? 280 : presenterShellTight ? 304 : 336)
-      : (presenterShellVeryTight ? 288 : presenterShellTight ? 304 : 320);
+      ? (presenterSidebarCompact
+          ? (presenterShellVeryTight ? 232 : 256)
+          : (presenterInlineQueueTight ? (presenterShellVeryTight ? 224 : 244) : (presenterShellVeryTight ? 280 : presenterShellTight ? 304 : 336)))
+      : (presenterSidebarCompact
+          ? (presenterShellVeryTight ? 240 : 264)
+          : (presenterInlineQueueTight ? (presenterShellVeryTight ? 232 : 248) : (presenterShellVeryTight ? 288 : presenterShellTight ? 304 : 320)));
+  const presenterSidebarInlineWidth = viewMode === 'PRESENTER' && !presenterSidebarCompact
+    ? sidebarRailWidth + sidebarPanelWidth
+    : sidebarRailWidth;
+  const presenterMainWorkspaceWidth = viewMode === 'PRESENTER'
+    ? Math.max(0, viewportWidth - presenterSidebarInlineWidth - presenterQueueWidth - (workspaceSettings.machineMode ? 24 : 40))
+    : viewportWidth;
+  const presenterCardsSingleColumn = viewMode === 'PRESENTER' && presenterMainWorkspaceWidth < 1120;
+  const presenterCueEngineStacked = viewMode === 'PRESENTER' && presenterMainWorkspaceWidth < 1240;
+  const presenterStageOpsSingleColumn = viewMode === 'PRESENTER' && presenterMainWorkspaceWidth < 1180;
+  const presenterStageOpsDense = viewMode === 'PRESENTER' && presenterMainWorkspaceWidth < 1380;
+  const presenterTransportDense = viewMode === 'PRESENTER' && presenterMainWorkspaceWidth < 980;
+  const presenterPreviewAlignClass = isElectronShell
+    ? (presenterMainWorkspaceWidth < 920 ? 'justify-center px-3' : 'justify-start px-4')
+    : 'justify-center';
   const presenterQueueUpNext = useMemo(() => {
     if (presenterQueueActiveIndex < 0) return [];
     const upNextCount = presenterQueueCompact ? 3 : 4;
@@ -2016,6 +2354,200 @@ function App() {
     return `${negative ? '-' : ''}${mm}:${ss}`;
   };
   const isTimerOvertime = timerMode === 'COUNTDOWN' && (timerSeconds < 0 || cueZeroHold);
+  const speakerTimerPresets = workspaceSettings.speakerTimerPresets || [];
+  const presetTargetItemId = currentCueItemId || selectedItemId;
+  const presetDraftDurationSec = clamp(Math.round(Number(presetDraft.durationSec) || 300), 10, 7200);
+  const presetDraftHours = Math.floor(presetDraftDurationSec / 3600);
+  const presetDraftMinutes = Math.floor((presetDraftDurationSec % 3600) / 60);
+  const presetDraftSeconds = presetDraftDurationSec % 60;
+  const presetDraftThresholds = normalizeSpeakerTimerThresholds(presetDraft.amberPercent, presetDraft.redPercent);
+  const presetDraftRunwayPercent = Math.max(0, 100 - presetDraftThresholds.amberPercent);
+  const presetDraftAmberZonePercent = Math.max(0, presetDraftThresholds.amberPercent - presetDraftThresholds.redPercent);
+  const presetDraftRedZonePercent = presetDraftThresholds.redPercent;
+  const presetDraftAmberRemainingSec = Math.max(1, Math.round(presetDraftDurationSec * (presetDraftThresholds.amberPercent / 100)));
+  const presetDraftRedRemainingSec = Math.max(1, Math.round(presetDraftDurationSec * (presetDraftThresholds.redPercent / 100)));
+  const presetDraftRunwaySec = Math.max(0, presetDraftDurationSec - presetDraftAmberRemainingSec);
+  const presetDraftAmberWindowSec = Math.max(0, presetDraftAmberRemainingSec - presetDraftRedRemainingSec);
+  const presetDraftRedStartSec = Math.max(0, presetDraftDurationSec - presetDraftRedRemainingSec);
+  const presetDraftDisplayName = presetDraft.name.trim() || 'Untitled Timer';
+  const presetDraftSpeakerLabel = presetDraft.speakerName?.trim() || 'Speaker slot ready';
+  const activePresetCardId = editingPresetId || selectedSpeakerPresetId;
+  const presetStudioIsWide = presetStudioWidthMode === 'wide';
+  const presetStudioSaveLabel = presetStudioSaveState
+    ? `${presetStudioSaveState.mode === 'updated' ? 'Updated' : 'Saved'} just now`
+    : '';
+  const presetStudioShellWidthClass = presetStudioIsWide
+    ? 'max-w-[min(96vw,1680px)]'
+    : 'max-w-6xl';
+  const presetStudioBodyGridClass = presetStudioIsWide
+    ? 'grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[340px_minmax(0,1fr)]'
+    : 'grid min-h-0 flex-1 grid-cols-1 2xl:grid-cols-[360px_minmax(0,1fr)]';
+  const presetStudioEditorGridClass = presetStudioIsWide
+    ? 'grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1.12fr)_380px]'
+    : 'grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]';
+  const presetStudioHeroGridClass = presetStudioIsWide
+    ? 'grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-4'
+    : 'grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-start';
+  const presetStudioHeroTimerClass = presetStudioIsWide
+    ? 'mt-2 max-w-full whitespace-nowrap text-[clamp(2.75rem,5vw,5rem)] font-semibold leading-[0.88] tracking-tight text-white'
+    : 'mt-1 max-w-full whitespace-nowrap text-[clamp(1.9rem,6vw,3.25rem)] font-semibold leading-[0.86] tracking-tight text-white';
+  const presetStudioHeroSectionPaddingClass = presetStudioIsWide ? 'p-3.5 md:p-4' : 'p-2.5';
+  const presetStudioHeroBehaviorCardClass = presetStudioIsWide
+    ? 'min-w-0 rounded-[22px] border border-white/10 bg-black/25 p-3'
+    : 'min-w-0 rounded-[16px] border border-white/10 bg-black/25 p-2';
+  const presetStudioHeroBehaviorCopy = presetStudioIsWide
+    ? 'Presenter-mode preview before this preset hits the shared library.'
+    : 'Ready for presenter mode.';
+  const presetStudioHeroSummaryGridClass = presetStudioIsWide
+    ? 'mt-3.5 grid gap-2.5 sm:grid-cols-3'
+    : 'mt-3 grid gap-2 sm:grid-cols-3';
+  const presetStudioHeroSummaryCardClass = presetStudioIsWide
+    ? 'rounded-[20px] border border-white/10 bg-black/20 p-3'
+    : 'rounded-[18px] border border-white/10 bg-black/20 p-2.5';
+  const presetStudioHeroSummaryValueClass = presetStudioIsWide
+    ? 'mt-1.5 text-2xl font-semibold text-white'
+    : 'mt-1 text-[1.65rem] font-semibold leading-none text-white';
+  const presetStudioHeroEyebrow = editingPresetId
+    ? (presetStudioIsWide ? 'Refining preset' : 'Preset summary')
+    : 'New timer concept';
+  const presetStudioLibraryCopy = presetStudioIsWide
+    ? 'Pick a saved preset to refine it, duplicate it into a new draft, or apply it to the currently selected cue.'
+    : 'Pick, duplicate, or apply a preset to the active cue.';
+  const presetStudioRunwayCopy = presetStudioIsWide ? 'Full-green time before wrap-up begins.' : 'Before wrap-up.';
+  const presetStudioAmberCopy = presetStudioIsWide ? 'Caution band between wrap-up and hard stop.' : 'Caution band.';
+  const presetStudioRedCopy = presetStudioIsWide ? 'Final portion reserved for a hard landing.' : 'Hard stop.';
+  const presetStudioFlightPlanCopies = presetStudioIsWide
+    ? {
+      amber: 'Elapsed from cue start.',
+      red: 'Hard-stop pressure begins here.',
+      finish: 'Visible red time at the finish.',
+    }
+    : {
+      amber: 'Cue start mark.',
+      red: 'Hard-stop mark.',
+      finish: 'Visible red time.',
+    };
+  const presetStudioOperatorNotes = presetStudioIsWide
+    ? [
+      'Strong presets feel intentional: enough green runway to settle the room, enough amber to coach the landing, and a red finish that is impossible to miss.',
+      'Presets stay available across studio, presenter, and stage because they ride in workspace settings.',
+    ]
+    : [
+      'Presets stay available across studio, presenter, and stage.',
+    ];
+  const presetStudioCommitCopy = presetStudioIsWide
+    ? 'Save the current timer profile into your library, then apply it from the control bar or directly from a preset card.'
+    : 'Save this timer, then apply it from the bar or preset card.';
+  const presetStudioNameHelperCopy = presetStudioIsWide
+    ? 'Name the cue profile the way your operators will recognize it under pressure.'
+    : 'How operators will spot this preset quickly.';
+  const presetStudioSpeakerHelperCopy = presetStudioIsWide
+    ? 'Optional speaker label that can carry straight into the timer cue when you apply the preset.'
+    : 'Optional speaker label for the cue.';
+  const presetStudioDurationHeading = presetStudioIsWide
+    ? 'Dial in the exact room you want to give the speaker.'
+    : 'Set the speaking time.';
+  const presetStudioThresholdHeading = presetStudioIsWide
+    ? 'Shape how the timer turns from calm to caution to finish.'
+    : 'Set warning and hard-stop timing.';
+  const presetStudioCueBehaviorHeading = presetStudioIsWide
+    ? 'Choose how the next handoff should feel operationally.'
+    : 'Choose the handoff behavior.';
+  const presetStudioCueBehaviorSectionCopy = presetStudioIsWide
+    ? 'Use this when your timer cues should automatically step forward in presenter mode after the current speaker slot wraps.'
+    : 'Turn this on if the next timer cue should advance automatically.';
+  const syncIssueDisplay = useMemo(() => {
+    if (!syncIssue) return null;
+    const issue = String(syncIssue || '').trim();
+    const queuedLabel = syncPendingCount > 0
+      ? `${syncPendingCount} pending update${syncPendingCount === 1 ? '' : 's'} will retry automatically.`
+      : 'Lumina will keep retrying in the background.';
+
+    if (issue.startsWith('Cloud sharing needs permission.')) {
+      return {
+        title: 'Cloud sync needs your attention',
+        summary: 'This machine is still driving the live service normally through the local Lumina server.',
+        steps: [
+          'Keep presenting. Projector, stage, and local output stay active here.',
+          'Your saved Remote Intelligence emails and Active Session ID remain available on this machine.',
+          'If teammates need cloud updates, sign in with the approved workspace account after service.',
+        ],
+        detail: 'Cloud sharing is blocked for the current account, but local live control and saved workspace identity are still healthy.',
+      };
+    }
+
+    if (issue.startsWith('Cloud sync will retry in')) {
+      return {
+        title: 'Cloud sync is temporarily paused',
+        summary: 'Lumina is still saving your live work locally on this machine.',
+        steps: [
+          queuedLabel,
+          'If this keeps coming back, check your internet connection or workspace permissions.',
+        ],
+        detail: issue,
+      };
+    }
+
+    if (issue.startsWith('Settings sync failed')) {
+      return {
+        title: 'Workspace settings could not reach the cloud',
+        summary: 'Your local settings are still safe on this machine, including Remote Intelligence emails and the active session value.',
+        steps: [
+          'Keep working normally in Lumina.',
+          'When the connection settles, re-open the workspace and sync again.',
+        ],
+        detail: issue,
+      };
+    }
+
+    return {
+      title: 'Sync needs attention',
+      summary: 'Lumina is protecting your local work, but cloud updates need another try.',
+      steps: [
+        queuedLabel,
+        'Finish the service locally, then check connection or account access before retrying.',
+      ],
+      detail: issue,
+    };
+  }, [syncIssue, syncPendingCount]);
+  const renderSpeakerPresetThresholdBar = (
+    amberPercent: number,
+    redPercent: number,
+    options?: { compact?: boolean }
+  ) => {
+    const { amberPercent: safeAmber, redPercent: safeRed } = normalizeSpeakerTimerThresholds(amberPercent, redPercent);
+    const safePercent = Math.max(0, 100 - safeAmber);
+    const amberBandPercent = Math.max(0, safeAmber - safeRed);
+    const redBandPercent = safeRed;
+    const compact = !!options?.compact;
+    return (
+      <div className={compact ? 'space-y-2' : 'space-y-3'}>
+        <div className={`overflow-hidden rounded-full border border-white/10 bg-zinc-950/80 ${compact ? 'h-2.5' : 'h-3.5'}`}>
+          <div className="flex h-full w-full">
+            <div
+              className="bg-[linear-gradient(90deg,rgba(16,185,129,0.95),rgba(34,211,238,0.9))]"
+              style={{ width: `${safePercent}%` }}
+            />
+            <div
+              className="bg-[linear-gradient(90deg,rgba(252,211,77,0.96),rgba(245,158,11,0.95))]"
+              style={{ width: `${amberBandPercent}%` }}
+            />
+            <div
+              className="bg-[linear-gradient(90deg,rgba(251,113,133,0.96),rgba(225,29,72,0.98))]"
+              style={{ width: `${redBandPercent}%` }}
+            />
+          </div>
+        </div>
+        {!compact && (
+          <div className="grid grid-cols-3 gap-2 text-[10px] uppercase tracking-[0.14em] text-zinc-500">
+            <div>Runway {safePercent}%</div>
+            <div className="text-center text-amber-200/80">Amber {safeAmber}%</div>
+            <div className="text-right text-rose-200/80">Red {safeRed}%</div>
+          </div>
+        )}
+      </div>
+    );
+  };
   const getShareBaseOrigin = () => {
     if (typeof window === 'undefined') return PUBLIC_WEB_APP_ORIGIN;
     const origin = window.location.origin || '';
@@ -2048,16 +2580,33 @@ function App() {
   const stageDisplayUrl = typeof window !== 'undefined'
     ? buildSharedRouteUrl('stage')
     : `/#/stage?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}`;
-  const copyShareUrl = useCallback(async (url: string, successMessage?: string) => {
-    const copied = await copyTextToClipboard(url);
-    if (!copied) {
-      alert('Copy failed. Try again or use Ctrl+C manually.');
-      return;
+  const goLiveNextItem = () => {
+    const idx = schedule.findIndex(i => i.id === activeItemId);
+    const nextIdx = idx + 1;
+    if (nextIdx < schedule.length) {
+      setActiveItemId(schedule[nextIdx].id);
+      setActiveSlideIndex(0);
     }
-    if (successMessage) {
-      alert(successMessage);
+  };
+
+  const goLivePrevItem = () => {
+    const idx = schedule.findIndex(i => i.id === activeItemId);
+    const prevIdx = idx - 1;
+    if (prevIdx >= 0) {
+      setActiveItemId(schedule[prevIdx].id);
+      setActiveSlideIndex(0);
     }
-  }, []);
+  };
+
+  const toggleBlackout = () => setBlackout(!blackout);
+
+  const triggerSeek = (seconds: number) => {
+    setSeekCommand(Date.now());
+    setSeekAmount(seconds);
+  };
+
+
+
 
   const audienceUrl = useMemo(() => {
     return `${getShareBaseOrigin()}/#/audience?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&api=${encodeURIComponent(getServerApiBaseUrl())}`;
@@ -2638,6 +3187,13 @@ function App() {
   };
 
   const handleArchiveRunSheet = async (startNewAfterArchive = false) => {
+    if (viewMode === 'PRESENTER') {
+      const msg = startNewAfterArchive
+        ? "⚠️ RUNNING LIVE: Archive current run sheet and start a fresh one? This cannot be undone easily."
+        : "⚠️ RUNNING LIVE: Archive current run sheet?";
+      if (!window.confirm(msg)) return;
+    }
+
     const title = runSheetArchiveTitle.trim() || `Run Sheet ${new Date().toLocaleString()}`;
     const result = await archiveRunSheetPayload(title, {
       items: schedule,
@@ -2665,7 +3221,12 @@ function App() {
   const handleArchiveSingleRunSheetItem = async (itemId: string) => {
     const item = schedule.find((entry) => entry.id === itemId);
     if (!item) return;
-    const confirmed = window.confirm(`Move "${item.title}" to Run Sheet Files? It will be removed from the active run sheet.`);
+
+    const confirmMsg = viewMode === 'PRESENTER'
+      ? `⚠️ RUNNING LIVE: Move "${item.title}" to archives? It will be removed from the active run sheet.`
+      : `Move "${item.title}" to Run Sheet Files? It will be removed from the active run sheet.`;
+
+    const confirmed = window.confirm(confirmMsg);
     if (!confirmed) return;
 
     const title = `${item.title} • ${new Date().toLocaleString()}`;
@@ -2744,9 +3305,13 @@ function App() {
       ? 'Reused local archive backup (API unavailable or not signed in).'
       : null);
   };
-
   const handleRenameRunSheet = async (fileId: string) => {
     const existing = runSheetFiles.find((entry) => entry.fileId === fileId);
+
+    if (viewMode === 'PRESENTER') {
+      if (!window.confirm("⚠️ RUNNING LIVE: Rename this archived run sheet? Changes will sync to the cloud for all operators.")) return;
+    }
+
     const nextTitle = window.prompt('Rename run sheet', existing?.title || '');
     const trimmed = String(nextTitle || '').trim();
     if (!trimmed) return;
@@ -2781,9 +3346,12 @@ function App() {
       ? 'Renamed in local archive backup (API unavailable or not signed in).'
       : 'Unable to rename archive file.');
   };
-
   const handleDeleteRunSheet = async (fileId: string) => {
-    if (!window.confirm('Delete this archived run sheet?')) return;
+    const confirmMsg = viewMode === 'PRESENTER'
+      ? "⚠️ RUNNING LIVE: Permanently delete this archived run sheet? This will REMOVE it for all operators immediately."
+      : 'Delete this archived run sheet?';
+
+    if (!window.confirm(confirmMsg)) return;
     try {
       if (user?.uid) {
         const response = await deleteRunSheetFile(workspaceId, fileId, user);
@@ -2806,41 +3374,117 @@ function App() {
   const openCreatePresetModal = () => {
     setEditingPresetId(null);
     setPresetDraft(createSpeakerPresetDraft());
+    setPresetStudioSaveState(null);
     setIsPresetModalOpen(true);
   };
 
   const openEditPresetModal = (preset: SpeakerTimerPreset) => {
+    setSelectedSpeakerPresetId(preset.id);
     setEditingPresetId(preset.id);
     setPresetDraft({
       ...preset,
       speakerName: preset.speakerName || '',
     });
+    setPresetStudioSaveState(null);
     setIsPresetModalOpen(true);
+  };
+
+  const openSpeakerPresetStudio = () => {
+    const selectedPreset = (workspaceSettings.speakerTimerPresets || []).find((entry) => entry.id === selectedSpeakerPresetId);
+    if (selectedPreset) {
+      openEditPresetModal(selectedPreset);
+      return;
+    }
+    openCreatePresetModal();
+  };
+
+  const duplicateSpeakerPresetDraft = (preset: SpeakerTimerPreset) => {
+    const freshDraft = createSpeakerPresetDraft();
+    setEditingPresetId(null);
+    setPresetDraft({
+      ...freshDraft,
+      ...preset,
+      id: freshDraft.id,
+      name: `${preset.name} Copy`,
+      speakerName: preset.speakerName || '',
+    });
+    setPresetStudioSaveState(null);
+    setIsPresetModalOpen(true);
+  };
+
+  const updatePresetDurationSegment = (segment: 'hours' | 'minutes' | 'seconds', value: number) => {
+    setPresetDraft((prev) => {
+      const safeDuration = clamp(Math.round(Number(prev.durationSec) || 300), 10, 7200);
+      let hours = Math.floor(safeDuration / 3600);
+      let minutes = Math.floor((safeDuration % 3600) / 60);
+      let seconds = safeDuration % 60;
+      const safeValue = Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
+      if (segment === 'hours') hours = clamp(safeValue, 0, 2);
+      if (segment === 'minutes') minutes = clamp(safeValue, 0, 59);
+      if (segment === 'seconds') seconds = clamp(safeValue, 0, 59);
+      const nextDurationSec = clamp((hours * 3600) + (minutes * 60) + seconds, 10, 7200);
+      return {
+        ...prev,
+        durationSec: nextDurationSec,
+      };
+    });
+  };
+
+  const updatePresetThresholdDraft = (field: 'amber' | 'red', value: number) => {
+    setPresetDraft((prev) => {
+      const nextThresholds = normalizeSpeakerTimerThresholds(
+        field === 'amber' ? value : prev.amberPercent,
+        field === 'red' ? value : prev.redPercent,
+      );
+      return {
+        ...prev,
+        ...nextThresholds,
+      };
+    });
   };
 
   const savePresetDraft = () => {
     const normalized = sanitizeSpeakerTimerPreset(presetDraft);
     if (!normalized) return;
+    const wasEditing = !!editingPresetId;
+    const savedPreset = wasEditing
+      ? { ...normalized, id: editingPresetId as string }
+      : normalized;
+    const nextSelectedPresetId = savedPreset.id;
     setWorkspaceSettings((prev) => {
       const existing = Array.isArray(prev.speakerTimerPresets) ? prev.speakerTimerPresets : [];
-      if (editingPresetId) {
+      if (wasEditing) {
         return {
           ...prev,
           speakerTimerPresets: existing.map((entry) => (
-            entry.id === editingPresetId ? { ...normalized, id: editingPresetId } : entry
+            entry.id === savedPreset.id ? savedPreset : entry
           )),
         };
       }
       return {
         ...prev,
-        speakerTimerPresets: [...existing, normalized],
+        speakerTimerPresets: [...existing, savedPreset],
       };
     });
-    setIsPresetModalOpen(false);
+    setSelectedSpeakerPresetId(nextSelectedPresetId);
+    setEditingPresetId(savedPreset.id);
+    setPresetDraft({
+      ...savedPreset,
+      speakerName: savedPreset.speakerName || '',
+    });
+    setPresetStudioSaveState({
+      at: Date.now(),
+      mode: wasEditing ? 'updated' : 'saved',
+    });
   };
 
   const deleteSpeakerPreset = (presetId: string) => {
     if (!window.confirm('Delete this speaker preset?')) return;
+    if (editingPresetId === presetId) {
+      setEditingPresetId(null);
+      setPresetDraft(createSpeakerPresetDraft());
+      setPresetStudioSaveState(null);
+    }
     setWorkspaceSettings((prev) => {
       const existing = Array.isArray(prev.speakerTimerPresets) ? prev.speakerTimerPresets : [];
       const next = existing.filter((entry) => entry.id !== presetId);
@@ -2854,6 +3498,7 @@ function App() {
   const applySpeakerPresetToItem = (itemId: string, presetId: string) => {
     const preset = (workspaceSettings.speakerTimerPresets || []).find((entry) => entry.id === presetId);
     if (!preset || !itemId) return;
+    const normalizedThresholds = normalizeSpeakerTimerThresholds(preset.amberPercent, preset.redPercent);
     setSchedule((prev) => prev.map((item) => {
       if (item.id !== itemId) return item;
       return {
@@ -2864,351 +3509,38 @@ function App() {
           durationSec: Math.max(1, Math.round(preset.durationSec)),
           speakerName: preset.speakerName || item.timerCue?.speakerName || '',
           autoStartNext: !!preset.autoStartNextDefault,
-          amberPercent: clamp(preset.amberPercent, 1, 99),
-          redPercent: clamp(preset.redPercent, 1, 99),
+          amberPercent: normalizedThresholds.amberPercent,
+          redPercent: normalizedThresholds.redPercent,
           presetId: preset.id,
         },
       };
     }));
-    if (currentCueItemId === itemId && !timerRunning) {
-      setTimerMode('COUNTDOWN');
-      setTimerDurationMin(Math.max(1, Math.ceil(preset.durationSec / 60)));
-      setTimerSeconds(Math.max(1, Math.round(preset.durationSec)));
-      setCueZeroHold(false);
-    }
   };
-
-  const applySelectedPresetToCurrentCue = () => {
-    const targetItemId = currentCueItemId || selectedItemId;
-    if (!targetItemId || !selectedSpeakerPresetId) return;
-    applySpeakerPresetToItem(targetItemId, selectedSpeakerPresetId);
-  };
-
-  const importLyricsAsItem = () => {
-    setImportModalError(null);
-    const raw = importLyrics.trim();
-    if (!raw) return;
-    const chunks = raw
-      .split(/\n\s*\n+/)
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-    if (!chunks.length) return;
-    const now = Date.now();
-    const slides: Slide[] = chunks.map((content, idx) => ({
-      id: `${now}-${idx}`,
-      label: `Part ${idx + 1}`,
-      content,
-    }));
-    const newItem: ServiceItem = {
-      id: `${now}`,
-      title: importTitle.trim() || 'Imported Lyrics',
-      type: ItemType.SONG,
-      slides,
-      theme: {
-        backgroundUrl: DEFAULT_BACKGROUNDS[0],
-        mediaType: 'image',
-        fontFamily: 'sans-serif',
-        textColor: '#ffffff',
-        shadow: true,
-        fontSize: 'large',
-      },
-    };
-    addItem(newItem);
-    setImportTitle('Imported Lyrics');
-    setImportLyrics('');
-    setIsLyricsImportOpen(false);
-  };
-
-  const resolveImportedDeckTitle = (fallbackTitle: string) => {
-    const customTitle = importTitle.trim();
-    if (customTitle && customTitle.toLowerCase() !== 'imported lyrics') return customTitle;
-    return fallbackTitle || 'Imported Presentation';
-  };
-
-  const base64ToFile = (base64: string, filename: string, mimeType = 'image/png') => {
-    const raw = (base64 || '').trim();
-    const clean = raw.includes(',') ? raw.slice(raw.indexOf(',') + 1) : raw;
-    const binary = atob(clean);
-    const bytes = new Uint8Array(binary.length);
-    for (let idx = 0; idx < binary.length; idx += 1) {
-      bytes[idx] = binary.charCodeAt(idx);
-    }
-    return new File([bytes], filename, { type: mimeType });
-  };
-
-  const buildTextSlidesFromPptx = async (file: File) => {
-    const parsed = await parsePptxFile(file);
-    const now = Date.now();
-    const slides: Slide[] = parsed.slides.map((entry, idx) => ({
-      id: `${now}-pptx-text-${idx + 1}`,
-      label: entry.label || `Slide ${idx + 1}`,
-      content: entry.content,
-      notes: entry.notes,
-    }));
-    return {
-      suggestedTitle: parsed.title,
-      slides,
-    };
-  };
-
-  const buildVisualSlidesFromPptx = async (
-    file: File,
-    onProgress?: (message: string) => void
-  ) => {
-    if (!user?.uid) {
-      throw new Error('Please sign in before importing PowerPoint visuals.');
-    }
-    const converted = await importVisualPptxDeck(workspaceId, user, file);
-    if (!converted?.ok || !Array.isArray(converted.slides) || !converted.slides.length) {
-      throw new Error(converted?.message || 'Visual PowerPoint import failed.');
-    }
-
-    const now = Date.now();
-    const slides: Slide[] = [];
-    for (let idx = 0; idx < converted.slides.length; idx += 1) {
-      const entry = converted.slides[idx];
-      onProgress?.(`Saving slide ${idx + 1} of ${converted.slides.length}...`);
-      const fileName = entry?.name || `slide-${idx + 1}.png`;
-      const remoteUrl = String(entry?.imageUrl || '').trim();
-      let backgroundUrl = remoteUrl;
-      if (!backgroundUrl) {
-        if (!entry?.imageBase64) {
-          throw new Error(`Visual import slide ${idx + 1} is missing image data.`);
-        }
-        const imageFile = base64ToFile(entry.imageBase64, fileName, 'image/png');
-        const uploaded = user?.uid ? await uploadWorkspaceMedia(workspaceId, user, imageFile) : null;
-        backgroundUrl = String(uploaded?.url || '').trim() || await saveMedia(imageFile);
-      }
-      slides.push({
-        id: `${now}-pptx-visual-${idx + 1}`,
-        label: `Slide ${idx + 1}`,
-        content: '',
-        backgroundUrl,
-        mediaType: 'image',
-        notes: '',
-      });
-    }
-    return {
-      suggestedTitle: file.name.replace(/\.[^.]+$/, ''),
-      slides,
-    };
-  };
-
-  const isVisualRendererUnavailable = (message: string) => {
-    const normalized = (message || '').toLowerCase();
-    return normalized.includes('soffice')
-      || normalized.includes('libreoffice')
-      || normalized.includes('renderer is unavailable')
-      || normalized.includes('visual powerpoint import endpoint is not available');
-  };
-
-  const importPowerPointTextAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    setImportModalError(null);
-    setIsImportingDeck(true);
-    setImportDeckStatus('Parsing PowerPoint text...');
-    try {
-      const parsed = await buildTextSlidesFromPptx(file);
-      const now = Date.now();
-      const slides = parsed.slides;
-
-      const importedItem: ServiceItem = {
-        id: `${now}`,
-        title: resolveImportedDeckTitle(parsed.suggestedTitle),
-        type: ItemType.ANNOUNCEMENT,
-        slides,
-        theme: {
-          backgroundUrl: DEFAULT_BACKGROUNDS[0],
-          mediaType: 'image',
-          fontFamily: 'sans-serif',
-          textColor: '#ffffff',
-          shadow: true,
-          fontSize: 'large',
-        },
-      };
-
-      addItem(importedItem);
-      logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: slides.length, mode: 'text' });
-      setImportTitle('Imported Lyrics');
-      setImportLyrics('');
-      setIsLyricsImportOpen(false);
-    } catch (error: any) {
-      const message = error?.message || 'PowerPoint import failed.';
-      setImportModalError(message);
-    } finally {
-      setIsImportingDeck(false);
-      setImportDeckStatus('');
-    }
-  };
-
-  const importPowerPointVisualAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    setImportModalError(null);
-    setIsImportingDeck(true);
-    setImportDeckStatus('Rendering slide visuals...');
-    try {
-      let converted = await buildVisualSlidesFromPptx(file, (status) => setImportDeckStatus(status));
-      let fallbackToText = false;
-      if (!converted.slides.length) {
-        throw new Error('Visual PowerPoint import returned no slides.');
-      }
-      if (isElectronShell && converted.slides.every((entry) => !entry.backgroundUrl)) {
-        setImportDeckStatus('Visual render unavailable. Falling back to PPTX text import...');
-        converted = await buildTextSlidesFromPptx(file);
-        fallbackToText = true;
-      }
-      const now = Date.now();
-      const slides = converted.slides;
-
-      const importedItem: ServiceItem = {
-        id: `${now}`,
-        title: resolveImportedDeckTitle(converted.suggestedTitle),
-        type: fallbackToText ? ItemType.ANNOUNCEMENT : ItemType.MEDIA,
-        slides,
-        theme: {
-          backgroundUrl: fallbackToText ? DEFAULT_BACKGROUNDS[0] : '',
-          mediaType: 'image',
-          fontFamily: 'sans-serif',
-          textColor: '#ffffff',
-          shadow: fallbackToText ? true : false,
-          fontSize: fallbackToText ? 'large' : 'medium',
-        },
-      };
-
-      addItem(importedItem);
-      logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: slides.length, mode: fallbackToText ? 'visual_fallback_text' : 'visual' });
-      setImportTitle('Imported Lyrics');
-      setImportLyrics('');
-      setIsLyricsImportOpen(false);
-    } catch (error: any) {
-      const message = error?.message || 'Visual PowerPoint import failed.';
-      if (isElectronShell && isVisualRendererUnavailable(message)) {
-        try {
-          setImportDeckStatus('Visual renderer unavailable. Falling back to PPTX text import...');
-          const parsed = await buildTextSlidesFromPptx(file);
-          const now = Date.now();
-          const importedItem: ServiceItem = {
-            id: `${now}`,
-            title: resolveImportedDeckTitle(parsed.suggestedTitle),
-            type: ItemType.ANNOUNCEMENT,
-            slides: parsed.slides,
-            theme: {
-              backgroundUrl: DEFAULT_BACKGROUNDS[0],
-              mediaType: 'image',
-              fontFamily: 'sans-serif',
-              textColor: '#ffffff',
-              shadow: true,
-              fontSize: 'large',
-            },
-          };
-          addItem(importedItem);
-          logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: parsed.slides.length, mode: 'visual_server_unavailable_fallback_text' });
-          setImportTitle('Imported Lyrics');
-          setImportLyrics('');
-          setIsLyricsImportOpen(false);
-          alert('Visual PPTX renderer is unavailable on the server. Lumina imported this deck as text slides so you can continue.');
-        } catch (fallbackError: any) {
-          setImportModalError(fallbackError?.message || message);
-        }
-      } else {
-        setImportModalError(message);
-      }
-    } finally {
-      setIsImportingDeck(false);
-      setImportDeckStatus('');
-    }
-  };
-
-  const importPowerPointVisualSlidesForSlideEditor = async (file: File): Promise<Slide[]> => {
-    try {
-      const visual = await buildVisualSlidesFromPptx(file);
-      logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: visual.slides.length, mode: 'visual_slide_editor' });
-      return visual.slides;
-    } catch (error: any) {
-      const message = error?.message || 'Visual PowerPoint import failed.';
-      if (isElectronShell && isVisualRendererUnavailable(message)) {
-        const parsed = await buildTextSlidesFromPptx(file);
-        logActivity(user?.uid, 'IMPORT_PPTX', {
-          filename: file.name,
-          slideCount: parsed.slides.length,
-          mode: 'visual_slide_editor_server_unavailable_fallback_text',
-        });
-        alert('Visual PPTX renderer is unavailable on the server. Lumina imported this deck as text slides.');
-        return parsed.slides;
-      }
-      throw error;
-    }
-  };
-
-  const importPowerPointTextSlidesForSlideEditor = async (file: File): Promise<Slide[]> => {
-    const text = await buildTextSlidesFromPptx(file);
-    logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: text.slides.length, mode: 'text_slide_editor' });
-    return text.slides;
-  };
-
 
   const addItem = (item: ServiceItem) => {
     pushHistory();
-    setSchedule(prev => [...prev, item]);
-    setSelectedItemId(item.id);
-    logActivity(user?.uid, 'ADD_ITEM', { type: item.type, title: item.title });
+    setSchedule((prev) => [...prev, item]);
   };
 
-  const handleAIItemGenerated = (item: ServiceItem) => {
-    const sentiment = analyzeSentimentContext(item.title + ' ' + (item.slides[0]?.content || ''));
-    logActivity(user?.uid, 'AI_GENERATION', { sentiment, slideCount: item.slides.length, type: item.type });
-    addItem(item);
+  const updateItem = (item: ServiceItem) => {
+    pushHistory();
+    setSchedule((prev) => prev.map((i) => (i.id === item.id ? item : i)));
   };
 
-  const updateItem = (updatedItem: ServiceItem) => {
+  const removeItem = (itemId: string) => {
+    if (viewMode === 'PRESENTER') {
+      if (!window.confirm("⚠️ RUNNING LIVE: Remove this item from the schedule?")) return;
+    }
     pushHistory();
-    setSchedule(prev => prev.map(i => i.id === updatedItem.id ? updatedItem : i));
-  };
-
-  const reorderScheduleItems = useCallback((sourceId: string, targetId: string, placeAfter = false) => {
-    if (!sourceId || !targetId || sourceId === targetId) return;
-    const sourceIndex = schedule.findIndex((entry) => entry.id === sourceId);
-    const targetIndex = schedule.findIndex((entry) => entry.id === targetId);
-    if (sourceIndex < 0 || targetIndex < 0) return;
-
-    let nextIndex = targetIndex + (placeAfter ? 1 : 0);
-    if (sourceIndex < nextIndex) nextIndex -= 1;
-    if (sourceIndex === nextIndex) return;
-
-    pushHistory();
-    setSchedule((prev) => {
-      const next = [...prev];
-      const currentSourceIndex = next.findIndex((entry) => entry.id === sourceId);
-      if (currentSourceIndex < 0) return prev;
-      const [moved] = next.splice(currentSourceIndex, 1);
-      const boundedIndex = Math.max(0, Math.min(next.length, nextIndex));
-      next.splice(boundedIndex, 0, moved);
-      return next;
-    });
-  }, [schedule]);
-
-  const moveScheduleItemByOffset = useCallback((itemId: string, offset: number) => {
-    const currentIndex = schedule.findIndex((entry) => entry.id === itemId);
-    if (currentIndex < 0) return;
-    const nextIndex = clamp(currentIndex + offset, 0, schedule.length - 1);
-    if (currentIndex === nextIndex) return;
-    const target = schedule[nextIndex];
-    if (!target) return;
-    reorderScheduleItems(itemId, target.id, offset > 0);
-  }, [reorderScheduleItems, schedule]);
-
-  const removeItem = (id: string) => {
-    pushHistory();
-    logActivity(user?.uid, 'DELETE_ITEM', { itemId: id });
-    const newSchedule = schedule.filter(i => i.id !== id);
-    setSchedule(newSchedule);
-    if (selectedItemId === id) setSelectedItemId(newSchedule[0]?.id || '');
+    const nextSchedule = schedule.filter((i) => i.id !== itemId);
+    setSchedule(nextSchedule);
+    if (selectedItemId === itemId) {
+      setSelectedItemId(nextSchedule[0]?.id || '');
+    }
+    if (activeItemId === itemId) {
+      setActiveItemId(null);
+      setActiveSlideIndex(-1);
+    }
   };
 
   const addEmptyItem = () => {
@@ -3220,6 +3552,7 @@ function App() {
       theme: { backgroundUrl: DEFAULT_BACKGROUNDS[2], fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'medium' }
     };
     addItem(newItem);
+    setSelectedItemId(newItem.id);
   };
 
   const goLive = (item: ServiceItem, slideIndex: number = 0) => {
@@ -3245,7 +3578,6 @@ function App() {
     pushHistory();
     setSchedule(result.schedule);
     setSelectedItemId(result.selectedItemId);
-    setActiveSidebarTab('SCHEDULE');
     logActivity(user?.uid, 'ADD_HYMN', {
       hymnId: result.insertedItem.metadata?.hymn?.hymnId,
       title: result.insertedItem.title,
@@ -3350,11 +3682,6 @@ function App() {
     activateCueByItemId(target.itemId, options);
   }, [enabledTimerCues, currentCueItemId, activateCueByItemId]);
 
-  const triggerSeek = (seconds: number) => {
-    setSeekAmount(seconds);
-    setSeekCommand(Date.now());
-  };
-
   const stopProgramVideo = useCallback(() => {
     setIsPlaying(false);
     // Large negative seek safely clamps to zero in the renderer.
@@ -3430,6 +3757,234 @@ function App() {
     if (!targetSlide) return;
     reorderItemSlides(itemId, slideId, targetSlide.id, offset > 0);
   }, [schedule, reorderItemSlides]);
+
+  const reorderScheduleItems = useCallback((sourceId: string, targetId: string, placeAfter = false) => {
+    if (!sourceId || !targetId || sourceId === targetId) return;
+    const sourceIndex = schedule.findIndex((entry) => entry.id === sourceId);
+    const targetIndex = schedule.findIndex((entry) => entry.id === targetId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    let nextIndex = targetIndex + (placeAfter ? 1 : 0);
+    if (sourceIndex < nextIndex) nextIndex -= 1;
+    if (sourceIndex === nextIndex) return;
+    pushHistory();
+    setSchedule((prev) => {
+      const next = [...prev];
+      const currentSourceIndex = next.findIndex((entry) => entry.id === sourceId);
+      if (currentSourceIndex < 0) return prev;
+      const [moved] = next.splice(currentSourceIndex, 1);
+      next.splice(Math.max(0, Math.min(next.length, nextIndex)), 0, moved);
+      return next;
+    });
+  }, [schedule, pushHistory]);
+
+  const moveScheduleItemByOffset = useCallback((itemId: string, offset: number) => {
+    const currentIndex = schedule.findIndex((entry) => entry.id === itemId);
+    if (currentIndex < 0) return;
+    const nextIndex = clamp(currentIndex + offset, 0, schedule.length - 1);
+    if (currentIndex === nextIndex) return;
+    const target = schedule[nextIndex];
+    if (!target) return;
+    reorderScheduleItems(itemId, target.id, offset > 0);
+  }, [reorderScheduleItems, schedule]);
+
+  const handleAIItemGenerated = (item: ServiceItem) => {
+    const sentiment = analyzeSentimentContext(item.title + ' ' + (item.slides[0]?.content || ''));
+    logActivity(user?.uid, 'AI_GENERATION', { sentiment, slideCount: item.slides.length, type: item.type });
+    addItem(item);
+  };
+
+  const resolveImportedDeckTitle = (fallbackTitle: string) => {
+    const customTitle = importTitle.trim();
+    if (customTitle && customTitle.toLowerCase() !== 'imported lyrics') return customTitle;
+    return fallbackTitle || 'Imported Presentation';
+  };
+
+  const base64ToFile = (base64: string, filename: string, mimeType = 'image/png') => {
+    const raw = (base64 || '').trim();
+    const clean = raw.includes(',') ? raw.slice(raw.indexOf(',') + 1) : raw;
+    const binary = atob(clean);
+    const bytes = new Uint8Array(binary.length);
+    for (let idx = 0; idx < binary.length; idx += 1) {
+      bytes[idx] = binary.charCodeAt(idx);
+    }
+    return new File([bytes], filename, { type: mimeType });
+  };
+
+  const buildTextSlidesFromPptx = async (file: File) => {
+    const parsed = await parsePptxFile(file);
+    const now = Date.now();
+    const slides: Slide[] = parsed.slides.map((entry, idx) => ({
+      id: `${now}-pptx-text-${idx + 1}`,
+      label: entry.label || `Slide ${idx + 1}`,
+      content: entry.content,
+      notes: entry.notes,
+    }));
+    return { suggestedTitle: parsed.title, slides };
+  };
+
+  const buildVisualSlidesFromPptx = async (file: File, onProgress?: (message: string) => void) => {
+    if (!user?.uid) throw new Error('Please sign in before importing PowerPoint visuals.');
+    const converted = await importVisualPptxDeck(workspaceId, user, file);
+    if (!converted?.ok || !Array.isArray(converted.slides) || !converted.slides.length) {
+      throw new Error(converted?.message || 'Visual PowerPoint import failed.');
+    }
+    const now = Date.now();
+    const slides: Slide[] = [];
+    for (let idx = 0; idx < converted.slides.length; idx += 1) {
+      const entry = converted.slides[idx];
+      onProgress?.(`Saving slide ${idx + 1} of ${converted.slides.length}...`);
+      const fileName = entry?.name || `slide-${idx + 1}.png`;
+      const remoteUrl = String(entry?.imageUrl || '').trim();
+      let backgroundUrl = remoteUrl;
+      if (!backgroundUrl) {
+        if (!entry?.imageBase64) throw new Error(`Visual import slide ${idx + 1} is missing image data.`);
+        const imageFile = base64ToFile(entry.imageBase64, fileName, 'image/png');
+        const uploaded = user?.uid ? await uploadWorkspaceMedia(workspaceId, user, imageFile) : null;
+        backgroundUrl = String(uploaded?.url || '').trim() || await saveMedia(imageFile);
+      }
+      slides.push({ id: `${now}-pptx-visual-${idx + 1}`, label: `Slide ${idx + 1}`, content: '', backgroundUrl, mediaType: 'image', notes: '' });
+    }
+    return { suggestedTitle: file.name.replace(/\.[^.]+$/, ''), slides };
+  };
+
+  const isVisualRendererUnavailable = (message: string) => {
+    const normalized = (message || '').toLowerCase();
+    return normalized.includes('soffice') || normalized.includes('libreoffice')
+      || normalized.includes('renderer is unavailable')
+      || normalized.includes('visual powerpoint import endpoint is not available');
+  };
+
+  const importLyricsAsItem = () => {
+    setImportModalError(null);
+    const raw = importLyrics.trim();
+    if (!raw) return;
+    const chunks = raw.split(/\n\s*\n+/).map((entry) => entry.trim()).filter(Boolean);
+    if (!chunks.length) return;
+    const now = Date.now();
+    const slides: Slide[] = chunks.map((content, idx) => ({ id: `${now}-${idx}`, label: `Part ${idx + 1}`, content }));
+    const newItem: ServiceItem = {
+      id: `${now}`,
+      title: importTitle.trim() || 'Imported Lyrics',
+      type: ItemType.SONG,
+      slides,
+      theme: { backgroundUrl: DEFAULT_BACKGROUNDS[0], mediaType: 'image', fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'large' },
+    };
+    addItem(newItem);
+    setImportTitle('Imported Lyrics');
+    setImportLyrics('');
+    setIsLyricsImportOpen(false);
+  };
+
+  const importPowerPointTextAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setImportModalError(null);
+    setIsImportingDeck(true);
+    setImportDeckStatus('Parsing PowerPoint text...');
+    try {
+      const parsed = await buildTextSlidesFromPptx(file);
+      const importedItem: ServiceItem = {
+        id: `${Date.now()}`,
+        title: resolveImportedDeckTitle(parsed.suggestedTitle),
+        type: ItemType.ANNOUNCEMENT,
+        slides: parsed.slides,
+        theme: { backgroundUrl: DEFAULT_BACKGROUNDS[0], mediaType: 'image', fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'large' },
+      };
+      addItem(importedItem);
+      logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: parsed.slides.length, mode: 'text' });
+      setImportTitle('Imported Lyrics');
+      setImportLyrics('');
+      setIsLyricsImportOpen(false);
+    } catch (error: any) {
+      setImportModalError(error?.message || 'PowerPoint import failed.');
+    } finally {
+      setIsImportingDeck(false);
+      setImportDeckStatus('');
+    }
+  };
+
+  const importPowerPointVisualAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setImportModalError(null);
+    setIsImportingDeck(true);
+    setImportDeckStatus('Rendering slide visuals...');
+    try {
+      let converted = await buildVisualSlidesFromPptx(file, (status) => setImportDeckStatus(status));
+      let fallbackToText = false;
+      if (!converted.slides.length) throw new Error('Visual PowerPoint import returned no slides.');
+      if (isElectronShell && converted.slides.every((entry) => !entry.backgroundUrl)) {
+        setImportDeckStatus('Visual render unavailable. Falling back to PPTX text import...');
+        converted = await buildTextSlidesFromPptx(file);
+        fallbackToText = true;
+      }
+      const importedItem: ServiceItem = {
+        id: `${Date.now()}`,
+        title: resolveImportedDeckTitle(converted.suggestedTitle),
+        type: fallbackToText ? ItemType.ANNOUNCEMENT : ItemType.MEDIA,
+        slides: converted.slides,
+        theme: { backgroundUrl: fallbackToText ? DEFAULT_BACKGROUNDS[0] : '', mediaType: 'image', fontFamily: 'sans-serif', textColor: '#ffffff', shadow: fallbackToText, fontSize: fallbackToText ? 'large' : 'medium' },
+      };
+      addItem(importedItem);
+      logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: converted.slides.length, mode: fallbackToText ? 'visual_fallback_text' : 'visual' });
+      setImportTitle('Imported Lyrics');
+      setImportLyrics('');
+      setIsLyricsImportOpen(false);
+    } catch (error: any) {
+      const message = error?.message || 'Visual PowerPoint import failed.';
+      if (isElectronShell && isVisualRendererUnavailable(message)) {
+        try {
+          setImportDeckStatus('Visual renderer unavailable. Falling back to PPTX text import...');
+          const parsed = await buildTextSlidesFromPptx(file);
+          const importedItem: ServiceItem = {
+            id: `${Date.now()}`,
+            title: resolveImportedDeckTitle(parsed.suggestedTitle),
+            type: ItemType.ANNOUNCEMENT,
+            slides: parsed.slides,
+            theme: { backgroundUrl: DEFAULT_BACKGROUNDS[0], mediaType: 'image', fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'large' },
+          };
+          addItem(importedItem);
+          logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: parsed.slides.length, mode: 'visual_server_unavailable_fallback_text' });
+          setImportTitle('Imported Lyrics');
+          setImportLyrics('');
+          setIsLyricsImportOpen(false);
+          alert('Visual PPTX renderer is unavailable on the server. Lumina imported this deck as text slides so you can continue.');
+        } catch (fallbackError: any) {
+          setImportModalError(fallbackError?.message || message);
+        }
+      } else {
+        setImportModalError(message);
+      }
+    } finally {
+      setIsImportingDeck(false);
+      setImportDeckStatus('');
+    }
+  };
+
+  const importPowerPointVisualSlidesForSlideEditor = async (file: File): Promise<Slide[]> => {
+    try {
+      const visual = await buildVisualSlidesFromPptx(file);
+      logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: visual.slides.length, mode: 'visual_slide_editor' });
+      return visual.slides;
+    } catch (error: any) {
+      const message = error?.message || 'Visual PowerPoint import failed.';
+      if (isElectronShell && isVisualRendererUnavailable(message)) {
+        const parsed = await buildTextSlidesFromPptx(file);
+        logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: parsed.slides.length, mode: 'visual_slide_editor_server_unavailable_fallback_text' });
+        alert('Visual PPTX renderer is unavailable on the server. Lumina imported this deck as text slides.');
+        return parsed.slides;
+      }
+      throw error;
+    }
+  };
+
+  const importPowerPointTextSlidesForSlideEditor = async (file: File): Promise<Slide[]> => {
+    const text = await buildTextSlidesFromPptx(file);
+    logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: text.slides.length, mode: 'text_slide_editor' });
+    return text.slides;
+  };
 
   const startSlideLabelRename = useCallback((itemId: string, slideId: string, currentLabel: string) => {
     setInlineSlideRename({
@@ -3562,6 +4117,14 @@ function App() {
                 : prev
             ));
           }
+          if (preferred.stageTimerFlash && typeof preferred.stageTimerFlash === 'object') {
+            const cloudFlash = sanitizeStageTimerFlashState(preferred.stageTimerFlash);
+            setStageTimerFlash((prev) => (
+              cloudFlash.updatedAt >= (prev.updatedAt || 0)
+                ? cloudFlash
+                : prev
+            ));
+          }
 
           const cloudSettings = sanitizeWorkspaceSettings(preferred.workspaceSettings);
           const cloudSettingsUpdatedAt = typeof preferred.workspaceSettingsUpdatedAt === 'number'
@@ -3570,7 +4133,7 @@ function App() {
           const localSettingsUpdatedAt = workspaceSettingsUpdatedAtRef.current;
           if (Object.keys(cloudSettings).length > 0 && cloudSettingsUpdatedAt && cloudSettingsUpdatedAt >= localSettingsUpdatedAt) {
             workspaceSettingsUpdatedAtRef.current = cloudSettingsUpdatedAt;
-            setWorkspaceSettings((prev) => ({ ...prev, ...cloudSettings }));
+            setWorkspaceSettings((prev) => mergeIncomingWorkspaceSettings(prev, cloudSettings, cloudSettingsUpdatedAt));
           }
         },
         (error) => {
@@ -3680,6 +4243,7 @@ function App() {
       timerCueSpeaker: currentCueSpeaker,
       timerCueAmberPercent: currentCueAmberPercent,
       timerCueRedPercent: currentCueRedPercent,
+      stageTimerFlash,
       currentCueItemId,
       audienceDisplay,
       audienceQrProjection,
@@ -3691,7 +4255,7 @@ function App() {
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
-  }, [activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerSeconds, effectiveTimerDurationSec, currentCueSpeaker, currentCueAmberPercent, currentCueRedPercent, currentCueItemId, audienceDisplay, audienceQrProjection, stageMessageCenter, workspaceSettings, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
+  }, [activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerSeconds, effectiveTimerDurationSec, currentCueSpeaker, currentCueAmberPercent, currentCueRedPercent, stageTimerFlash, currentCueItemId, audienceDisplay, audienceQrProjection, stageMessageCenter, workspaceSettings, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
 
   useEffect(() => {
     if (user?.uid && cloudBootstrapComplete && workspaceSettings.machineMode) {
@@ -3914,6 +4478,47 @@ function App() {
     } catch {}
   }, [viewMode, sidebarPinned, activeSidebarTab, viewportWidth]);
 
+  useEffect(() => {
+    if (!presenterSidebarCompact) {
+      setIsSidebarHovering(false);
+      return;
+    }
+    setIsSidebarHovering(false);
+    if (sidebarPinned) {
+      setPresenterSidebarDrawerOpen(true);
+    }
+  }, [presenterSidebarCompact, sidebarPinned]);
+
+  useEffect(() => {
+    if (!presenterSidebarDrawerVisible || sidebarPinned) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setPresenterSidebarDrawerOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [presenterSidebarDrawerVisible, sidebarPinned]);
+
+  const handleSidebarPinToggle = () => {
+    if (presenterSidebarCompact) {
+      setSidebarPinned((prev) => {
+        const next = !prev;
+        setPresenterSidebarDrawerOpen(next);
+        return next;
+      });
+      return;
+    }
+    setSidebarPinned((prev) => !prev);
+  };
+
+  const handleSidebarTabSelect = (tab: 'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES') => {
+    setActiveSidebarTab(tab);
+    if (presenterSidebarCompact) {
+      setPresenterSidebarDrawerOpen(true);
+    }
+  };
+
   // ✅ Launch Output handler (opens window synchronously from user gesture — popup-safe)
   const handleToggleOutput = () => {
     if (!activeItem && selectedItem && selectedItem.slides.length > 0) {
@@ -4026,7 +4631,7 @@ function App() {
             isMuted={outputMuted}
             isProjector={true}
             lowerThirds={routingMode !== 'PROJECTOR'}
-            showSlideLabel={false}
+            showSlideLabel={true}
             audienceOverlay={audienceDisplay}
             projectedAudienceQr={audienceQrProjection}
           />
@@ -4052,6 +4657,8 @@ function App() {
         timerDurationSec={effectiveTimerDurationSec}
         timerAmberPercent={currentCueAmberPercent}
         timerRedPercent={currentCueRedPercent}
+        timerFlashActive={stageTimerFlash.active}
+        timerFlashColor={stageTimerFlash.color}
         timerLayout={workspaceSettings.stageTimerLayout}
         onTimerLayoutChange={(layout) => {
           setWorkspaceSettings((prev) => ({ ...prev, stageTimerLayout: layout }));
@@ -4093,7 +4700,7 @@ function App() {
     <div className="flex-1 overflow-y-auto bg-zinc-950" data-testid="runsheet-list">
       {teamPlaylists.length > 0 && (<div className="px-3 py-2 text-[10px] text-emerald-400 border-b border-zinc-900">Cloud Playlists Synced: {teamPlaylists.length}</div>)}
       {schedule.map((item, idx) => (
-        <div key={item.id} className="flex flex-col border-b border-zinc-900">
+        <React.Fragment key={item.id}>
           <div
             draggable={viewMode === 'BUILDER'}
             onDragStart={(e) => {
@@ -4351,18 +4958,84 @@ function App() {
               ))}
             </div>
           )}
-        </div>
+        </React.Fragment>
       ))}
     </div>
   );
 
-  // ROUTING: STUDIO (MAIN APP)
+  const renderRundownList = renderScheduleList;
+
+  const applySelectedPresetToCurrentCue = () => {
+    if (!selectedSpeakerPresetId) return;
+    const preset = (workspaceSettings.speakerTimerPresets || []).find(p => p.id === selectedSpeakerPresetId);
+    if (!preset) return;
+    const targetId = currentCueItemId || selectedItemId;
+    if (!targetId) return;
+    applySpeakerPresetToItem(targetId, preset.id);
+  };
+
+  const itemIsLive = (itemId: string, slideIndex?: number) => {
+    if (activeItemId !== itemId) return false;
+    if (slideIndex !== undefined && activeSlideIndex !== slideIndex) return false;
+    return true;
+  };
+
+  const copyShareUrl = async (url: string, message: string = 'URL copied!') => {
+    const ok = await copyTextToClipboard(url);
+    if (ok) {
+       // Best effort notification
+       console.log(message);
+    }
+  };
+
   return (
     <div className={`theme-${workspaceSettings.theme} flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] bg-zinc-950 text-zinc-200 font-sans selection:bg-blue-900 selection:text-white relative overflow-x-hidden`}>
       <audio ref={antiSleepAudioRef} src={SILENT_AUDIO_B64} loop muted />
       {saveError && <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-red-900/90 border border-red-500 text-white px-4 py-2 rounded-sm shadow-xl z-50 flex items-center gap-3 text-xs font-bold animate-pulse"><span>⚠ STORAGE FULL: Changes are NOT saving.</span><button onClick={() => setSaveError(false)} className="hover:text-zinc-300">✕</button></div>}
-      {syncIssue && <div className="absolute top-24 right-4 z-50 max-w-md bg-amber-950/90 border border-amber-800 text-amber-200 px-3 py-2 rounded-sm text-[11px]"><span className="font-bold">SYNC WARNING:</span> {syncIssue}</div>}
-      {popupBlocked && <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4"><div className="bg-zinc-900 border border-red-500 p-6 max-w-md rounded-lg shadow-2xl text-center"><div className="text-red-500 mb-2"><MonitorIcon className="w-12 h-12 mx-auto" /></div><h2 className="text-xl font-bold text-white mb-2">Projection Blocked</h2><p className="text-zinc-400 text-sm mb-4">The browser blocked the projector window. Check address bar pop-up settings.</p><button onClick={() => { setPopupBlocked(false); setIsOutputLive(false); }} className="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded font-bold transition-colors">I Understand</button></div></div>}
+      
+      {syncIssueDisplay && (
+        <div className="fixed left-1/2 top-[4.35rem] z-50 w-[min(calc(100vw-1rem),28rem)] -translate-x-1/2 sm:left-auto sm:right-4 sm:top-20 sm:w-[min(calc(100vw-2rem),28rem)] sm:translate-x-0">
+          <div className="rounded-2xl border border-amber-600/45 bg-[linear-gradient(180deg,rgba(69,26,3,0.96),rgba(17,10,3,0.98))] p-3.5 text-amber-100 shadow-[0_24px_64px_rgba(0,0,0,0.34)] backdrop-blur-xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-[0.26em] text-amber-200/80">Sync guidance</div>
+                <div className="mt-1 text-sm font-semibold text-amber-50">{syncIssueDisplay.title}</div>
+              </div>
+              <button
+                onClick={() => setSyncIssue(null)}
+                className="rounded-full border border-amber-500/25 bg-amber-500/10 p-1 text-amber-100 transition hover:border-amber-300/40 hover:bg-amber-500/15"
+                aria-label="Dismiss sync guidance"
+              >
+                <XIcon className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <p className="mt-2 text-[12px] leading-5 text-amber-50/90">{syncIssueDisplay.summary}</p>
+            <div className="mt-3 space-y-2">
+              {syncIssueDisplay.steps.map((step) => (
+                <div key={step} className="rounded-xl border border-amber-500/20 bg-black/18 px-3 py-2 text-[11px] leading-5 text-amber-50/85">
+                  {step}
+                </div>
+              ))}
+            </div>
+             {syncIssueDisplay.detail && (
+              <div className="mt-3 text-[10px] leading-4 text-amber-200/65">
+                {syncIssueDisplay.detail}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {popupBlocked && (
+        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center backdrop-blur-sm p-4">
+          <div className="bg-zinc-900 border border-red-500 p-6 max-w-md rounded-lg shadow-2xl text-center">
+            <div className="text-red-500 mb-2"><MonitorIcon className="w-12 h-12 mx-auto" /></div>
+            <h2 className="text-xl font-bold text-white mb-2">Projection Blocked</h2>
+            <p className="text-zinc-400 text-sm mb-4">The browser blocked the projector window. Check address bar pop-up settings.</p>
+            <button onClick={() => { setPopupBlocked(false); setIsOutputLive(false); }} className="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded font-bold transition-colors">I Understand</button>
+          </div>
+        </div>
+      )}
 
       <header className="h-14 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 flex items-center justify-between px-6 shrink-0 z-[100] shadow-xl">
         {/* LEFT: BRAND & MODES */}
@@ -4387,30 +5060,22 @@ function App() {
               onClick={() => setViewMode('BUILDER')}
               className={`px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all ${viewMode === 'BUILDER' ? 'bg-zinc-800 text-white shadow-inner' : 'text-zinc-600 hover:text-zinc-400'}`}
             >
-              BUILD
+              BUILDER
             </button>
             <button
               onClick={() => setViewMode('PRESENTER')}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all ${viewMode === 'PRESENTER' ? 'bg-blue-600 text-white shadow-lg shadow-blue-950/50' : 'text-zinc-600 hover:text-zinc-400'}`}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all ${viewMode === 'PRESENTER' ? 'bg-zinc-800 text-white shadow-inner' : 'text-zinc-600 hover:text-zinc-400'}`}
             >
-              PRESENT
+              PRESENTER
             </button>
           </div>
-
-          <button
-            onClick={rollbackLastChange}
-            disabled={historyCount === 0}
-            className="px-3 py-1.5 rounded-lg text-[10px] font-bold border border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300 disabled:opacity-20 disabled:grayscale transition-all flex items-center gap-2"
-          >
-            <ArrowLeftIcon className="w-3 h-3" /> ROLLBACK
-          </button>
         </div>
 
         {/* MIDDLE: STATUS TELEMETRY */}
         <div className="hidden lg:flex items-center gap-4 bg-zinc-900/20 px-4 py-1.5 rounded-full border border-zinc-800/30">
           <div className="flex flex-col items-center">
             <span className="text-[8px] text-zinc-600 font-black uppercase tracking-widest">Session ID</span>
-            <span className="text-[10px] font-mono text-zinc-400">{liveSessionId}</span>
+            <span className="text-[10px] font-mono text-zinc-400" data-testid="studio-session-id">{liveSessionId}</span>
           </div>
           <div className="h-4 w-px bg-zinc-800"></div>
           <div className="flex items-center gap-2">
@@ -4578,7 +5243,7 @@ function App() {
 
       <div
         ref={studioShellRef}
-        className={`flex-1 flex overflow-hidden min-w-0 overflow-x-hidden ${isElectronShell ? '' : 'mb-16 md:mb-0'}`}
+        className={`relative flex-1 flex overflow-hidden min-w-0 overflow-x-hidden ${isElectronShell ? '' : 'mb-16 md:mb-0'}`}
         data-testid="studio-shell"
         onScroll={(e) => {
           if (e.currentTarget.scrollLeft !== 0) {
@@ -4586,19 +5251,36 @@ function App() {
           }
         }}
       >
-        <div className="flex shrink-0 min-w-0 h-full border-r border-zinc-900">
+        {presenterSidebarDrawerVisible && (
+          <button
+            type="button"
+            aria-label="Close studio sidebar drawer"
+            data-testid="studio-sidebar-drawer-backdrop"
+            className="absolute inset-0 z-10 bg-black/35"
+            onClick={() => {
+              if (!sidebarPinned) {
+                setPresenterSidebarDrawerOpen(false);
+              }
+            }}
+          />
+        )}
+        <div className={`relative flex shrink-0 h-full border-r border-zinc-900 z-20 ${presenterSidebarCompact ? 'w-12 min-w-[48px]' : 'min-w-0'}`}>
           {/* Sidebar with Tabs (Hidden on Mobile unless Builder Mode) */}
           <div
             className={`group flex flex-col h-full bg-zinc-900/50 border-r border-zinc-800 shrink-0 overflow-hidden z-20 ${sidebarRailWidthClass}`}
             style={{ width: sidebarRailWidth }}
             data-testid="studio-sidebar-rail"
-            onMouseEnter={() => setIsSidebarHovering(true)}
-            onMouseLeave={() => setIsSidebarHovering(false)}
+            onMouseEnter={() => {
+              if (!presenterSidebarCompact) setIsSidebarHovering(true);
+            }}
+            onMouseLeave={() => {
+              if (!presenterSidebarCompact) setIsSidebarHovering(false);
+            }}
           >
             <div className="flex items-center justify-between p-1 border-b border-zinc-800/80">
               <span className={`px-2 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 ${sidebarLabelClass}`}>Studio</span>
               <button
-                onClick={() => setSidebarPinned((prev) => !prev)}
+                onClick={handleSidebarPinToggle}
                 className={`h-9 w-9 shrink-0 rounded-sm border transition-colors flex items-center justify-center ${sidebarPinned ? 'border-blue-700 bg-blue-950/40 text-blue-300' : 'border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300'}`}
                 title={sidebarPinned ? 'Unpin navigation' : 'Pin navigation open'}
                 aria-label={sidebarPinned ? 'Unpin navigation' : 'Pin navigation open'}
@@ -4608,12 +5290,12 @@ function App() {
               </button>
             </div>
             <div className="flex flex-col flex-1 p-1 gap-1">
-              <button onClick={() => setActiveSidebarTab('SCHEDULE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'SCHEDULE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="SCHEDULE"><MonitorIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Schedule</span></button>
-              <button onClick={() => setActiveSidebarTab('HYMNS')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'HYMNS' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="HYMN LIBRARY"><MusicIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Hymns</span></button>
-              <button onClick={() => setActiveSidebarTab('FILES')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'FILES' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="RUN SHEET FILES"><CopyIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Files</span></button>
-              <button onClick={() => setActiveSidebarTab('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIO MIXER"><Volume2Icon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audio Mixer</span></button>
-              <button onClick={() => setActiveSidebarTab('BIBLE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'BIBLE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="BIBLE LIBRARY"><BibleIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Bible Hub</span></button>
-              <button onClick={() => setActiveSidebarTab('AUDIENCE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIENCE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIENCE STUDIO"><ChatIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audience</span></button>
+              <button onClick={() => handleSidebarTabSelect('SCHEDULE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'SCHEDULE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="SCHEDULE"><MonitorIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Schedule</span></button>
+              <button onClick={() => handleSidebarTabSelect('HYMNS')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'HYMNS' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="HYMN LIBRARY"><MusicIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Hymns</span></button>
+              <button onClick={() => handleSidebarTabSelect('FILES')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'FILES' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="RUN SHEET FILES"><CopyIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Files</span></button>
+              <button onClick={() => handleSidebarTabSelect('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIO MIXER"><Volume2Icon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audio Mixer</span></button>
+              <button onClick={() => handleSidebarTabSelect('BIBLE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'BIBLE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="BIBLE LIBRARY"><BibleIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Bible Hub</span></button>
+              <button onClick={() => handleSidebarTabSelect('AUDIENCE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIENCE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIENCE STUDIO"><ChatIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audience</span></button>
             </div>
             <div className="p-1 border-t border-zinc-800">
               <button onClick={() => setIsProfileOpen(true)} className="w-full p-2.5 rounded-sm flex items-center gap-3 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors" title="SETTINGS"><Settings className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Settings</span></button>
@@ -4621,7 +5303,24 @@ function App() {
           </div>
 
           {/* SIDEBAR PANEL */}
-          <div data-testid="studio-sidebar-panel" className="flex flex-col bg-zinc-950 shrink-0 min-w-0" style={{ width: sidebarPanelWidth }}>
+          <div
+            data-testid="studio-sidebar-panel"
+            className={`flex flex-col bg-zinc-950 shrink-0 min-w-0 border-r border-zinc-900 transition-[transform,opacity] duration-200 ease-out ${presenterSidebarCompact ? 'absolute top-0 bottom-0 shadow-[0_28px_60px_rgba(0,0,0,0.45)]' : ''}`}
+            aria-hidden={presenterSidebarCompact && !presenterSidebarDrawerVisible ? true : undefined}
+            style={{
+              width: sidebarPanelWidth,
+              ...(presenterSidebarCompact
+                ? {
+                    left: sidebarRailWidth,
+                    zIndex: 30,
+                    transform: presenterSidebarDrawerVisible ? 'translateX(0)' : 'translateX(calc(-100% - 0.75rem))',
+                    opacity: presenterSidebarDrawerVisible ? 1 : 0,
+                    visibility: presenterSidebarDrawerVisible ? 'visible' : 'hidden',
+                    pointerEvents: presenterSidebarDrawerVisible ? 'auto' : 'none',
+                  }
+                : {}),
+            }}
+          >
           {activeSidebarTab === 'SCHEDULE' && (
             <>
               <div className="p-3 border-b border-zinc-900 flex items-center justify-between shrink-0">
@@ -4724,7 +5423,7 @@ function App() {
               <div className="p-3 border-b border-zinc-900 shrink-0"><h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Bible Hub</h3></div>
               <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
                 <BibleBrowser
-                  onProjectRequest={(item) => goLive(item)}
+                  onProjectRequest={(item) => { addItem(item); setSelectedItemId(item.id); goLive(item); }}
                   onAddRequest={addItem}
                   speechLocaleMode={workspaceSettings.visionarySpeechLocaleMode}
                   onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
@@ -4740,7 +5439,6 @@ function App() {
                 user={user}
                 onProjectRequest={(text, label) => {
                   handleProjectAudienceMessage(text, label);
-                  setActiveSidebarTab('SCHEDULE');
                 }}
                 displayState={audienceDisplay}
                 onUpdateDisplay={handleUpdateAudienceDisplay}
@@ -4757,165 +5455,99 @@ function App() {
             </div>
           )}
         </div>
-        </div>
+      </div>
 
-        {/* ... (Existing Builder/Presenter Logic) ... */}
-        {
-          viewMode === 'BUILDER' ? (
-            <div className={`flex-1 flex bg-zinc-950 min-w-0 ${isElectronShell ? '' : 'hidden md:flex'}`}>
-              <div className="w-56 bg-zinc-900/30 border-r border-zinc-900 flex flex-col hidden lg:flex">
-                <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex items-center">Library</div>
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => setActiveSidebarTab('HYMNS')}
-                    className="w-full rounded-sm border border-emerald-900/60 bg-emerald-950/20 px-3 py-2 text-left transition-colors hover:border-emerald-700/60 hover:bg-emerald-950/30"
+      {viewMode === 'BUILDER' ? (
+      <div className="flex-1 flex flex-col bg-zinc-950 min-w-0 overflow-hidden">
+        {selectedItem ? (
+          <>
+            <ItemEditorPanel 
+              item={selectedItem} 
+              onUpdate={updateItem} 
+              onOpenLibrary={() => setIsMotionLibOpen(true)}
+              speakerPresets={workspaceSettings.speakerTimerPresets}
+            />
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                {selectedItem.slides.map((slide, idx) => (
+                  <div 
+                    key={slide.id} 
+                    onClick={() => handleEditSlide(slide)} 
+                    className="group relative aspect-video bg-zinc-900 border border-zinc-800 rounded-sm overflow-hidden cursor-pointer hover:border-blue-500 transition-colors shadow-lg"
                   >
-                    <div className="flex items-center gap-2">
-                      <MusicIcon className="h-4 w-4 text-emerald-300" />
-                      <div className="min-w-0">
-                        <div className="text-xs font-black uppercase tracking-[0.16em] text-emerald-200">Hymn Library</div>
-                        <div className="mt-1 text-[11px] text-emerald-100/70">Search, generate, and insert hymn slides.</div>
+                    <div className="absolute inset-0 flex items-center justify-center p-4">
+                      <div className="text-[10px] text-zinc-400 text-center line-clamp-4 leading-relaxed font-medium">
+                        {slide.content || <span className="italic opacity-30 tracking-tight">Empty Slide</span>}
                       </div>
                     </div>
-                  </button>
-                  {MOCK_SONGS.map((song, i) => (<div key={i} className="p-2 bg-zinc-900 rounded-sm cursor-pointer hover:bg-zinc-800 border border-zinc-800/50" onClick={() => setIsAIModalOpen(true)}><div className="font-bold text-xs text-zinc-300">{song.title}</div></div>))}
-                </div>
-              </div>
-              <div className="flex-1 bg-zinc-950 flex flex-col overflow-hidden">
-                {selectedItem ? (
-                  <>
-                    <ItemEditorPanel
-                      item={selectedItem}
-                      onUpdate={updateItem}
-                      onOpenLibrary={() => setIsMotionLibOpen(true)}
-                      speakerPresets={workspaceSettings.speakerTimerPresets}
-                    />
-                    <div className="flex-1 overflow-y-auto p-6 bg-zinc-950">
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {selectedItem.slides.map((slide, idx) => (
-                          <div
-                            key={slide.id}
-                            draggable
-                            onDragStart={(e) => {
-                              setDraggedSelectedSlideId(slide.id);
-                              setSelectedSlideDropIndicator({ slideId: slide.id, after: false });
-                              e.dataTransfer.effectAllowed = 'move';
-                              e.dataTransfer.setData('text/plain', slide.id);
-                            }}
-                            onDragEnd={() => {
-                              setDraggedSelectedSlideId(null);
-                              setSelectedSlideDropIndicator(null);
-                            }}
-                            onDragOver={(e) => {
-                              if (!draggedSelectedSlideId) return;
-                              e.preventDefault();
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              setSelectedSlideDropIndicator({
-                                slideId: slide.id,
-                                after: e.clientY > (rect.top + rect.height / 2),
-                              });
-                            }}
-                            onDrop={(e) => {
-                              if (!draggedSelectedSlideId) return;
-                              e.preventDefault();
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              reorderSelectedItemSlides(draggedSelectedSlideId, slide.id, e.clientY > (rect.top + rect.height / 2));
-                              setDraggedSelectedSlideId(null);
-                              setSelectedSlideDropIndicator(null);
-                            }}
-                            className="group relative"
-                          >
-                            <div className="aspect-video bg-zinc-900 rounded-sm overflow-hidden border border-zinc-800 group-hover:border-blue-500/50 transition-all"><SlideRenderer slide={slide} item={selectedItem} fitContainer={true} isThumbnail={true} /></div>
-                            {selectedSlideDropIndicator?.slideId === slide.id && draggedSelectedSlideId && draggedSelectedSlideId !== slide.id && (
-                              <div className={`absolute left-0 right-0 h-1 bg-blue-500 rounded-full ${selectedSlideDropIndicator.after ? 'bottom-0' : 'top-0'}`} />
-                            )}
-                            <div className="absolute left-1 top-1 max-w-[70%]">
-                              {inlineSlideRename?.itemId === selectedItem.id && inlineSlideRename.slideId === slide.id ? (
-                                <div className="flex items-center gap-1">
-                                  <input
-                                    ref={inlineSlideRenameInputRef}
-                                    autoFocus
-                                    type="text"
-                                    value={inlineSlideRename.value}
-                                    onMouseDown={(e) => { e.stopPropagation(); }}
-                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                                    onChange={(e) => {
-                                      const nextValue = e.target.value;
-                                      setInlineSlideRename((current) => (
-                                        current && current.itemId === selectedItem.id && current.slideId === slide.id
-                                          ? { ...current, value: nextValue }
-                                          : current
-                                      ));
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        handleRenameSlideLabel(selectedItem.id, slide.id, inlineSlideRename.value);
-                                      } else if (e.key === 'Escape') {
-                                        e.preventDefault();
-                                        setInlineSlideRename(null);
-                                      }
-                                    }}
-                                    className="h-7 w-full rounded border border-cyan-700 bg-black/90 px-2 text-[10px] font-mono text-zinc-100 outline-none"
-                                    title="Press Enter or click save to store the name. Press Escape or X to cancel."
-                                    data-testid={`thumbnail-slide-rename-input-${slide.id}`}
-                                  />
-                                  <button
-                                    type="button"
-                                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      handleRenameSlideLabel(selectedItem.id, slide.id, inlineSlideRename.value);
-                                    }}
-                                    className="inline-flex h-7 w-7 items-center justify-center rounded border border-emerald-700 bg-black/90 text-emerald-300 hover:bg-emerald-950/40"
-                                    title="Save name"
-                                    aria-label="Save slide name"
-                                  >
-                                    <CheckIcon className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      setInlineSlideRename(null);
-                                    }}
-                                    className="inline-flex h-7 w-7 items-center justify-center rounded border border-zinc-700 bg-black/90 text-zinc-300 hover:bg-zinc-900"
-                                    title="Cancel rename"
-                                    aria-label="Cancel slide rename"
-                                  >
-                                    <XIcon className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="px-1.5 py-0.5 bg-black/75 border border-zinc-700 rounded text-[9px] font-mono text-zinc-300 truncate" data-testid={`thumbnail-slide-label-${slide.id}`}>
-                                  {slide.label || `Slide ${idx + 1}`}
-                                </div>
-                              )}
-                            </div>
-                            <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1">
-                              <button type="button" onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); startSlideLabelRename(selectedItem.id, slide.id, slide.label || `Slide ${idx + 1}`); }} onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="p-1 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-cyan-300 text-zinc-400" title="Rename slide/image" data-testid={`thumbnail-slide-rename-${slide.id}`}><EditIcon className="w-3 h-3" /></button>
-                              <button onClick={() => handleEditSlide(slide)} className="p-1 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-blue-400 text-zinc-400" title="Edit slide"><EditIcon className="w-3 h-3" /></button>
-                              <button onClick={(e) => handleDeleteSlide(slide.id, e)} className="p-1 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-red-400 text-zinc-400" title="Delete slide"><TrashIcon className="w-3 h-3" /></button>
-                            </div>
+                    <div className="absolute bottom-0 inset-x-0 p-1.5 flex items-center justify-between bg-gradient-to-t from-black/80 to-transparent">
+                      <div className="flex-1 min-w-0">
+                        {inlineSlideRename?.slideId === slide.id ? (
+                          <input
+                            ref={inlineSlideRenameInputRef}
+                            type="text"
+                            value={inlineSlideRename.value}
+                            onChange={(e) => setInlineSlideRename({ ...inlineSlideRename, value: e.target.value })}
+                            onBlur={() => handleRenameSlideLabel(selectedItem.id, slide.id, inlineSlideRename.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleRenameSlideLabel(selectedItem.id, slide.id, inlineSlideRename.value)}
+                            className="w-full bg-zinc-800 text-[9px] font-mono text-white px-1 rounded outline-none border border-blue-500"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        ) : (
+                          <div className="px-1.5 py-0.5 bg-black/75 border border-zinc-700 rounded text-[9px] font-mono text-zinc-300 truncate shadow-md">
+                            {slide.label || `Slide ${idx + 1}`}
                           </div>
-                        ))}
-                        <button onClick={() => { setEditingSlide(null); setIsSlideEditorOpen(true); }} className="aspect-video border border-dashed border-zinc-800 rounded-sm flex flex-col items-center justify-center text-zinc-600 hover:text-zinc-400 bg-zinc-900/20"><PlusIcon className="w-6 h-6 mb-2" /><span className="text-xs font-medium uppercase tracking-wide">Add Slide</span></button>
+                        )}
                       </div>
                     </div>
-                  </>
-                ) : <div className="flex-1 flex items-center justify-center text-zinc-600 font-mono text-xs uppercase">SELECT_ITEM_TO_EDIT</div>}
+                    <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 z-10 transition-opacity">
+                      <button 
+                        type="button" 
+                        onClick={(e) => { e.stopPropagation(); startSlideLabelRename(selectedItem.id, slide.id, slide.label || `Slide ${idx + 1}`); }} 
+                        className="p-1.5 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-cyan-300 text-zinc-400" 
+                        title="Rename slide"
+                      >
+                        <EditIcon className="w-3 h-3" />
+                      </button>
+                      <button 
+                        onClick={() => handleEditSlide(slide)} 
+                        className="p-1.5 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-blue-400 text-zinc-400" 
+                        title="Edit content"
+                      >
+                        <EditIcon className="w-3 h-3" />
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDeleteSlide(slide.id, e); }} 
+                        className="p-1.5 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-red-400 text-zinc-400" 
+                        title="Delete slide"
+                      >
+                        <TrashIcon className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button 
+                  onClick={() => { setEditingSlide(null); setIsSlideEditorOpen(true); }} 
+                  className="aspect-video border border-dashed border-zinc-800 rounded-sm flex flex-col items-center justify-center text-zinc-600 hover:text-zinc-400 bg-zinc-900/10 hover:bg-zinc-900/30 transition-colors"
+                >
+                  <PlusIcon className="w-6 h-6 mb-2" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Add Slide</span>
+                </button>
               </div>
             </div>
-          ) : (
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-zinc-800 font-black text-xl uppercase tracking-[0.5em] opacity-20 pointer-events-none">Select item to edit</div>
+        )}
+      </div>
+    ) : (
             <div className="flex-1 flex flex-col lg:flex-row bg-black min-w-0 overflow-hidden">
               <div className="flex-1 flex flex-col relative min-w-0">
-                <div className={`flex-1 relative flex items-center bg-zinc-950 overflow-hidden border-r border-zinc-900 ${isElectronShell ? 'justify-start px-4' : 'justify-center'}`}>
-                  <div className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group">
-                    {blackout ? (<div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em]">BLACKOUT</div>) : (
+                <div className={`flex-1 relative flex items-center bg-zinc-950 overflow-hidden border-r border-zinc-900 p-3 ${presenterPreviewAlignClass}`}>
+                  <div className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group shadow-2xl overflow-hidden rounded-sm">
+                    {blackout ? (
+                      <div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em] animate-pulse">BLACKOUT</div>
+                    ) : (
                       <SlideRenderer
                         slide={activeSlide}
                         item={activeItem}
@@ -4927,30 +5559,49 @@ function App() {
                         audienceOverlay={audienceDisplay}
                       />
                     )}
-                    <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-500 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">PREVIEW <button onClick={() => setIsPreviewMuted(!isPreviewMuted)} className={`ml-2 hover:text-white transition-colors ${isPreviewMuted ? 'text-red-400' : 'text-green-400'}`}>{isPreviewMuted ? <VolumeXIcon className="w-3 h-3" /> : <Volume2Icon className="w-3 h-3" />}</button></div>
+                    <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-400 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">
+                      PREVIEW
+                      <button onClick={() => setIsPreviewMuted(!isPreviewMuted)} className={`ml-1 hover:text-white transition-colors ${isPreviewMuted ? 'text-red-400' : 'text-emerald-400'}`}>
+                        {isPreviewMuted ? <VolumeXIcon className="w-3 h-3" /> : <Volume2Icon className="w-3 h-3" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="border-t border-zinc-800 bg-zinc-950 px-3 py-3 md:px-6">
-                  <div className="grid gap-3 xl:grid-cols-2">
-                    <div className="rounded-xl border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(24,24,27,0.82),rgba(10,10,14,0.96))] p-3 shadow-[0_16px_30px_rgba(0,0,0,0.22)]">
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Transport</div>
-                        <div className="rounded-full border border-blue-900/40 bg-blue-950/20 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.16em] text-blue-200">Live Flow</div>
+                
+                {/* Presenter Ops Deck — 3-card production layout */}
+                <div className="border-t border-zinc-900 bg-[#0a0a0e] px-3 py-3 shrink-0">
+                  <div className={`grid gap-2.5 max-w-[1400px] mx-auto ${presenterMainWorkspaceWidth < 1060 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+
+                    {/* Card 1: TRANSPORT */}
+                    <div className="rounded-xl border border-zinc-800/80 bg-[linear-gradient(160deg,rgba(28,28,34,0.95),rgba(10,10,14,1))] p-3 shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-[9px] uppercase tracking-[0.22em] text-zinc-500 font-black">Transport</span>
+                        <span className="rounded-full border border-blue-800/50 bg-blue-950/30 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] text-blue-300">Live Flow</span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button onClick={prevSlide} className="h-11 w-12 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-white flex items-center justify-center border border-zinc-700 active:scale-95 transition-transform"><ArrowLeftIcon className="w-5 h-5" /></button>
-                        <button onClick={nextSlide} className="h-11 min-w-[8rem] px-4 rounded-sm bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-bold text-sm tracking-wide active:scale-95 transition-transform"><ArrowRightIcon className="w-5 h-5 mr-1" /> NEXT</button>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button onClick={prevSlide} className="h-9 w-10 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 flex items-center justify-center border border-zinc-700 active:scale-95 transition-all">
+                          <ArrowLeftIcon className="w-4 h-4" />
+                        </button>
+                        <button onClick={nextSlide} className="h-9 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-black text-[10px] tracking-widest active:scale-95 transition-all shadow-[0_2px_8px_rgba(37,99,235,0.35)] uppercase gap-1.5">
+                          NEXT <ArrowRightIcon className="w-3.5 h-3.5" />
+                        </button>
                         {isActiveVideo && (
-                          <div className="flex items-center gap-1 rounded-sm border border-zinc-800 bg-zinc-950 p-1">
-                            <button onClick={() => triggerSeek(-10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><RewindIcon className="w-4 h-4" /></button>
-                            <button onClick={() => setIsPlaying(!isPlaying)} className={`p-2.5 rounded-sm ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-green-900/50 text-green-400'}`}>{isPlaying ? <PauseIcon className="w-4 h-4" /> : <PlayIcon className="w-4 h-4 fill-current" />}</button>
-                            <button onClick={() => triggerSeek(10)} className="p-2.5 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded-sm"><ForwardIcon className="w-4 h-4" /></button>
+                          <div className="flex items-center gap-0.5 rounded-lg border border-zinc-800 bg-zinc-950 p-1">
+                            <button onClick={() => triggerSeek(-10)} className="h-7 w-8 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded flex items-center justify-center transition-colors"><RewindIcon className="w-3.5 h-3.5" /></button>
+                            <button onClick={() => setIsPlaying(!isPlaying)} className={`h-7 w-8 rounded flex items-center justify-center transition-all ${isPlaying ? 'bg-zinc-800 text-white' : 'bg-emerald-600/20 text-emerald-400'}`}>
+                              {isPlaying ? <PauseIcon className="w-3.5 h-3.5" /> : <PlayIcon className="w-3.5 h-3.5 fill-current" />}
+                            </button>
+                            <button onClick={() => triggerSeek(10)} className="h-7 w-8 hover:text-white text-zinc-500 hover:bg-zinc-800 rounded flex items-center justify-center transition-colors"><ForwardIcon className="w-3.5 h-3.5" /></button>
                           </div>
                         )}
-                        <button onClick={() => { if (routingMode !== 'PROJECTOR') setLowerThirdsEnabled((prev) => !prev); }} title={routingMode === 'PROJECTOR' ? 'Projector mode keeps full-screen text (lower thirds disabled).' : 'Toggle lower thirds overlay'} className={`h-11 px-3 rounded-sm font-bold text-[10px] tracking-wider border ${lowerThirdsEnabled ? 'bg-blue-950 text-blue-400 border-blue-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800'} ${routingMode === 'PROJECTOR' ? 'opacity-60 cursor-not-allowed' : ''}`}>LOWER THIRDS</button>
-                        <label className="flex h-11 min-w-[10rem] items-center gap-2 rounded-sm border border-zinc-800 bg-zinc-950 px-3">
-                          <span className="text-[10px] uppercase tracking-wider text-zinc-500">Route</span>
-                          <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} className="min-w-0 flex-1 bg-transparent text-zinc-300 text-xs outline-none">
+                        <button
+                          onClick={() => { if (routingMode !== 'PROJECTOR') setLowerThirdsEnabled((prev) => !prev); }}
+                          title={routingMode === 'PROJECTOR' ? 'Projector mode keeps full-screen text.' : 'Toggle lower thirds overlay'}
+                          className={`h-9 px-3 rounded-lg font-black text-[9px] tracking-wider border transition-all uppercase ${lowerThirdsEnabled ? 'bg-blue-950/60 text-blue-300 border-blue-700/50' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300 hover:border-zinc-700'} ${routingMode === 'PROJECTOR' ? 'opacity-30 cursor-not-allowed' : ''}`}
+                        >Lower Thirds</button>
+                        <label className="flex h-9 items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 cursor-pointer hover:border-zinc-700 transition-colors">
+                          <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-black shrink-0">Route</span>
+                          <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} style={{ colorScheme: 'dark' }} className="bg-zinc-900 text-zinc-200 text-[10px] font-bold outline-none cursor-pointer">
                             <option value="PROJECTOR">Projector</option>
                             <option value="STREAM">Stream</option>
                             <option value="LOBBY">Lobby</option>
@@ -4958,156 +5609,92 @@ function App() {
                         </label>
                       </div>
                     </div>
-                    <div className="rounded-xl border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(24,24,27,0.82),rgba(10,10,14,0.96))] p-3 shadow-[0_16px_30px_rgba(0,0,0,0.22)]">
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Timer + Cue</div>
-                        <div className="rounded-full border border-cyan-900/40 bg-cyan-950/15 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.16em] text-cyan-200">Cue Engine</div>
+
+                    {/* Card 2: TIMER + CUE */}
+                    <div className="rounded-xl border border-zinc-800/80 bg-[linear-gradient(160deg,rgba(28,28,34,0.95),rgba(10,10,14,1))] p-3 shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-[9px] uppercase tracking-[0.22em] text-zinc-500 font-black">Timer + Cue</span>
+                        <span className="rounded-full border border-cyan-800/50 bg-cyan-950/30 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300">Cue Engine</span>
                       </div>
-                      <div className="grid gap-2 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.95fr)_minmax(0,1fr)]">
-                        <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-11 min-w-0">
-                        <select value={timerMode} onChange={(e) => {
-                          const mode = e.target.value as 'COUNTDOWN' | 'ELAPSED';
-                          setTimerMode(mode);
-                          setTimerRunning(false);
-                          setCueZeroHold(false);
-                          setTimerSeconds(mode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0);
-                        }} className="bg-transparent text-zinc-300 text-[10px]">
-                          <option value="COUNTDOWN">Countdown</option>
-                          <option value="ELAPSED">Elapsed</option>
-                        </select>
-                        {timerMode === 'COUNTDOWN' && (
-                          <input type="number" min={1} max={180} value={timerDurationMin} onChange={(e) => {
-                            applyManualCountdownMinutes(Number(e.target.value));
-                          }} className="w-14 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200" />
-                        )}
-                        <div className={`text-[11px] font-mono w-16 text-center ${isTimerOvertime ? 'text-red-400 animate-pulse' : 'text-cyan-300'}`}>{formatTimer(timerSeconds)}</div>
-                        <button onClick={() => {
-                          setCueZeroHold(false);
-                          setTimerRunning((p) => !p);
-                        }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">{timerRunning ? 'Pause' : 'Start'}</button>
-                        <button onClick={() => {
-                          setTimerRunning(false);
-                          setCueZeroHold(false);
-                          setTimerSeconds(timerMode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0);
-                        }} className="text-[10px] px-2 py-1 bg-zinc-800 rounded">Reset</button>
-                      </div>
+                      <div className={`grid gap-1.5 ${presenterMainWorkspaceWidth < 760 ? 'grid-cols-1' : 'grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,1fr)]'}`}>
+                        <div className="flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 rounded-lg px-2 h-9 min-w-0">
+                          <select value={timerMode} onChange={(e) => {
+                            const mode = e.target.value as 'COUNTDOWN' | 'ELAPSED';
+                            setTimerMode(mode);
+                            setTimerRunning(false);
+                            setCueZeroHold(false);
+                            setTimerSeconds(mode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0);
+                          }} style={{ colorScheme: 'dark' }} className="bg-zinc-900 text-zinc-200 text-[10px] font-bold outline-none cursor-pointer shrink-0">
+                            <option value="COUNTDOWN">Countdown</option>
+                            <option value="ELAPSED">Elapsed</option>
+                          </select>
+                          {timerMode === 'COUNTDOWN' && (
+                            <input type="number" min={1} max={180} value={timerDurationMin} onChange={(e) => applyManualCountdownMinutes(Number(e.target.value))} className="w-10 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200 text-center" />
+                          )}
+                          <div className={`text-[12px] font-mono font-black tabular-nums shrink-0 ${isTimerOvertime ? 'text-red-400 animate-pulse' : 'text-cyan-300'}`}>{formatTimer(timerSeconds)}</div>
+                          <button onClick={() => { setCueZeroHold(false); setTimerRunning((p) => !p); }} className="text-[9px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-200 font-bold transition-colors shrink-0">{timerRunning ? 'Pause' : 'Start'}</button>
+                          <button onClick={() => { setTimerRunning(false); setCueZeroHold(false); setTimerSeconds(timerMode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0); }} className="text-[9px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-200 font-bold transition-colors shrink-0">Reset</button>
                         </div>
-                        <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-11 min-w-0">
-                        <span className="text-[10px] text-zinc-400">Cue</span>
-                        <input
-                          type="number"
-                          min={2}
-                          max={120}
-                          value={autoCueSeconds}
-                          onChange={(e) => {
-                            const value = Math.max(2, Math.min(120, Number(e.target.value) || 2));
-                            setAutoCueSeconds(value);
-                            setAutoCueRemaining(value);
-                          }}
-                          className="w-12 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200"
-                          title="Auto-cue seconds for next slide"
-                        />
-                        <button
-                          onClick={() => setAutoCueEnabled((p) => !p)}
-                          className={`text-[10px] px-2 py-1 rounded ${autoCueEnabled ? 'bg-cyan-900/40 text-cyan-300' : 'bg-zinc-800 text-zinc-300'}`}
-                          title="Toggle auto-cue slide advance"
-                        >
-                          {autoCueEnabled ? `On ${autoCueRemaining}s` : 'Off'}
-                        </button>
+                        <div className="flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 rounded-lg px-2 h-9 min-w-0">
+                          <span className="text-[9px] text-zinc-500 font-black uppercase tracking-wider shrink-0">Cue</span>
+                          <input type="number" min={2} max={120} value={autoCueSeconds}
+                            onChange={(e) => { const v = Math.max(2, Math.min(120, Number(e.target.value) || 2)); setAutoCueSeconds(v); setAutoCueRemaining(v); }}
+                            className="w-10 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200 text-center"
+                          />
+                          <button onClick={() => setAutoCueEnabled((p) => !p)}
+                            className={`text-[9px] px-2 py-0.5 rounded font-bold transition-colors shrink-0 ${autoCueEnabled ? 'bg-cyan-900/50 text-cyan-200 border border-cyan-700/40' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'}`}
+                          >{autoCueEnabled ? `On ${autoCueRemaining}s` : 'Off'}</button>
                         </div>
-                        <div className="min-w-0 rounded-sm border border-zinc-800 bg-zinc-950 px-3 py-2">
-                        <div className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold">Current Cue</div>
-                        <div className="mt-1 text-[11px] text-zinc-200 truncate">
-                          {currentCue
-                            ? `${currentCueIndex + 1}/${enabledTimerCues.length} ${currentCue.itemTitle}${currentCue.cue.autoStartNext ? ' (auto)' : ''}`
-                            : 'No timer cues enabled'}
+                        <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 h-9 flex flex-col justify-center min-w-0">
+                          <div className="text-[8px] uppercase tracking-widest text-zinc-600 font-black">Current Cue</div>
+                          <div className="text-[10px] text-zinc-200 truncate font-bold leading-tight">
+                            {currentCue ? `${currentCueIndex + 1}/${enabledTimerCues.length} ${currentCue.itemTitle}` : '—'}
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <div className="rounded-xl border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(24,24,27,0.82),rgba(10,10,14,0.96))] p-3 xl:col-span-2 shadow-[0_16px_30px_rgba(0,0,0,0.22)]">
-                      <div className="mb-2 flex items-center justify-between gap-2">
-                        <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Rundown + Output</div>
-                        <div className="rounded-full border border-emerald-900/40 bg-emerald-950/15 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.16em] text-emerald-200">Stage Ops</div>
+
+                    {/* Card 3: RUNDOWN + OUTPUT — always full width */}
+                    <div className={`rounded-xl border border-zinc-800/80 bg-[linear-gradient(160deg,rgba(28,28,34,0.95),rgba(10,10,14,1))] p-3 shadow-[0_4px_16px_rgba(0,0,0,0.4)] ${presenterMainWorkspaceWidth < 1060 ? '' : 'col-span-2'}`}>
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-[9px] uppercase tracking-[0.22em] text-zinc-500 font-black">Rundown + Output</span>
+                        <span className="rounded-full border border-emerald-800/50 bg-emerald-950/30 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] text-emerald-300">Stage Ops</span>
                       </div>
-                      <div className="grid gap-2 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)]">
-                        <div className="flex min-w-0 items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-11">
-                          <span className="text-[10px] text-zinc-400">Preset</span>
-                          <select
-                            value={selectedSpeakerPresetId}
-                            onChange={(e) => setSelectedSpeakerPresetId(e.target.value)}
-                            className="min-w-0 flex-1 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200"
-                          >
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 rounded-lg px-2 h-9">
+                          <span className="text-[9px] text-zinc-500 font-black uppercase shrink-0">Preset</span>
+                          <select value={selectedSpeakerPresetId} onChange={(e) => setSelectedSpeakerPresetId(e.target.value)} style={{ colorScheme: 'dark' }} className="bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200 font-bold outline-none cursor-pointer min-w-[90px]">
                             {(workspaceSettings.speakerTimerPresets || []).map((preset) => (
-                              <option key={preset.id} value={preset.id}>
-                                {preset.name}
-                              </option>
+                              <option key={preset.id} value={preset.id}>{preset.name}</option>
                             ))}
                           </select>
-                          <button
-                            onClick={applySelectedPresetToCurrentCue}
-                            disabled={!selectedSpeakerPresetId || !(currentCueItemId || selectedItemId)}
-                            className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
-                          >
-                            Apply
-                          </button>
-                          <button
-                            onClick={openCreatePresetModal}
-                            className="text-[10px] px-2 py-1 bg-zinc-800 rounded"
-                          >
-                            Manage
-                          </button>
+                          <button onClick={applySelectedPresetToCurrentCue} disabled={!selectedSpeakerPresetId || !(currentCueItemId || selectedItemId)} className="text-[9px] px-2.5 py-0.5 bg-emerald-700 hover:bg-emerald-600 rounded text-white font-bold transition-colors disabled:opacity-30 uppercase">Apply</button>
+                          <button onClick={openSpeakerPresetStudio} className="h-6 w-6 flex items-center justify-center rounded border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all"><Settings className="w-3 h-3" /></button>
                         </div>
-                        <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-11">
-                          <span className="text-[10px] text-zinc-400">Rundown</span>
-                          <button
-                            onClick={() => moveCueByOffset(-1, { autoStart: false, goLiveItem: true })}
-                            disabled={!enabledTimerCues.length}
-                            className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
-                          >
-                            Prev
-                          </button>
-                          <button
-                            onClick={() => moveCueByOffset(1, { autoStart: false, goLiveItem: true })}
-                            disabled={!enabledTimerCues.length}
-                            className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
-                          >
-                            Next
-                          </button>
-                          <button
-                            onClick={() => currentCue && activateCueByItemId(currentCue.itemId, { autoStart: false, goLiveItem: true })}
-                            disabled={!currentCue}
-                            className="text-[10px] px-2 py-1 bg-zinc-800 rounded disabled:opacity-40"
-                          >
-                            Load
-                          </button>
+                        <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-lg px-2 h-9">
+                          <span className="text-[9px] text-zinc-500 font-black uppercase shrink-0 mr-0.5">Rundown</span>
+                          <button onClick={() => moveCueByOffset(-1, { autoStart: false, goLiveItem: true })} disabled={!enabledTimerCues.length} className="text-[9px] px-2.5 py-0.5 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-300 font-bold transition-colors disabled:opacity-30">Prev</button>
+                          <button onClick={() => moveCueByOffset(1, { autoStart: false, goLiveItem: true })} disabled={!enabledTimerCues.length} className="text-[9px] px-2.5 py-0.5 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-300 font-bold transition-colors disabled:opacity-30">Next</button>
+                          <button onClick={() => currentCue && activateCueByItemId(currentCue.itemId, { autoStart: false, goLiveItem: true })} disabled={!currentCue} className="text-[9px] px-2.5 py-0.5 bg-blue-900/60 hover:bg-blue-800 rounded text-blue-200 font-bold transition-colors disabled:opacity-30 border border-blue-700/30">Load</button>
                         </div>
-                        <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-sm px-2 h-11">
-                          <span className="text-[10px] text-zinc-400">Stage Grid</span>
-                          <select
-                            value={workspaceSettings.stageFlowLayout}
-                            onChange={(e) => {
-                              const next = e.target.value as StageFlowLayout;
-                              setWorkspaceSettings((prev) => ({
-                                ...prev,
-                                stageFlowLayout: VALID_STAGE_FLOW_LAYOUTS.includes(next) ? next : 'balanced',
-                              }));
-                            }}
-                            className="min-w-0 flex-1 bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200"
-                            title="Stage display layout flow"
-                          >
+                        <div className="flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 rounded-lg px-2 h-9">
+                          <span className="text-[9px] text-zinc-500 font-black uppercase shrink-0">Stage Grid</span>
+                          <select value={workspaceSettings.stageFlowLayout} onChange={(e) => { const next = e.target.value as StageFlowLayout; setWorkspaceSettings((prev) => ({ ...prev, stageFlowLayout: VALID_STAGE_FLOW_LAYOUTS.includes(next) ? next : 'balanced' })); }} style={{ colorScheme: 'dark' }} className="bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200 font-bold outline-none cursor-pointer min-w-[90px]">
                             <option value="balanced">Balanced</option>
                             <option value="speaker_focus">Speaker Focus</option>
                             <option value="preview_focus">Preview Focus</option>
                             <option value="minimal_next">Minimal Next</option>
                           </select>
                         </div>
-                      </div>
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <button onClick={() => void copyShareUrl(obsOutputUrl)} className="h-10 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY OBS URL</button>
-                        <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-10 px-3 rounded-sm font-bold text-[10px] tracking-wider border bg-zinc-950 text-zinc-300 border-zinc-800 hover:text-white">COPY STAGE URL</button>
-                        <button onClick={() => setBlackout(!blackout)} className={`h-10 px-4 rounded-sm font-bold text-xs tracking-wider border active:scale-95 transition-all ${blackout ? 'bg-red-950 text-red-500 border-red-900' : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-white'}`}>{blackout ? 'UNBLANK' : 'BLACKOUT'}</button>
+                        <button onClick={() => updateStageTimerFlash({ active: !stageTimerFlash.active })} className={`h-9 px-3 rounded-lg border font-black text-[9px] tracking-wider uppercase transition-all ${stageTimerFlash.active ? 'border-rose-600/60 bg-rose-950/40 text-rose-300 animate-pulse' : 'border-zinc-700 bg-zinc-900 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'}`}>Flash</button>
+                        <button onClick={() => void copyShareUrl(obsOutputUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy OBS URL</button>
+                        <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy Stage URL</button>
+                        <button onClick={() => setBlackout(!blackout)} className={`h-9 px-5 rounded-lg border font-black text-[10px] tracking-widest uppercase active:scale-95 transition-all ml-auto shadow-lg ${blackout ? 'bg-zinc-900 text-red-400 border-red-600/80 animate-pulse shadow-red-950/20' : 'bg-red-600 border-red-500 text-white hover:bg-red-500 shadow-red-950/30'}`}>
+                          {blackout ? 'Go Live' : 'BLACKOUT'}
+                        </button>
                       </div>
                     </div>
+
                   </div>
                 </div>
               </div>
@@ -5218,8 +5805,7 @@ function App() {
                 </div>
               </div>
             </div>
-          )
-        }
+      )}
       </div>
 
       {
@@ -5291,6 +5877,8 @@ function App() {
               timerDurationSec={effectiveTimerDurationSec}
               timerAmberPercent={currentCueAmberPercent}
               timerRedPercent={currentCueRedPercent}
+              timerFlashActive={stageTimerFlash.active}
+              timerFlashColor={stageTimerFlash.color}
               timerLayout={workspaceSettings.stageTimerLayout}
               onTimerLayoutChange={(layout) => {
                 setWorkspaceSettings((prev) => ({ ...prev, stageTimerLayout: layout }));
@@ -5360,27 +5948,511 @@ function App() {
       }
 
       {isPresetModalOpen && (
-        <div className="fixed inset-0 z-[130] bg-black/80 backdrop-blur-sm p-4 flex items-center justify-center">
-          <div className="w-full max-w-3xl bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
-            <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-zinc-200">Speaker Timer Presets</h3>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={openCreatePresetModal}
-                  className="px-2 py-1 text-[10px] font-bold border border-zinc-700 rounded bg-zinc-800 text-zinc-200"
-                >
-                  New
-                </button>
-                <button
-                  onClick={() => setIsPresetModalOpen(false)}
-                  className="px-2 py-1 text-[10px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300"
-                >
-                  Close
-                </button>
+        <div className="pointer-events-none fixed inset-0 z-[130] p-3 md:p-4">
+          <div
+            ref={presetStudioCardRef}
+            data-testid="speaker-preset-studio"
+            className={`pointer-events-auto absolute w-full overflow-hidden rounded-[30px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.24),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(34,211,238,0.16),transparent_32%),linear-gradient(180deg,rgba(24,24,27,0.98),rgba(9,9,11,0.99))] shadow-[0_32px_120px_rgba(0,0,0,0.45)] ${presetStudioShellWidthClass}`}
+            style={presetStudioPosition
+              ? { left: presetStudioPosition.x, top: presetStudioPosition.y, transform: 'none' }
+              : { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' }}
+          >
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),transparent_42%)]" />
+            <div className="relative flex max-h-[88vh] flex-col">
+              <div
+                data-testid="speaker-preset-studio-drag-handle"
+                onPointerDown={beginPresetStudioDrag}
+                className={`flex flex-wrap items-start justify-between gap-4 border-b border-white/10 bg-zinc-950/82 px-5 py-5 backdrop-blur-xl md:px-6 ${presetStudioDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+              >
+                <div className="max-w-3xl">
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.32em] text-cyan-200/70">
+                    <SparklesIcon className="h-3.5 w-3.5" />
+                    Stage Timer Studio
+                  </div>
+                  <h3 className="mt-3 text-xl font-semibold tracking-tight text-white md:text-2xl">Speaker Timer Presets</h3>
+                  <p className="mt-2 text-sm leading-6 text-zinc-300">
+                    Design polished speaker timing blocks with a clean runway, amber wrap-up zone, and a decisive red finish.
+                  </p>
+                </div>
+                <div data-no-preset-drag className="flex flex-wrap items-center gap-2">
+                  <div className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-100">
+                    {speakerTimerPresets.length} presets saved
+                  </div>
+                  <div className="inline-flex items-center rounded-full border border-white/10 bg-black/25 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                    <button
+                      type="button"
+                      data-testid="speaker-preset-width-standard"
+                      aria-pressed={!presetStudioIsWide}
+                      onClick={() => setPresetStudioWidthMode('standard')}
+                      className={`rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] transition ${
+                        presetStudioIsWide
+                          ? 'text-zinc-400 hover:text-zinc-200'
+                          : 'bg-white text-zinc-950 shadow-[0_10px_24px_rgba(255,255,255,0.18)]'
+                      }`}
+                    >
+                      Standard
+                    </button>
+                    <button
+                      type="button"
+                      data-testid="speaker-preset-width-wide"
+                      aria-pressed={presetStudioIsWide}
+                      onClick={() => setPresetStudioWidthMode('wide')}
+                      className={`rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] transition ${
+                        presetStudioIsWide
+                          ? 'bg-cyan-200 text-cyan-950 shadow-[0_10px_24px_rgba(34,211,238,0.22)]'
+                          : 'text-zinc-400 hover:text-zinc-200'
+                      }`}
+                    >
+                      Wide view
+                    </button>
+                  </div>
+                  {presetStudioSaveLabel && (
+                    <div
+                      data-testid="speaker-preset-studio-status"
+                      className="rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100"
+                    >
+                      {presetStudioSaveLabel}
+                    </div>
+                  )}
+                  <button
+                    onClick={openCreatePresetModal}
+                    className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3.5 py-2 text-[11px] font-semibold text-cyan-100 transition hover:border-cyan-300/50 hover:bg-cyan-500/15"
+                  >
+                    <PlusIcon className="h-3.5 w-3.5" />
+                    New preset
+                  </button>
+                  <button
+                    onClick={closeSpeakerPresetStudio}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-2 text-[11px] font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/10"
+                  >
+                    <XIcon className="h-3.5 w-3.5" />
+                    Close
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
-              <div className="border-r border-zinc-800 p-3 max-h-[65vh] overflow-y-auto custom-scrollbar space-y-2">
+              <div className={presetStudioBodyGridClass}>
+                <aside className="min-h-0 overflow-y-auto border-b border-white/10 bg-black/20 p-4 custom-scrollbar md:p-5 xl:border-b-0 xl:border-r xl:border-white/10">
+                  <div className="sticky top-0 z-10 rounded-[24px] border border-white/10 bg-zinc-950/80 p-4 backdrop-blur-xl">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-cyan-200/70">Preset Library</div>
+                        <div className="mt-2 text-sm font-semibold text-white">Keep every speaker handoff consistent.</div>
+                      </div>
+                      <div className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold text-zinc-200">
+                        {presetTargetItemId ? 'Cue ready' : 'Browse mode'}
+                      </div>
+                    </div>
+                    <p className="mt-3 text-xs leading-5 text-zinc-400">
+                      {presetStudioLibraryCopy}
+                    </p>
+                  </div>
+                  <div className="mt-4 space-y-3 pr-1">
+                    {speakerTimerPresets.map((preset) => {
+                      const isLoaded = editingPresetId === preset.id;
+                      const isSelected = activePresetCardId === preset.id;
+                      const presetThresholds = normalizeSpeakerTimerThresholds(preset.amberPercent, preset.redPercent);
+                      const amberRemainingSec = Math.max(1, Math.round(preset.durationSec * (presetThresholds.amberPercent / 100)));
+                      const redRemainingSec = Math.max(1, Math.round(preset.durationSec * (presetThresholds.redPercent / 100)));
+                      return (
+                        <div
+                          key={preset.id}
+                          className={`rounded-[24px] border p-3 shadow-[0_16px_40px_rgba(0,0,0,0.16)] transition ${
+                            isSelected
+                              ? 'border-cyan-300/40 bg-[linear-gradient(180deg,rgba(8,47,73,0.45),rgba(9,9,11,0.78))]'
+                              : 'border-white/10 bg-[linear-gradient(180deg,rgba(39,39,42,0.7),rgba(9,9,11,0.88))] hover:border-white/20'
+                          }`}
+                        >
+                          <button type="button" onClick={() => openEditPresetModal(preset)} className="w-full text-left">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="truncate text-[15px] font-semibold text-white">{preset.name}</div>
+                                <div className="mt-1 truncate text-xs text-zinc-400">{preset.speakerName || 'Open speaker slot'}</div>
+                              </div>
+                              <div className="flex flex-col items-end gap-1">
+                                {isLoaded && (
+                                  <span className="rounded-full border border-cyan-400/30 bg-cyan-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-cyan-100">
+                                    Editing
+                                  </span>
+                                )}
+                                {selectedSpeakerPresetId === preset.id && (
+                                  <span className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-emerald-100">
+                                    Live
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="mt-4 flex items-end justify-between gap-3">
+                              <div className="text-3xl font-semibold tracking-tight text-white">{formatTimer(preset.durationSec)}</div>
+                              <div className="text-right text-[11px] leading-5 text-zinc-400">
+                                <div>Amber {formatTimer(amberRemainingSec)} left</div>
+                                <div>Red {formatTimer(redRemainingSec)} left</div>
+                              </div>
+                            </div>
+                            <div className="mt-4">{renderSpeakerPresetThresholdBar(presetThresholds.amberPercent, presetThresholds.redPercent, { compact: true })}</div>
+                          </button>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedSpeakerPresetId(preset.id);
+                                if (presetTargetItemId) applySpeakerPresetToItem(presetTargetItemId, preset.id);
+                              }}
+                              disabled={!presetTargetItemId}
+                              className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-3 py-1.5 text-[10px] font-semibold text-emerald-100 transition hover:border-emerald-300/45 hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-40"
+                            >
+                              <CheckIcon className="h-3.5 w-3.5" />
+                              Apply
+                            </button>
+                            <button
+                              onClick={() => duplicateSpeakerPresetDraft(preset)}
+                              className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/10"
+                            >
+                              <CopyIcon className="h-3.5 w-3.5" />
+                              Duplicate
+                            </button>
+                            <button
+                              onClick={() => deleteSpeakerPreset(preset.id)}
+                              className="inline-flex items-center gap-1.5 rounded-full border border-rose-400/25 bg-rose-500/10 px-3 py-1.5 text-[10px] font-semibold text-rose-100 transition hover:border-rose-300/45 hover:bg-rose-500/15"
+                            >
+                              <TrashIcon className="h-3.5 w-3.5" />
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </aside>
+
+                <div
+                  data-testid="speaker-preset-studio-editor-scroll"
+                  className="min-h-0 overflow-y-auto p-4 custom-scrollbar md:p-5 xl:p-6"
+                >
+                  <div className={presetStudioEditorGridClass}>
+                    <div className="space-y-5">
+                      <section
+                        data-testid="speaker-preset-studio-hero"
+                        className={`sticky top-0 z-20 overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.2),transparent_40%),linear-gradient(180deg,rgba(15,23,42,0.92),rgba(9,9,11,0.98))] shadow-[0_24px_80px_rgba(0,0,0,0.26)] backdrop-blur-xl ${presetStudioHeroSectionPaddingClass}`}
+                      >
+                        <div className={presetStudioHeroGridClass}>
+                          <div className="min-w-0">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-cyan-200/70">
+                              {presetStudioHeroEyebrow}
+                            </div>
+                            <div
+                              data-testid="speaker-preset-hero-timer"
+                              className={presetStudioHeroTimerClass}
+                            >
+                              {formatTimer(presetDraftDurationSec)}
+                            </div>
+                            <div className="mt-1 break-words text-[1rem] font-semibold leading-tight text-white sm:text-lg md:text-[1.28rem]">{presetDraftDisplayName}</div>
+                            <div className="mt-0.5 break-words text-sm text-zinc-300">{presetDraftSpeakerLabel}</div>
+                          </div>
+                          <div className={presetStudioHeroBehaviorCardClass}>
+                            <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500">Cue behavior</div>
+                            <div className="mt-1.5 flex flex-wrap gap-1.5">
+                              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold text-zinc-100">
+                                {presetDraft.autoStartNextDefault ? 'Auto-start next cue' : 'Manual transition'}
+                              </span>
+                              <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-semibold text-cyan-100">
+                                {presetDraftThresholds.amberPercent}% / {presetDraftThresholds.redPercent}% finish markers
+                              </span>
+                            </div>
+                            <p className="mt-2 text-[11px] leading-5 text-zinc-400">
+                              {presetStudioHeroBehaviorCopy}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-3">{renderSpeakerPresetThresholdBar(presetDraftThresholds.amberPercent, presetDraftThresholds.redPercent)}</div>
+                        <div className={presetStudioHeroSummaryGridClass}>
+                          <div className={presetStudioHeroSummaryCardClass}>
+                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Runway</div>
+                            <div className={presetStudioHeroSummaryValueClass}>{formatTimer(presetDraftRunwaySec)}</div>
+                            <div className="mt-1 text-[11px] leading-5 text-zinc-400">{presetStudioRunwayCopy}</div>
+                          </div>
+                          <div className={presetStudioHeroSummaryCardClass}>
+                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Amber window</div>
+                            <div className={presetStudioHeroSummaryValueClass}>{formatTimer(presetDraftAmberWindowSec)}</div>
+                            <div className="mt-1 text-[11px] leading-5 text-zinc-400">{presetStudioAmberCopy}</div>
+                          </div>
+                          <div className={presetStudioHeroSummaryCardClass}>
+                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Red finish</div>
+                            <div className={presetStudioHeroSummaryValueClass}>{formatTimer(presetDraftRedRemainingSec)}</div>
+                            <div className="mt-1 text-[11px] leading-5 text-zinc-400">{presetStudioRedCopy}</div>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section className="grid gap-4 md:grid-cols-2">
+                        <label className="rounded-[24px] border border-white/10 bg-zinc-950/70 p-5">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">Preset name</div>
+                          <input
+                            data-testid="speaker-preset-name-input"
+                            value={presetDraft.name}
+                            onChange={(e) => setPresetDraft((prev) => ({ ...prev, name: e.target.value }))}
+                            placeholder="Sunday message main"
+                            className="mt-4 w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-cyan-300/45"
+                          />
+                          <div className="mt-3 text-xs text-zinc-400">{presetStudioNameHelperCopy}</div>
+                        </label>
+                        <label className="rounded-[24px] border border-white/10 bg-zinc-950/70 p-5">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">Default speaker</div>
+                          <input
+                            value={presetDraft.speakerName || ''}
+                            onChange={(e) => setPresetDraft((prev) => ({ ...prev, speakerName: e.target.value }))}
+                            placeholder="Pastor Jordan"
+                            className="mt-4 w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-zinc-100 outline-none transition placeholder:text-zinc-500 focus:border-cyan-300/45"
+                          />
+                          <div className="mt-3 text-xs text-zinc-400">{presetStudioSpeakerHelperCopy}</div>
+                        </label>
+                      </section>
+
+                      <section className="rounded-[24px] border border-white/10 bg-zinc-950/70 p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">Duration</div>
+                            <div className="mt-2 text-lg font-semibold text-white">{presetStudioDurationHeading}</div>
+                          </div>
+                          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-semibold text-zinc-200">
+                            Max 02:00:00
+                          </div>
+                        </div>
+                        <div className="mt-5 grid grid-cols-3 gap-3">
+                          <label className="rounded-[20px] border border-white/10 bg-black/20 p-4">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Hours</div>
+                            <input
+                              type="number"
+                              min={0}
+                              max={2}
+                              value={presetDraftHours}
+                              onChange={(e) => updatePresetDurationSegment('hours', Number(e.target.value) || 0)}
+                              className="mt-3 w-full rounded-2xl border border-white/10 bg-black/30 px-3 py-3 text-center text-2xl font-semibold text-white outline-none transition focus:border-cyan-300/45"
+                            />
+                          </label>
+                          <label className="rounded-[20px] border border-white/10 bg-black/20 p-4">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Minutes</div>
+                            <input
+                              type="number"
+                              min={0}
+                              max={59}
+                              value={presetDraftMinutes}
+                              onChange={(e) => updatePresetDurationSegment('minutes', Number(e.target.value) || 0)}
+                              className="mt-3 w-full rounded-2xl border border-white/10 bg-black/30 px-3 py-3 text-center text-2xl font-semibold text-white outline-none transition focus:border-cyan-300/45"
+                            />
+                          </label>
+                          <label className="rounded-[20px] border border-white/10 bg-black/20 p-4">
+                            <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Seconds</div>
+                            <input
+                              type="number"
+                              min={0}
+                              max={59}
+                              value={presetDraftSeconds}
+                              onChange={(e) => updatePresetDurationSegment('seconds', Number(e.target.value) || 0)}
+                              className="mt-3 w-full rounded-2xl border border-white/10 bg-black/30 px-3 py-3 text-center text-2xl font-semibold text-white outline-none transition focus:border-cyan-300/45"
+                            />
+                          </label>
+                        </div>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {[300, 600, 900, 1200, 2100].map((durationSec) => (
+                            <button
+                              key={durationSec}
+                              onClick={() => setPresetDraft((prev) => ({ ...prev, durationSec }))}
+                              className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition ${
+                                presetDraftDurationSec === durationSec
+                                  ? 'border-cyan-300/40 bg-cyan-500/15 text-cyan-100'
+                                  : 'border-white/10 bg-white/5 text-zinc-200 hover:border-white/20 hover:bg-white/10'
+                              }`}
+                            >
+                              {formatTimer(durationSec)}
+                            </button>
+                          ))}
+                        </div>
+                      </section>
+
+                      <section className="rounded-[24px] border border-white/10 bg-zinc-950/70 p-5">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">Wrap-up thresholds</div>
+                        <div className="mt-2 text-lg font-semibold text-white">{presetStudioThresholdHeading}</div>
+                        <div className="mt-5 grid gap-4">
+                          <div className="rounded-[20px] border border-white/10 bg-black/20 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-sm font-semibold text-white">Amber wrap-up</div>
+                                <div className="mt-1 text-xs text-zinc-400">The timer shifts to amber for the final portion of the message.</div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={99}
+                                  value={presetDraftThresholds.amberPercent}
+                                  onChange={(e) => updatePresetThresholdDraft('amber', Number(e.target.value) || 1)}
+                                  className="w-16 rounded-xl border border-white/10 bg-black/30 px-2 py-2 text-center text-sm font-semibold text-white outline-none transition focus:border-amber-300/45"
+                                />
+                                <span className="text-xs text-zinc-500">% left</span>
+                              </div>
+                            </div>
+                            <input
+                              type="range"
+                              min={1}
+                              max={99}
+                              value={presetDraftThresholds.amberPercent}
+                              onChange={(e) => updatePresetThresholdDraft('amber', Number(e.target.value) || 1)}
+                              className="mt-4 w-full accent-amber-400"
+                            />
+                            <div className="mt-2 text-xs text-zinc-400">Amber begins with {formatTimer(presetDraftAmberRemainingSec)} remaining.</div>
+                          </div>
+
+                          <div className="rounded-[20px] border border-white/10 bg-black/20 p-4">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-sm font-semibold text-white">Red finish</div>
+                                <div className="mt-1 text-xs text-zinc-400">Reserve the last slice of time for a clear hard-stop signal.</div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={presetDraftThresholds.amberPercent}
+                                  value={presetDraftThresholds.redPercent}
+                                  onChange={(e) => updatePresetThresholdDraft('red', Number(e.target.value) || 1)}
+                                  className="w-16 rounded-xl border border-white/10 bg-black/30 px-2 py-2 text-center text-sm font-semibold text-white outline-none transition focus:border-rose-300/45"
+                                />
+                                <span className="text-xs text-zinc-500">% left</span>
+                              </div>
+                            </div>
+                            <input
+                              type="range"
+                              min={1}
+                              max={presetDraftThresholds.amberPercent}
+                              value={presetDraftThresholds.redPercent}
+                              onChange={(e) => updatePresetThresholdDraft('red', Number(e.target.value) || 1)}
+                              className="mt-4 w-full accent-rose-400"
+                            />
+                            <div className="mt-2 text-xs text-zinc-400">Red begins with {formatTimer(presetDraftRedRemainingSec)} remaining.</div>
+                          </div>
+                        </div>
+                        <div className="mt-4 rounded-[20px] border border-white/10 bg-black/20 px-4 py-3 text-xs text-zinc-400">
+                          {presetDraftAmberZonePercent > 0
+                            ? `${formatTimer(presetDraftAmberWindowSec)} lives in the amber lane between caution and hard stop.`
+                            : 'Amber and red begin together. Raise amber or lower red if you want a softer warning runway.'}
+                        </div>
+                      </section>
+
+                      <section className="rounded-[24px] border border-white/10 bg-zinc-950/70 p-5">
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                          <div>
+                            <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">Cue behavior</div>
+                            <div className="mt-2 text-lg font-semibold text-white">{presetStudioCueBehaviorHeading}</div>
+                          </div>
+                          <label className="inline-flex items-center gap-3 rounded-full border border-cyan-400/25 bg-cyan-500/10 px-4 py-2 text-sm font-semibold text-cyan-100">
+                            <input
+                              type="checkbox"
+                              checked={!!presetDraft.autoStartNextDefault}
+                              onChange={(e) => setPresetDraft((prev) => ({ ...prev, autoStartNextDefault: e.target.checked }))}
+                              className="h-4 w-4 accent-cyan-500"
+                            />
+                            Auto-start next cue by default
+                          </label>
+                        </div>
+                        <p className="mt-3 text-sm leading-6 text-zinc-400">
+                          {presetStudioCueBehaviorSectionCopy}
+                        </p>
+                      </section>
+                    </div>
+
+                    <div
+                      data-testid="speaker-preset-studio-commit-rail"
+                      className="space-y-4 xl:sticky xl:top-4 xl:self-start xl:flex xl:max-h-[calc(88vh-2rem)] xl:flex-col"
+                    >
+                      <div className="space-y-4 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pr-1 custom-scrollbar">
+                        <section className="rounded-[24px] border border-white/10 bg-zinc-950/78 p-4">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">Flight plan</div>
+                          <div className="mt-3 space-y-2.5">
+                            <div className="rounded-[18px] border border-white/10 bg-black/20 px-3.5 py-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Amber starts at</div>
+                                <div className="text-xl font-semibold text-white">{formatTimer(presetDraftRunwaySec)}</div>
+                              </div>
+                              <div className="mt-1 text-[11px] leading-5 text-zinc-400">{presetStudioFlightPlanCopies.amber}</div>
+                            </div>
+                            <div className="rounded-[18px] border border-white/10 bg-black/20 px-3.5 py-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Red starts at</div>
+                                <div className="text-xl font-semibold text-white">{formatTimer(presetDraftRedStartSec)}</div>
+                              </div>
+                              <div className="mt-1 text-[11px] leading-5 text-zinc-400">{presetStudioFlightPlanCopies.red}</div>
+                            </div>
+                            <div className="rounded-[18px] border border-white/10 bg-black/20 px-3.5 py-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Hard-stop remaining</div>
+                                <div className="text-xl font-semibold text-white">{formatTimer(presetDraftRedRemainingSec)}</div>
+                              </div>
+                              <div className="mt-1 text-[11px] leading-5 text-zinc-400">{presetStudioFlightPlanCopies.finish}</div>
+                            </div>
+                          </div>
+                        </section>
+
+                        <section className="rounded-[24px] border border-white/10 bg-zinc-950/78 p-4">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-500">Operator notes</div>
+                          <div className="mt-3 space-y-2 text-[13px] leading-6 text-zinc-300">
+                            {presetStudioOperatorNotes.map((note, index) => (
+                              <p key={`${index}-${note}`} className={index === 0 ? '' : 'text-zinc-400'}>
+                                {note}
+                              </p>
+                            ))}
+                          </div>
+                        </section>
+                      </div>
+
+                      <section className="rounded-[24px] border border-cyan-400/20 bg-[linear-gradient(180deg,rgba(8,47,73,0.46),rgba(9,9,11,0.92))] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.24)] xl:shrink-0">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-cyan-200/70">Commit</div>
+                          {presetStudioSaveLabel && (
+                            <div className="rounded-full border border-emerald-400/25 bg-emerald-500/12 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-100">
+                              {presetStudioSaveLabel}
+                            </div>
+                          )}
+                        </div>
+                        <div className="mt-2 text-xl font-semibold text-white">
+                          {editingPresetId ? 'Update this preset' : 'Save this preset'}
+                        </div>
+                        <p className="mt-2 text-[13px] leading-6 text-zinc-300">
+                          {presetStudioCommitCopy}
+                        </p>
+                        <div className="mt-3 space-y-2">
+                          <button
+                            data-testid="speaker-preset-save"
+                            onClick={savePresetDraft}
+                            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-cyan-200/40 bg-[linear-gradient(180deg,rgba(34,211,238,0.28),rgba(8,145,178,0.26))] px-4 py-2.5 text-sm font-semibold text-cyan-50 transition hover:border-cyan-100/60 hover:bg-[linear-gradient(180deg,rgba(34,211,238,0.36),rgba(8,145,178,0.34))]"
+                          >
+                            <CheckIcon className="h-4 w-4" />
+                            {editingPresetId ? 'Update preset' : 'Save preset'}
+                          </button>
+                          <button
+                            onClick={openCreatePresetModal}
+                            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/10"
+                          >
+                            <EditIcon className="h-4 w-4" />
+                            Start a fresh draft
+                          </button>
+                          <button
+                            onClick={closeSpeakerPresetStudio}
+                            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-transparent px-4 py-2.5 text-sm font-semibold text-zinc-300 transition hover:border-white/20 hover:bg-white/5"
+                          >
+                            <XIcon className="h-4 w-4" />
+                            Close studio
+                          </button>
+                        </div>
+                        <div className="mt-3 rounded-[18px] border border-white/10 bg-black/20 px-4 py-2.5 text-[11px] leading-5 text-zinc-400">
+                          {presetTargetItemId
+                            ? 'A cue is selected, so any saved or card-applied preset can be used immediately.'
+                            : 'Select a cue in the rundown to apply a preset after saving.'}
+                        </div>
+                      </section>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="hidden border-r border-zinc-800 p-3 max-h-[65vh] overflow-y-auto custom-scrollbar space-y-2">
                 {(workspaceSettings.speakerTimerPresets || []).map((preset) => (
                   <div key={preset.id} className="p-2 border border-zinc-800 rounded bg-zinc-950/60">
                     <div className="text-xs font-bold text-zinc-200">{preset.name}</div>
@@ -5394,7 +6466,7 @@ function App() {
                   </div>
                 ))}
               </div>
-              <div className="p-3 space-y-2">
+              <div className="hidden p-3 space-y-2">
                 <div className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold">
                   {editingPresetId ? 'Edit Preset' : 'Create Preset'}
                 </div>
@@ -5493,7 +6565,7 @@ function App() {
         aetherBridgeStatusText={aetherBridgeStatus.text}
       />
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
-      {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={(settings) => setWorkspaceSettings((prev) => ({ ...prev, ...settings }))} onLogout={handleLogout} currentSettings={workspaceSettings} currentUser={user} />}
+      {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={handleWorkspaceSettingsSave} onLogout={handleLogout} currentSettings={workspaceSettings} currentUser={user} />}
       {
         isMotionLibOpen && (
           <MotionLibrary
@@ -5523,8 +6595,8 @@ function App() {
         workspaceId={workspaceId}
         user={user}
       />
-    </div >
-  );
+    </div>
+);
 }
 
 export default App;

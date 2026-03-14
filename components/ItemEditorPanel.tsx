@@ -1,8 +1,133 @@
 
-import React from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { ServiceItem, SpeakerTimerPreset } from '../types';
 import { DEFAULT_BACKGROUNDS } from '../constants';
 import { PlusIcon } from './Icons';
+import { searchPexelsMotion } from '../services/serverApi';
+import type { RemoteMotionAsset } from '../services/serverApi';
+
+const BG_PRESETS = [
+  { label: 'Worship',     query: 'worship background' },
+  { label: 'Church',      query: 'church light background' },
+  { label: 'Celebration', query: 'celebration confetti background' },
+  { label: 'Cross',       query: 'cross light background' },
+  { label: 'Nature',      query: 'nature sky background' },
+  { label: 'Abstract',    query: 'abstract light background' },
+  { label: 'Fire',        query: 'fire flame background' },
+  { label: 'Water',       query: 'water waves background' },
+  { label: 'Stars',       query: 'stars galaxy background' },
+  { label: 'Sunrise',     query: 'sunrise sky background' },
+];
+
+function SmartBgSearch({ onApply }: { onApply: (url: string, thumb: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [activeQuery, setActiveQuery] = useState('');
+  const [results, setResults] = useState<RemoteMotionAsset[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const cacheRef = useRef<Record<string, RemoteMotionAsset[]>>({});
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const runSearch = useCallback(async (q: string) => {
+    const key = q.trim().toLowerCase();
+    if (!key) return;
+    setActiveQuery(q);
+    setError('');
+    if (cacheRef.current[key]) {
+      setResults(cacheRef.current[key]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await searchPexelsMotion(q, 6);
+      const assets = res?.assets || [];
+      cacheRef.current[key] = assets;
+      setResults(assets);
+      if (!assets.length) setError('No results found.');
+    } catch {
+      setError('Search failed. Check your connection.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handlePreset = (preset: typeof BG_PRESETS[0]) => {
+    setQuery(preset.query);
+    setOpen(true);
+    runSearch(preset.query);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) { setOpen(true); runSearch(query.trim()); }
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      {/* Preset chips + search row */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 shrink-0">Quick BG</span>
+        {BG_PRESETS.map((p) => (
+          <button
+            key={p.label}
+            onClick={() => handlePreset(p)}
+            className={`h-6 px-2 rounded-md border text-[9px] font-bold uppercase tracking-wider transition-all ${activeQuery === p.query && open ? 'border-blue-600/60 bg-blue-950/40 text-blue-300' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'}`}
+          >{p.label}</button>
+        ))}
+        <form onSubmit={handleSubmit} className="flex items-center gap-1 ml-auto">
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search Pexels…"
+            className="h-6 w-28 bg-zinc-900 border border-zinc-700 rounded-md px-2 text-[10px] text-zinc-200 placeholder-zinc-600 outline-none focus:border-blue-600/60 transition-colors"
+          />
+          <button type="submit" className="h-6 px-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-md text-[9px] font-bold text-zinc-300 transition-colors">Go</button>
+        </form>
+      </div>
+
+      {/* Results panel */}
+      {open && (
+        <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/80 p-2">
+          {loading && (
+            <div className="grid grid-cols-6 gap-1.5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="aspect-video rounded-md bg-zinc-800 animate-pulse" />
+              ))}
+            </div>
+          )}
+          {error && !loading && (
+            <div className="text-[10px] text-zinc-500 text-center py-3">{error}</div>
+          )}
+          {!loading && !error && results.length > 0 && (
+            <>
+              <div className="grid grid-cols-6 gap-1.5">
+                {results.map((asset) => (
+                  <button
+                    key={asset.id}
+                    onClick={() => { onApply(asset.url, asset.thumb); setOpen(false); setActiveQuery(''); }}
+                    className="group relative aspect-video rounded-md overflow-hidden border border-zinc-800 hover:border-blue-500 transition-all shadow-md"
+                    title={asset.name}
+                  >
+                    <img src={asset.thumb} alt={asset.name} className="w-full h-full object-cover" loading="lazy" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+                      <span className="opacity-0 group-hover:opacity-100 text-white text-[8px] font-black uppercase tracking-wider bg-blue-600/80 rounded px-1.5 py-0.5 transition-all">Apply</span>
+                    </div>
+                    {asset.mediaType === 'video' && (
+                      <div className="absolute bottom-0.5 right-0.5 bg-black/60 rounded px-1 py-0.5 text-[7px] font-bold text-zinc-300 uppercase">VID</div>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-1.5 text-[8px] text-zinc-700 text-right">Powered by Pexels</div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface ItemEditorPanelProps {
   item: ServiceItem;
@@ -133,6 +258,11 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
 
       </div>
 
+      {/* Smart Background Search */}
+      <SmartBgSearch
+        onApply={(url, _thumb) => updateTheme({ backgroundUrl: url, mediaType: 'video' })}
+      />
+
       <div className="grid grid-cols-1 gap-2 rounded-xl border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(24,24,27,0.82),rgba(10,10,14,0.96))] p-2.5 shadow-[0_14px_28px_rgba(0,0,0,0.2)] sm:grid-cols-2 xl:grid-cols-12">
         <label className="flex items-center gap-2 rounded-lg border border-blue-900/40 bg-blue-950/20 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-300 sm:col-span-2 xl:col-span-2">
           <input
@@ -179,7 +309,7 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
             className="w-full rounded-md border border-zinc-700 bg-zinc-950/90 px-2 py-2 text-[11px] text-zinc-200 shadow-inner shadow-black/20"
           />
         </div>
-        <div className="min-w-0 sm:col-span-2 xl:col-span-3">
+        <div className="min-w-0 sm:col-span-2 xl:col-span-2">
           <div className="mb-1 text-[9px] font-bold uppercase tracking-[0.16em] text-zinc-500">Speaker</div>
           <input
             type="text"
@@ -198,7 +328,7 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
           />
           Auto Next
         </label>
-        <div className="sm:col-span-2 xl:col-span-1">
+        <div className="sm:col-span-2 xl:col-span-2">
           <div className="mb-1 text-[9px] font-bold uppercase tracking-[0.16em] text-zinc-500">Cue Thresholds</div>
           <div className="grid grid-cols-2 gap-1">
             <div className="min-w-0 rounded-lg border border-amber-900/30 bg-amber-950/10 p-2">

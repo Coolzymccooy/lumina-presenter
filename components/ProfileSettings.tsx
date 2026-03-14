@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { UserIcon, Settings, X, Save, Church, ShieldCheck, ChevronDown, ChevronUp, CreditCard, Palette, Globe, Lock } from 'lucide-react';
 
 interface ProfileSettingsProps {
@@ -47,8 +47,18 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
     return parsed.toLocaleString();
   };
 
+  useEffect(() => {
+    setRemoteAdminEmails(currentSettings?.remoteAdminEmails || '');
+  }, [currentSettings?.remoteAdminEmails]);
+
+  useEffect(() => {
+    const nextSessionId = String(currentSettings?.sessionId || '').trim() || 'live';
+    setSessionId(nextSessionId);
+  }, [currentSettings?.sessionId]);
+
   const handleSave = () => {
-    onSave({ churchName, ccli, defaultVersion, theme, remoteAdminEmails, connectionTargetRoles, sessionId, stageProfile, stageFlowLayout, machineMode });
+    const normalizedSessionId = String(sessionId || '').trim() || 'live';
+    onSave({ churchName, ccli, defaultVersion, theme, remoteAdminEmails, connectionTargetRoles, sessionId: normalizedSessionId, stageProfile, stageFlowLayout, machineMode });
     onClose();
   };
 
@@ -231,6 +241,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
                     type="text"
                     value={sessionId}
                     onChange={e => setSessionId(e.target.value)}
+                    data-testid="profile-settings-session-id"
                     className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3.5 text-sm text-white focus:border-blue-500 focus:outline-none transition-all font-mono placeholder:text-zinc-800"
                     placeholder="live"
                   />
@@ -273,6 +284,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
                 <textarea
                   value={remoteAdminEmails}
                   onChange={(e) => setRemoteAdminEmails(e.target.value)}
+                  data-testid="profile-settings-remote-admin-emails"
                   className="w-full min-h-[140px] bg-black border border-zinc-800 rounded-xl p-5 text-sm text-white font-mono focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-all placeholder:text-zinc-800 custom-scrollbar"
                   placeholder={'pastor@church.org:owner\nmedia@church.org:operator'}
                 />

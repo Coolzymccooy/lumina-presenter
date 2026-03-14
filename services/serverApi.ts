@@ -229,6 +229,10 @@ export type WorkspaceSnapshotPayload = {
   workspaceSettings: any;
   workspaceSettingsUpdatedAt?: number;
   updatedAt: number;
+  audienceQrProjection?: any;
+  stageTimerFlash?: any;
+  stageMessageCenter?: any;
+  stageAlert?: any;
 };
 
 export const loadLatestWorkspaceSnapshot = async (workspaceId: string, user: ActorLike) => {

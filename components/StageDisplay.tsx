@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ServiceItem, Slide, StageAlertLayout, StageAlertState, StageFlowLayout, StageMessageCenterState, StageTimerLayout, StageTimerVariant } from '../types';
+import { ServiceItem, Slide, StageAlertLayout, StageAlertState, StageFlowLayout, StageMessageCenterState, StageTimerFlashColor, StageTimerLayout, StageTimerVariant } from '../types';
 import { getCachedMedia, getMedia } from '../services/localMedia';
 
 interface StageDisplayProps {
@@ -14,6 +14,8 @@ interface StageDisplayProps {
   timerDurationSec?: number;
   timerAmberPercent?: number;
   timerRedPercent?: number;
+  timerFlashActive?: boolean;
+  timerFlashColor?: StageTimerFlashColor;
   timerLayout?: StageTimerLayout;
   onTimerLayoutChange?: (layout: StageTimerLayout) => void;
   stageAlertLayout?: StageAlertLayout;
@@ -139,6 +141,8 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
   timerDurationSec = 0,
   timerAmberPercent = 25,
   timerRedPercent = 10,
+  timerFlashActive = false,
+  timerFlashColor = 'white',
   timerLayout,
   onTimerLayoutChange,
   stageAlertLayout,
@@ -516,6 +520,16 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
         : remainingRatio <= safeAmberPct / 100
           ? 'text-amber-300 border-amber-500/50 bg-amber-950/30'
           : 'text-emerald-300 border-emerald-500/50 bg-emerald-950/25';
+  const flashToneClass = timerFlashColor === 'amber'
+    ? 'text-amber-100 border-amber-300/90 bg-amber-950/42 shadow-[0_0_48px_rgba(251,191,36,0.35)]'
+    : timerFlashColor === 'red'
+      ? 'text-rose-50 border-rose-300/90 bg-rose-950/44 shadow-[0_0_56px_rgba(251,113,133,0.36)]'
+      : timerFlashColor === 'cyan'
+        ? 'text-cyan-50 border-cyan-200/90 bg-cyan-950/42 shadow-[0_0_56px_rgba(34,211,238,0.36)]'
+        : 'text-white border-white/90 bg-white/12 shadow-[0_0_56px_rgba(255,255,255,0.22)]';
+  const timerWidgetToneClass = timerFlashActive ? flashToneClass : toneClass;
+  const timerFlashPulseClass = timerFlashActive ? 'lumina-stage-timer-flash' : '';
+  const timerFlashTextClass = timerFlashActive ? 'lumina-stage-timer-flash-text' : '';
 
   const startDrag = (mode: 'move' | 'resize', event: React.PointerEvent<HTMLElement>) => {
     if (layout.locked) return;
@@ -857,7 +871,9 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
       <div
         ref={timerWidgetRef}
         data-testid="stage-timer-widget"
-        className={`absolute z-30 rounded-xl border backdrop-blur-sm shadow-2xl ${toneClass}`}
+        data-timer-flash-active={timerFlashActive ? 'true' : 'false'}
+        data-timer-flash-color={timerFlashColor}
+        className={`absolute z-30 rounded-xl border backdrop-blur-sm shadow-2xl ${timerWidgetToneClass} ${timerFlashPulseClass}`}
         style={{
           left: layout.x,
           top: layout.y,
@@ -874,7 +890,7 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
           className={`relative w-full h-full rounded-xl p-3 ${layout.locked ? 'cursor-default' : 'cursor-move'} flex flex-col justify-between overflow-hidden`}
         >
           <div className="flex items-center justify-between gap-2">
-            <div className="text-[10px] uppercase tracking-[0.2em] font-black opacity-90 truncate pr-2">
+            <div className={`text-[10px] uppercase tracking-[0.2em] font-black opacity-90 truncate pr-2 ${timerFlashTextClass}`}>
               {timerLabel} ({timerMode})
             </div>
             <div className="flex items-center gap-1 shrink-0">
@@ -900,14 +916,14 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
           </div>
 
           <div
-            className="font-mono font-black leading-none text-center whitespace-nowrap overflow-hidden"
+            className={`font-mono font-black leading-none text-center whitespace-nowrap overflow-hidden ${timerFlashTextClass}`}
             style={{ fontSize: timerTextSize }}
           >
             {safeTimerDisplay}
           </div>
 
           <div className="flex items-center justify-between gap-2 overflow-hidden">
-            <div className="opacity-80 truncate" style={{ fontSize: subtitleSize }}>
+            <div className={`opacity-80 truncate ${timerFlashTextClass}`} style={{ fontSize: subtitleSize }}>
               {isTimerOvertime ? 'OVERTIME' : (isCountdown ? `${safeAmberPct}% / ${safeRedPct}%` : 'Elapsed')}
             </div>
             {!layout.locked && !collapseControls && (
@@ -1025,6 +1041,20 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
         @keyframes stageTicker {
           from { transform: translateX(100%); }
           to { transform: translateX(-100%); }
+        }
+        @keyframes luminaStageTimerFlash {
+          0%, 42%, 100% { opacity: 1; filter: brightness(1); }
+          16%, 28% { opacity: 0.28; filter: brightness(1.55); }
+        }
+        @keyframes luminaStageTimerFlashText {
+          0%, 42%, 100% { opacity: 1; text-shadow: 0 0 0 rgba(255,255,255,0); filter: brightness(1); }
+          16%, 28% { opacity: 0.18; text-shadow: 0 0 28px currentColor, 0 0 44px currentColor; filter: brightness(1.85); }
+        }
+        .lumina-stage-timer-flash {
+          animation: luminaStageTimerFlash 0.78s ease-in-out infinite;
+        }
+        .lumina-stage-timer-flash-text {
+          animation: luminaStageTimerFlashText 0.78s ease-in-out infinite;
         }
       `}</style>
     </div>

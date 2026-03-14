@@ -126,6 +126,7 @@ export interface TimerCue {
   presetId?: string;
 }
 
+export type StageTimerFlashColor = 'white' | 'amber' | 'red' | 'cyan';
 export type StageTimerVariant = 'top-right' | 'top-left' | 'bottom-right' | 'compact-bar';
 export type StageFlowLayout = 'balanced' | 'speaker_focus' | 'preview_focus' | 'minimal_next';
 
@@ -146,6 +147,12 @@ export interface StageAlertLayout {
   height: number;
   fontScale: number;
   locked: boolean;
+}
+
+export interface StageTimerFlashState {
+  active: boolean;
+  color: StageTimerFlashColor;
+  updatedAt: number;
 }
 
 export type ConnectionRole = 'controller' | 'output' | 'stage' | 'remote';

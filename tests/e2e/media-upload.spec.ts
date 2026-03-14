@@ -49,6 +49,12 @@ const seedState = async (page: Page, payload: Record<string, unknown>) => {
   }, { key: STORAGE_KEY, state: payload });
 };
 
+const seedElectronShell = async (page: Page) => {
+  await page.addInitScript(() => {
+    (window as any).electron = { isElectron: true };
+  });
+};
+
 const waitForStudioEntryStep = async (page: Page) => {
   const startButton = page.getByRole('button', { name: /start your journey/i });
   const emailInput = page.locator('input[type="email"]');
@@ -66,9 +72,18 @@ const waitForStudioEntryStep = async (page: Page) => {
 
 const enterStudio = async (page: Page, key: string) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /^Use in Browser$|^Resume Session$/i }).first().click();
 
   await waitForStudioEntryStep(page);
+
+  if (await page.getByText('RUN SHEET').isVisible().catch(() => false)) {
+    return;
+  }
+
+  const resumeButton = page.getByRole('button', { name: /^Use in Browser$|^Resume Session$/i }).first();
+  if (await resumeButton.isVisible().catch(() => false)) {
+    await resumeButton.click();
+    await waitForStudioEntryStep(page);
+  }
 
   const startButton = page.getByRole('button', { name: /start your journey/i });
   if (await startButton.isVisible().catch(() => false)) {
@@ -318,6 +333,200 @@ test('pinned studio sidebar remains accessible across present and build mode swi
   expect(railMetrics.width).toBeGreaterThan(120);
 });
 
+test('compact electron presenter keeps the sidebar recoverable on narrow widths', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1366, height: 820 });
+  await seedElectronShell(page);
+
+  const key = uniqueKey();
+  const { itemId, state } = buildBuilderState(key, Array.from({ length: 12 }, (_, idx) => ({
+    id: `slide-${key}-${idx}`,
+    label: `Verse ${idx + 1}`,
+    content: `Narrow presenter shell ${idx + 1}`,
+    backgroundUrl: '',
+    mediaType: 'image',
+  })));
+  state.activeItemId = itemId;
+  state.activeSlideIndex = 0;
+
+  await seedState(page, state);
+  await enterStudio(page, key);
+
+  await page.getByTestId('studio-sidebar-pin').click();
+  await expect(page.getByText('Schedule')).toBeVisible();
+
+  await page.getByRole('button', { name: 'PRESENT' }).click();
+  await expect(page.getByText('Live Queue')).toBeVisible();
+  const transportNextButton = page.getByRole('button', { name: 'NEXT', exact: true });
+  await expect(transportNextButton).toBeVisible();
+
+  const panel = page.getByTestId('studio-sidebar-panel');
+  await expect(panel).toBeVisible();
+
+  const railMetrics = await page.getByTestId('studio-sidebar-rail').evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return { left: rect.left, width: rect.width };
+  });
+  expect(railMetrics.left).toBeGreaterThanOrEqual(0);
+  expect(railMetrics.width).toBeLessThanOrEqual(96);
+
+  await page.getByTestId('studio-sidebar-pin').click();
+  await expect(panel).toBeHidden();
+  await expect(transportNextButton).toBeVisible();
+
+  await page.getByTitle('AUDIO MIXER').click();
+  await expect(panel).toBeVisible();
+  await expect(page.getByText('Audio Mixer')).toBeVisible();
+
+  await page.getByTestId('studio-sidebar-drawer-backdrop').click();
+  await expect(panel).toBeHidden();
+
+  await page.getByTitle('SCHEDULE').click();
+  await expect(panel).toBeVisible();
+  await expect(page.getByText('Run Sheet')).toBeVisible();
+
+  const shellMetrics = await page.getByTestId('studio-shell').evaluate((node) => ({
+    scrollLeft: node.scrollLeft,
+    clientWidth: node.clientWidth,
+    scrollWidth: node.scrollWidth,
+  }));
+  expect(shellMetrics.scrollLeft).toBe(0);
+
+  const nextButtonBox = await transportNextButton.boundingBox();
+  expect(nextButtonBox).toBeTruthy();
+  if (!nextButtonBox) {
+    throw new Error('Unable to read NEXT button bounds');
+  }
+  expect(nextButtonBox.x).toBeGreaterThan(0);
+  expect(nextButtonBox.x + nextButtonBox.width).toBeLessThanOrEqual(1366);
+});
+
+test('electron medium presenter keeps runsheet visible without hiding transport controls', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1536, height: 864 });
+  await seedElectronShell(page);
+
+  const key = uniqueKey();
+  const { itemId, state } = buildBuilderState(key, Array.from({ length: 8 }, (_, idx) => ({
+    id: `slide-${key}-${idx}`,
+    label: `Verse ${idx + 1}`,
+    content: `Medium presenter shell ${idx + 1}`,
+    backgroundUrl: '',
+    mediaType: 'image',
+  })));
+  state.activeItemId = itemId;
+  state.activeSlideIndex = 0;
+
+  await seedState(page, state);
+  await enterStudio(page, key);
+
+  const panel = page.getByTestId('studio-sidebar-panel');
+  const transportNextButton = page.getByRole('button', { name: 'NEXT', exact: true });
+
+  await expect(panel).toBeVisible();
+
+  await page.getByRole('button', { name: 'PRESENT' }).click();
+  await expect(panel).toBeVisible();
+  await expect(transportNextButton).toBeVisible();
+
+  await page.getByRole('button', { name: 'BUILD' }).click();
+  await expect(panel).toBeVisible();
+
+  await page.getByRole('button', { name: 'PRESENT' }).click();
+  await expect(panel).toBeVisible();
+  await expect(transportNextButton).toBeVisible();
+
+  const panelRect = await panel.boundingBox();
+  const nextRect = await transportNextButton.boundingBox();
+  expect(panelRect).toBeTruthy();
+  expect(nextRect).toBeTruthy();
+  if (!panelRect || !nextRect) {
+    throw new Error('Unable to read presenter panel or transport button bounds');
+  }
+  expect(nextRect.x).toBeGreaterThan(panelRect.x + panelRect.width - 4);
+});
+
+test('workspace identity fields stay stable through blank hydration until explicitly cleared', async ({ page }) => {
+  test.setTimeout(120_000);
+  const key = uniqueKey();
+  const customSession = `service-${key}`;
+  const customEmails = `pastor-${key}@church.org:owner`;
+  let servedUpdatedAt = 1000;
+
+  await page.route('**/api/workspaces/*/settings', async (route) => {
+    const method = route.request().method();
+    if (method === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          settings: {
+            remoteAdminEmails: '',
+            sessionId: 'live',
+          },
+          updatedAt: servedUpdatedAt,
+        }),
+      });
+      return;
+    }
+    if (method === 'PATCH') {
+      servedUpdatedAt = servedUpdatedAt === 1000 ? 2000 : 3000;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          updatedAt: servedUpdatedAt,
+        }),
+      });
+      return;
+    }
+    await route.fallback();
+  });
+
+  const { state } = buildBuilderState(key);
+  await seedState(page, state);
+  await enterStudio(page, key);
+
+  await page.getByTitle('SETTINGS').click();
+  await page.getByText('Studio Preferences').click();
+  await page.getByTestId('profile-settings-session-id').fill(customSession);
+  await page.getByRole('heading', { name: 'Remote Intelligence' }).click();
+  await page.getByTestId('profile-settings-remote-admin-emails').fill(customEmails);
+  await page.getByRole('button', { name: /synchronize workspace/i }).click();
+
+  await expect(page.getByTestId('studio-session-id')).toHaveText(customSession);
+
+  await page.reload();
+  await enterStudio(page, key);
+  await expect(page.getByTestId('studio-session-id')).toHaveText(customSession);
+
+  await page.getByTitle('SETTINGS').click();
+  await page.getByText('Studio Preferences').click();
+  await expect(page.getByTestId('profile-settings-session-id')).toHaveValue(customSession);
+  await page.getByRole('heading', { name: 'Remote Intelligence' }).click();
+  await expect(page.getByTestId('profile-settings-remote-admin-emails')).toHaveValue(customEmails);
+
+  await page.getByText('Studio Preferences').click();
+  await page.getByTestId('profile-settings-session-id').fill('live');
+  await page.getByRole('heading', { name: 'Remote Intelligence' }).click();
+  await page.getByTestId('profile-settings-remote-admin-emails').fill('');
+  await page.getByRole('button', { name: /synchronize workspace/i }).click();
+
+  await expect(page.getByTestId('studio-session-id')).toHaveText('live');
+
+  await page.reload();
+  await enterStudio(page, key);
+  await expect(page.getByTestId('studio-session-id')).toHaveText('live');
+
+  await page.getByTitle('SETTINGS').click();
+  await page.getByText('Studio Preferences').click();
+  await expect(page.getByTestId('profile-settings-session-id')).toHaveValue('live');
+  await page.getByRole('heading', { name: 'Remote Intelligence' }).click();
+  await expect(page.getByTestId('profile-settings-remote-admin-emails')).toHaveValue('');
+});
+
 test('public domain hymn library stays inside the sidebar and inserts into the run sheet', async ({ page }) => {
   test.setTimeout(120_000);
   const key = uniqueKey();
@@ -369,6 +578,96 @@ test('public domain hymn library stays inside the sidebar and inserts into the r
   await page.getByTestId('hymn-insert-button').click();
   await page.getByTitle('SCHEDULE').click();
   await expect(page.getByTestId('studio-sidebar-panel').getByText('Abide with Me', { exact: true }).first()).toBeVisible();
+});
+
+test('speaker timer studio stays open after save, drags freely, and leaves the studio interactive', async ({ page }) => {
+  test.setTimeout(120_000);
+  const key = uniqueKey();
+  const { state } = buildBuilderState(key, [
+    {
+      id: `slide-${key}`,
+      label: 'Timer Source',
+      content: 'Speaker preset studio test',
+      backgroundUrl: '',
+      mediaType: 'image',
+    },
+  ]);
+
+  await seedState(page, state);
+  await enterStudio(page, key);
+  await page.getByRole('button', { name: 'PRESENT' }).click();
+  await expect(page.getByText('Live Queue')).toBeVisible();
+
+  await page.getByRole('button', { name: /^Manage$/ }).click();
+
+  const studio = page.getByTestId('speaker-preset-studio');
+  const dragHandle = page.getByTestId('speaker-preset-studio-drag-handle');
+  const hero = page.getByTestId('speaker-preset-studio-hero');
+  const heroTimer = page.getByTestId('speaker-preset-hero-timer');
+  const editorScroll = page.getByTestId('speaker-preset-studio-editor-scroll');
+  const saveButton = page.getByTestId('speaker-preset-save');
+  const standardViewButton = page.getByTestId('speaker-preset-width-standard');
+  const wideViewButton = page.getByTestId('speaker-preset-width-wide');
+
+  await expect(studio).toBeVisible();
+  await expect(hero).toBeVisible();
+  await expect(heroTimer).toBeVisible();
+  await expect(saveButton).toBeVisible();
+  await studio.getByRole('button', { name: /new preset/i }).click();
+
+  const beforeWide = await studio.boundingBox();
+  expect(beforeWide).toBeTruthy();
+  await wideViewButton.click();
+  await page.waitForTimeout(120);
+  const afterWide = await studio.boundingBox();
+  expect(afterWide).toBeTruthy();
+  if (!beforeWide || !afterWide) {
+    throw new Error('Unable to read speaker preset studio width change');
+  }
+  expect(afterWide.width).toBeGreaterThan(beforeWide.width + 20);
+  await standardViewButton.click();
+  await page.waitForTimeout(120);
+
+  const beforeDrag = await studio.boundingBox();
+  const handleBox = await dragHandle.boundingBox();
+  expect(beforeDrag).toBeTruthy();
+  expect(handleBox).toBeTruthy();
+  if (!beforeDrag || !handleBox) {
+    throw new Error('Unable to read speaker preset studio bounds');
+  }
+
+  await page.mouse.move(handleBox.x + 60, handleBox.y + 24);
+  await page.mouse.down();
+  await page.mouse.move(handleBox.x + 220, handleBox.y + 120, { steps: 20 });
+  await page.mouse.up();
+
+  await page.waitForTimeout(120);
+  const afterDrag = await studio.boundingBox();
+  expect(afterDrag).toBeTruthy();
+  if (!afterDrag) {
+    throw new Error('Unable to read speaker preset studio bounds after drag');
+  }
+  expect(afterDrag.x).toBeGreaterThan(beforeDrag.x + 40);
+  expect(afterDrag.y).toBeGreaterThan(beforeDrag.y + 25);
+
+  await page.getByTestId('studio-sidebar-pin').click();
+  await expect(page.getByText('Schedule')).toBeVisible();
+  await expect(studio).toBeVisible();
+
+  await editorScroll.evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+  });
+  await page.waitForTimeout(120);
+  await expect(hero).toBeVisible();
+  await expect(saveButton).toBeVisible();
+
+  await page.getByTestId('speaker-preset-name-input').fill(`Preset ${key}`);
+  await saveButton.click();
+
+  await expect(studio).toBeVisible();
+  await expect(page.getByText('Update this preset')).toBeVisible();
+  await expect(page.getByTestId('speaker-preset-studio-status')).toHaveText(/saved just now/i);
+  await expect(hero.getByText(`Preset ${key}`)).toBeVisible();
 });
 
 test('present mode can launch a queued item without tripping React hook order', async ({ page }) => {
@@ -583,3 +882,6 @@ test('smart slide editor stacked layout keeps inspector visible and editable on 
   await expect(page.getByTestId('smart-slide-label')).toHaveValue('Stacked Layout');
   await expect(page.getByTestId('smart-element-content')).toHaveValue('Inspector remains usable.');
 });
+
+
+

@@ -694,6 +694,26 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
         >
           {hasStructuredElements ? (
             <ElementRenderer elements={structuredElements} layoutMode="absolute" />
+          ) : slide.layoutType === 'ticker' ? (
+            /* ── Ticker layout: verse scrolls in a bottom band ──────────── */
+            <>
+              <style>{`@keyframes lumina-ticker { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }`}</style>
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: CANVAS_H * 0.16, background: "linear-gradient(180deg, rgba(0,0,0,0.0) 0%, rgba(0,0,0,0.88) 30%)", display: "flex", alignItems: "center", overflow: "hidden" }}>
+                {/* Fixed reference badge on the left */}
+                {slide.label && (
+                  <div style={{ position: "relative", zIndex: 2, padding: `0 ${CANVAS_W * 0.025}px`, display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
+                    <div style={{ width: 4, height: CANVAS_H * 0.08, background: "#3b82f6", borderRadius: 4 }} />
+                    <span style={{ fontFamily: '"Inter", "Segoe UI", system-ui, sans-serif', fontSize: Math.round(CANVAS_H * 0.028), fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#93c5fd", textShadow: "0 1px 4px rgba(0,0,0,0.9)", whiteSpace: "nowrap" }}>{slide.label}</span>
+                  </div>
+                )}
+                {/* Scrolling verse text */}
+                <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
+                  <div style={{ display: "inline-block", whiteSpace: "nowrap", animation: `lumina-ticker ${Math.max(12, contentText.length * 0.18)}s linear infinite`, fontSize: Math.round(CANVAS_H * 0.038), fontFamily: '"Georgia", "Times New Roman", serif', fontStyle: "italic", fontWeight: 400, color: "rgba(255,255,255,0.95)", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
+                    {contentText}
+                  </div>
+                </div>
+              </div>
+            </>
           ) : (
             <div
               style={{
@@ -703,7 +723,11 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: lowerThirds ? "flex-end" : "center",
-                padding: lowerThirds ? `0 ${CANVAS_W * 0.04}px ${CANVAS_H * 0.07}px` : `${CANVAS_H * 0.08}px ${CANVAS_W * 0.04}px`,
+                padding: lowerThirds
+                  ? `0 ${CANVAS_W * 0.04}px ${CANVAS_H * 0.07}px`
+                  : slide.layoutType === 'scripture_ref'
+                    ? `${CANVAS_H * 0.06}px ${CANVAS_W * 0.06}px ${CANVAS_H * 0.22}px`
+                    : `${CANVAS_H * 0.08}px ${CANVAS_W * 0.04}px`,
                 textAlign: "center",
               }}
             >
@@ -762,36 +786,47 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
           )}
 
           {/* Scripture / slide reference label */}
-          {showSlideLabel && slide.label && !lowerThirds && (
-            <div
-              style={{
-                position: "absolute",
-                bottom: CANVAS_H * 0.048,
-                right: CANVAS_W * 0.04,
-                maxWidth: "80%",
-                opacity: 0.92,
-              }}
-            >
-              <span
+          {showSlideLabel && slide.label && !lowerThirds && slide.layoutType !== 'ticker' && (
+            slide.layoutType === 'scripture_ref' ? (
+              /* ── Scripture + Reference: prominent centered bottom label ── */
+              <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: CANVAS_H * 0.18, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0) 100%)" }}>
+                <div style={{ width: CANVAS_W * 0.4, height: 1, background: "rgba(255,255,255,0.15)", marginBottom: CANVAS_H * 0.025 }} />
+                <span style={{ fontFamily: '"Inter", "Segoe UI", system-ui, sans-serif', fontSize: Math.round(CANVAS_H * 0.038), fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "rgba(255,255,255,0.98)", textShadow: "0 2px 8px rgba(0,0,0,0.8)" }}>
+                  {slide.label}
+                </span>
+              </div>
+            ) : (
+              /* ── Standard: small pill at bottom-right ──────────────────── */
+              <div
                 style={{
-                  fontFamily: '"Inter", "Segoe UI", system-ui, sans-serif',
-                  fontSize: labelPx,
-                  fontWeight: 500,
-                  letterSpacing: "0.03em",
-                  display: "inline-block",
-                  padding: `${labelPadH}px ${labelPadH * 2}px`,
-                  borderRadius: 999,
-                  background: "rgba(0,0,0,0.45)",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  backdropFilter: "blur(8px)",
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
-                  textShadow: "0 1px 2px rgba(0,0,0,0.8)",
-                  color: "rgba(255,255,255,0.95)",
+                  position: "absolute",
+                  bottom: CANVAS_H * 0.048,
+                  right: CANVAS_W * 0.04,
+                  maxWidth: "80%",
+                  opacity: 0.92,
                 }}
               >
-                {slide.label}
-              </span>
-            </div>
+                <span
+                  style={{
+                    fontFamily: '"Inter", "Segoe UI", system-ui, sans-serif',
+                    fontSize: labelPx,
+                    fontWeight: 500,
+                    letterSpacing: "0.03em",
+                    display: "inline-block",
+                    padding: `${labelPadH}px ${labelPadH * 2}px`,
+                    borderRadius: 999,
+                    background: "rgba(0,0,0,0.45)",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    backdropFilter: "blur(8px)",
+                    boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
+                    textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+                    color: "rgba(255,255,255,0.95)",
+                  }}
+                >
+                  {slide.label}
+                </span>
+              </div>
+            )
           )}
         </div>
 

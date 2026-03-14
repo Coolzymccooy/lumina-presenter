@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState } from '../services/firebase';
 import { fetchServerSessionState, getOrCreateConnectionClientId, heartbeatSessionConnection } from '../services/serverApi';
-import { AudienceDisplayState, ServiceItem, StageAlertLayout, StageAlertState, StageFlowLayout, StageMessageCenterState, StageTimerLayout } from '../types';
+import { AudienceDisplayState, ServiceItem, StageAlertLayout, StageAlertState, StageFlowLayout, StageMessageCategory, StageMessageCenterState, StageTimerFlashColor, StageTimerFlashState, StageTimerLayout } from '../types';
 import { LoginScreen } from './LoginScreen';
 import { StageDisplay } from './StageDisplay';
 
@@ -22,6 +22,7 @@ type LocalStageState = {
   timerCueSpeaker?: string;
   timerCueAmberPercent?: number;
   timerCueRedPercent?: number;
+  stageTimerFlash?: StageTimerFlashState;
   workspaceSettings?: {
     stageProfile?: 'classic' | 'compact' | 'high_contrast';
     stageTimerLayout?: StageTimerLayout;
@@ -45,6 +46,7 @@ type EffectiveStageState = {
   timerCueSpeaker: string;
   timerCueAmberPercent: number;
   timerCueRedPercent: number;
+  stageTimerFlash: StageTimerFlashState;
   stageProfile: 'classic' | 'compact' | 'high_contrast';
   stageTimerLayout?: StageTimerLayout;
   stageAlertLayout?: StageAlertLayout;
@@ -52,6 +54,8 @@ type EffectiveStageState = {
   updatedAt: number;
   hasRenderable: boolean;
 };
+
+const VALID_FLASH_COLORS: StageTimerFlashColor[] = ['white', 'amber', 'red', 'cyan'];
 
 const readLocalState = (): LocalStageState => {
   try {
@@ -77,9 +81,9 @@ const sanitizeStageMessageCenter = (value: unknown): StageMessageCenterState | u
         if (!text) return null;
         return {
           id: typeof msg.id === 'string' && msg.id.trim() ? msg.id.trim() : `msg-${Date.now().toString(36)}`,
-          category: msg.category === 'timing' || msg.category === 'logistics' ? msg.category : 'urgent',
+          category: (msg.category === 'timing' || msg.category === 'logistics' ? msg.category : 'urgent') as StageMessageCategory,
           text,
-          priority: msg.priority === 'high' ? 'high' : 'normal',
+          priority: (msg.priority === 'high' ? 'high' : 'normal') as 'high' | 'normal',
           target: 'stage_only' as const,
           createdAt: typeof msg.createdAt === 'number' && Number.isFinite(msg.createdAt) ? msg.createdAt : Date.now(),
           author: typeof msg.author === 'string' && msg.author.trim() ? msg.author.trim() : null,
@@ -98,6 +102,21 @@ const sanitizeStageMessageCenter = (value: unknown): StageMessageCenterState | u
     queue,
     activeMessageId,
     lastSentAt,
+  };
+};
+
+const sanitizeStageTimerFlash = (value: unknown): StageTimerFlashState => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { active: false, color: 'white', updatedAt: 0 };
+  }
+  const raw = value as Record<string, unknown>;
+  const color = typeof raw.color === 'string' && VALID_FLASH_COLORS.includes(raw.color as StageTimerFlashColor)
+    ? raw.color as StageTimerFlashColor
+    : 'white';
+  return {
+    active: !!raw.active,
+    color,
+    updatedAt: typeof raw.updatedAt === 'number' && Number.isFinite(raw.updatedAt) ? raw.updatedAt : 0,
   };
 };
 
@@ -238,6 +257,7 @@ export const StageRoute: React.FC = () => {
     const timerCueSpeaker = typeof source?.timerCueSpeaker === 'string' ? source.timerCueSpeaker : '';
     const timerCueAmberPercent = Number.isFinite(source?.timerCueAmberPercent) ? Number(source.timerCueAmberPercent) : 25;
     const timerCueRedPercent = Number.isFinite(source?.timerCueRedPercent) ? Number(source.timerCueRedPercent) : 10;
+    const stageTimerFlash = sanitizeStageTimerFlash(source?.stageTimerFlash);
     const stageProfile = source?.workspaceSettings?.stageProfile === 'compact'
       ? 'compact'
       : source?.workspaceSettings?.stageProfile === 'high_contrast'
@@ -269,6 +289,7 @@ export const StageRoute: React.FC = () => {
       timerCueSpeaker,
       timerCueAmberPercent,
       timerCueRedPercent,
+      stageTimerFlash,
       stageProfile,
       stageTimerLayout,
       stageAlertLayout,
@@ -335,6 +356,8 @@ export const StageRoute: React.FC = () => {
       timerDurationSec={display.timerDurationSec}
       timerAmberPercent={display.timerCueAmberPercent}
       timerRedPercent={display.timerCueRedPercent}
+      timerFlashActive={display.stageTimerFlash.active}
+      timerFlashColor={display.stageTimerFlash.color}
       timerLayout={display.stageTimerLayout}
       stageAlertLayout={display.stageAlertLayout}
       flowLayout={display.stageFlowLayout}

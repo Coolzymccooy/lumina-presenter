@@ -8,6 +8,7 @@ import { resolveBibleIntent } from '../services/bibleIntentResolver.ts';
 import {
   BIBLE_BOOKS,
   buildStructuredBibleReference,
+  getChapterVerseCount,
   lookupBibleReference,
   normalizeBibleReference,
   type BibleVerse as Verse,
@@ -214,6 +215,8 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedBg, setSelectedBg] = useState<string>(DEFAULT_BACKGROUNDS[1]);
   const [selectedMediaType, setSelectedMediaType] = useState<MediaType>('image');
+  const [bibleLayout, setBibleLayout] = useState<'standard' | 'scripture_ref' | 'ticker'>('standard');
+  const [bibleFontSize, setBibleFontSize] = useState<'small' | 'medium' | 'large' | 'xlarge'>('large');
 
   const [autoVisionaryEnabled, setAutoVisionaryEnabled] = useState(false);
   const [autoProjectEnabled, setAutoProjectEnabled] = useState(true);
@@ -490,9 +493,11 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     setVerseTo(nextVerseTo);
   }, []);
 
-  const createServiceItem = useCallback((verses: Verse[]): ServiceItem => {
+  const createServiceItem = useCallback((verses: Verse[], overrideLayout?: typeof bibleLayout, overrideFontSize?: typeof bibleFontSize): ServiceItem => {
     const title = `${verses[0].book_name} ${verses[0].chapter}:${verses[0].verse}${verses.length > 1 ? `-${verses[verses.length - 1].verse}` : ''}`;
     const versionLabel = VERSIONS.find((v) => v.id === selectedVersion)?.name || selectedVersion.toUpperCase();
+    const layout = overrideLayout ?? bibleLayout;
+    const fontSize = overrideFontSize ?? bibleFontSize;
     return {
       id: `bible-${Date.now()}`,
       title,
@@ -503,15 +508,16 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
         fontFamily: 'serif',
         textColor: '#ffffff',
         shadow: true,
-        fontSize: 'large',
+        fontSize,
       },
       slides: verses.map((v) => ({
         id: `v-${v.verse}-${Date.now()}`,
         content: v.text.trim(),
         label: `${v.book_name} ${v.chapter}:${v.verse} (${versionLabel})`,
+        layoutType: layout !== 'standard' ? layout : undefined,
       })),
     };
-  }, [selectedBg, selectedMediaType, selectedVersion]);
+  }, [selectedBg, selectedMediaType, selectedVersion, bibleLayout, bibleFontSize]);
 
   const fetchScripture = useCallback(async (query: string, useSemantic = false, silent = false): Promise<Verse[]> => {
     if (!query.trim()) return [];
@@ -520,6 +526,18 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       setError(null);
     }
 
+    const showVerses = (verses: Verse[], ref: string) => {
+      setResults(verses);
+      setSelectedBg(DEFAULT_BACKGROUNDS[1]);
+      setSelectedMediaType('image');
+      const normalizedReference = normalizeBibleReference(ref);
+      if (normalizedReference) {
+        setReferenceInput(normalizedReference);
+        syncStructuredSelection(normalizedReference);
+      }
+      if (silent) setError(null);
+    };
+
     try {
       let finalQuery = query.trim();
       const exactReference = normalizeBibleReference(finalQuery);
@@ -527,27 +545,50 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
         finalQuery = exactReference;
       } else if (useSemantic) {
         setAiLoading(true);
+
+        // LOCAL-FIRST: instantly surface bible memory results while AI thinks
+        let localShownRef: string | null = null;
+        let localVerses: Verse[] = [];
+        try {
+          const localResolution = await resolveBibleIntent({
+            rawText: finalQuery,
+            translationId: selectedVersion,
+            origin: 'typed',
+            allowRemoteRerank: false,
+            preferInstantProject: true,
+            contextHints: [finalQuery],
+            recentReferences: [referenceInput, lastReferenceRef.current.reference].filter(Boolean),
+          }, { memoryProvider: bibleMemoryProviderRef.current });
+          if (localResolution.chosen?.reference) {
+            localVerses = await lookupBibleReference(localResolution.chosen.reference, selectedVersion);
+            if (localVerses.length) {
+              localShownRef = localResolution.chosen.reference;
+              showVerses(localVerses, localShownRef);
+              if (!silent) setLoading(false);
+            }
+          }
+        } catch { /* local failure — continue to AI */ }
+
+        // AI: full semantic resolution (may refine or confirm local result)
         const semanticResolution = await resolveSemanticReference(finalQuery, 'typed', [finalQuery]);
         if (!semanticResolution.reference) {
-          if (!silent) {
+          if (!localShownRef && !silent) {
             setError('No scripture match found. Try a clearer topic or direct reference.');
             setResults([]);
           }
-          return [];
+          return localVerses;
         }
         finalQuery = semanticResolution.reference;
+
+        // If AI confirmed the same reference, no extra fetch needed
+        if (localShownRef && normalizeBibleReference(localShownRef) === normalizeBibleReference(finalQuery)) {
+          return localVerses;
+        }
       }
+
       const verses = await lookupBibleReference(finalQuery, selectedVersion);
       if (verses.length) {
-        setResults(verses);
-        setSelectedBg(DEFAULT_BACKGROUNDS[1]);
-        setSelectedMediaType('image');
-        const normalizedReference = normalizeBibleReference(finalQuery);
-        if (normalizedReference) {
-          setReferenceInput(normalizedReference);
-          syncStructuredSelection(normalizedReference);
-        }
-        if (silent) setError(null);
+        showVerses(verses, finalQuery);
         return verses;
       }
       if (!silent) {
@@ -555,9 +596,12 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
         setResults([]);
       }
       return [];
-    } catch {
+    } catch (err) {
       if (!silent) {
-        setError('Network error. Could not reach Bible API.');
+        const isNetworkError = err instanceof TypeError;
+        setError(isNetworkError
+          ? 'Network error. Could not reach Bible API.'
+          : 'Reference not found. Check the passage and try again.');
       }
       return [];
     } finally {
@@ -566,7 +610,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       }
       setAiLoading(false);
     }
-  }, [resolveSemanticReference, selectedVersion, syncStructuredSelection]);
+  }, [resolveSemanticReference, selectedVersion, syncStructuredSelection, referenceInput]);
 
   const scheduleAutoProcess = useCallback(() => {
     clearTimer(processTimerRef);
@@ -1054,6 +1098,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   };
 
   const chapterCount = selectedBook?.chapters ?? 150;
+  const verseCount = selectedBook ? getChapterVerseCount(selectedBook.name, chapter) : 50;
   const resolvedCandidates = resolveSpeechLanguageCandidates(speechLocaleMode, getNavigatorLocales());
   const localeModeLabel = speechLocaleMode === 'auto' ? 'Auto' : 'Manual';
   const localeStatusLanguage = autoListening ? activeSpeechLanguage : resolvedCandidates[0];
@@ -1292,7 +1337,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                     }}
                     className="bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 py-1.5 px-2 rounded-sm focus:outline-none focus:border-blue-600"
                   >
-                    {Array.from({ length: 200 }, (_, i) => i + 1).map((n) => (
+                    {Array.from({ length: verseCount }, (_, i) => i + 1).map((n) => (
                       <option key={n} value={n}>{n}</option>
                     ))}
                   </select>
@@ -1308,7 +1353,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                     }}
                     className="bg-zinc-900 border border-zinc-800 text-[10px] text-zinc-300 py-1.5 px-2 rounded-sm focus:outline-none focus:border-blue-600"
                   >
-                    {Array.from({ length: 200 }, (_, i) => i + 1).filter((n) => n >= verseFrom).map((n) => (
+                    {Array.from({ length: verseCount }, (_, i) => i + 1).filter((n) => n >= verseFrom).map((n) => (
                       <option key={n} value={n}>{n}</option>
                     ))}
                   </select>
@@ -1355,6 +1400,26 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                   <p className="text-[11px] leading-relaxed text-zinc-200 font-serif italic">"{v.text.trim()}"</p>
                 </div>
               ))}
+            </div>
+
+            {/* Layout + Font Size chips */}
+            <div className="px-1 pt-3 pb-1 space-y-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[7px] text-zinc-600 uppercase tracking-widest font-bold w-10 shrink-0">Layout</span>
+                {([['standard', 'Standard'], ['scripture_ref', 'Scripture + Ref'], ['ticker', 'Ticker']] as const).map(([key, label]) => (
+                  <button key={key} onClick={() => { setBibleLayout(key); if (results.length > 0) onProjectRequest(createServiceItem(results, key)); }}
+                    className={`px-2 py-1 rounded text-[8px] font-bold uppercase tracking-wide transition-all ${bibleLayout === key ? 'bg-blue-600 text-white shadow-md shadow-blue-900/40' : 'bg-zinc-800/80 text-zinc-500 border border-zinc-800 hover:text-zinc-300 hover:border-zinc-600'}`}
+                  >{label}</button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[7px] text-zinc-600 uppercase tracking-widest font-bold w-10 shrink-0">Size</span>
+                {([['small', 'SM'], ['medium', 'MD'], ['large', 'LG'], ['xlarge', 'XL']] as const).map(([key, label]) => (
+                  <button key={key} onClick={() => { setBibleFontSize(key); if (results.length > 0) onProjectRequest(createServiceItem(results, undefined, key)); }}
+                    className={`px-2 py-1 rounded text-[8px] font-bold tracking-wide transition-all ${bibleFontSize === key ? 'bg-purple-600 text-white shadow-md shadow-purple-900/40' : 'bg-zinc-800/80 text-zinc-500 border border-zinc-800 hover:text-zinc-300 hover:border-zinc-600'}`}
+                  >{label}</button>
+                ))}
+              </div>
             </div>
 
             <div className="flex gap-2 p-1 pt-2 sticky bottom-0 bg-zinc-950/80 backdrop-blur-md pb-4">

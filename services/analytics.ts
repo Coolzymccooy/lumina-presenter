@@ -2,8 +2,8 @@
 import { db, isFirebaseConfigured } from "./firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
-export type EventType = 
-  | 'SESSION_START' 
+export type EventType =
+  | 'SESSION_START'
   | 'SESSION_END'
   | 'LOGIN'
   | 'SIGNUP'
@@ -14,6 +14,7 @@ export type EventType =
   | 'IMPORT_PPTX'
   | 'PRESENTATION_START'
   | 'SLIDE_CHANGE'
+  | 'ADD_HYMN'
   | 'ERROR';
 
 interface EventData {

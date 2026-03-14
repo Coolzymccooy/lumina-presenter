@@ -85,6 +85,11 @@ test('stage timer widget can be dragged and resized in web route @smoke', async 
     timerCueSpeaker: 'Pastor',
     timerCueAmberPercent: 25,
     timerCueRedPercent: 10,
+    stageTimerFlash: {
+      active: true,
+      color: 'amber',
+      updatedAt: Date.now(),
+    },
     workspaceSettings: {
       stageProfile: 'classic',
       stageFlowLayout: 'balanced',
@@ -113,6 +118,8 @@ test('stage timer widget can be dragged and resized in web route @smoke', async 
   await expect(widget).toBeVisible();
   await expect(dragSurface).toBeVisible();
   await expect(resizeHandle).toBeVisible();
+  await expect(widget).toHaveAttribute('data-timer-flash-active', 'true');
+  await expect(widget).toHaveAttribute('data-timer-flash-color', 'amber');
 
   const beforeDrag = await widget.boundingBox();
   expect(beforeDrag).toBeTruthy();
