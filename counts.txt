@@ -1,0 +1,7 @@
+
+Open Divs: 295
+Close Divs: 293 (Diff: 2)
+Open Parens: 3272
+Close Parens: 3272 (Diff: 0)
+Open Braces: 1860
+Close Braces: 1860 (Diff: 0)

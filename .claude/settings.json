@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/segun/source/repos/lumina-presenter/**)",
+      "Bash(awk 'NR>=692 && NR<=6349' /c/Users/segun/source/repos/lumina-presenter/App.tsx)",
+      "Bash(node -c /c/Users/segun/source/repos/lumina-presenter/App.tsx)",
+      "Bash(grep -n \"} {$\\\\|] {$\\\\|\\) {$\" /c/Users/segun/source/repos/lumina-presenter/App.tsx)",
+      "Read(//const reorderScheduleItems|function reorderScheduleItems/**)",
+      "Read(//const moveScheduleItemByOffset|function moveScheduleItemByOffset/**)",
+      "Read(//handleAIItemGenerated|importPowerPointVisual|importPowerPointText/{found=1} found{print NR\"\"\"\"\"\"\"\": \"\"\"\"\"\"\"\"$0; if\\(/^[[:space:]]*const|^[[:space:]]*function|^[[:space:]]*};?$/**)",
+      "Bash(npm.cmd run:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

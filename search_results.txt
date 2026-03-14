@@ -1,0 +1,15 @@
+File read successfully. Length: 310346 bytes. Lines: 6353
+Line 2618: const openSpeakerPresetStudio = useCallback(() => {
+Line 3386: const openCreatePresetModal = () => {
+Line 3393: const openEditPresetModal = (preset: SpeakerTimerPreset) => {
+Line 3404: const openSpeakerPresetStudio = () => {
+Line 3407: openEditPresetModal(selectedPreset);
+Line 3410: openCreatePresetModal();
+Line 3493: const deleteSpeakerPreset = (presetId: string) => {
+Line 5494: <button onClick={openSpeakerPresetStudio} className="h-10 w-10 flex items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/50 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-all"><Settings className="w-4 h-4" /></button>
+Line 5767: onClick={openCreatePresetModal}
+Line 5814: <button type="button" onClick={() => openEditPresetModal(preset)} className="w-full text-left">
+Line 5862: onClick={() => deleteSpeakerPreset(preset.id)}
+Line 6180: onClick={openCreatePresetModal}
+Line 6212: <button onClick={() => openEditPresetModal(preset)} className="px-2 py-1 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300">Edit</button>
+Line 6213: <button onClick={() => deleteSpeakerPreset(preset.id)} className="px-2 py-1 text-[9px] font-bold border border-rose-900/70 rounded bg-rose-950/20 text-rose-300">Delete</button>
