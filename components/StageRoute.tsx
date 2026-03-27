@@ -3,6 +3,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState } from '../services/firebase';
 import { fetchServerSessionState, getOrCreateConnectionClientId, heartbeatSessionConnection } from '../services/serverApi';
 import { AudienceDisplayState, ServiceItem, StageAlertLayout, StageAlertState, StageFlowLayout, StageMessageCategory, StageMessageCenterState, StageTimerFlashColor, StageTimerFlashState, StageTimerLayout } from '../types';
+import { HoldScreen } from './presenter/HoldScreen';
 import { LoginScreen } from './LoginScreen';
 import { StageDisplay } from './StageDisplay';
 
@@ -13,6 +14,7 @@ type LocalStageState = {
   activeItemId?: string | null;
   activeSlideIndex?: number;
   blackout?: boolean;
+  holdScreenMode?: 'none' | 'clear' | 'logo';
   audienceDisplay?: AudienceDisplayState;
   stageAlert?: StageAlertState;
   stageMessageCenter?: StageMessageCenterState;
@@ -40,6 +42,8 @@ type EffectiveStageState = {
   stageAlert?: StageAlertState;
   stageMessageCenter?: StageMessageCenterState;
   blackout: boolean;
+  holdScreenMode: 'none' | 'clear' | 'logo';
+  churchName: string;
   timerMode: 'COUNTDOWN' | 'ELAPSED';
   timerSeconds: number;
   timerDurationSec: number;
@@ -119,6 +123,10 @@ const sanitizeStageTimerFlash = (value: unknown): StageTimerFlashState => {
     updatedAt: typeof raw.updatedAt === 'number' && Number.isFinite(raw.updatedAt) ? raw.updatedAt : 0,
   };
 };
+
+const sanitizeHoldScreenMode = (value: unknown): 'none' | 'clear' | 'logo' => (
+  value === 'clear' || value === 'logo' ? value : 'none'
+);
 
 export const StageRoute: React.FC = () => {
   const getRouteParams = () => {
@@ -274,6 +282,8 @@ export const StageRoute: React.FC = () => {
     const stageAlert = source?.stageAlert;
     const stageMessageCenter = sanitizeStageMessageCenter(source?.stageMessageCenter);
     const updatedAt = Number.isFinite(source?.updatedAt) ? Number(source.updatedAt) : 0;
+    const holdScreenMode = sanitizeHoldScreenMode(source?.holdScreenMode);
+    const churchName = typeof source?.workspaceSettings?.churchName === 'string' ? source.workspaceSettings.churchName : '';
 
     return {
       item: activeItem,
@@ -283,6 +293,8 @@ export const StageRoute: React.FC = () => {
       stageAlert,
       stageMessageCenter,
       blackout: !!source?.blackout,
+      holdScreenMode,
+      churchName,
       timerMode,
       timerSeconds,
       timerDurationSec,
@@ -305,17 +317,17 @@ export const StageRoute: React.FC = () => {
       buildEffective(serverState),
       buildEffective(liveState),
     ].sort((left, right) => right.updatedAt - left.updatedAt);
-    const firstRenderable = candidates.find((entry) => entry.blackout || entry.hasRenderable);
+    const firstRenderable = candidates.find((entry) => entry.blackout || entry.holdScreenMode !== 'none' || entry.hasRenderable);
     return firstRenderable || candidates[0];
   }, [localState, serverState, liveState]);
 
   useEffect(() => {
-    if (effective.blackout || effective.hasRenderable) {
+    if (effective.blackout || effective.holdScreenMode !== 'none' || effective.hasRenderable) {
       setStableEffective(effective);
     }
   }, [effective]);
 
-  const display = (effective.blackout || effective.hasRenderable)
+  const display = (effective.blackout || effective.holdScreenMode !== 'none' || effective.hasRenderable)
     ? effective
     : (stableEffective || effective);
 
@@ -329,11 +341,15 @@ export const StageRoute: React.FC = () => {
   }
 
   if (display.blackout) {
-    return (
-      <div className="h-screen w-screen bg-black flex items-center justify-center">
-        <div className="text-zinc-500 text-xs uppercase tracking-[0.25em] font-mono">BLACKOUT ACTIVE</div>
-      </div>
-    );
+    return <HoldScreen view="blackout" />;
+  }
+
+  if (display.holdScreenMode === 'clear') {
+    return <HoldScreen view="clear" />;
+  }
+
+  if (display.holdScreenMode === 'logo') {
+    return <HoldScreen view="logo" churchName={display.churchName} />;
   }
 
   return (

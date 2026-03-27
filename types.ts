@@ -11,6 +11,7 @@ export enum ItemType {
 }
 
 export type MediaType = 'image' | 'video' | 'color';
+export type ServiceItemBackgroundSource = 'system' | 'user' | 'inherited';
 
 export type SlideType = 'custom' | 'lyrics' | 'scripture' | 'announcement' | 'offering' | 'hymn';
 export type SlideElementType = 'text';
@@ -80,6 +81,7 @@ export interface SlideMetadata {
 export interface ServiceItemMetadata {
   createdAt?: number;
   source?: 'manual' | 'ai' | 'bible' | 'hymn-library' | 'import' | 'audience';
+  backgroundSource?: ServiceItemBackgroundSource;
   hymn?: HymnGeneratedItemMetadata;
 }
 

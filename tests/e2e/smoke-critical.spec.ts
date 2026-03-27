@@ -68,6 +68,54 @@ test('output route shows blackout slate explicitly @smoke', async ({ page }) => 
   await expect(page.getByText('BLACKOUT ACTIVE')).toBeVisible();
 });
 
+test('output route shows clear hold slate explicitly @smoke', async ({ page }) => {
+  const key = uniqueKey();
+  const { itemId, schedule } = buildSchedule(key, 'OUTPUT_CLEAR_SENTINEL');
+
+  await page.addInitScript((payload) => {
+    localStorage.setItem('lumina_session_v1', JSON.stringify(payload));
+  }, {
+    schedule,
+    activeItemId: itemId,
+    activeSlideIndex: 0,
+    blackout: false,
+    holdScreenMode: 'clear',
+    isPlaying: true,
+    outputMuted: false,
+    routingMode: 'PROJECTOR',
+    updatedAt: Date.now(),
+  });
+
+  await page.goto(`/#/output?session=${encodeURIComponent(`smoke-session-${key}`)}&workspace=${encodeURIComponent(`smoke-workspace-${key}`)}`);
+  await expect(page.getByText('WAITING FOR LIVE CONTENT')).toBeVisible();
+});
+
+test('output route shows logo hold slate explicitly @smoke', async ({ page }) => {
+  const key = uniqueKey();
+  const { itemId, schedule } = buildSchedule(key, 'OUTPUT_LOGO_SENTINEL');
+
+  await page.addInitScript((payload) => {
+    localStorage.setItem('lumina_session_v1', JSON.stringify(payload));
+  }, {
+    schedule,
+    activeItemId: itemId,
+    activeSlideIndex: 0,
+    blackout: false,
+    holdScreenMode: 'logo',
+    isPlaying: true,
+    outputMuted: false,
+    routingMode: 'PROJECTOR',
+    workspaceSettings: {
+      churchName: 'Smoke Test Church',
+    },
+    updatedAt: Date.now(),
+  });
+
+  await page.goto(`/#/output?session=${encodeURIComponent(`smoke-session-${key}`)}&workspace=${encodeURIComponent(`smoke-workspace-${key}`)}`);
+  await expect(page.getByText('Smoke Test Church')).toBeVisible();
+  await expect(page.getByText('Logo Hold')).toBeVisible();
+});
+
 test('stage timer widget can be dragged and resized in web route @smoke', async ({ page }) => {
   const key = uniqueKey();
   const { itemId, schedule } = buildSchedule(key, 'STAGE_TIMER_DRAG_SENTINEL');
@@ -187,6 +235,75 @@ test('visionary semantic search fallback is context-aware when AI endpoint fails
     return mod.semanticBibleSearch('i am afraid and in panic');
   });
   expect(fearReference).toBe('Isaiah 41:10');
+});
+
+test('background persistence keeps prevailing live visuals for system-generated items only @smoke', async ({ page }) => {
+  await page.goto('/');
+
+  const result = await page.evaluate(async () => {
+    const mod = await import('/services/backgroundPersistence.ts');
+
+    const prevailing = mod.getBackgroundSnapshotFromItem({
+      id: 'live-item',
+      title: 'Live Item',
+      type: 'ANNOUNCEMENT',
+      slides: [],
+      theme: {
+        backgroundUrl: 'https://cdn.example.com/current-motion.mp4',
+        mediaType: 'video',
+        fontFamily: 'sans-serif',
+        textColor: '#ffffff',
+        shadow: true,
+        fontSize: 'medium',
+      },
+    } as any, null);
+
+    const systemItem = mod.inheritPrevailingBackground(mod.stampItemBackgroundSource({
+      id: 'system-item',
+      title: 'Generated Scripture',
+      type: 'BIBLE',
+      slides: [{ id: 'slide-1', content: 'John 3:16' }],
+      theme: {
+        backgroundUrl: 'data:image/svg+xml;utf8,default',
+        mediaType: 'image',
+        fontFamily: 'serif',
+        textColor: '#ffffff',
+        shadow: true,
+        fontSize: 'large',
+      },
+    } as any, 'system'), prevailing);
+
+    const userItem = mod.inheritPrevailingBackground(mod.stampItemBackgroundSource({
+      id: 'user-item',
+      title: 'Chosen Media',
+      type: 'MEDIA',
+      slides: [],
+      theme: {
+        backgroundUrl: 'local://my-background.jpg',
+        mediaType: 'image',
+        fontFamily: 'sans-serif',
+        textColor: '#ffffff',
+        shadow: false,
+        fontSize: 'medium',
+      },
+    } as any, 'user'), prevailing);
+
+    return {
+      systemUrl: systemItem.theme.backgroundUrl,
+      systemType: systemItem.theme.mediaType,
+      systemSource: systemItem.metadata?.backgroundSource,
+      userUrl: userItem.theme.backgroundUrl,
+      userType: userItem.theme.mediaType,
+      userSource: userItem.metadata?.backgroundSource,
+    };
+  });
+
+  expect(result.systemUrl).toBe('https://cdn.example.com/current-motion.mp4');
+  expect(result.systemType).toBe('video');
+  expect(result.systemSource).toBe('inherited');
+  expect(result.userUrl).toBe('local://my-background.jpg');
+  expect(result.userType).toBe('image');
+  expect(result.userSource).toBe('user');
 });
 
 test('cloud transcription client maps cooldown responses correctly @smoke', async ({ page }) => {

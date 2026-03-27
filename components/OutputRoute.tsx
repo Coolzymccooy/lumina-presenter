@@ -3,6 +3,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState } from '../services/firebase';
 import { fetchServerSessionState, getOrCreateConnectionClientId, heartbeatSessionConnection } from '../services/serverApi';
 import { AudienceDisplayState, AudienceMessage, AudienceQrProjectionState, ItemType, ServiceItem } from '../types';
+import { HoldScreen } from './presenter/HoldScreen';
 import { LoginScreen } from './LoginScreen';
 import { SlideRenderer } from './SlideRenderer';
 
@@ -14,6 +15,7 @@ type LocalPresenterState = {
   activeItemId?: string | null;
   activeSlideIndex?: number;
   blackout?: boolean;
+  holdScreenMode?: 'none' | 'clear' | 'logo';
   isPlaying?: boolean;
   outputMuted?: boolean;
   seekCommand?: number | null;
@@ -22,6 +24,9 @@ type LocalPresenterState = {
   routingMode?: RoutingMode;
   audienceDisplay?: AudienceDisplayState;
   audienceQrProjection?: AudienceQrProjectionState;
+  workspaceSettings?: {
+    churchName?: string;
+  };
   updatedAt?: number;
 };
 
@@ -29,6 +34,8 @@ type EffectiveOutputState = {
   item: ServiceItem | null;
   slide: ServiceItem['slides'][number] | null;
   blackout: boolean;
+  holdScreenMode: 'none' | 'clear' | 'logo';
+  churchName: string;
   isPlaying: boolean;
   outputMuted: boolean;
   seekCommand: number | null;
@@ -100,6 +107,10 @@ const readLocalPresenterState = (): LocalPresenterState => {
     return {};
   }
 };
+
+const sanitizeHoldScreenMode = (value: unknown): 'none' | 'clear' | 'logo' => (
+  value === 'clear' || value === 'logo' ? value : 'none'
+);
 
 export const OutputRoute: React.FC = () => {
   const getRouteParams = () => {
@@ -242,6 +253,7 @@ export const OutputRoute: React.FC = () => {
     const activeSlideIndex = typeof rawSlideIndex === 'number' ? rawSlideIndex : 0;
     const routingMode = source?.routingMode as RoutingMode | undefined;
     const blackout = !!source?.blackout;
+    const holdScreenMode = sanitizeHoldScreenMode(source?.holdScreenMode);
     const isPlaying = typeof source?.isPlaying === 'boolean' ? source.isPlaying : true;
     const outputMuted = !!source?.outputMuted;
     const seekCommand = typeof source?.seekCommand === 'number' ? source.seekCommand : null;
@@ -251,6 +263,7 @@ export const OutputRoute: React.FC = () => {
     const audienceOverlay = sanitizeAudienceOverlay(source?.audienceDisplay);
     const projectedAudienceQr = sanitizeAudienceQrProjection(source?.audienceQrProjection);
     const updatedAt = typeof source?.updatedAt === 'number' ? source.updatedAt : 0;
+    const churchName = typeof source?.workspaceSettings?.churchName === 'string' ? source.workspaceSettings.churchName : '';
 
     const activeItem = activeItemId
       ? (schedule.find((item) => item.id === activeItemId) || null)
@@ -264,6 +277,8 @@ export const OutputRoute: React.FC = () => {
         item: lobbyItem || null,
         slide: lobbySlide,
         blackout,
+        holdScreenMode,
+        churchName,
         isPlaying,
         outputMuted,
         seekCommand,
@@ -281,6 +296,8 @@ export const OutputRoute: React.FC = () => {
       item: activeItem,
       slide: activeSlide,
       blackout,
+      holdScreenMode,
+      churchName,
       isPlaying,
       outputMuted,
       seekCommand,
@@ -300,17 +317,17 @@ export const OutputRoute: React.FC = () => {
       buildEffective(liveState, liveSchedule),
     ].sort((a, b) => b.updatedAt - a.updatedAt);
 
-    const firstRenderable = candidates.find((candidate) => candidate.blackout || candidate.hasRenderable);
+    const firstRenderable = candidates.find((candidate) => candidate.blackout || candidate.holdScreenMode !== 'none' || candidate.hasRenderable);
     return firstRenderable || candidates[0];
   }, [buildEffective, localState, localSchedule, serverState, serverSchedule, liveState, liveSchedule]);
 
   useEffect(() => {
-    if (effective.blackout || effective.hasRenderable) {
+    if (effective.blackout || effective.holdScreenMode !== 'none' || effective.hasRenderable) {
       setStableEffective(effective);
     }
   }, [effective]);
 
-  const display = (effective.blackout || effective.hasRenderable)
+  const display = (effective.blackout || effective.holdScreenMode !== 'none' || effective.hasRenderable)
     ? effective
     : (stableEffective || effective);
 
@@ -325,7 +342,11 @@ export const OutputRoute: React.FC = () => {
   return (
     <div className="h-screen w-screen bg-black">
       {display.blackout ? (
-        <div className="w-full h-full bg-black flex items-center justify-center text-zinc-700 text-xs font-mono uppercase tracking-[0.25em]">BLACKOUT ACTIVE</div>
+        <HoldScreen view="blackout" />
+      ) : display.holdScreenMode === 'clear' ? (
+        <HoldScreen view="clear" />
+      ) : display.holdScreenMode === 'logo' ? (
+        <HoldScreen view="logo" churchName={display.churchName} />
       ) : !display.hasRenderable ? (
         <div className="w-full h-full bg-black flex items-center justify-center text-zinc-500 text-xs font-mono uppercase tracking-[0.25em]">WAITING FOR LIVE CONTENT</div>
       ) : (
