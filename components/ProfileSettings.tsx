@@ -1,7 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
 import { UserIcon, Settings, X, Save, Church, ShieldCheck, ChevronDown, ChevronUp, CreditCard, Palette, Globe, Lock } from 'lucide-react';
-import type { PresenterExperience } from './presenter/types';
 
 interface ProfileSettingsProps {
   onClose: () => void;
@@ -25,7 +24,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
   const [ccli, setCcli] = useState(currentSettings?.ccli || '');
   const [defaultVersion, setDefaultVersion] = useState(currentSettings?.defaultVersion || 'kjv');
   const [theme, setTheme] = useState(currentSettings?.theme || 'dark');
-  const [presenterExperience, setPresenterExperience] = useState<PresenterExperience>(currentSettings?.presenterExperience === 'next_gen_beta' ? 'next_gen_beta' : 'classic');
   const [remoteAdminEmails, setRemoteAdminEmails] = useState(currentSettings?.remoteAdminEmails || '');
   const [connectionTargetRoles, setConnectionTargetRoles] = useState<string[]>(
     Array.isArray(currentSettings?.connectionTargetRoles) && currentSettings.connectionTargetRoles.length
@@ -58,13 +56,9 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
     setSessionId(nextSessionId);
   }, [currentSettings?.sessionId]);
 
-  useEffect(() => {
-    setPresenterExperience(currentSettings?.presenterExperience === 'next_gen_beta' ? 'next_gen_beta' : 'classic');
-  }, [currentSettings?.presenterExperience]);
-
   const handleSave = () => {
     const normalizedSessionId = String(sessionId || '').trim() || 'live';
-    onSave({ churchName, ccli, defaultVersion, theme, presenterExperience, remoteAdminEmails, connectionTargetRoles, sessionId: normalizedSessionId, stageProfile, stageFlowLayout, machineMode });
+    onSave({ churchName, ccli, defaultVersion, theme, remoteAdminEmails, connectionTargetRoles, sessionId: normalizedSessionId, stageProfile, stageFlowLayout, machineMode });
     onClose();
   };
 
@@ -227,20 +221,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
                   </div>
                 </div>
               </div>
-
-              <div className="space-y-2 pt-2">
-                <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Presenter Experience</label>
-                <select
-                  value={presenterExperience}
-                  onChange={e => setPresenterExperience(e.target.value === 'next_gen_beta' ? 'next_gen_beta' : 'classic')}
-                  className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3.5 text-sm text-white focus:border-blue-500 focus:outline-none appearance-none cursor-pointer"
-                >
-                  <option value="classic">Classic Presenter</option>
-                  <option value="next_gen_beta">Next-Gen Presenter Beta</option>
-                </select>
-                <p className="text-[10px] text-zinc-500 font-medium px-1">Classic stays as the safe default. Beta unlocks the new four-zone presenter workspace.</p>
-              </div>
-
               <div className="grid grid-cols-2 gap-5 pt-2">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Stage Profile</label>

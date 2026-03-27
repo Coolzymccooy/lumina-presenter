@@ -276,8 +276,8 @@ const DEFAULT_PRESENTER_LAYOUT_PREFS: PresenterLayoutPrefs = {
   bottomTrayHeight: 252,
 };
 
-const sanitizePresenterExperience = (value: unknown): PresenterExperience => (
-  value === 'next_gen_beta' ? 'next_gen_beta' : 'classic'
+const sanitizePresenterExperience = (_value: unknown): PresenterExperience => (
+  'classic'
 );
 
 const sanitizeHoldScreenMode = (value: unknown): HoldScreenMode => (
@@ -6270,7 +6270,7 @@ function App() {
               PRESENTER
             </button>
           </div>
-          {viewMode === 'PRESENTER' && presenterExperience === 'next_gen_beta' && (
+          {isPresenterBeta && (
             <div className="hidden xl:flex items-center rounded-full border border-cyan-800/50 bg-cyan-950/25 px-3 py-1 text-[9px] font-black uppercase tracking-[0.22em] text-cyan-200">
               Presenter Beta
             </div>
