@@ -29,8 +29,8 @@ export const createSlideElementSet = (
       ];
     case 'scripture-reference':
       return [
-        build('Scripture Body', 'body', '"For God so loved the world..."', { x: 0.18, y: 0.28, width: 0.64, height: 0.18, zIndex: 1 }, { fontSize: 34, lineHeight: 1.18, fontStyle: 'italic' }),
-        build('Reference', 'reference', 'John 3:16', { x: 0.62, y: 0.58, width: 0.24, height: 0.08, zIndex: 2 }, { textAlign: 'right', fontSize: 24, textTransform: 'uppercase', letterSpacing: 2 }),
+        build('Scripture Body', 'body', '"For God so loved the world..."', { x: 0.15, y: 0.24, width: 0.7, height: 0.24, zIndex: 1 }, { fontSize: 56, lineHeight: 1.22, fontStyle: 'italic' }),
+        build('Reference', 'reference', 'John 3:16', { x: 0.62, y: 0.61, width: 0.24, height: 0.1, zIndex: 2 }, { textAlign: 'right', fontSize: 34, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: 800 }),
       ];
     case 'announcement-card':
       return [

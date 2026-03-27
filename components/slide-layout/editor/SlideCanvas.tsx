@@ -1,6 +1,7 @@
 import React from 'react';
-import { Slide, ServiceItem } from '../../../types.ts';
+import { MediaType, Slide, ServiceItem } from '../../../types.ts';
 import { BackgroundRenderer } from '../render/BackgroundRenderer';
+import { TEXT_CONTRAST_BACKGROUND_OVERLAY } from '../render/backgroundTone';
 import { getRenderableElements } from '../utils/slideHydration.ts';
 import { sortElementsByLayer } from '../utils/frameMath.ts';
 import { SafeAreaOverlay } from './SafeAreaOverlay.tsx';
@@ -28,9 +29,73 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
   onUpdateSlide,
 }) => {
   const dragRef = React.useRef<{ type: 'move' | 'resize'; elementId: string; handle?: ResizeHandle; originX: number; originY: number } | null>(null);
+  const viewportRef = React.useRef<HTMLDivElement | null>(null);
   const hostRef = React.useRef<HTMLDivElement | null>(null);
+  const [viewportSize, setViewportSize] = React.useState({ width: 0, height: 0 });
 
   const elements = React.useMemo(() => (slide ? sortElementsByLayer(getRenderableElements(slide, item)) : []), [slide, item]);
+  const backgroundUrl = React.useMemo(
+    () => slide?.backgroundUrl || item?.theme?.backgroundUrl || '',
+    [item?.theme?.backgroundUrl, slide?.backgroundUrl]
+  );
+  const backgroundMediaType = React.useMemo<MediaType>(
+    () => {
+      const effectiveUrl = String(backgroundUrl || '').trim();
+      if (slide?.backgroundUrl) {
+        if (slide.mediaType) return slide.mediaType;
+      } else if (item?.theme?.mediaType) {
+        return item.theme.mediaType;
+      }
+      if (effectiveUrl.startsWith('#')) return 'color';
+      return 'image';
+    },
+    [backgroundUrl, item?.theme?.mediaType, slide?.backgroundUrl, slide?.mediaType]
+  );
+  const hasVisibleText = React.useMemo(
+    () => elements.some((element) => element.type === 'text' && element.visible !== false && String(element.content || '').trim()),
+    [elements]
+  );
+  const showTextContrastOverlay = Boolean(backgroundUrl && hasVisibleText && backgroundMediaType !== 'color');
+
+  React.useEffect(() => {
+    const node = viewportRef.current;
+    if (!node) return;
+
+    const updateSize = () => {
+      const rect = node.getBoundingClientRect();
+      setViewportSize({ width: rect.width, height: rect.height });
+    };
+
+    updateSize();
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateSize);
+      return () => window.removeEventListener('resize', updateSize);
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      const nextWidth = entry?.contentRect?.width ?? node.clientWidth;
+      const nextHeight = entry?.contentRect?.height ?? node.clientHeight;
+      setViewportSize({ width: nextWidth, height: nextHeight });
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+
+  const stageWidth = React.useMemo(() => {
+    if (viewportSize.width <= 0 || viewportSize.height <= 0) return 0;
+    return Math.min(viewportSize.width, (viewportSize.height * 16) / 9);
+  }, [viewportSize.height, viewportSize.width]);
+
+  const stageHeight = React.useMemo(() => {
+    if (stageWidth <= 0) return 0;
+    return (stageWidth * 9) / 16;
+  }, [stageWidth]);
+
+  const stageStyle = stageWidth > 0 && stageHeight > 0
+    ? { width: `${stageWidth}px`, height: `${stageHeight}px` }
+    : undefined;
 
   const commitPointerMove = React.useCallback((event: PointerEvent) => {
     const active = dragRef.current;
@@ -68,14 +133,20 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
   }, [commitPointerMove]);
 
   if (!slide || !item) {
-    return <div className="aspect-video w-full rounded-lg border border-zinc-800 bg-black" />;
+    return (
+      <div ref={viewportRef} className="flex h-full min-h-0 w-full items-center justify-center overflow-hidden">
+        <div style={stageStyle} className={`rounded-lg border border-zinc-800 bg-black ${stageStyle ? '' : 'aspect-video w-full'}`} />
+      </div>
+    );
   }
 
   return (
-    <div className="w-full">
-      <div ref={hostRef} className="relative aspect-video w-full overflow-hidden rounded-xl border border-zinc-800 bg-black shadow-[0_10px_30px_rgba(0,0,0,0.28)]">
-        <BackgroundRenderer backgroundUrl={slide.backgroundUrl || item.theme.backgroundUrl} mediaType={slide.mediaType || item.theme.mediaType} mediaFit={slide.mediaFit || 'cover'} />
-        <div className="absolute inset-0 bg-black/10" />
+    <div ref={viewportRef} className="flex h-full min-h-0 w-full items-center justify-center overflow-hidden">
+      <div ref={hostRef} style={stageStyle} className={`relative overflow-hidden rounded-xl border border-zinc-800 bg-black shadow-[0_10px_30px_rgba(0,0,0,0.28)] ${stageStyle ? '' : 'aspect-video w-full'}`}>
+        <BackgroundRenderer backgroundUrl={backgroundUrl} mediaType={backgroundMediaType} mediaFit={slide.mediaFit || 'cover'} />
+        {showTextContrastOverlay && (
+          <div className="absolute inset-0" style={{ background: TEXT_CONTRAST_BACKGROUND_OVERLAY }} />
+        )}
         <SafeAreaOverlay showGrid={showGrid} showSafeArea={showSafeArea} />
         <div className="absolute inset-0" onPointerDown={(event) => {
           if (event.target === event.currentTarget) onSelectElement(null);

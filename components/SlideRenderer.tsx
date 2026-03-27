@@ -4,6 +4,7 @@ import { Slide, ServiceItem, MediaType, AudienceDisplayState, AudienceQrProjecti
 import { getMediaAsset, getCachedMediaAsset } from "../services/localMedia";
 import { DEFAULT_BACKGROUNDS } from "../constants";
 import { ElementRenderer } from "./slide-layout/render/ElementRenderer";
+import { TEXT_CONTRAST_BACKGROUND_OVERLAY } from "./slide-layout/render/backgroundTone";
 import { getRenderableElements } from "./slide-layout/utils/slideHydration";
 
 interface SlideRendererProps {
@@ -389,7 +390,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   const textLayerStyle: React.CSSProperties = {
     fontFamily: item.theme?.fontFamily || "system-ui, sans-serif",
     color: item.theme?.textColor || "#fff",
-    textShadow: item.theme?.shadow ? "2px 2px 4px rgba(0,0,0,0.8)" : "none",
+    textShadow: item.theme?.shadow ? "0 4px 16px rgba(0,0,0,0.78), 0 0 18px rgba(255,255,255,0.10)" : "none",
   };
 
   const renderMedia = () => {
@@ -681,7 +682,7 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
 
         {/* Soft overlay */}
         {hasTextOverlay && hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.2)" }} />
+          <div style={{ position: "absolute", inset: 0, background: TEXT_CONTRAST_BACKGROUND_OVERLAY }} />
         )}
 
         {/* Text layer */}

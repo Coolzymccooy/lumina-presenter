@@ -76,6 +76,7 @@ const SETTINGS_KEY = 'lumina_workspace_settings_v1';
 const SETTINGS_UPDATED_AT_KEY = 'lumina_workspace_settings_updated_at_v1';
 const SETTINGS_INTENT_KEY = 'lumina_workspace_settings_intent_v1';
 const LIVE_STATE_QUEUE_KEY = 'lumina_live_state_queue_v1';
+const SYNC_GUIDANCE_DISMISSALS_KEY = 'lumina_sync_guidance_dismissals_v1';
 const RUNSHEET_FILES_LOCAL_KEY_PREFIX = 'lumina_runsheet_files_local_v1';
 const AETHER_TOKEN_KEY_PREFIX = 'lumina_aether_bridge_token_v1';
 const CLOUD_PLAYLIST_SUFFIX = 'default-playlist-v2';
@@ -88,6 +89,43 @@ const getWorkspaceSettingsKey = (workspace: string) => `${SETTINGS_KEY}:${worksp
 const getWorkspaceSettingsUpdatedAtKey = (workspace: string) => `${SETTINGS_UPDATED_AT_KEY}:${workspace || 'default-workspace'}`;
 const getWorkspaceSettingsIntentKey = (workspace: string) => `${SETTINGS_INTENT_KEY}:${workspace || 'default-workspace'}`;
 const getAetherTokenKey = (workspace: string) => `${AETHER_TOKEN_KEY_PREFIX}:${workspace || 'default-workspace'}`;
+
+type SyncGuidanceDismissals = Record<string, number>;
+
+const readSyncGuidanceDismissals = (): SyncGuidanceDismissals => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(SYNC_GUIDANCE_DISMISSALS_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as SyncGuidanceDismissals;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+const writeSyncGuidanceDismissals = (value: SyncGuidanceDismissals) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(SYNC_GUIDANCE_DISMISSALS_KEY, JSON.stringify(value));
+  } catch {
+    // Ignore storage persistence failures.
+  }
+};
+
+const buildSyncGuidanceStorageKey = (workspace: string | null | undefined, userId: string | null | undefined, issueId: string) => {
+  return `${workspace || 'default-workspace'}::${userId || 'anonymous'}::${issueId}`;
+};
+
+const normalizeSyncIssueId = (issue: string) => {
+  return issue
+    .trim()
+    .toLowerCase()
+    .replace(/retry in \d+s/g, 'retry-in-seconds')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 120) || 'generic-sync-issue';
+};
 
 type WorkspaceSettings = {
   churchName: string;
@@ -702,6 +740,7 @@ function App() {
   const [saveError, setSaveError] = useState<boolean>(false);
   const [popupBlocked, setPopupBlocked] = useState(false);
   const [syncIssue, setSyncIssue] = useState<string | null>(null);
+  const [dismissedSyncGuidance, setDismissedSyncGuidance] = useState<SyncGuidanceDismissals>(() => readSyncGuidanceDismissals());
   const [desktopUpdateStatus, setDesktopUpdateStatus] = useState<DesktopUpdateStatus>({
     state: 'idle',
     progress: 0,
@@ -742,6 +781,10 @@ function App() {
       unsubscribe?.();
     };
   }, []);
+
+  useEffect(() => {
+    writeSyncGuidanceDismissals(dismissedSyncGuidance);
+  }, [dismissedSyncGuidance]);
 
   const handleDesktopUpdateCheckNow = useCallback(async () => {
     const status = await window.electron?.updates?.checkNow?.();
@@ -2425,6 +2468,7 @@ function App() {
 
     if (issue.startsWith('Cloud sharing needs permission.')) {
       return {
+        id: 'cloud-sharing-permission',
         title: 'Cloud sync needs your attention',
         summary: 'This machine is still driving the live service normally through the local Lumina server.',
         steps: [
@@ -2438,6 +2482,7 @@ function App() {
 
     if (issue.startsWith('Cloud sync will retry in')) {
       return {
+        id: 'cloud-sync-backoff',
         title: 'Cloud sync is temporarily paused',
         summary: 'Lumina is still saving your live work locally on this machine.',
         steps: [
@@ -2450,6 +2495,7 @@ function App() {
 
     if (issue.startsWith('Settings sync failed')) {
       return {
+        id: 'settings-sync-failed',
         title: 'Workspace settings could not reach the cloud',
         summary: 'Your local settings are still safe on this machine, including Remote Intelligence emails and the active session value.',
         steps: [
@@ -2461,6 +2507,7 @@ function App() {
     }
 
     return {
+      id: `generic-${normalizeSyncIssueId(issue)}`,
       title: 'Sync needs attention',
       summary: 'Lumina is protecting your local work, but cloud updates need another try.',
       steps: [
@@ -2470,6 +2517,23 @@ function App() {
       detail: issue,
     };
   }, [syncIssue, syncPendingCount]);
+  const dismissedSyncGuidanceKey = useMemo(() => {
+    if (!syncIssueDisplay?.id) return null;
+    return buildSyncGuidanceStorageKey(workspaceId, user?.uid, syncIssueDisplay.id);
+  }, [syncIssueDisplay?.id, user?.uid, workspaceId]);
+  const showSyncGuidance = Boolean(
+    syncIssueDisplay
+    && (!dismissedSyncGuidanceKey || !dismissedSyncGuidance[dismissedSyncGuidanceKey])
+  );
+  const dismissSyncGuidance = useCallback(() => {
+    if (dismissedSyncGuidanceKey) {
+      setDismissedSyncGuidance((prev) => ({
+        ...prev,
+        [dismissedSyncGuidanceKey]: Date.now(),
+      }));
+    }
+    setSyncIssue(null);
+  }, [dismissedSyncGuidanceKey]);
   const renderSpeakerPresetThresholdBar = (
     amberPercent: number,
     redPercent: number,
@@ -4953,7 +5017,7 @@ function App() {
       <audio ref={antiSleepAudioRef} src={SILENT_AUDIO_B64} loop muted />
       {saveError && <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-red-900/90 border border-red-500 text-white px-4 py-2 rounded-sm shadow-xl z-50 flex items-center gap-3 text-xs font-bold animate-pulse"><span>⚠ STORAGE FULL: Changes are NOT saving.</span><button onClick={() => setSaveError(false)} className="hover:text-zinc-300">✕</button></div>}
       
-      {syncIssueDisplay && (
+      {showSyncGuidance && syncIssueDisplay && (
         <div className="fixed left-1/2 top-[4.35rem] z-50 w-[min(calc(100vw-1rem),28rem)] -translate-x-1/2 sm:left-auto sm:right-4 sm:top-20 sm:w-[min(calc(100vw-2rem),28rem)] sm:translate-x-0">
           <div className="rounded-2xl border border-amber-600/45 bg-[linear-gradient(180deg,rgba(69,26,3,0.96),rgba(17,10,3,0.98))] p-3.5 text-amber-100 shadow-[0_24px_64px_rgba(0,0,0,0.34)] backdrop-blur-xl">
             <div className="flex items-start justify-between gap-3">
@@ -4962,7 +5026,7 @@ function App() {
                 <div className="mt-1 text-sm font-semibold text-amber-50">{syncIssueDisplay.title}</div>
               </div>
               <button
-                onClick={() => setSyncIssue(null)}
+                onClick={dismissSyncGuidance}
                 className="rounded-full border border-amber-500/25 bg-amber-500/10 p-1 text-amber-100 transition hover:border-amber-300/40 hover:bg-amber-500/15"
                 aria-label="Dismiss sync guidance"
               >

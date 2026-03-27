@@ -1,0 +1,1 @@
+export const TEXT_CONTRAST_BACKGROUND_OVERLAY = 'rgba(0,0,0,0.10)';

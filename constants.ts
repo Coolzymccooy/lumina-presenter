@@ -24,23 +24,23 @@ export const GOSPEL_TRACKS: GospelTrack[] = [
 ];
 
 const makeGradientBackground = (a: string, b: string, c: string) => {
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='${a}'/><stop offset='55%' stop-color='${b}'/><stop offset='100%' stop-color='${c}'/></linearGradient><radialGradient id='r' cx='70%' cy='20%' r='80%'><stop offset='0%' stop-color='rgba(255,255,255,0.22)'/><stop offset='100%' stop-color='rgba(255,255,255,0)'/></radialGradient></defs><rect width='1920' height='1080' fill='url(#g)'/><rect width='1920' height='1080' fill='url(#r)'/></svg>`;
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='${a}'/><stop offset='52%' stop-color='${b}'/><stop offset='100%' stop-color='${c}'/></linearGradient><radialGradient id='r1' cx='72%' cy='18%' r='78%'><stop offset='0%' stop-color='rgba(255,255,255,0.34)'/><stop offset='45%' stop-color='rgba(255,255,255,0.12)'/><stop offset='100%' stop-color='rgba(255,255,255,0)'/></radialGradient><radialGradient id='r2' cx='18%' cy='88%' r='72%'><stop offset='0%' stop-color='rgba(125,211,252,0.18)'/><stop offset='100%' stop-color='rgba(125,211,252,0)'/></radialGradient></defs><rect width='1920' height='1080' fill='url(#g)'/><rect width='1920' height='1080' fill='url(#r1)'/><rect width='1920' height='1080' fill='url(#r2)'/></svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 };
 
 export const DEFAULT_BACKGROUNDS = [
-  makeGradientBackground('#112240', '#1a365d', '#2d3748'),
-  makeGradientBackground('#3c1053', '#ad5389', '#1e1b4b'),
-  makeGradientBackground('#0b132b', '#1c2541', '#3a506b'),
-  makeGradientBackground('#2f4f4f', '#3b6978', '#84a9ac'),
-  makeGradientBackground('#1b4332', '#2d6a4f', '#40916c'),
-  makeGradientBackground('#2c003e', '#5f0f40', '#9a031e'),
-  makeGradientBackground('#1d3557', '#457b9d', '#a8dadc'),
-  makeGradientBackground('#2b2d42', '#3a506b', '#5bc0be'),
-  makeGradientBackground('#4a4e69', '#22223b', '#1b1b2f'),
-  makeGradientBackground('#102a43', '#243b53', '#334e68'),
-  makeGradientBackground('#3d0c02', '#7f1d1d', '#991b1b'),
-  makeGradientBackground('#0f172a', '#1e293b', '#334155'),
+  makeGradientBackground('#1d4ed8', '#3b82f6', '#93c5fd'),
+  makeGradientBackground('#6d28d9', '#a855f7', '#f472b6'),
+  makeGradientBackground('#0f172a', '#2563eb', '#7dd3fc'),
+  makeGradientBackground('#155e75', '#06b6d4', '#67e8f9'),
+  makeGradientBackground('#166534', '#22c55e', '#86efac'),
+  makeGradientBackground('#7c2d12', '#ea580c', '#fdba74'),
+  makeGradientBackground('#1e3a8a', '#2563eb', '#60a5fa'),
+  makeGradientBackground('#1f2937', '#0f766e', '#5eead4'),
+  makeGradientBackground('#312e81', '#6366f1', '#c4b5fd'),
+  makeGradientBackground('#0f3d5e', '#0ea5e9', '#7dd3fc'),
+  makeGradientBackground('#7f1d1d', '#ef4444', '#fca5a5'),
+  makeGradientBackground('#1e293b', '#475569', '#94a3b8'),
 ];
 
 const LOCAL_VIDEO_BACKGROUNDS = [

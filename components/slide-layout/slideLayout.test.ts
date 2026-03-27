@@ -32,6 +32,19 @@ test('offering split preset builds four structured text blocks', () => {
   );
 });
 
+test('scripture reference preset uses medium-sized projector-friendly text', () => {
+  const preset = getLayoutPreset('scripture-reference');
+  const elements = preset.createElements();
+  const scripture = elements.find((element) => element.name === 'Scripture Body');
+  const reference = elements.find((element) => element.name === 'Reference');
+
+  assert.equal(scripture?.type, 'text');
+  assert.equal(reference?.type, 'text');
+  assert.equal(scripture?.style.fontSize, 56);
+  assert.equal(reference?.style.fontSize, 34);
+  assert.equal(scripture?.frame.height, 0.24);
+});
+
 test('normalizeFrame clamps position and dimensions into the canvas bounds', () => {
   const frame = normalizeFrame({
     x: 0.95,

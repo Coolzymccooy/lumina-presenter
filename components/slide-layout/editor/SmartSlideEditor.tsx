@@ -26,6 +26,41 @@ interface SmartSlideEditorProps {
 
 const createSlideId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const cloneSlide = (slide: Slide) => JSON.parse(JSON.stringify(slide)) as Slide;
+const SMART_SLIDE_CLIPBOARD_KEY = 'lumina.smart-slide-editor.clipboard';
+
+const createDuplicateLabel = (label?: string) => {
+  const base = String(label || 'Slide').trim() || 'Slide';
+  return / copy$/i.test(base) ? base : `${base} Copy`;
+};
+
+const readStoredSlideClipboard = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(SMART_SLIDE_CLIPBOARD_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { type?: string; slide?: Slide };
+    if (parsed?.type !== 'lumina-smart-slide' || !parsed.slide?.id) return null;
+    return cloneSlide(parsed.slide);
+  } catch {
+    return null;
+  }
+};
+
+const writeStoredSlideClipboard = (slide: Slide | null) => {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!slide) {
+      window.sessionStorage.removeItem(SMART_SLIDE_CLIPBOARD_KEY);
+      return;
+    }
+    window.sessionStorage.setItem(SMART_SLIDE_CLIPBOARD_KEY, JSON.stringify({
+      type: 'lumina-smart-slide',
+      slide: cloneSlide(slide),
+    }));
+  } catch {
+    // Ignore clipboard persistence failures.
+  }
+};
 
 const createEmptySlide = (item: ServiceItem | null, preset: LayoutPreset) => {
   const slide: Slide = {
@@ -128,6 +163,8 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
   const [isImportingPptx, setIsImportingPptx] = useState(false);
   const [pendingAsyncTaskCount, setPendingAsyncTaskCount] = useState(0);
   const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const [slideClipboard, setSlideClipboard] = useState<Slide | null>(() => readStoredSlideClipboard());
+  const [editorNotice, setEditorNotice] = useState('');
   const [presetsCollapsed, setPresetsCollapsed] = useState(false);
   const uploadRef = useRef<HTMLInputElement | null>(null);
   const folderUploadRef = useRef<HTMLInputElement | null>(null);
@@ -156,6 +193,8 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
     setUploadError(null);
     setPptxError(null);
     setPptxStatus('');
+    setEditorNotice('');
+    setPresetsCollapsed(window.innerWidth < 1500 || window.innerHeight < 860);
     pendingAsyncTaskCountRef.current = 0;
     setPendingAsyncTaskCount(0);
   }, [isOpen, item, initialSlideId, mode]);
@@ -181,9 +220,10 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
     return elements.find((element) => element.id === selectedElementId) || null;
   }, [currentSlide, selectedElementId, item]);
 
-  const shouldStackInspector = viewport.width < 1360 || (viewport.width < 1500 && viewport.height < 860);
-  const canvasMaxWidthStyle = { maxWidth: shouldStackInspector ? 840 : 1040 };
-  const presetsColumnWidth = presetsCollapsed ? '3.75rem' : '14rem';
+  const shouldStackInspector = viewport.width < 1180;
+  const presetsColumnWidth = presetsCollapsed ? '3.5rem' : viewport.width < 1440 ? '11rem' : '13rem';
+  const slidesColumnWidth = viewport.width < 1440 ? '7rem' : '7.5rem';
+  const inspectorColumnWidth = viewport.width < 1440 ? '17rem' : '18.5rem';
 
   useEffect(() => {
     if (!currentSlide) {
@@ -201,10 +241,46 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
     }
   }, [currentSlide, item, selectedElementId]);
 
+  useEffect(() => {
+    if (!editorNotice) return;
+    const timeoutId = window.setTimeout(() => setEditorNotice(''), 2600);
+    return () => window.clearTimeout(timeoutId);
+  }, [editorNotice]);
+
   const updateSlides = (updater: (current: Slide[]) => Slide[]) => setSlides((current) => updater(current).map((slide) => buildStructuredSlide(slide, item)));
   const updateCurrentSlide = (updater: (slide: Slide) => Slide) => {
     if (!currentSlideId) return;
     updateSlides((current) => current.map((slide) => slide.id === currentSlideId ? updater(slide) : slide));
+  };
+
+  const activateSlide = (nextSlide: Slide | null) => {
+    setCurrentSlideId(nextSlide?.id || null);
+    setSelectedElementId(getPrimaryEditableElementId(nextSlide, item));
+  };
+
+  const storeSlideClipboard = (slide: Slide | null) => {
+    setSlideClipboard(slide ? cloneSlide(slide) : null);
+    writeStoredSlideClipboard(slide);
+  };
+
+  const insertSlideAfter = (source: Slide, afterSlideId: string | null, notice: string) => {
+    const nextSlide = buildStructuredSlide({
+      ...cloneSlide(source),
+      id: createSlideId(),
+      label: createDuplicateLabel(source.label),
+    }, item);
+    setSlides((current) => {
+      const index = afterSlideId ? current.findIndex((entry) => entry.id === afterSlideId) : -1;
+      const next = [...current];
+      if (index < 0) {
+        next.push(nextSlide);
+      } else {
+        next.splice(index + 1, 0, nextSlide);
+      }
+      return next;
+    });
+    activateSlide(nextSlide);
+    setEditorNotice(notice);
   };
 
   const updateElement = (elementId: string, updater: (element: TextSlideElement) => TextSlideElement) => {
@@ -242,31 +318,45 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
     const preset = getLayoutPreset(presetId || currentSlide?.layoutType || 'single');
     const nextSlide = createEmptySlide(item, preset);
     setSlides((current) => [...current, nextSlide]);
-    setCurrentSlideId(nextSlide.id);
-    setSelectedElementId(nextSlide.elements?.[0]?.id || null);
+    activateSlide(nextSlide);
+    setEditorNotice('New slide added.');
+  };
+
+  const handleCopySlide = (slideId: string) => {
+    const source = slides.find((slide) => slide.id === slideId);
+    if (!source) return;
+    storeSlideClipboard(source);
+    setEditorNotice(`Copied "${source.label || 'Slide'}".`);
+  };
+
+  const handlePasteSlide = (afterSlideId: string | null = currentSlideId) => {
+    const source = slideClipboard || readStoredSlideClipboard();
+    if (!source) {
+      setEditorNotice('Copy a slide first.');
+      return;
+    }
+    if (!slideClipboard) {
+      setSlideClipboard(source);
+    }
+    insertSlideAfter(source, afterSlideId, 'Slide pasted.');
   };
 
   const handleDuplicateSlide = (slideId: string) => {
     const source = slides.find((slide) => slide.id === slideId);
     if (!source) return;
-    const duplicated = buildStructuredSlide({ ...cloneSlide(source), id: createSlideId(), label: `${source.label || 'Slide'} Copy` }, item);
-    setSlides((current) => {
-      const index = current.findIndex((entry) => entry.id === slideId);
-      const next = [...current];
-      next.splice(index + 1, 0, duplicated);
-      return next;
-    });
+    insertSlideAfter(source, slideId, 'Slide duplicated.');
   };
 
   const handleDeleteSlide = (slideId: string) => {
     if (slides.length <= 1) return;
+    const deletedIndex = slides.findIndex((slide) => slide.id === slideId);
     const nextSlides = slides.filter((slide) => slide.id !== slideId);
     setSlides(nextSlides);
     if (currentSlideId === slideId) {
-      const nextActive = nextSlides[0] || null;
-      setCurrentSlideId(nextActive?.id || null);
-      setSelectedElementId(getPrimaryEditableElementId(nextActive, item));
+      const nextActive = nextSlides[Math.min(deletedIndex, nextSlides.length - 1)] || null;
+      activateSlide(nextActive);
     }
+    setEditorNotice('Slide deleted.');
   };
 
   const handleMoveSlide = (slideId: string, direction: -1 | 1) => {
@@ -457,8 +547,7 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
       const structuredSlides = importedSlides.map((slide) => buildStructuredSlide(cloneSlide(slide), item));
       setSlides((current) => [...current, ...structuredSlides]);
       const firstImported = structuredSlides[0] || null;
-      setCurrentSlideId(firstImported?.id || currentSlideId);
-      setSelectedElementId(getPrimaryEditableElementId(firstImported, item));
+      activateSlide(firstImported);
       setPptxStatus(`${structuredSlides.length} slide(s) imported.`);
     } catch (error: any) {
       setPptxError(error?.message || 'PowerPoint import failed.');
@@ -502,6 +591,38 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
     return () => window.removeEventListener('keydown', handler);
   }, [currentSlide, isOpen, selectedElement]);
 
+  useEffect(() => {
+    if (!isOpen || !currentSlide) return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      const target = event.target as HTMLElement | null;
+      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+      const shortcut = event.ctrlKey || event.metaKey;
+      const key = event.key.toLowerCase();
+      if (shortcut && key === 'c') {
+        event.preventDefault();
+        handleCopySlide(currentSlide.id);
+        return;
+      }
+      if (shortcut && key === 'v') {
+        event.preventDefault();
+        handlePasteSlide(currentSlide.id);
+        return;
+      }
+      if (shortcut && key === 'd') {
+        event.preventDefault();
+        handleDuplicateSlide(currentSlide.id);
+        return;
+      }
+      if ((event.key === 'Delete' || event.key === 'Backspace') && !selectedElement) {
+        event.preventDefault();
+        handleDeleteSlide(currentSlide.id);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [currentSlide, isOpen, selectedElement, slideClipboard, slides]);
+
   if (!isOpen || !item) return null;
 
   const editorBusy = isUploading || isImportingPptx || pendingAsyncTaskCount > 0;
@@ -516,21 +637,22 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
 
   const presetsColumn = (
     <aside className="flex h-full min-h-0 flex-col border-r border-zinc-800 bg-[#05070e]">
-      <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-4">
-        {!presetsCollapsed ? (
-          <div className="text-[11px] font-black uppercase tracking-[0.22em] text-zinc-500">Layout Presets</div>
-        ) : (
-          <div className="text-[11px] font-black uppercase tracking-[0.22em] text-zinc-500">LP</div>
-        )}
-        <button
-          type="button"
-          data-testid="smart-presets-toggle"
-          onClick={() => setPresetsCollapsed((current) => !current)}
-          className="rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-[10px] font-bold text-zinc-300 hover:text-white"
-          title={presetsCollapsed ? 'Expand presets' : 'Collapse presets'}
-        >
-          {presetsCollapsed ? '>' : '<'}
-        </button>
+      <div className="border-b border-zinc-800 px-2 py-3">
+        <div className={`rounded-xl border border-zinc-800 bg-zinc-950/80 ${presetsCollapsed ? 'flex items-center justify-center px-2 py-2' : 'flex items-center justify-between gap-2 px-3 py-2.5'}`}>
+          {!presetsCollapsed ? (
+            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">Layout Presets</div>
+          ) : null}
+          <button
+            type="button"
+            data-testid="smart-presets-toggle"
+            onClick={() => setPresetsCollapsed((current) => !current)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900 text-[10px] font-bold text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
+            title={presetsCollapsed ? 'Expand presets' : 'Collapse presets'}
+            aria-label={presetsCollapsed ? 'Expand layout presets' : 'Collapse layout presets'}
+          >
+            {presetsCollapsed ? '>' : '<'}
+          </button>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-2.5 custom-scrollbar">
         {layoutPresets.map((preset) => {
@@ -563,12 +685,28 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
 
   const canvasAndToolbar = (
     <div className="relative z-0 flex min-w-0 min-h-0 flex-col overflow-hidden bg-zinc-950" data-testid="smart-editor-canvas-shell">
-      <div className="border-b border-zinc-800 px-3 py-2.5">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="border-b border-zinc-800 px-3 py-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-[12rem]">
+            <div className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500">Canvas</div>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <div className="text-sm font-semibold text-zinc-100">{currentSlide?.label || 'New Slide'}</div>
+              <span className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
+                {getLayoutPreset(currentSlide?.layoutType || 'single').label}
+              </span>
+            </div>
+          </div>
           <EditorToolbar
+            canActOnSlide={!!currentSlide}
+            canDeleteSlide={slides.length > 1}
+            canPasteSlide={!!slideClipboard}
             canActOnElement={!!selectedElement}
             activeTool={activeTool}
             onSetTool={setActiveTool}
+            onCopySlide={() => currentSlide && handleCopySlide(currentSlide.id)}
+            onPasteSlide={() => handlePasteSlide(currentSlideId)}
+            onDuplicateSlide={() => currentSlide && handleDuplicateSlide(currentSlide.id)}
+            onDeleteSlide={() => currentSlide && handleDeleteSlide(currentSlide.id)}
             onAddText={handleAddTextBlock}
             onDuplicateElement={handleDuplicateElement}
             onDeleteElement={handleDeleteElement}
@@ -584,18 +722,8 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
           />
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-3">
-        <div className="mx-auto w-full space-y-3 xl:space-y-4" style={canvasMaxWidthStyle}>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500">Canvas</div>
-              <div className="mt-1 text-sm text-zinc-200">{currentSlide?.label || 'New Slide'}</div>
-            </div>
-            <div className="flex items-center gap-2 rounded border border-zinc-800 bg-zinc-900 px-3 py-2">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Active Layout</span>
-              <span className="rounded bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-100">{getLayoutPreset(currentSlide?.layoutType || 'single').label}</span>
-            </div>
-          </div>
+      <div className="flex min-h-0 flex-1 flex-col px-3 py-3">
+        <div className="min-h-0 flex-1">
           <SlideCanvas
             slide={currentSlide}
             item={item}
@@ -607,20 +735,20 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
           />
         </div>
       </div>
-      <div className="border-t border-zinc-800 bg-[#060810] px-3 py-2.5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <button type="button" onClick={handleAddTextBlock} className="inline-flex items-center gap-3 text-sm font-bold text-zinc-200 hover:text-white">
-              <span className="text-xl leading-none text-blue-400">+</span>
-              ADD TEXT BLOCK
-            </button>
+      <div className="border-t border-zinc-800 bg-[#060810] px-3 py-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {currentSlide?.elements?.length ? (
-              <button type="button" onClick={() => updateCurrentSlide((slide) => ({ ...slide, elements: [], content: '', layoutType: 'media' }))} className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] text-zinc-300 hover:border-zinc-500">
+              <button type="button" onClick={() => updateCurrentSlide((slide) => ({ ...slide, elements: [], content: '', layoutType: 'media' }))} className="rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-300 hover:border-zinc-500">
                 Clear Text Blocks
               </button>
-            ) : null}
+            ) : (
+              <div className="text-[10px] uppercase tracking-[0.16em] text-zinc-600">Slide fits to screen automatically.</div>
+            )}
           </div>
-          <div className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">{slides.length} slide(s)</div>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+            {Math.max(1, slides.findIndex((slide) => slide.id === currentSlideId) + 1)} / {slides.length} slide(s)
+          </div>
         </div>
       </div>
     </div>
@@ -633,7 +761,7 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
       <input ref={folderUploadRef} type="file" className="hidden" multiple accept="image/*,video/*" webkitdirectory="" onChange={handleBackgroundUpload} data-testid="slide-editor-folder-upload-input" />
       <input ref={pptxVisualRef} type="file" className="hidden" accept=".pptx,.ppt,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint" onChange={(event) => handlePowerPointImport(event, 'visual')} />
       <input ref={pptxTextRef} type="file" className="hidden" accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint" onChange={(event) => handlePowerPointImport(event, 'text')} />
-      <div className="flex h-full min-h-0 flex-col">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-[1800px] flex-col">
         <div className="flex items-center justify-between border-b border-zinc-800 bg-zinc-950 px-5 py-4">
           <div>
             <div className="text-sm font-black uppercase tracking-[0.24em] text-zinc-100">{mode === 'edit' ? 'Edit Slide' : 'Add New Slide'}</div>
@@ -643,6 +771,7 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
             {uploadError && <span className="text-xs text-rose-300">{uploadError}</span>}
             {pptxError && <span className="text-xs text-rose-300">{pptxError}</span>}
             {pptxStatus && <span className="text-xs text-cyan-300">{pptxStatus}</span>}
+            {editorNotice && <span className="text-xs text-cyan-300">{editorNotice}</span>}
             {editorBusy && <span className="text-xs text-zinc-500">WORKING...</span>}
             <button type="button" onClick={handleRequestClose} disabled={editorBusy} className="rounded border border-zinc-700 bg-zinc-900 px-4 py-2 text-xs font-bold text-zinc-300 disabled:cursor-not-allowed disabled:opacity-40">ESC</button>
             <button type="button" data-testid="slide-editor-confirm" onClick={handleConfirmSave} disabled={editorBusy} className="rounded border border-blue-500 bg-blue-600 px-5 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:border-blue-900 disabled:bg-blue-950 disabled:text-blue-300/70">SAVE</button>
@@ -650,19 +779,21 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
         </div>
 
         {shouldStackInspector ? (
-          <div className="grid min-h-0 flex-1 overflow-hidden" style={{ gridTemplateColumns: `${presetsColumnWidth} 6.5rem minmax(0,1fr)` }}>
+          <div className="grid min-h-0 flex-1 overflow-hidden" style={{ gridTemplateColumns: `${presetsColumnWidth} ${slidesColumnWidth} minmax(0,1fr)` }}>
             <div className="min-h-0">{presetsColumn}</div>
             <div className="min-h-0">
               <SlideThumbnailsPanel
                 item={item}
                 slides={slides}
                 activeSlideId={currentSlideId}
+                canPasteSlide={!!slideClipboard}
                 onSelectSlide={(slideId) => {
                   const nextSlide = slides.find((slide) => slide.id === slideId) || null;
-                  setCurrentSlideId(slideId);
-                  setSelectedElementId(getPrimaryEditableElementId(nextSlide, item));
+                  activateSlide(nextSlide);
                 }}
                 onAddSlide={() => addSlideFromPreset(currentSlide?.layoutType || 'single')}
+                onCopySlide={handleCopySlide}
+                onPasteSlide={handlePasteSlide}
                 onDuplicateSlide={handleDuplicateSlide}
                 onDeleteSlide={handleDeleteSlide}
                 onMoveSlide={handleMoveSlide}
@@ -671,7 +802,7 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
             </div>
             <div className="flex min-h-0 flex-col overflow-hidden">
               <div className="min-h-0 flex-1 overflow-hidden">{canvasAndToolbar}</div>
-              <div className="relative z-20 h-[clamp(22rem,38vh,28rem)] shrink-0 overflow-hidden border-t border-zinc-800 bg-zinc-950" data-testid="smart-editor-inspector-shell">
+              <div className="relative z-20 h-[clamp(16rem,28vh,22rem)] shrink-0 overflow-hidden border-t border-zinc-800 bg-zinc-950" data-testid="smart-editor-inspector-shell">
                 <InspectorPanel
                   slide={currentSlide}
                   selectedElement={selectedElement}
@@ -689,18 +820,20 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
             </div>
           </div>
         ) : (
-          <div className="grid min-h-0 flex-1 overflow-hidden" style={{ gridTemplateColumns: `${presetsColumnWidth} 6.5rem minmax(0,1fr) 20rem` }}>
+          <div className="grid min-h-0 flex-1 overflow-hidden" style={{ gridTemplateColumns: `${presetsColumnWidth} ${slidesColumnWidth} minmax(0,1fr) ${inspectorColumnWidth}` }}>
             {presetsColumn}
             <SlideThumbnailsPanel
               item={item}
               slides={slides}
               activeSlideId={currentSlideId}
+              canPasteSlide={!!slideClipboard}
               onSelectSlide={(slideId) => {
                 const nextSlide = slides.find((slide) => slide.id === slideId) || null;
-                setCurrentSlideId(slideId);
-                setSelectedElementId(getPrimaryEditableElementId(nextSlide, item));
+                activateSlide(nextSlide);
               }}
               onAddSlide={() => addSlideFromPreset(currentSlide?.layoutType || 'single')}
+              onCopySlide={handleCopySlide}
+              onPasteSlide={handlePasteSlide}
               onDuplicateSlide={handleDuplicateSlide}
               onDeleteSlide={handleDeleteSlide}
               onMoveSlide={handleMoveSlide}
