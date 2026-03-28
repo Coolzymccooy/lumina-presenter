@@ -1,7 +1,7 @@
 {
   "name": "lumina-presenter",
   "private": true,
-  "version": "2.2.23",
+  "version": "2.2.24",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,8 +15,8 @@
     "dist:win": "npm run build && electron-builder --win --publish never",
     "dist:win:ci": "npm run build && electron-builder --win --publish never --config.directories.output=release",
     "dist:win:publish": "npm run build && electron-builder --win --publish always",
-    "dist:mac": "npm run build && electron-builder --mac --publish never",
-    "dist:mac:ci": "npm run build && electron-builder --mac --publish never --config.directories.output=release",
+    "dist:mac": "npm run build && electron-builder --mac --universal --publish never",
+    "dist:mac:ci": "npm run build && electron-builder --mac --universal --publish never --config.directories.output=release",
     "test:e2e": "node scripts/run-e2e.mjs",
     "test:e2e:smoke": "node scripts/run-e2e.mjs --grep @smoke",
     "test:e2e:headed": "node scripts/run-e2e.mjs --headed",
@@ -92,6 +92,12 @@
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "public/icon.png",
+      "artifactName": "Lumina-Presenter-${version}-mac-${arch}.${ext}",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.inherit.plist",
+      "notarize": true,
       "target": [
         {
           "target": "dmg"
