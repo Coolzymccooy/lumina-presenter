@@ -104,7 +104,7 @@ const SYNC_BACKOFF_BASE_MS = 5000;
 const SYNC_BACKOFF_MAX_MS = 60000;
 const MAX_LIVE_QUEUE_SIZE = 40;
 const SILENT_AUDIO_B64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOkiJAAAAAAAAAAAAAAAAAAAAAAA=";
-const PUBLIC_WEB_APP_ORIGIN = 'https://lumina-presenter.vercel.app';
+const PUBLIC_WEB_APP_ORIGIN = 'https://luminalive.co.uk';
 const getWorkspaceSettingsKey = (workspace: string) => `${SETTINGS_KEY}:${workspace || 'default-workspace'}`;
 const getWorkspaceSettingsUpdatedAtKey = (workspace: string) => `${SETTINGS_UPDATED_AT_KEY}:${workspace || 'default-workspace'}`;
 const getWorkspaceSettingsIntentKey = (workspace: string) => `${SETTINGS_INTENT_KEY}:${workspace || 'default-workspace'}`;

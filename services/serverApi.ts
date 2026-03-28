@@ -11,7 +11,7 @@ const getInitialApiBaseUrl = () => {
   return (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787').trim();
 };
 
-const DEFAULT_PROD_API_BASE_URL = 'https://lumina-presenter-api.onrender.com';
+const DEFAULT_PROD_API_BASE_URL = 'https://api.luminalive.co.uk';
 const normalizeApiBaseUrl = (input?: string | null) => String(input || '').trim().replace(/\/+$/, '');
 const INITIAL_API_BASE_URL = normalizeApiBaseUrl(getInitialApiBaseUrl());
 let activeApiBaseUrl = INITIAL_API_BASE_URL;
@@ -38,7 +38,6 @@ const buildApiBaseCandidates = (seedBaseUrl: string): string[] => {
 
   addCandidate(seedBaseUrl);
   addCandidate(withHostSwap(seedBaseUrl, '-docker.', '.'));
-  addCandidate(withHostSwap(seedBaseUrl, '.onrender.com', '-docker.onrender.com'));
   addCandidate(import.meta.env.VITE_API_BASE_URL || '');
   addCandidate(DEFAULT_PROD_API_BASE_URL);
   return candidates;

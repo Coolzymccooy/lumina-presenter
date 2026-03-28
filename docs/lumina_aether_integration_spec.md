@@ -90,8 +90,8 @@ Optional explicit backend override (only when needed):
 - `https://<lumina-host>/#/output?session=<sessionId>&workspace=<workspaceId>&fullscreen=1&api=<encodedApiBase>`
 
 Examples:
-- `https://lumina-presenter.vercel.app/#/output?session=live&workspace=church-main&fullscreen=1`
-- `https://lumina-presenter.vercel.app/#/output?session=live&workspace=church-main&fullscreen=1&api=https%3A%2F%2Flumina-presenter-api-docker.onrender.com`
+- `https://luminalive.co.uk/#/output?session=live&workspace=church-main&fullscreen=1`
+- `https://luminalive.co.uk/#/output?session=live&workspace=church-main&fullscreen=1&api=https%3A%2F%2Fapi.luminalive.co.uk`
 
 ### 6.2 Browser Source Baseline
 Recommended baseline:
@@ -103,7 +103,6 @@ Recommended baseline:
 
 ### 6.3 Network and Runtime Expectations
 - Stable internet required for cloud-backed workspace routes.
-- Render service cold starts and auth gaps can affect non-anonymous workspace endpoints.
 - Operators should pre-warm source before service start.
 
 ### 6.4 Workspace/Session Hygiene
