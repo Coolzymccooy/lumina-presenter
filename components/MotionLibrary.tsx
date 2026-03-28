@@ -3,21 +3,27 @@ import { PlayIcon } from './Icons';
 import { DEFAULT_BACKGROUNDS, VIDEO_BACKGROUNDS } from '../constants';
 import { MediaType } from '../types';
 import { searchPexelsMotion } from '../services/serverApi';
+import { getCachedMedia, getMedia, listSavedBackgrounds } from '../services/localMedia';
 
-type MotionTab = 'curated' | 'stills' | 'pexels' | 'pixabay';
+type MotionTab = 'curated' | 'stills' | 'pexels' | 'pixabay' | 'saved';
 
-interface MotionAsset {
-  id: string;
-  name: string;
-  thumb: string;
+export interface MotionLibrarySelection {
   url: string;
+  thumb: string;
+  name: string;
   mediaType: MediaType;
-  provider: 'curated' | 'stills' | 'pexels' | 'pixabay';
+  provider: string;
   attribution?: string;
+  category?: string;
+  sourceUrl?: string;
+}
+
+interface MotionAsset extends MotionLibrarySelection {
+  id: string;
 }
 
 interface MotionLibraryProps {
-  onSelect: (url: string, mediaType?: MediaType) => void;
+  onSelect: (asset: MotionLibrarySelection) => void;
   onClose: () => void;
 }
 
@@ -29,7 +35,8 @@ const CURATED_VIDEO_ASSETS: MotionAsset[] = VIDEO_BACKGROUNDS.map((url, idx) => 
   thumb: DEFAULT_BACKGROUNDS[idx % DEFAULT_BACKGROUNDS.length],
   url,
   mediaType: 'video' as MediaType,
-  provider: 'curated' as const,
+  provider: 'curated',
+  category: 'Built-in',
   attribution: url.startsWith('/assets/') ? 'Local library' : 'Built-in',
 }))
   .filter((asset) => /\.(mp4|webm|mov)(\?|$)/i.test(asset.url));
@@ -41,14 +48,120 @@ const CURATED_STILL_ASSETS: MotionAsset[] = DEFAULT_BACKGROUNDS.map((url, idx) =
   url,
   mediaType: 'image',
   provider: 'stills',
+  category: 'Built-in',
   attribution: 'Built-in',
 }));
+
+const resolvePrettyCategory = (value: string) => (
+  String(value || '').trim()
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((entry) => entry.charAt(0).toUpperCase() + entry.slice(1).toLowerCase())
+    .join(' ') || 'Used'
+);
+
+const MotionTile: React.FC<{ motion: MotionAsset; onSelect: (asset: MotionAsset) => void }> = ({ motion, onSelect }) => {
+  const [resolvedUrl, setResolvedUrl] = useState<string>(() => (
+    motion.url.startsWith('local://') ? (getCachedMedia(motion.url) || '') : motion.url
+  ));
+  const [resolvedThumb, setResolvedThumb] = useState<string>(() => (
+    motion.thumb.startsWith('local://') ? (getCachedMedia(motion.thumb) || '') : motion.thumb
+  ));
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!motion.url.startsWith('local://')) {
+        setResolvedUrl(motion.url);
+        return;
+      }
+      const cached = getCachedMedia(motion.url);
+      if (cached) {
+        setResolvedUrl(cached);
+        return;
+      }
+      const resolved = await getMedia(motion.url);
+      if (!cancelled) setResolvedUrl(resolved || '');
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, [motion.url]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!motion.thumb.startsWith('local://')) {
+        setResolvedThumb(motion.thumb);
+        return;
+      }
+      const cached = getCachedMedia(motion.thumb);
+      if (cached) {
+        setResolvedThumb(cached);
+        return;
+      }
+      const resolved = await getMedia(motion.thumb);
+      if (!cancelled) setResolvedThumb(resolved || '');
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, [motion.thumb]);
+
+  const poster = resolvedThumb || DEFAULT_BACKGROUNDS[0];
+  const playableUrl = resolvedUrl || motion.url;
+
+  return (
+    <div
+      className="group relative aspect-video bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800 hover:border-blue-500 transition-all cursor-pointer"
+      onClick={() => onSelect(motion)}
+    >
+      {motion.mediaType === 'video' && playableUrl && !playableUrl.startsWith('local://') ? (
+        <video
+          src={playableUrl}
+          poster={poster}
+          className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="metadata"
+        />
+      ) : (
+        <img
+          src={poster}
+          loading="lazy"
+          className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
+          alt={motion.name}
+        />
+      )}
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+        <PlayIcon className="w-8 h-8 text-white drop-shadow-lg" />
+      </div>
+      <div className="absolute top-2 left-2 flex items-center gap-1.5">
+        <div className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-black/60 text-zinc-200 border border-zinc-700">
+          {motion.provider}
+        </div>
+        {motion.category && (
+          <div className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-950/65 text-blue-200 border border-blue-700/40">
+            {motion.category}
+          </div>
+        )}
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent">
+        <span className="block text-[10px] font-bold text-white truncate">{motion.name}</span>
+        {motion.attribution && <span className="block text-[9px] text-zinc-400 truncate">{motion.attribution}</span>}
+      </div>
+    </div>
+  );
+};
 
 export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose }) => {
   const [activeTab, setActiveTab] = useState<MotionTab>('curated');
   const [queryInput, setQueryInput] = useState('worship background');
   const [debouncedQuery, setDebouncedQuery] = useState('worship background');
   const [assets, setAssets] = useState<MotionAsset[]>(CURATED_VIDEO_ASSETS);
+  const [savedAssets, setSavedAssets] = useState<MotionAsset[]>([]);
+  const [savedCategoryFilter, setSavedCategoryFilter] = useState('all');
+  const [savedProviderFilter, setSavedProviderFilter] = useState('all');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const cacheRef = useRef<Record<string, MotionAsset[]>>({});
@@ -60,6 +173,24 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
     if (activeTab === 'pixabay') return pixabayKey ? '' : 'Missing VITE_PIXABAY_API_KEY in the frontend build environment';
     return '';
   }, [activeTab, pixabayKey]);
+
+  const savedCategories = useMemo(
+    () => Array.from(new Set(savedAssets.map((asset) => resolvePrettyCategory(asset.category || 'Used')))).sort(),
+    [savedAssets],
+  );
+  const savedProviders = useMemo(
+    () => Array.from(new Set(savedAssets.map((asset) => asset.provider))).sort(),
+    [savedAssets],
+  );
+
+  const visibleAssets = useMemo(() => {
+    if (activeTab !== 'saved') return assets;
+    return savedAssets.filter((asset) => {
+      if (savedCategoryFilter !== 'all' && resolvePrettyCategory(asset.category || 'Used') !== savedCategoryFilter) return false;
+      if (savedProviderFilter !== 'all' && asset.provider !== savedProviderFilter) return false;
+      return true;
+    });
+  }, [activeTab, assets, savedAssets, savedCategoryFilter, savedProviderFilter]);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -85,6 +216,33 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
       if (activeTab === 'stills') {
         setLoading(false);
         setAssets(CURATED_STILL_ASSETS);
+        return;
+      }
+
+      if (activeTab === 'saved') {
+        setLoading(true);
+        try {
+          const saved = await listSavedBackgrounds();
+          if (!cancelled) {
+            setSavedAssets(saved.map((asset) => ({
+              id: asset.id,
+              name: asset.title || asset.name,
+              thumb: asset.localUrl,
+              url: asset.localUrl,
+              mediaType: asset.mediaType,
+              provider: asset.provider || 'saved',
+              category: resolvePrettyCategory(asset.category || 'Used'),
+              attribution: asset.sourceUrl || 'Saved for offline reuse',
+              sourceUrl: asset.sourceUrl,
+            })));
+          }
+        } catch (err: any) {
+          if (!cancelled) {
+            setError(err?.message || 'Failed to load saved backgrounds');
+          }
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
         return;
       }
 
@@ -117,8 +275,10 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
               thumb: asset.thumb || DEFAULT_BACKGROUNDS[idx % DEFAULT_BACKGROUNDS.length],
               url: asset.url,
               mediaType: asset.mediaType,
-              provider: 'pexels' as const,
+              provider: 'pexels',
+              category: resolvePrettyCategory(debouncedQuery || 'Used'),
               attribution: asset.attribution || 'Pexels',
+              sourceUrl: asset.url,
             }))
             .filter((item: MotionAsset) => !!item.url);
 
@@ -152,8 +312,15 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
                 hit?.videos?.tiny?.url ||
                 null,
               mediaType: 'video' as const,
-              provider: 'pixabay' as const,
+              provider: 'pixabay',
+              category: resolvePrettyCategory(debouncedQuery || 'Used'),
               attribution: hit?.pageURL || 'Pixabay',
+              sourceUrl:
+                hit?.videos?.large?.url ||
+                hit?.videos?.medium?.url ||
+                hit?.videos?.small?.url ||
+                hit?.videos?.tiny?.url ||
+                undefined,
             }))
             .filter((item: MotionAsset) => !!item.url);
 
@@ -176,7 +343,7 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
       }
     };
 
-    run();
+    void run();
     return () => {
       cancelled = true;
       window.clearTimeout(requestTimeout);
@@ -201,15 +368,37 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
         <div className="p-4 border-b border-zinc-900 flex flex-wrap items-center gap-2">
           <button onClick={() => setActiveTab('curated')} className={`px-3 py-1 text-xs rounded ${activeTab === 'curated' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Default Loops</button>
           <button onClick={() => setActiveTab('stills')} className={`px-3 py-1 text-xs rounded ${activeTab === 'stills' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Safe Stills</button>
+          <button onClick={() => setActiveTab('saved')} className={`px-3 py-1 text-xs rounded ${activeTab === 'saved' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Saved</button>
           <button onClick={() => setActiveTab('pexels')} className={`px-3 py-1 text-xs rounded ${activeTab === 'pexels' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Pexels</button>
           <button onClick={() => setActiveTab('pixabay')} className={`px-3 py-1 text-xs rounded ${activeTab === 'pixabay' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Pixabay</button>
-          <input
-            value={queryInput}
-            onChange={(e) => setQueryInput(e.target.value)}
-            placeholder="Search worship, sunrise, abstract..."
-            className="w-full md:w-80 md:ml-auto bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-200"
-          />
+          {activeTab !== 'saved' && (
+            <input
+              value={queryInput}
+              onChange={(e) => setQueryInput(e.target.value)}
+              placeholder="Search worship, sunrise, abstract..."
+              className="w-full md:w-80 md:ml-auto bg-zinc-900 border border-zinc-800 rounded px-3 py-1.5 text-xs text-zinc-200"
+            />
+          )}
         </div>
+
+        {activeTab === 'saved' && (
+          <div className="px-4 py-3 border-b border-zinc-900 flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Category</span>
+              <button onClick={() => setSavedCategoryFilter('all')} className={`px-2.5 py-1 rounded text-[10px] font-bold ${savedCategoryFilter === 'all' ? 'bg-blue-700 text-white' : 'bg-zinc-900 text-zinc-400'}`}>All</button>
+              {savedCategories.map((category) => (
+                <button key={category} onClick={() => setSavedCategoryFilter(category)} className={`px-2.5 py-1 rounded text-[10px] font-bold ${savedCategoryFilter === category ? 'bg-blue-700 text-white' : 'bg-zinc-900 text-zinc-400'}`}>{category}</button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Source</span>
+              <button onClick={() => setSavedProviderFilter('all')} className={`px-2.5 py-1 rounded text-[10px] font-bold ${savedProviderFilter === 'all' ? 'bg-cyan-700 text-white' : 'bg-zinc-900 text-zinc-400'}`}>All</button>
+              {savedProviders.map((provider) => (
+                <button key={provider} onClick={() => setSavedProviderFilter(provider)} className={`px-2.5 py-1 rounded text-[10px] font-bold ${savedProviderFilter === provider ? 'bg-cyan-700 text-white' : 'bg-zinc-900 text-zinc-400'}`}>{provider}</button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="p-4 overflow-y-auto flex-1">
           {providerStatus && <div className="mb-3 text-[11px] text-amber-400 border border-amber-900/50 bg-amber-950/20 px-3 py-2 rounded">{providerStatus}</div>}
@@ -219,43 +408,22 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
             <div className="text-zinc-400 text-xs">Loading assets...</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {assets.map((motion) => (
-                <div
+              {visibleAssets.map((motion) => (
+                <MotionTile
                   key={motion.id}
-                  className="group relative aspect-video bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800 hover:border-blue-500 transition-all cursor-pointer"
-                  onClick={() => onSelect(motion.url, motion.mediaType)}
-                >
-                  {motion.mediaType === 'video' && motion.provider === 'curated' ? (
-                    <video
-                      src={motion.url}
-                      poster={motion.thumb}
-                      className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      preload="metadata"
-                    />
-                  ) : (
-                    <img
-                      src={motion.thumb}
-                      loading="lazy"
-                      className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity"
-                      alt={motion.name}
-                    />
-                  )}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-                    <PlayIcon className="w-8 h-8 text-white drop-shadow-lg" />
-                  </div>
-                  <div className="absolute top-2 left-2 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-black/60 text-zinc-200 border border-zinc-700">
-                    {motion.provider}
-                  </div>
-                  <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent">
-                    <span className="block text-[10px] font-bold text-white truncate">{motion.name}</span>
-                    {motion.attribution && <span className="block text-[9px] text-zinc-400 truncate">{motion.attribution}</span>}
-                  </div>
-                </div>
+                  motion={motion}
+                  onSelect={(asset) => onSelect(asset)}
+                />
               ))}
+            </div>
+          )}
+
+          {!loading && visibleAssets.length === 0 && (
+            <div className="rounded-lg border border-dashed border-zinc-800 bg-zinc-950/70 px-4 py-8 text-center">
+              <div className="text-sm font-semibold text-zinc-300">No backgrounds in this view yet</div>
+              <div className="mt-1 text-xs text-zinc-500">
+                Used backgrounds will appear here automatically after they have been projected successfully.
+              </div>
             </div>
           )}
         </div>

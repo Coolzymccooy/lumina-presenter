@@ -321,6 +321,41 @@ app.use(cors());
 app.use(express.json({ limit: JSON_LIMIT }));
 fs.mkdirSync(VIS_MEDIA_DIR, { recursive: true });
 fs.mkdirSync(WORKSPACE_MEDIA_DIR, { recursive: true });
+const audienceMessageStreamClients = new Map();
+
+const getAudienceStreamBucket = (workspaceId) => {
+  const key = String(workspaceId || "").trim() || "default-workspace";
+  const existing = audienceMessageStreamClients.get(key);
+  if (existing) return existing;
+  const created = new Set();
+  audienceMessageStreamClients.set(key, created);
+  return created;
+};
+
+const writeAudienceStreamEvent = (res, event, payload) => {
+  if (!res || res.writableEnded) return;
+  try {
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  } catch {
+    // best effort for disconnected clients
+  }
+};
+
+const broadcastAudienceMessageEvent = (workspaceId, payload) => {
+  const bucket = audienceMessageStreamClients.get(String(workspaceId || "").trim() || "default-workspace");
+  if (!bucket || !bucket.size) return;
+  const message = {
+    workspaceId,
+    updatedAt: now(),
+    ...payload,
+  };
+  for (const res of bucket) {
+    if (!res || res.writableEnded) continue;
+    writeAudienceStreamEvent(res, "audience-message", message);
+  }
+};
+
 app.use(
   VIS_MEDIA_BASE_PATH,
   express.static(VIS_MEDIA_DIR, { index: false, fallthrough: false }),
@@ -1698,9 +1733,59 @@ app.post("/api/workspaces/:workspaceId/audience/messages", (req, res) => {
       INSERT INTO audience_messages (workspace_id, category, text, submitter_name, status, created_at, updated_at)
       VALUES (?, ?, ?, ?, 'pending', ?, ?)
     `).run(workspaceId, safeCategory, safeText, safeName, createdAt, createdAt);
+    broadcastAudienceMessageEvent(workspaceId, {
+      type: "created",
+      messageId: Number(result.lastInsertRowid || 0),
+      status: "pending",
+    });
     return res.json({ ok: true, id: result.lastInsertRowid, createdAt });
   } catch (error) {
     return res.status(500).json({ ok: false, error: "SUBMIT_FAILED", message: String(error?.message || error) });
+  }
+});
+
+app.get("/api/workspaces/:workspaceId/audience/messages/stream", requireActor, (req, res) => {
+  try {
+    const workspaceId = req.params.workspaceId;
+    const workspace = getWorkspaceRow.get(workspaceId);
+    if (workspace && !canOperateWorkspace(workspace, req.actor)) {
+      return res.status(403).json({ ok: false, error: "FORBIDDEN" });
+    }
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders?.();
+
+    const bucket = getAudienceStreamBucket(workspaceId);
+    bucket.add(res);
+    writeAudienceStreamEvent(res, "ready", {
+      workspaceId,
+      updatedAt: now(),
+    });
+
+    const heartbeatId = setInterval(() => {
+      if (res.writableEnded) return;
+      try {
+        res.write(`: keepalive ${Date.now()}\n\n`);
+      } catch {
+        // best effort
+      }
+    }, 15000);
+
+    const cleanup = () => {
+      clearInterval(heartbeatId);
+      bucket.delete(res);
+      if (!bucket.size) {
+        audienceMessageStreamClients.delete(String(workspaceId || "").trim() || "default-workspace");
+      }
+    };
+
+    req.on("close", cleanup);
+    req.on("end", cleanup);
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "STREAM_FAILED", message: String(error?.message || error) });
   }
 });
 
@@ -1739,6 +1824,11 @@ app.patch("/api/workspaces/:workspaceId/audience/messages/:msgId", requireActor,
     db.prepare("UPDATE audience_messages SET status = ?, updated_at = ? WHERE id = ? AND workspace_id = ?")
       .run(status, updatedAt, msgId, workspaceId);
     const row = db.prepare("SELECT * FROM audience_messages WHERE id = ?").get(msgId);
+    broadcastAudienceMessageEvent(workspaceId, {
+      type: "updated",
+      messageId: msgId,
+      status,
+    });
     return res.json({ ok: true, message: row });
   } catch (error) {
     return res.status(500).json({ ok: false, error: "PATCH_FAILED", message: String(error?.message || error) });
@@ -1755,6 +1845,11 @@ app.delete("/api/workspaces/:workspaceId/audience/messages/:msgId", requireActor
       return res.status(403).json({ ok: false, error: "FORBIDDEN" });
     }
     db.prepare("DELETE FROM audience_messages WHERE id = ? AND workspace_id = ?").run(msgId, workspaceId);
+    broadcastAudienceMessageEvent(workspaceId, {
+      type: "deleted",
+      messageId: msgId,
+      status: "dismissed",
+    });
     return res.json({ ok: true });
   } catch (error) {
     return res.status(500).json({ ok: false, error: "DELETE_FAILED", message: String(error?.message || error) });

@@ -19,6 +19,7 @@ interface BibleBrowserProps {
   onProjectRequest: (item: ServiceItem) => void;
   speechLocaleMode: VisionarySpeechLocaleMode;
   onSpeechLocaleModeChange: (mode: VisionarySpeechLocaleMode) => void;
+  compact?: boolean;
 }
 
 interface SpeechRecognitionResultLike {
@@ -196,6 +197,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   onProjectRequest,
   speechLocaleMode,
   onSpeechLocaleModeChange,
+  compact = false,
 }) => {
   const [referenceInput, setReferenceInput] = useState('');
   const [bookInput, setBookInput] = useState('');
@@ -1120,34 +1122,58 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
             ? 'Cloud fallback uploading audio chunk...'
             : cloudRecorderState === 'recording'
               ? 'Cloud fallback listening for sermon context...'
-              : 'Cloud fallback starting...'
+          : 'Cloud fallback starting...'
       )
       : (autoListening ? 'Listening for sermon context...' : (autoVisionaryEnabled ? 'Starting microphone...' : 'Auto listen is off.')));
+  const rootClassName = compact
+    ? 'flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-zinc-900/80 bg-zinc-950'
+    : 'flex flex-col h-full bg-zinc-950';
+  const headerClassName = compact
+    ? 'h-9 px-2.5 border-b border-zinc-900 font-bold text-zinc-500 text-[9px] uppercase tracking-[0.22em] flex items-center justify-between bg-zinc-950'
+    : 'h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex items-center justify-between bg-zinc-950';
+  const controlsClassName = compact
+    ? 'shrink-0 px-2.5 py-2 space-y-2 border-b border-zinc-900/80 bg-zinc-950/95 overflow-y-auto custom-scrollbar max-h-[44%]'
+    : 'p-3 space-y-2';
+  const resultsClassName = compact
+    ? 'min-h-0 flex-1 overflow-y-auto p-2 custom-scrollbar'
+    : 'flex-1 overflow-y-auto p-2 scrollbar-thin';
+  const primaryInputClassName = compact
+    ? 'w-full bg-zinc-900 border border-blue-900/70 focus:border-blue-500 rounded-sm py-1.5 pl-8 pr-3 text-[11px] text-white focus:outline-none font-mono'
+    : 'w-full bg-zinc-900 border border-blue-900/70 focus:border-blue-500 rounded-sm py-2 pl-8 pr-3 text-xs text-white focus:outline-none font-mono';
+  const secondaryInputClassName = compact
+    ? 'w-full bg-zinc-900 border border-zinc-800 focus:border-blue-600 rounded-sm py-1.5 pl-8 pr-3 text-[11px] text-white focus:outline-none font-mono'
+    : 'w-full bg-zinc-900 border border-zinc-800 focus:border-blue-600 rounded-sm py-2 pl-8 pr-3 text-xs text-white focus:outline-none font-mono';
+  const visionaryInputClassName = compact
+    ? 'w-full bg-zinc-900 border border-purple-900 focus:border-purple-500 rounded-sm py-1.5 pl-8 pr-3 text-[11px] text-white focus:outline-none font-mono'
+    : 'w-full bg-zinc-900 border border-purple-900 focus:border-purple-500 rounded-sm py-2 pl-8 pr-3 text-xs text-white focus:outline-none font-mono';
+  const actionFooterClassName = compact
+    ? 'flex gap-2 p-1 pt-2 sticky bottom-0 bg-zinc-950/90 backdrop-blur-md pb-2'
+    : 'flex gap-2 p-1 pt-2 sticky bottom-0 bg-zinc-950/80 backdrop-blur-md pb-4';
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950">
-      <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex items-center justify-between bg-zinc-950">
+    <div className={rootClassName}>
+      <div className={headerClassName}>
         <div className="flex items-center">
           <BibleIcon className="w-3 h-3 mr-2" />
-          Scripture Engine
+          {compact ? 'Bible Hub' : 'Scripture Engine'}
         </div>
         <button
           onClick={() => setIsVisionaryMode(!isVisionaryMode)}
-          className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] border transition-all ${isVisionaryMode ? 'bg-purple-950/30 text-purple-400 border-purple-800' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300'}`}
+          className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm border transition-all ${compact ? 'text-[8px]' : 'text-[9px]'} ${isVisionaryMode ? 'bg-purple-950/30 text-purple-400 border-purple-800' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300'}`}
         >
           <SparklesIcon className="w-2 h-2" />
-          {isVisionaryMode ? 'VISIONARY ON' : 'AI MODE'}
+          {isVisionaryMode ? (compact ? 'VISIONARY' : 'VISIONARY ON') : 'AI MODE'}
         </button>
       </div>
 
-      <div className="p-3 space-y-2">
+      <div className={controlsClassName}>
         {isVisionaryMode ? (
           <div className="space-y-2">
             <div className="relative">
               <SparklesIcon className="absolute left-2 top-2.5 w-3.5 h-3.5 text-purple-600 animate-pulse" />
               <input
                 type="text"
-                className="w-full bg-zinc-900 border border-purple-900 focus:border-purple-500 rounded-sm py-2 pl-8 pr-3 text-xs text-white focus:outline-none font-mono"
+                className={visionaryInputClassName}
                 placeholder="e.g. I need peace and comfort..."
                 value={aiQuery}
                 onChange={(e) => setAiQuery(e.target.value)}
@@ -1156,7 +1182,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
             </div>
             <button
               onClick={() => fetchScripture(aiQuery, true)}
-              className="w-full py-1.5 bg-purple-700 hover:bg-purple-600 text-white rounded-sm text-[9px] font-bold transition-all"
+              className={`w-full bg-purple-700 hover:bg-purple-600 text-white rounded-sm font-bold transition-all ${compact ? 'py-1.5 text-[8px]' : 'py-1.5 text-[9px]'}`}
             >
               AI SEARCH
             </button>
@@ -1184,7 +1210,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                 <select
                   value={speechLocaleMode}
                   onChange={(e) => onSpeechLocaleModeChange(e.target.value as VisionarySpeechLocaleMode)}
-                  className="bg-zinc-900 border border-zinc-700 rounded-sm px-2 py-1 text-[9px] text-zinc-200"
+                  className={`bg-zinc-900 border border-zinc-700 rounded-sm px-2 py-1 text-zinc-200 ${compact ? 'text-[8px]' : 'text-[9px]'}`}
                 >
                   <option value="auto">Auto (System Locale)</option>
                   <option value="en-GB">English (UK) - en-GB</option>
@@ -1234,7 +1260,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
               <SearchIcon className="absolute left-2 top-2.5 w-3.5 h-3.5 text-blue-500" />
               <input
                 type="text"
-                className="w-full bg-zinc-900 border border-blue-900/70 focus:border-blue-500 rounded-sm py-2 pl-8 pr-3 text-xs text-white focus:outline-none font-mono"
+                className={primaryInputClassName}
                 placeholder="Direct reference (e.g. John 3:16-19)"
                 value={referenceInput}
                 onChange={(e) => setReferenceInput(e.target.value)}
@@ -1246,7 +1272,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
               <input
                 ref={bookInputRef}
                 type="text"
-                className="w-full bg-zinc-900 border border-zinc-800 focus:border-blue-600 rounded-sm py-2 pl-8 pr-3 text-xs text-white focus:outline-none font-mono"
+                className={secondaryInputClassName}
                 placeholder="Book name (e.g. John)..."
                 value={bookInput}
                 onChange={(e) => { setBookInput(e.target.value); setSelectedBook(null); }}
@@ -1373,14 +1399,14 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
           <button
             onClick={() => void (isVisionaryMode ? fetchScripture(aiQuery, true) : handleManualSearch())}
             disabled={isVisionaryMode ? !aiQuery.trim() : !(normalizeBibleReference(referenceInput) || selectedBook)}
-            className="flex-1 px-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white rounded-sm text-[9px] font-bold transition-all active:scale-95"
+            className={`flex-1 px-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white rounded-sm font-bold transition-all active:scale-95 ${compact ? 'py-1.5 text-[8px]' : 'text-[9px]'}`}
           >
             {isVisionaryMode ? 'AI SEARCH' : 'SEARCH PASSAGE'}
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
+      <div className={resultsClassName}>
         {loading || aiLoading ? (
           <div className="flex flex-col items-center justify-center p-8 space-y-3">
             <div className="w-6 h-6 border-2 border-zinc-800 border-t-purple-500 rounded-full animate-spin" />
@@ -1422,10 +1448,10 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
               </div>
             </div>
 
-            <div className="flex gap-2 p-1 pt-2 sticky bottom-0 bg-zinc-950/80 backdrop-blur-md pb-4">
+            <div className={actionFooterClassName}>
               <button
                 onClick={() => onProjectRequest(createServiceItem(results))}
-                className="flex-1 flex items-center justify-center gap-2 bg-red-950/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/50 py-2.5 rounded-sm text-[10px] font-bold transition-all group active:scale-95"
+                className={`flex-1 flex items-center justify-center gap-2 bg-red-950/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/50 rounded-sm font-bold transition-all group active:scale-95 ${compact ? 'py-2 text-[9px]' : 'py-2.5 text-[10px]'}`}
               >
                 <PlayIcon className="w-3 h-3 fill-current group-hover:text-white" />
                 PROJECT NOW
@@ -1436,7 +1462,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                   setShowSuccess(true);
                   window.setTimeout(() => setShowSuccess(false), 2000);
                 }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-sm text-[10px] font-bold transition-all active:scale-95 border ${showSuccess ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-blue-600 hover:bg-blue-500 text-white border-transparent'}`}
+                className={`flex-1 flex items-center justify-center gap-2 rounded-sm font-bold transition-all active:scale-95 border ${compact ? 'py-2 text-[9px]' : 'py-2.5 text-[10px]'} ${showSuccess ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-blue-600 hover:bg-blue-500 text-white border-transparent'}`}
               >
                 {showSuccess ? 'SCHEDULED OK' : 'SCHEDULE'}
               </button>

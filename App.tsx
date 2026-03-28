@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
-import { INITIAL_SCHEDULE, MOCK_SONGS, DEFAULT_BACKGROUNDS, GOSPEL_TRACKS, GospelTrack } from './constants';
+import { INITIAL_SCHEDULE, MOCK_SONGS, DEFAULT_BACKGROUNDS, VIDEO_BACKGROUNDS, GOSPEL_TRACKS, GospelTrack } from './constants';
 import {
   ServiceItem,
   Slide,
@@ -37,6 +37,7 @@ import { WelcomeAnimation } from './components/WelcomeAnimation';
 import { AudienceSubmit } from './components/AudienceSubmit'; // NEW
 import { AudienceStudio } from './components/AudienceStudio'; // NEW
 import { ConnectModal } from './components/ConnectModal'; // NEW
+import { DisplaySetupModal, type DesktopDisplayCard } from './components/DisplaySetupModal';
 import { HymnLibrary } from './components/HymnLibrary';
 import { StageDisplay } from './components/StageDisplay';
 import { RemoteControl } from './components/RemoteControl';
@@ -53,7 +54,7 @@ import type { HoldScreenMode, PresenterExperience, PresenterFocusArea, Presenter
 import { logActivity, analyzeSentimentContext } from './services/analytics';
 import { auth, isFirebaseConfigured, subscribeToState, subscribeToTeamPlaylists, updateLiveState, upsertTeamPlaylist } from './services/firebase';
 import { onAuthStateChanged } from "firebase/auth";
-import { clearMediaCache, getMediaBinary, saveMedia } from './services/localMedia';
+import { clearMediaCache, findSavedBackgroundBySourceUrl, getMediaBinary, markSavedBackgroundUsed, registerSavedBackground, saveBackgroundAsset, saveMedia } from './services/localMedia';
 import {
   archiveRunSheetFile,
   deleteRunSheetFile,
@@ -79,6 +80,7 @@ import { copyTextToClipboard } from './services/clipboardService';
 import { dispatchAetherBridgeEvent } from './services/aetherBridge';
 import {
   type BackgroundSnapshot,
+  clearItemBackgroundFallback,
   getBackgroundSnapshotFromItem,
   inheritPrevailingBackground,
   stampItemBackgroundSource,
@@ -96,6 +98,7 @@ const SYNC_GUIDANCE_DISMISSALS_KEY = 'lumina_sync_guidance_dismissals_v1';
 const PRESENTER_LAYOUT_KEY_PREFIX = 'lumina_presenter_layout_v1';
 const RUNSHEET_FILES_LOCAL_KEY_PREFIX = 'lumina_runsheet_files_local_v1';
 const AETHER_TOKEN_KEY_PREFIX = 'lumina_aether_bridge_token_v1';
+const DISPLAY_MAPPING_KEY = 'lumina_display_mapping_v1';
 const CLOUD_PLAYLIST_SUFFIX = 'default-playlist-v2';
 const SYNC_BACKOFF_BASE_MS = 5000;
 const SYNC_BACKOFF_MAX_MS = 60000;
@@ -108,6 +111,83 @@ const getWorkspaceSettingsIntentKey = (workspace: string) => `${SETTINGS_INTENT_
 const getAetherTokenKey = (workspace: string) => `${AETHER_TOKEN_KEY_PREFIX}:${workspace || 'default-workspace'}`;
 
 type SyncGuidanceDismissals = Record<string, number>;
+type DisplayRole = 'control' | 'audience' | 'stage' | 'none';
+type DesktopServiceState = {
+  controlDisplayId: number | null;
+  audienceDisplayId: number | null;
+  stageDisplayId: number | null;
+  outputOpen: boolean;
+  stageOpen: boolean;
+};
+type DesktopDisplayInfo = {
+  id: number;
+  key: string;
+  name: string;
+  isPrimary: boolean;
+  isInternal: boolean;
+  scaleFactor: number;
+  rotation: number;
+  bounds: { x: number; y: number; width: number; height: number };
+  workArea: { x: number; y: number; width: number; height: number };
+};
+type DesktopDisplayMappingEntry = {
+  role: DisplayRole;
+  displayId: number | null;
+  displayKey: string;
+};
+type DesktopDisplayMapping = {
+  assignments: DesktopDisplayMappingEntry[];
+  updatedAt: number;
+};
+
+const DEFAULT_DESKTOP_SERVICE_STATE: DesktopServiceState = {
+  controlDisplayId: null,
+  audienceDisplayId: null,
+  stageDisplayId: null,
+  outputOpen: false,
+  stageOpen: false,
+};
+
+const readDesktopDisplayMapping = (): DesktopDisplayMapping => {
+  if (typeof window === 'undefined') {
+    return { assignments: [], updatedAt: 0 };
+  }
+  try {
+    const raw = window.localStorage.getItem(DISPLAY_MAPPING_KEY);
+    if (!raw) return { assignments: [], updatedAt: 0 };
+    const parsed = JSON.parse(raw) as DesktopDisplayMapping;
+    const assignments = Array.isArray(parsed?.assignments)
+      ? parsed.assignments
+        .map((entry) => {
+          if (!entry || typeof entry !== 'object') return null;
+          const role = String((entry as DesktopDisplayMappingEntry).role || '').trim().toLowerCase();
+          if (role !== 'control' && role !== 'audience' && role !== 'stage' && role !== 'none') return null;
+          const displayId = Number((entry as DesktopDisplayMappingEntry).displayId || 0);
+          return {
+            role: role as DisplayRole,
+            displayId: Number.isFinite(displayId) && displayId > 0 ? displayId : null,
+            displayKey: String((entry as DesktopDisplayMappingEntry).displayKey || '').trim(),
+          };
+        })
+        .filter((entry): entry is DesktopDisplayMappingEntry => !!entry)
+      : [];
+    return {
+      assignments,
+      updatedAt: typeof parsed?.updatedAt === 'number' && Number.isFinite(parsed.updatedAt) ? parsed.updatedAt : 0,
+    };
+  } catch {
+    return { assignments: [], updatedAt: 0 };
+  }
+};
+
+const writeDesktopDisplayMapping = (mapping: DesktopDisplayMapping) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(DISPLAY_MAPPING_KEY, JSON.stringify(mapping));
+  } catch {
+    // ignore local storage write failures
+  }
+};
 
 const readSyncGuidanceDismissals = (): SyncGuidanceDismissals => {
   if (typeof window === 'undefined') return {};
@@ -377,6 +457,16 @@ const looksLikeVideoUrl = (url: string): boolean => {
 };
 
 const isRemoteMediaUrl = (url: string): boolean => /^https?:\/\//i.test(String(url || '').trim());
+const isBlobMediaUrl = (url: string): boolean => /^blob:/i.test(String(url || '').trim());
+const isDataMediaUrl = (url: string): boolean => /^data:/i.test(String(url || '').trim());
+const isProjectionSafeBackgroundUrl = (url: string): boolean => {
+  const trimmed = String(url || '').trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith('local://')) return true;
+  if (trimmed.startsWith('/')) return true;
+  if (trimmed.startsWith('./') || trimmed.startsWith('../')) return true;
+  return !isRemoteMediaUrl(trimmed) && !isBlobMediaUrl(trimmed) && !isDataMediaUrl(trimmed);
+};
 
 const extensionFromMimeType = (mimeType: string, mediaType: 'image' | 'video'): string => {
   const normalized = String(mimeType || '').toLowerCase();
@@ -403,6 +493,89 @@ const inferRemoteMediaFileName = (sourceUrl: string, mediaType: 'image' | 'video
   return `remote-${mediaType}-${Date.now()}.${extensionFromMimeType(mimeType, mediaType)}`;
 };
 
+const BUILT_IN_BACKGROUND_URLS = new Set([...DEFAULT_BACKGROUNDS, ...VIDEO_BACKGROUNDS]);
+const QUICK_BG_CATEGORY_LABELS = ['Worship', 'Church', 'Celebration', 'Cross', 'Nature', 'Abstract', 'Fire', 'Water', 'Stars', 'Sunrise'] as const;
+
+const normalizeBackgroundCategory = (value: string): string => {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return 'Used';
+  const directMatch = QUICK_BG_CATEGORY_LABELS.find((entry) => entry.toLowerCase() === trimmed.toLowerCase());
+  if (directMatch) return directMatch;
+  return trimmed
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((entry) => entry.charAt(0).toUpperCase() + entry.slice(1).toLowerCase())
+    .join(' ') || 'Used';
+};
+
+const isBuiltInBackgroundUrl = (url: string): boolean => {
+  const trimmed = String(url || '').trim();
+  if (!trimmed) return false;
+  return BUILT_IN_BACKGROUND_URLS.has(trimmed) || trimmed.startsWith('/assets/');
+};
+
+const inferSavedBackgroundProvider = (
+  sourceUrl: string,
+  backgroundUrl: string,
+  explicitProvider = '',
+): string => {
+  const provided = String(explicitProvider || '').trim();
+  if (provided) return provided;
+  const candidates = `${sourceUrl} ${backgroundUrl}`.toLowerCase();
+  if (candidates.includes('pexels')) return 'pexels';
+  if (candidates.includes('pixabay')) return 'pixabay';
+  if (candidates.includes('local://')) return 'inherited-live';
+  if (candidates.includes('/uploads/') || candidates.includes('/media/')) return 'workspace-upload';
+  if (candidates.includes('mixkit') || candidates.includes('vimeo')) return 'imported';
+  return 'used';
+};
+
+const inferSavedBackgroundCategory = (
+  sourceUrl: string,
+  backgroundUrl: string,
+  explicitCategory = '',
+  provider = '',
+): string => {
+  const provided = normalizeBackgroundCategory(explicitCategory);
+  if (explicitCategory.trim()) return provided;
+  const haystack = `${sourceUrl} ${backgroundUrl}`.toLowerCase();
+  if (haystack.includes('worship')) return 'Worship';
+  if (haystack.includes('church')) return 'Church';
+  if (haystack.includes('celebration') || haystack.includes('confetti')) return 'Celebration';
+  if (haystack.includes('cross')) return 'Cross';
+  if (haystack.includes('nature') || haystack.includes('forest') || haystack.includes('mountain') || haystack.includes('meadow') || haystack.includes('sky')) return 'Nature';
+  if (haystack.includes('abstract') || haystack.includes('bokeh') || haystack.includes('gradient') || haystack.includes('mesh')) return 'Abstract';
+  if (haystack.includes('fire') || haystack.includes('flame')) return 'Fire';
+  if (haystack.includes('water') || haystack.includes('wave') || haystack.includes('ocean') || haystack.includes('river') || haystack.includes('sea')) return 'Water';
+  if (haystack.includes('stars') || haystack.includes('galaxy') || haystack.includes('space') || haystack.includes('nebula')) return 'Stars';
+  if (haystack.includes('sunrise') || haystack.includes('sunset') || haystack.includes('golden')) return 'Sunrise';
+  if (provider === 'workspace-upload') return 'Imported';
+  return 'Used';
+};
+
+const inferSavedBackgroundTitle = (
+  sourceUrl: string,
+  backgroundUrl: string,
+  explicitTitle = '',
+  category = 'Used',
+): string => {
+  const provided = String(explicitTitle || '').trim();
+  if (provided) return provided;
+  const candidateUrl = String(sourceUrl || backgroundUrl || '').trim();
+  if (!candidateUrl) return `${category} Background`;
+  try {
+    const parsed = new URL(candidateUrl);
+    const lastSegment = parsed.pathname.split('/').filter(Boolean).pop() || '';
+    const cleaned = decodeURIComponent(lastSegment).replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[-_]+/g, ' ').trim();
+    if (cleaned) {
+      return cleaned.split(/\s+/).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+    }
+  } catch {
+    // ignore url parse failures
+  }
+  return `${category} Background`;
+};
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const normalizeSessionIdSetting = (value: unknown) => {
@@ -425,7 +598,12 @@ const normalizeSpeakerTimerThresholds = (amberPercent: number, redPercent: numbe
   };
 };
 
-const replaceMediaUrlAcrossSchedule = (entries: ServiceItem[], sourceUrl: string, nextUrl: string) => {
+const replaceMediaUrlAcrossSchedule = (
+  entries: ServiceItem[],
+  sourceUrl: string,
+  nextUrl: string,
+  metadataUpdates?: Partial<NonNullable<ServiceItem['metadata']>>,
+) => {
   let changed = false;
   const nextSchedule = entries.map((entry) => {
     const themeChanged = entry.theme.backgroundUrl === sourceUrl;
@@ -442,12 +620,32 @@ const replaceMediaUrlAcrossSchedule = (entries: ServiceItem[], sourceUrl: string
         mediaType: slide.mediaType || 'image',
       };
     });
-    if (!themeChanged && !slideChanged) return entry;
+    let nextMetadataBase = entry.metadata ? { ...entry.metadata } : undefined;
+    let metadataChanged = false;
+    if (nextMetadataBase?.backgroundFallbackUrl === sourceUrl) {
+      nextMetadataBase.backgroundFallbackUrl = nextUrl;
+      metadataChanged = true;
+    }
+    if (nextMetadataBase?.backgroundSourceUrl === sourceUrl && !metadataUpdates?.backgroundSourceUrl) {
+      nextMetadataBase.backgroundSourceUrl = nextUrl;
+      metadataChanged = true;
+    }
+    if ((themeChanged || slideChanged || metadataChanged) && metadataUpdates) {
+      const writableMetadata = nextMetadataBase ? { ...nextMetadataBase } : {};
+      Object.entries(metadataUpdates).forEach(([key, value]) => {
+        if (value === undefined) return;
+        (writableMetadata as NonNullable<ServiceItem['metadata']>)[key as keyof NonNullable<ServiceItem['metadata']>] = value as never;
+      });
+      nextMetadataBase = writableMetadata;
+      metadataChanged = true;
+    }
+    if (!themeChanged && !slideChanged && !metadataChanged) return entry;
     changed = true;
     return {
       ...entry,
       theme: nextTheme,
       slides: nextSlides,
+      metadata: nextMetadataBase && Object.keys(nextMetadataBase).length > 0 ? nextMetadataBase : undefined,
     };
   });
   return changed ? nextSchedule : entries;
@@ -480,6 +678,74 @@ const normalizeStageAlertLayout = (value: unknown): StageAlertLayout => {
     height: typeof raw.height === 'number' && Number.isFinite(raw.height) ? clamp(raw.height, 88, 640) : DEFAULT_STAGE_ALERT_LAYOUT.height,
     fontScale: typeof raw.fontScale === 'number' && Number.isFinite(raw.fontScale) ? clamp(raw.fontScale, 0.7, 2.2) : DEFAULT_STAGE_ALERT_LAYOUT.fontScale,
     locked: !!raw.locked,
+  };
+};
+
+const stageTimerLayoutsEqual = (left: StageTimerLayout, right: StageTimerLayout) => (
+  left.x === right.x
+  && left.y === right.y
+  && left.width === right.width
+  && left.height === right.height
+  && left.fontScale === right.fontScale
+  && left.variant === right.variant
+  && left.locked === right.locked
+);
+
+const stageAlertLayoutsEqual = (left: StageAlertLayout, right: StageAlertLayout) => (
+  left.x === right.x
+  && left.y === right.y
+  && left.width === right.width
+  && left.height === right.height
+  && left.fontScale === right.fontScale
+  && left.locked === right.locked
+);
+
+const readStoredStageWorkspaceSettings = (): Partial<WorkspaceSettings> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as { workspaceSettings?: Partial<WorkspaceSettings> };
+    const settings = parsed?.workspaceSettings;
+    if (!settings || typeof settings !== 'object') return {};
+    return {
+      stageTimerLayout: normalizeStageTimerLayout(settings.stageTimerLayout),
+      stageAlertLayout: normalizeStageAlertLayout(settings.stageAlertLayout),
+      stageFlowLayout: typeof settings.stageFlowLayout === 'string' && VALID_STAGE_FLOW_LAYOUTS.includes(settings.stageFlowLayout as StageFlowLayout)
+        ? settings.stageFlowLayout as StageFlowLayout
+        : undefined,
+    };
+  } catch {
+    return {};
+  }
+};
+
+const writeStoredStageWorkspaceSettings = (updates: Partial<WorkspaceSettings>) => {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) as Record<string, unknown> : {};
+    const nextWorkspaceSettings = {
+      ...((parsed.workspaceSettings && typeof parsed.workspaceSettings === 'object') ? parsed.workspaceSettings as Record<string, unknown> : {}),
+      ...updates,
+    };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      ...parsed,
+      workspaceSettings: nextWorkspaceSettings,
+      updatedAt: Date.now(),
+    }));
+  } catch {
+    // ignore local storage write failures
+  }
+};
+
+const mergeStoredStageLayoutsIntoWorkspaceSettings = (settings: WorkspaceSettings): WorkspaceSettings => {
+  const stored = readStoredStageWorkspaceSettings();
+  return {
+    ...settings,
+    stageTimerLayout: stored.stageTimerLayout ? normalizeStageTimerLayout(stored.stageTimerLayout) : settings.stageTimerLayout,
+    stageAlertLayout: stored.stageAlertLayout ? normalizeStageAlertLayout(stored.stageAlertLayout) : settings.stageAlertLayout,
+    stageFlowLayout: stored.stageFlowLayout || settings.stageFlowLayout,
   };
 };
 
@@ -846,6 +1112,11 @@ function App() {
     message: 'Idle',
   });
   const [dismissedUpdateKey, setDismissedUpdateKey] = useState<string | null>(null);
+  const [isDisplaySetupOpen, setIsDisplaySetupOpen] = useState(false);
+  const [desktopDisplays, setDesktopDisplays] = useState<DesktopDisplayInfo[]>([]);
+  const [desktopDisplayMapping, setDesktopDisplayMapping] = useState<DesktopDisplayMapping>(() => readDesktopDisplayMapping());
+  const [desktopServiceState, setDesktopServiceState] = useState<DesktopServiceState>(DEFAULT_DESKTOP_SERVICE_STATE);
+  const [desktopDisplayStatusText, setDesktopDisplayStatusText] = useState('');
 
   // ✅ Projector popout window handle (opened in click handler to avoid popup blockers)
   const [outputWin, setOutputWin] = useState<Window | null>(null);
@@ -858,8 +1129,12 @@ function App() {
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1440));
   const isSettingsHydratedRef = useRef(false);
   const studioShellRef = useRef<HTMLDivElement | null>(null);
+  const stagePreviewFrameRef = useRef<HTMLDivElement | null>(null);
+  const stageEditorFrameRef = useRef<HTMLDivElement | null>(null);
   const workspaceSettingsIntentRef = useRef<WorkspaceSettingsIntentMetadata>({});
   const pendingProtectedSettingsSaveRef = useRef<WorkspaceSettingsIntentMetadata>({});
+  const [stagePreviewViewport, setStagePreviewViewport] = useState({ width: 320, height: 180 });
+  const [stageEditorViewport, setStageEditorViewport] = useState({ width: 1280, height: 720 });
 
   useEffect(() => {
     if (!window.electron?.updates) return undefined;
@@ -959,6 +1234,7 @@ function App() {
   const [isSlideEditorOpen, setIsSlideEditorOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false); // NEW
+  const [isStagePreviewEditorOpen, setIsStagePreviewEditorOpen] = useState(false);
   const [workspaceSettings, setWorkspaceSettings] = useState<WorkspaceSettings>({
     churchName: 'My Church',
     ccli: '',
@@ -1199,6 +1475,8 @@ function App() {
   const stageHeartbeatPauseUntilRef = useRef(0);
   const pendingSharedMediaUploadsRef = useRef<Set<string>>(new Set());
   const prevailingGeneratedBackgroundRef = useRef<BackgroundSnapshot | null>(null);
+  const prevailingGeneratedBackgroundSafeRef = useRef<BackgroundSnapshot | null>(null);
+  const prevailingGeneratedBackgroundKeyRef = useRef<string>('');
 
   const [audienceDisplay, setAudienceDisplay] = useState<AudienceDisplayState>(() => {
     const saved = initialSavedState;
@@ -2122,6 +2400,43 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    const previewNode = stagePreviewFrameRef.current;
+    const editorNode = stageEditorFrameRef.current;
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver((entries) => {
+      entries.forEach((entry) => {
+        const width = Math.max(320, Math.round(entry.contentRect.width));
+        const height = Math.max(180, Math.round(entry.contentRect.height));
+        if (entry.target === previewNode) {
+          setStagePreviewViewport((prev) => (
+            prev.width === width && prev.height === height ? prev : { width, height }
+          ));
+        }
+        if (entry.target === editorNode) {
+          setStageEditorViewport((prev) => (
+            prev.width === width && prev.height === height ? prev : { width, height }
+          ));
+        }
+      });
+    });
+    if (previewNode) observer.observe(previewNode);
+    if (editorNode) observer.observe(editorNode);
+    return () => observer.disconnect();
+  }, [isStagePreviewEditorOpen, viewMode]);
+
+  useEffect(() => {
+    if (!isStagePreviewEditorOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsStagePreviewEditorOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isStagePreviewEditorOpen]);
+
   // --- AUDIO PLAYER EFFECT ---
   useEffect(() => {
     if (!audioRef.current) {
@@ -2211,6 +2526,7 @@ function App() {
   useEffect(() => {
     if (!user) return;
     const id = window.setTimeout(() => {
+      const persistedWorkspaceSettings = mergeStoredStageLayoutsIntoWorkspaceSettings(workspaceSettings);
       const saveData = {
         schedule,
         selectedItemId,
@@ -2235,7 +2551,7 @@ function App() {
         stageTimerFlash,
         stageAlert,
         stageMessageCenter,
-        workspaceSettings,
+        workspaceSettings: persistedWorkspaceSettings,
         updatedAt: Date.now(),
       };
       try {
@@ -2379,7 +2695,7 @@ function App() {
   const activeSlide = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex] : null;
   const presenterExperience = sanitizePresenterExperience(workspaceSettings.presenterExperience);
   const isPresenterBeta = viewMode === 'PRESENTER' && presenterExperience === 'next_gen_beta';
-  const previewLowerThirds = lowerThirdsEnabled && routingMode !== 'PROJECTOR';
+  const previewLowerThirds = lowerThirdsEnabled;
   const nextSlidePreview = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex + 1] || null : null;
   const lobbyItem = schedule.find((item) => item.type === ItemType.ANNOUNCEMENT) || activeItem;
   const activeScheduleIndex = activeItemId ? schedule.findIndex((item) => item.id === activeItemId) : -1;
@@ -2421,7 +2737,8 @@ function App() {
     : -1;
   const presenterQueueCompact = presenterQueueSlides.length > 10;
   const presenterInlineQueueTight = isElectronShell && viewMode === 'PRESENTER' && !presenterSidebarCompact && viewportWidth < 1700;
-  const presenterQueueWidth = workspaceSettings.machineMode
+  const legacyMachineMode = workspaceSettings.machineMode && !isElectronShell;
+  const presenterQueueWidth = legacyMachineMode
     ? 0
     : presenterQueueCompact
       ? (presenterSidebarCompact
@@ -2434,7 +2751,7 @@ function App() {
     ? sidebarRailWidth + sidebarPanelWidth
     : sidebarRailWidth;
   const presenterMainWorkspaceWidth = viewMode === 'PRESENTER'
-    ? Math.max(0, viewportWidth - presenterSidebarInlineWidth - presenterQueueWidth - (workspaceSettings.machineMode ? 24 : 40))
+    ? Math.max(0, viewportWidth - presenterSidebarInlineWidth - presenterQueueWidth - (legacyMachineMode ? 24 : 40))
     : viewportWidth;
   const presenterCardsSingleColumn = viewMode === 'PRESENTER' && presenterMainWorkspaceWidth < 1120;
   const presenterCueEngineStacked = viewMode === 'PRESENTER' && presenterMainWorkspaceWidth < 1240;
@@ -2459,14 +2776,233 @@ function App() {
       .filter((entry) => entry.idx !== presenterQueueActiveIndex && !excluded.has(entry.slide.id));
   }, [presenterQueueSlides, presenterQueueActiveIndex, presenterQueueUpNext]);
 
+  const persistBackgroundSnapshotForProjection = useCallback(async (
+    snapshot: BackgroundSnapshot | null | undefined,
+  ): Promise<BackgroundSnapshot | null> => {
+    const backgroundUrl = String(snapshot?.backgroundUrl || '').trim();
+    if (!backgroundUrl || !snapshot) return null;
+    if (snapshot.mediaType === 'color') {
+      return {
+        ...snapshot,
+        backgroundFallbackUrl: backgroundUrl,
+        backgroundFallbackMediaType: 'color',
+      };
+    }
+
+    const sourceUrl = String(snapshot.backgroundSourceUrl || (isRemoteMediaUrl(backgroundUrl) ? backgroundUrl : '') || '').trim();
+    const provider = inferSavedBackgroundProvider(sourceUrl, backgroundUrl, snapshot.backgroundProvider || '');
+    const category = inferSavedBackgroundCategory(sourceUrl, backgroundUrl, snapshot.backgroundCategory || '', provider);
+    const title = inferSavedBackgroundTitle(sourceUrl, backgroundUrl, snapshot.backgroundTitle || '', category);
+    const existingFallbackUrl = String(snapshot.backgroundFallbackUrl || '').trim();
+    const isBuiltIn = isBuiltInBackgroundUrl(backgroundUrl) || isBuiltInBackgroundUrl(sourceUrl);
+
+    const withSavedDescriptor = (
+      localUrl: string,
+      overrides?: { sourceUrl?: string; provider?: string; category?: string; title?: string },
+    ): BackgroundSnapshot => ({
+      ...snapshot,
+      backgroundUrl: localUrl,
+      backgroundFallbackUrl: localUrl,
+      backgroundFallbackMediaType: snapshot.mediaType,
+      backgroundSourceUrl: overrides?.sourceUrl || sourceUrl || undefined,
+      backgroundProvider: overrides?.provider || provider,
+      backgroundCategory: overrides?.category || category,
+      backgroundTitle: overrides?.title || title,
+    });
+
+    if (isBuiltIn) {
+      if (existingFallbackUrl && isProjectionSafeBackgroundUrl(existingFallbackUrl)) {
+        return {
+          ...snapshot,
+          backgroundFallbackUrl: existingFallbackUrl,
+          backgroundFallbackMediaType: snapshot.backgroundFallbackMediaType || snapshot.mediaType,
+        };
+      }
+      if (isProjectionSafeBackgroundUrl(backgroundUrl) || getYoutubeId(backgroundUrl)) {
+        return {
+          ...snapshot,
+          backgroundFallbackUrl: backgroundUrl,
+          backgroundFallbackMediaType: snapshot.mediaType,
+        };
+      }
+      try {
+        const response = await fetch(backgroundUrl);
+        if (!response.ok) throw new Error(`BACKGROUND_FETCH_${response.status}`);
+        const blob = await response.blob();
+        const mediaType = snapshot.mediaType === 'video' ? 'video' : 'image';
+        const mimeType = String(blob.type || '').trim() || (mediaType === 'video' ? 'video/mp4' : 'image/jpeg');
+        const fileName = inferRemoteMediaFileName(backgroundUrl, mediaType, mimeType);
+        const file = new File([blob], fileName, { type: mimeType });
+        const localUrl = await saveMedia(file);
+        return {
+          ...snapshot,
+          backgroundFallbackUrl: localUrl,
+          backgroundFallbackMediaType: snapshot.mediaType,
+        };
+      } catch {
+        return {
+          ...snapshot,
+          backgroundFallbackUrl: existingFallbackUrl || backgroundUrl,
+          backgroundFallbackMediaType: snapshot.mediaType,
+        };
+      }
+    }
+
+    if (backgroundUrl.startsWith('local://')) {
+      const registered = await registerSavedBackground({
+        localUrl: backgroundUrl,
+        mediaType: snapshot.mediaType === 'video' ? 'video' : 'image',
+        sourceUrl,
+        provider,
+        category,
+        title,
+      });
+      if (registered) {
+        return withSavedDescriptor(registered.localUrl, registered);
+      }
+      return {
+        ...snapshot,
+        backgroundFallbackUrl: existingFallbackUrl || backgroundUrl,
+        backgroundFallbackMediaType: snapshot.mediaType,
+      };
+    }
+
+    const knownSavedBackground = await findSavedBackgroundBySourceUrl(sourceUrl || backgroundUrl);
+    if (knownSavedBackground) {
+      await markSavedBackgroundUsed(knownSavedBackground.localUrl);
+      return withSavedDescriptor(knownSavedBackground.localUrl, knownSavedBackground);
+    }
+
+    if (existingFallbackUrl.startsWith('local://')) {
+      const registered = await registerSavedBackground({
+        localUrl: existingFallbackUrl,
+        mediaType: snapshot.mediaType === 'video' ? 'video' : 'image',
+        sourceUrl: sourceUrl || backgroundUrl,
+        provider,
+        category,
+        title,
+      });
+      if (registered) {
+        return withSavedDescriptor(registered.localUrl, registered);
+      }
+    }
+
+    if (isProjectionSafeBackgroundUrl(backgroundUrl) || getYoutubeId(backgroundUrl)) {
+      return {
+        ...snapshot,
+        backgroundFallbackUrl: existingFallbackUrl || backgroundUrl,
+        backgroundFallbackMediaType: snapshot.mediaType,
+        backgroundSourceUrl: sourceUrl || undefined,
+        backgroundProvider: provider,
+        backgroundCategory: category,
+        backgroundTitle: title,
+      };
+    }
+
+    try {
+      const response = await fetch(backgroundUrl);
+      if (!response.ok) throw new Error(`BACKGROUND_FETCH_${response.status}`);
+      const blob = await response.blob();
+      const mediaType = snapshot.mediaType === 'video' ? 'video' : 'image';
+      const mimeType = String(blob.type || '').trim() || (mediaType === 'video' ? 'video/mp4' : 'image/jpeg');
+      const fileName = inferRemoteMediaFileName(sourceUrl || backgroundUrl, mediaType, mimeType);
+      const file = new File([blob], fileName, { type: mimeType });
+      const savedAsset = await saveBackgroundAsset(file, {
+        mediaType,
+        sourceUrl: sourceUrl || backgroundUrl,
+        provider,
+        category,
+        title,
+      });
+      if (savedAsset) {
+        return withSavedDescriptor(savedAsset.localUrl, savedAsset);
+      }
+      const localUrl = await saveMedia(file);
+      return {
+        ...snapshot,
+        backgroundFallbackUrl: localUrl,
+        backgroundFallbackMediaType: snapshot.mediaType,
+        backgroundSourceUrl: sourceUrl || backgroundUrl,
+        backgroundProvider: provider,
+        backgroundCategory: category,
+        backgroundTitle: title,
+      };
+    } catch (error) {
+      console.warn('Failed to create projector-safe fallback for prevailing live background.', {
+        backgroundUrl,
+        sourceUrl,
+        mediaType: snapshot.mediaType,
+        error,
+      });
+      return {
+        ...snapshot,
+        backgroundFallbackUrl: existingFallbackUrl || backgroundUrl,
+        backgroundFallbackMediaType: snapshot.mediaType,
+        backgroundSourceUrl: sourceUrl || undefined,
+        backgroundProvider: provider,
+        backgroundCategory: category,
+        backgroundTitle: title,
+      };
+    }
+  }, []);
+
   useEffect(() => {
     if (!isOutputLive || !currentLiveBackground?.backgroundUrl) return;
     prevailingGeneratedBackgroundRef.current = currentLiveBackground;
-  }, [currentLiveBackground, isOutputLive]);
+    const backgroundKey = [
+      currentLiveBackground.backgroundUrl,
+      currentLiveBackground.mediaType,
+      currentLiveBackground.backgroundFallbackUrl || '',
+      currentLiveBackground.backgroundFallbackMediaType || '',
+    ].join('::');
+    if (
+      prevailingGeneratedBackgroundKeyRef.current === backgroundKey
+      && prevailingGeneratedBackgroundSafeRef.current
+    ) {
+      prevailingGeneratedBackgroundRef.current = prevailingGeneratedBackgroundSafeRef.current;
+      return;
+    }
+    let cancelled = false;
+    void persistBackgroundSnapshotForProjection(currentLiveBackground).then((persistedSnapshot) => {
+      if (cancelled || !persistedSnapshot?.backgroundUrl) return;
+      if (persistedSnapshot.backgroundUrl !== currentLiveBackground.backgroundUrl) {
+        const metadataUpdates = {
+          backgroundFallbackUrl: persistedSnapshot.backgroundFallbackUrl || persistedSnapshot.backgroundUrl,
+          backgroundFallbackMediaType: persistedSnapshot.backgroundFallbackMediaType || persistedSnapshot.mediaType,
+          backgroundSourceUrl: persistedSnapshot.backgroundSourceUrl || currentLiveBackground.backgroundSourceUrl || currentLiveBackground.backgroundUrl,
+          backgroundProvider: persistedSnapshot.backgroundProvider,
+          backgroundCategory: persistedSnapshot.backgroundCategory,
+          backgroundTitle: persistedSnapshot.backgroundTitle,
+        };
+        setSchedule((prev) => replaceMediaUrlAcrossSchedule(
+          prev,
+          currentLiveBackground.backgroundUrl,
+          persistedSnapshot.backgroundUrl,
+          metadataUpdates,
+        ));
+      }
+      prevailingGeneratedBackgroundSafeRef.current = persistedSnapshot;
+      prevailingGeneratedBackgroundRef.current = persistedSnapshot;
+      prevailingGeneratedBackgroundKeyRef.current = backgroundKey;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentLiveBackground, isOutputLive, persistBackgroundSnapshotForProjection]);
 
   const getPrevailingGeneratedBackground = useCallback(() => {
     if (!isOutputLive) return null;
-    return currentLiveBackground || prevailingGeneratedBackgroundRef.current;
+    const liveSnapshot = currentLiveBackground || prevailingGeneratedBackgroundRef.current;
+    if (!liveSnapshot) return null;
+    const projectorSafeSnapshot = prevailingGeneratedBackgroundSafeRef.current;
+    if (
+      projectorSafeSnapshot
+      && projectorSafeSnapshot.backgroundUrl === liveSnapshot.backgroundUrl
+      && projectorSafeSnapshot.mediaType === liveSnapshot.mediaType
+    ) {
+      return projectorSafeSnapshot;
+    }
+    return prevailingGeneratedBackgroundRef.current || liveSnapshot;
   }, [currentLiveBackground, isOutputLive]);
 
   const finalizeGeneratedItemBackground = useCallback((
@@ -2489,7 +3025,7 @@ function App() {
         || String(previousSlide?.mediaType || '').trim() !== String(slide.mediaType || '').trim();
     });
     if (!themeChanged && !slideBackgroundChanged) return item;
-    return stampItemBackgroundSource(item, 'user');
+    return stampItemBackgroundSource(clearItemBackgroundFallback(item), 'user');
   }, []);
 
   const prepareItemForGoLive = useCallback((item: ServiceItem) => {
@@ -2827,6 +3363,236 @@ function App() {
   const stageDisplayUrl = typeof window !== 'undefined'
     ? buildSharedRouteUrl('stage')
     : `/#/stage?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}`;
+  const electronMachineApi = typeof window !== 'undefined' ? window.electron?.machine : undefined;
+  const hasElectronDisplayControl = !!(isElectronShell && electronMachineApi?.listDisplays && electronMachineApi?.startService);
+
+  const buildAutoDisplayMapping = useCallback((displays: DesktopDisplayInfo[]): DesktopDisplayMapping => {
+    const orderedDisplays = [...displays];
+    const primary = orderedDisplays.find((display) => display.isPrimary) || orderedDisplays[0] || null;
+    const externalDisplays = orderedDisplays
+      .filter((display) => !display.isInternal)
+      .sort((left, right) => (right.bounds.width * right.bounds.height) - (left.bounds.width * left.bounds.height));
+    const audience = externalDisplays[0]
+      || orderedDisplays.find((display) => display.id !== primary?.id)
+      || primary;
+    const stage = orderedDisplays.find((display) => display.id !== primary?.id && display.id !== audience?.id)
+      || externalDisplays.find((display) => display.id !== audience?.id && display.id !== primary?.id)
+      || null;
+    const roleByDisplayId = new Map<number, DisplayRole>();
+    if (primary) roleByDisplayId.set(primary.id, 'control');
+    if (audience && audience.id !== primary?.id) roleByDisplayId.set(audience.id, 'audience');
+    if (stage && stage.id !== primary?.id && stage.id !== audience?.id) roleByDisplayId.set(stage.id, 'stage');
+
+    return {
+      assignments: orderedDisplays.map((display) => ({
+        role: roleByDisplayId.get(display.id) || 'none',
+        displayId: display.id,
+        displayKey: display.key,
+      })),
+      updatedAt: Date.now(),
+    };
+  }, []);
+
+  const getMappedRoleForDisplay = useCallback((display: DesktopDisplayInfo) => {
+    const exact = desktopDisplayMapping.assignments.find((entry) => entry.displayId === display.id);
+    if (exact) return exact.role;
+    const keyed = desktopDisplayMapping.assignments.find((entry) => entry.displayKey && entry.displayKey === display.key);
+    return keyed?.role || 'none';
+  }, [desktopDisplayMapping.assignments]);
+
+  const desktopDisplayCards = useMemo<DesktopDisplayCard[]>(() => {
+    return desktopDisplays.map((display) => {
+      const role = getMappedRoleForDisplay(display);
+      const liveStatus = (
+        (role === 'audience' && desktopServiceState.outputOpen)
+        || (role === 'stage' && desktopServiceState.stageOpen)
+        || (role === 'control' && desktopServiceState.controlDisplayId === display.id)
+      ) ? 'active' : 'idle';
+      return {
+        id: display.id,
+        key: display.key,
+        name: display.name,
+        role,
+        isPrimary: display.isPrimary,
+        isInternal: display.isInternal,
+        width: display.bounds.width,
+        height: display.bounds.height,
+        scaleFactor: display.scaleFactor,
+        x: display.bounds.x,
+        y: display.bounds.y,
+        liveStatus,
+      };
+    });
+  }, [desktopDisplays, desktopServiceState.controlDisplayId, desktopServiceState.outputOpen, desktopServiceState.stageOpen, getMappedRoleForDisplay]);
+
+  const desktopRoleAssignments = useMemo(() => {
+    const entries: Record<Exclude<DisplayRole, 'none'>, number | null> = {
+      control: null,
+      audience: null,
+      stage: null,
+    };
+    desktopDisplayCards.forEach((display) => {
+      if (display.role !== 'none') {
+        entries[display.role] = display.id;
+      }
+    });
+    return entries;
+  }, [desktopDisplayCards]);
+
+  const desktopDisplayValidationErrors = useMemo(() => {
+    const errors: string[] = [];
+    if (!desktopRoleAssignments.control) {
+      errors.push('Assign one control display.');
+    }
+    if (!desktopRoleAssignments.audience) {
+      errors.push('Assign one audience display.');
+    }
+    return errors;
+  }, [desktopRoleAssignments.audience, desktopRoleAssignments.control]);
+
+  const persistDesktopDisplayMapping = useCallback((mapping: DesktopDisplayMapping, message?: string) => {
+    setDesktopDisplayMapping(mapping);
+    writeDesktopDisplayMapping(mapping);
+    if (message) {
+      setDesktopDisplayStatusText(message);
+    }
+  }, []);
+
+  const refreshDesktopDisplays = useCallback(async () => {
+    if (!hasElectronDisplayControl) return;
+    try {
+      const nextDisplays = await electronMachineApi?.listDisplays?.();
+      if (Array.isArray(nextDisplays)) {
+        setDesktopDisplays(nextDisplays);
+      }
+    } catch (error) {
+      console.error('Failed to enumerate desktop displays', error);
+      setDesktopDisplayStatusText('Could not refresh connected displays.');
+    }
+  }, [electronMachineApi, hasElectronDisplayControl]);
+
+  const handleDesktopRoleChange = useCallback((displayId: number, role: DisplayRole) => {
+    const nextAssignments = desktopDisplays.map((display) => {
+      const currentRole = getMappedRoleForDisplay(display);
+      let nextRole: DisplayRole = currentRole;
+      if (display.id === displayId) {
+        nextRole = role;
+      } else if (role !== 'none' && currentRole === role) {
+        nextRole = 'none';
+      }
+      return {
+        role: nextRole,
+        displayId: display.id,
+        displayKey: display.key,
+      };
+    });
+    persistDesktopDisplayMapping({
+      assignments: nextAssignments,
+      updatedAt: Date.now(),
+    });
+  }, [desktopDisplays, getMappedRoleForDisplay, persistDesktopDisplayMapping]);
+
+  const handleDesktopAutoAssign = useCallback(() => {
+    if (!desktopDisplays.length) return;
+    persistDesktopDisplayMapping(buildAutoDisplayMapping(desktopDisplays), 'Displays auto-assigned. Review and save if needed.');
+  }, [buildAutoDisplayMapping, desktopDisplays, persistDesktopDisplayMapping]);
+
+  const handleSaveDesktopDisplayMapping = useCallback(() => {
+    persistDesktopDisplayMapping({
+      assignments: desktopDisplays.map((display) => ({
+        role: getMappedRoleForDisplay(display),
+        displayId: display.id,
+        displayKey: display.key,
+      })),
+      updatedAt: Date.now(),
+    }, 'Display mapping saved on this machine.');
+  }, [desktopDisplays, getMappedRoleForDisplay, persistDesktopDisplayMapping]);
+
+  const handleOpenDisplaySetup = useCallback(() => {
+    if (!hasElectronDisplayControl) {
+      setWorkspaceSettings(prev => ({ ...prev, machineMode: !prev.machineMode }));
+      return;
+    }
+    setIsDisplaySetupOpen(true);
+    void refreshDesktopDisplays();
+  }, [hasElectronDisplayControl, refreshDesktopDisplays]);
+
+  const handleStartDesktopService = useCallback(async () => {
+    if (!hasElectronDisplayControl) return;
+    if (desktopDisplayValidationErrors.length > 0) {
+      setDesktopDisplayStatusText(desktopDisplayValidationErrors[0]);
+      return;
+    }
+    try {
+      const result = await electronMachineApi?.startService?.({
+        workspaceId,
+        sessionId: liveSessionId,
+        controlDisplayId: desktopRoleAssignments.control,
+        audienceDisplayId: desktopRoleAssignments.audience,
+        stageDisplayId: desktopRoleAssignments.stage,
+      });
+      if (result?.ok && result.state) {
+        setDesktopServiceState(result.state);
+        setIsOutputLive(!!result.state.outputOpen);
+        setIsStageDisplayLive(!!result.state.stageOpen);
+        setPopupBlocked(false);
+        setOutputWin(null);
+        setStageWin(null);
+        setDesktopDisplayStatusText(
+          desktopRoleAssignments.stage
+            ? 'Service started across control, audience, and stage displays.'
+            : 'Service started. No stage screen assigned.'
+        );
+        handleSaveDesktopDisplayMapping();
+        setIsDisplaySetupOpen(false);
+      } else {
+        setDesktopDisplayStatusText('Could not start service on the selected displays.');
+      }
+    } catch (error) {
+      console.error('Failed to start desktop service', error);
+      setDesktopDisplayStatusText('Desktop service launch failed.');
+    }
+  }, [desktopDisplayValidationErrors.length, desktopRoleAssignments.audience, desktopRoleAssignments.control, desktopRoleAssignments.stage, electronMachineApi, handleSaveDesktopDisplayMapping, hasElectronDisplayControl, liveSessionId, workspaceId]);
+
+  useEffect(() => {
+    if (!hasElectronDisplayControl) return;
+    void refreshDesktopDisplays();
+    void electronMachineApi?.getServiceState?.().then((state) => {
+      if (state) {
+        setDesktopServiceState(state);
+        setIsOutputLive(!!state.outputOpen);
+        setIsStageDisplayLive(!!state.stageOpen);
+      }
+    });
+    const offDisplays = electronMachineApi?.onDisplaysChanged?.((payload) => {
+      if (Array.isArray(payload)) {
+        setDesktopDisplays(payload);
+      }
+    });
+    const offService = electronMachineApi?.onServiceState?.((payload) => {
+      setDesktopServiceState(payload);
+      setIsOutputLive(!!payload.outputOpen);
+      setIsStageDisplayLive(!!payload.stageOpen);
+      if (payload.outputOpen || payload.stageOpen) {
+        setPopupBlocked(false);
+        setOutputWin(null);
+        setStageWin(null);
+      }
+    });
+    return () => {
+      offDisplays?.();
+      offService?.();
+    };
+  }, [electronMachineApi, hasElectronDisplayControl, refreshDesktopDisplays]);
+
+  useEffect(() => {
+    if (!hasElectronDisplayControl) return;
+    if (!desktopDisplays.length) return;
+    if (desktopDisplayMapping.assignments.length > 0) return;
+    const nextMapping = buildAutoDisplayMapping(desktopDisplays);
+    setDesktopDisplayMapping(nextMapping);
+    writeDesktopDisplayMapping(nextMapping);
+  }, [buildAutoDisplayMapping, desktopDisplayMapping.assignments.length, desktopDisplays, hasElectronDisplayControl]);
   const goLiveNextItem = () => {
     const idx = schedule.findIndex(i => i.id === activeItemId);
     const nextIdx = idx + 1;
@@ -3141,6 +3907,75 @@ function App() {
     }));
   }, [audienceUrl]);
 
+  const handleStageTimerLayoutChange = useCallback((layout: StageTimerLayout) => {
+    const normalized = normalizeStageTimerLayout(layout);
+    writeStoredStageWorkspaceSettings({ stageTimerLayout: normalized });
+    setWorkspaceSettings((prev) => (
+      stageTimerLayoutsEqual(prev.stageTimerLayout, normalized)
+        ? prev
+        : { ...prev, stageTimerLayout: normalized }
+    ));
+  }, []);
+
+  const handleStageAlertLayoutChange = useCallback((layout: StageAlertLayout) => {
+    const normalized = normalizeStageAlertLayout(layout);
+    writeStoredStageWorkspaceSettings({ stageAlertLayout: normalized });
+    setWorkspaceSettings((prev) => (
+      stageAlertLayoutsEqual(prev.stageAlertLayout, normalized)
+        ? prev
+        : { ...prev, stageAlertLayout: normalized }
+    ));
+  }, []);
+
+  const handleStageFlowLayoutChange = useCallback((layout: StageFlowLayout) => {
+    const normalized = VALID_STAGE_FLOW_LAYOUTS.includes(layout) ? layout : 'balanced';
+    writeStoredStageWorkspaceSettings({ stageFlowLayout: normalized });
+    setWorkspaceSettings((prev) => (
+      prev.stageFlowLayout === normalized
+        ? prev
+        : { ...prev, stageFlowLayout: normalized }
+    ));
+  }, []);
+
+  useEffect(() => {
+    const syncStageLayoutsFromStorage = (raw: string | null) => {
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw) as { workspaceSettings?: Partial<WorkspaceSettings> };
+        const storedSettings = parsed?.workspaceSettings;
+        if (!storedSettings || typeof storedSettings !== 'object') return;
+        const nextTimerLayout = normalizeStageTimerLayout(storedSettings.stageTimerLayout);
+        const nextAlertLayout = normalizeStageAlertLayout(storedSettings.stageAlertLayout);
+        const nextFlowLayout = typeof storedSettings.stageFlowLayout === 'string' && VALID_STAGE_FLOW_LAYOUTS.includes(storedSettings.stageFlowLayout as StageFlowLayout)
+          ? storedSettings.stageFlowLayout as StageFlowLayout
+          : null;
+        setWorkspaceSettings((prev) => {
+          const timerChanged = !stageTimerLayoutsEqual(prev.stageTimerLayout, nextTimerLayout);
+          const alertChanged = !stageAlertLayoutsEqual(prev.stageAlertLayout, nextAlertLayout);
+          const flowChanged = !!nextFlowLayout && prev.stageFlowLayout !== nextFlowLayout;
+          if (!timerChanged && !alertChanged && !flowChanged) return prev;
+          return {
+            ...prev,
+            stageTimerLayout: nextTimerLayout,
+            stageAlertLayout: nextAlertLayout,
+            stageFlowLayout: nextFlowLayout || prev.stageFlowLayout,
+          };
+        });
+      } catch {
+        // ignore malformed shared storage payloads
+      }
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY) return;
+      syncStageLayoutsFromStorage(event.newValue);
+    };
+
+    window.addEventListener('storage', handleStorage);
+    syncStageLayoutsFromStorage(window.localStorage.getItem(STORAGE_KEY));
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   const cloneSchedule = (value: ServiceItem[]) => JSON.parse(JSON.stringify(value)) as ServiceItem[];
   const pushHistory = () => {
     historyRef.current.push({
@@ -3175,12 +4010,12 @@ function App() {
       return cloneSchedule(INITIAL_SCHEDULE).map((item, idx) => stampItemBackgroundSource({ ...item, id: `${now}-${idx}` }, 'system'));
     }
     if (templateId === 'YOUTH') {
-      return [
+      const youthItems: ServiceItem[] = [
         {
           id: `${now}-1`,
           title: 'Countdown + Hype',
           type: ItemType.ANNOUNCEMENT,
-          theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[9], fontSize: 'xlarge' },
+          theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[9], fontSize: 'xlarge' as const },
           slides: [
             { id: `${now}-1a`, label: 'Start', content: 'Service starts in 05:00' },
             { id: `${now}-1b`, label: 'Welcome', content: 'Welcome to Youth Night' },
@@ -3190,7 +4025,7 @@ function App() {
           id: `${now}-2`,
           title: 'Worship Set',
           type: ItemType.SONG,
-          theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[7], fontSize: 'large' },
+          theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[7], fontSize: 'large' as const },
           slides: [
             { id: `${now}-2a`, label: 'Verse 1', content: 'You are here, moving in our midst' },
             { id: `${now}-2b`, label: 'Chorus', content: 'Way maker, miracle worker' },
@@ -3200,20 +4035,21 @@ function App() {
           id: `${now}-3`,
           title: 'Message + Call',
           type: ItemType.ANNOUNCEMENT,
-          theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[2], fontSize: 'medium' },
+          theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[2], fontSize: 'medium' as const },
           slides: [
             { id: `${now}-3a`, label: 'Main Point', content: 'Faith over fear' },
             { id: `${now}-3b`, label: 'Response', content: 'Prayer team available at the front' },
           ],
         },
-      ].map((item) => stampItemBackgroundSource(item, 'system'));
+      ];
+      return youthItems.map((item) => stampItemBackgroundSource(item, 'system'));
     }
-    return [
+    const prayerItems: ServiceItem[] = [
       {
         id: `${now}-p1`,
         title: 'Prayer + Reflection',
         type: ItemType.SCRIPTURE,
-        theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[5], fontFamily: 'serif', fontSize: 'medium' },
+        theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[5], fontFamily: 'serif', fontSize: 'medium' as const },
         slides: [
           { id: `${now}-p1a`, label: 'Reading', content: 'Psalm 23:1-3' },
           { id: `${now}-p1b`, label: 'Meditation', content: 'Be still and know that I am God.' },
@@ -3223,12 +4059,13 @@ function App() {
         id: `${now}-p2`,
         title: 'Intercession',
         type: ItemType.ANNOUNCEMENT,
-        theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[10], fontSize: 'large' },
+        theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[10], fontSize: 'large' as const },
         slides: [
           { id: `${now}-p2a`, label: 'Prayer Focus', content: 'Families, healing, and community leaders' },
         ],
       },
-    ].map((item) => stampItemBackgroundSource(item, 'system'));
+    ];
+    return prayerItems.map((item) => stampItemBackgroundSource(item, 'system'));
   };
 
   useEffect(() => {
@@ -4771,6 +5608,7 @@ function App() {
   }, [activeItemId, activeSlideIndex, blackout, holdScreenMode, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerSeconds, effectiveTimerDurationSec, currentCueSpeaker, currentCueAmberPercent, currentCueRedPercent, stageTimerFlash, currentCueItemId, audienceDisplay, audienceQrProjection, stageMessageCenter, workspaceSettings, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
 
   useEffect(() => {
+    if (hasElectronDisplayControl) return;
     if (user?.uid && cloudBootstrapComplete && workspaceSettings.machineMode) {
       const hasAutoLaunched = (window as any)._luminaAutoLaunched;
       if (!hasAutoLaunched) {
@@ -4782,7 +5620,7 @@ function App() {
         }, 3000);
       }
     }
-  }, [user?.uid, cloudBootstrapComplete, workspaceSettings.machineMode, isOutputLive, isStageDisplayLive]);
+  }, [user?.uid, cloudBootstrapComplete, workspaceSettings.machineMode, isOutputLive, isStageDisplayLive, hasElectronDisplayControl]);
 
   useEffect(() => {
     if (!user?.uid || !cloudBootstrapComplete) return;
@@ -5040,6 +5878,44 @@ function App() {
       goLive(activeItem, 0);
     }
 
+    if (hasElectronDisplayControl) {
+      const audienceDisplayId = desktopRoleAssignments.audience;
+      if (desktopServiceState.outputOpen) {
+        void electronMachineApi?.closeRoleWindow?.('audience').then((state) => {
+          if (!state) return;
+          setDesktopServiceState(state);
+          setIsOutputLive(false);
+        });
+        return;
+      }
+
+      if (!audienceDisplayId) {
+        setDesktopDisplayStatusText('Assign an audience display before launching output.');
+        setIsDisplaySetupOpen(true);
+        return;
+      }
+
+      void electronMachineApi?.openRoleWindow?.({
+        role: 'audience',
+        displayId: audienceDisplayId,
+        workspaceId,
+        sessionId: liveSessionId,
+      }).then((result) => {
+        if (!result?.ok || !result.state) {
+          setDesktopDisplayStatusText('Could not open the audience display.');
+          return;
+        }
+        setDesktopServiceState(result.state);
+        setIsOutputLive(true);
+        setPopupBlocked(false);
+        setOutputWin(null);
+      }).catch((error) => {
+        console.error('Failed to open audience display', error);
+        setDesktopDisplayStatusText('Audience display launch failed.');
+      });
+      return;
+    }
+
     if (isOutputLive) {
       setIsOutputLive(false);
       try { outputWin?.close(); } catch { }
@@ -5085,6 +5961,44 @@ function App() {
   }, [isOutputLive, outputWin]);
 
   const handleToggleStageDisplay = () => {
+    if (hasElectronDisplayControl) {
+      const stageDisplayId = desktopRoleAssignments.stage;
+      if (desktopServiceState.stageOpen) {
+        void electronMachineApi?.closeRoleWindow?.('stage').then((state) => {
+          if (!state) return;
+          setDesktopServiceState(state);
+          setIsStageDisplayLive(false);
+        });
+        return;
+      }
+
+      if (!stageDisplayId) {
+        setDesktopDisplayStatusText('Assign a stage display before launching stage view.');
+        setIsDisplaySetupOpen(true);
+        return;
+      }
+
+      void electronMachineApi?.openRoleWindow?.({
+        role: 'stage',
+        displayId: stageDisplayId,
+        workspaceId,
+        sessionId: liveSessionId,
+      }).then((result) => {
+        if (!result?.ok || !result.state) {
+          setDesktopDisplayStatusText('Could not open the stage display.');
+          return;
+        }
+        setDesktopServiceState(result.state);
+        setIsStageDisplayLive(true);
+        setPopupBlocked(false);
+        setStageWin(null);
+      }).catch((error) => {
+        console.error('Failed to open stage display', error);
+        setDesktopDisplayStatusText('Stage display launch failed.');
+      });
+      return;
+    }
+
     if (isStageDisplayLive) {
       setIsStageDisplayLive(false);
       try { stageWin?.close(); } catch { }
@@ -5142,7 +6056,7 @@ function App() {
             seekAmount={seekAmount}
             isMuted={outputMuted}
             isProjector={true}
-            lowerThirds={routingMode !== 'PROJECTOR'}
+            lowerThirds={lowerThirdsEnabled}
             showSlideLabel={true}
             audienceOverlay={audienceDisplay}
             projectedAudienceQr={audienceQrProjection}
@@ -5173,13 +6087,9 @@ function App() {
         timerFlashActive={stageTimerFlash.active}
         timerFlashColor={stageTimerFlash.color}
         timerLayout={workspaceSettings.stageTimerLayout}
-        onTimerLayoutChange={(layout) => {
-          setWorkspaceSettings((prev) => ({ ...prev, stageTimerLayout: layout }));
-        }}
+        onTimerLayoutChange={handleStageTimerLayoutChange}
         stageAlertLayout={workspaceSettings.stageAlertLayout}
-        onStageAlertLayoutChange={(layout) => {
-          setWorkspaceSettings((prev) => ({ ...prev, stageAlertLayout: layout }));
-        }}
+        onStageAlertLayoutChange={handleStageAlertLayoutChange}
         profile={workspaceSettings.stageProfile}
         flowLayout={workspaceSettings.stageFlowLayout}
         audienceOverlay={audienceDisplay}
@@ -5521,12 +6431,12 @@ function App() {
     goLiveSelectedPreview();
   };
 
-  const renderPresenterHoldState = (compact = false) => {
+  function renderPresenterHoldState(compact = false) {
     if (blackout) return <HoldScreen view="blackout" compact={compact} />;
     if (holdScreenMode === 'clear') return <HoldScreen view="clear" compact={compact} />;
     if (holdScreenMode === 'logo') return <HoldScreen view="logo" churchName={workspaceSettings.churchName} compact={compact} />;
     return null;
-  };
+  }
 
   const presenterContextMenuActions: ContextMenuAction[] = (() => {
     if (!presenterContextMenu) return [];
@@ -5647,7 +6557,7 @@ function App() {
 
     if (presenterLibraryTab === 'scripture') {
       return (
-        <div className="h-full min-h-0 overflow-y-auto custom-scrollbar p-2.5">
+        <div className="h-full min-h-0 overflow-hidden p-2.5">
           <BibleBrowser
             onProjectRequest={(item) => {
               stageGeneratedItem({
@@ -5669,6 +6579,7 @@ function App() {
             }}
             speechLocaleMode={workspaceSettings.visionarySpeechLocaleMode}
             onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
+            compact={true}
           />
         </div>
       );
@@ -5981,8 +6892,8 @@ function App() {
                   </select>
                 </label>
                 <button
-                  onClick={() => { if (routingMode !== 'PROJECTOR') setLowerThirdsEnabled((prev) => !prev); }}
-                  className={`h-8 px-3 rounded-lg font-black text-[8px] tracking-[0.16em] border transition-all uppercase ${lowerThirdsEnabled ? 'bg-blue-950/60 text-blue-300 border-blue-700/50' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300 hover:border-zinc-700'} ${routingMode === 'PROJECTOR' ? 'opacity-30 cursor-not-allowed' : ''}`}
+                  onClick={() => setLowerThirdsEnabled((prev) => !prev)}
+                  className={`h-8 px-3 rounded-lg font-black text-[8px] tracking-[0.16em] border transition-all uppercase ${lowerThirdsEnabled ? 'bg-blue-950/60 text-blue-300 border-blue-700/50' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300 hover:border-zinc-700'}`}
                 >
                   Lower 3rds
                 </button>
@@ -6185,7 +7096,7 @@ function App() {
       onResizeLeft={(delta) => updatePresenterLayoutPref('leftPaneWidth', delta)}
       onResizeRight={(delta) => updatePresenterLayoutPref('rightPaneWidth', delta)}
       onResizeBottom={(delta) => updatePresenterLayoutPref('bottomTrayHeight', delta)}
-      hideRightPane={workspaceSettings.machineMode}
+      hideRightPane={legacyMachineMode}
     />
   ) : null;
 
@@ -6340,10 +7251,10 @@ function App() {
               <SparklesIcon className="w-3 h-3 text-purple-400" /> AI ASSIST
             </button>
             <button
-              onClick={() => setWorkspaceSettings(prev => ({ ...prev, machineMode: !prev.machineMode }))}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all ${workspaceSettings.machineMode ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-950/50' : 'text-zinc-500 hover:bg-zinc-800'}`}
+              onClick={handleOpenDisplaySetup}
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all ${(hasElectronDisplayControl ? (isDisplaySetupOpen || desktopServiceState.outputOpen || desktopServiceState.stageOpen) : workspaceSettings.machineMode) ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-950/50' : 'text-zinc-500 hover:bg-zinc-800'}`}
             >
-              MACHINE
+              {hasElectronDisplayControl ? 'START SERVICE' : 'MACHINE'}
             </button>
           </div>
 
@@ -6629,9 +7540,9 @@ function App() {
           )}
           {activeSidebarTab === 'AUDIO' && <AudioLibrary currentTrackId={currentTrack?.id} isPlaying={isAudioPlaying} progress={audioProgress} onPlay={handlePlayTrack} onToggle={() => setIsAudioPlaying(!isAudioPlaying)} onStop={stopAudio} onVolumeChange={setAudioVolume} volume={audioVolume} />}
           {activeSidebarTab === 'BIBLE' && (
-            <div className="flex-1 overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-hidden flex flex-col min-h-0">
               <div className="p-3 border-b border-zinc-900 shrink-0"><h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Bible Hub</h3></div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
+              <div className="flex-1 min-h-0 overflow-hidden p-3">
                 <BibleBrowser
                   onProjectRequest={(item) => {
                     stageGeneratedItem({
@@ -6653,6 +7564,7 @@ function App() {
                   }}
                   speechLocaleMode={workspaceSettings.visionarySpeechLocaleMode}
                   onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
+                  compact={true}
                 />
               </div>
             </div>
@@ -6819,9 +7731,9 @@ function App() {
                           </div>
                         )}
                         <button
-                          onClick={() => { if (routingMode !== 'PROJECTOR') setLowerThirdsEnabled((prev) => !prev); }}
-                          title={routingMode === 'PROJECTOR' ? 'Projector mode keeps full-screen text.' : 'Toggle lower thirds overlay'}
-                          className={`h-9 px-3 rounded-lg font-black text-[9px] tracking-wider border transition-all uppercase ${lowerThirdsEnabled ? 'bg-blue-950/60 text-blue-300 border-blue-700/50' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300 hover:border-zinc-700'} ${routingMode === 'PROJECTOR' ? 'opacity-30 cursor-not-allowed' : ''}`}
+                          onClick={() => setLowerThirdsEnabled((prev) => !prev)}
+                          title="Toggle lower thirds overlay"
+                          className={`h-9 px-3 rounded-lg font-black text-[9px] tracking-wider border transition-all uppercase ${lowerThirdsEnabled ? 'bg-blue-950/60 text-blue-300 border-blue-700/50' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300 hover:border-zinc-700'}`}
                         >Lower Thirds</button>
                         <label className="flex h-9 items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 cursor-pointer hover:border-zinc-700 transition-colors">
                           <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-black shrink-0">Route</span>
@@ -6903,7 +7815,7 @@ function App() {
                         </div>
                         <div className="flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 rounded-lg px-2 h-9">
                           <span className="text-[9px] text-zinc-500 font-black uppercase shrink-0">Stage Grid</span>
-                          <select value={workspaceSettings.stageFlowLayout} onChange={(e) => { const next = e.target.value as StageFlowLayout; setWorkspaceSettings((prev) => ({ ...prev, stageFlowLayout: VALID_STAGE_FLOW_LAYOUTS.includes(next) ? next : 'balanced' })); }} style={{ colorScheme: 'dark' }} className="bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200 font-bold outline-none cursor-pointer min-w-[90px]">
+                          <select value={workspaceSettings.stageFlowLayout} onChange={(e) => { const next = e.target.value as StageFlowLayout; handleStageFlowLayoutChange(next); }} style={{ colorScheme: 'dark' }} className="bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200 font-bold outline-none cursor-pointer min-w-[90px]">
                             <option value="balanced">Balanced</option>
                             <option value="speaker_focus">Speaker Focus</option>
                             <option value="preview_focus">Preview Focus</option>
@@ -6923,8 +7835,8 @@ function App() {
                 </div>
               </div>
               <div
-                className={`w-full bg-zinc-950 border-l border-zinc-900 flex flex-col h-72 lg:h-auto border-t lg:border-t-0 shrink-0 min-w-0 ${workspaceSettings.machineMode ? 'hidden' : (isElectronShell ? 'flex' : 'hidden md:flex')}`}
-                style={workspaceSettings.machineMode ? undefined : { width: presenterQueueWidth }}
+                className={`w-full bg-zinc-950 border-l border-zinc-900 flex flex-col h-72 lg:h-auto border-t lg:border-t-0 shrink-0 min-w-0 ${legacyMachineMode ? 'hidden' : (isElectronShell ? 'flex' : 'hidden md:flex')}`}
+                style={legacyMachineMode ? undefined : { width: presenterQueueWidth }}
               >
                 <div className="sticky top-0 z-20 h-10 px-3 border-b border-zinc-900 font-bold text-zinc-500 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950">
                   <span>Live Queue</span>
@@ -6969,6 +7881,68 @@ function App() {
                             <span className="text-[9px] uppercase tracking-widest text-red-400 font-bold shrink-0">LIVE</span>
                           </div>
                         </button>
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Stage Preview</div>
+                            <button
+                              onClick={() => setIsStagePreviewEditorOpen(true)}
+                              className="inline-flex items-center gap-1 rounded border border-purple-700/40 bg-purple-950/25 px-2 py-1 text-[8px] font-black uppercase tracking-[0.18em] text-purple-200 transition-colors hover:border-purple-500/60 hover:bg-purple-950/40"
+                            >
+                              <MaximizeIcon className="h-3 w-3" />
+                              Expand
+                            </button>
+                          </div>
+                          <div
+                            ref={stagePreviewFrameRef}
+                            className="relative aspect-video overflow-hidden rounded-sm border border-purple-700/40 bg-black shadow-[0_8px_22px_rgba(0,0,0,0.35)]"
+                          >
+                            {blackout ? (
+                              <HoldScreen view="blackout" compact />
+                            ) : holdScreenMode === 'clear' ? (
+                              <HoldScreen view="clear" compact />
+                            ) : holdScreenMode === 'logo' ? (
+                              <HoldScreen view="logo" churchName={workspaceSettings.churchName} compact />
+                            ) : (
+                              <StageDisplay
+                                currentSlide={activeSlide}
+                                nextSlide={nextSlidePreview}
+                                activeItem={activeItem}
+                                timerLabel={currentCueSpeaker ? `${currentCueSpeaker} Timer` : 'Pastor Timer'}
+                                timerDisplay={formatTimer(timerSeconds)}
+                                timerMode={timerMode}
+                                isTimerOvertime={isTimerOvertime}
+                                timerRemainingSec={timerSeconds}
+                                timerDurationSec={effectiveTimerDurationSec}
+                                timerAmberPercent={currentCueAmberPercent}
+                                timerRedPercent={currentCueRedPercent}
+                                timerFlashActive={stageTimerFlash.active}
+                                timerFlashColor={stageTimerFlash.color}
+                                timerLayout={workspaceSettings.stageTimerLayout}
+                                onTimerLayoutChange={handleStageTimerLayoutChange}
+                                stageAlertLayout={workspaceSettings.stageAlertLayout}
+                                onStageAlertLayoutChange={handleStageAlertLayoutChange}
+                                profile={workspaceSettings.stageProfile}
+                                flowLayout={workspaceSettings.stageFlowLayout}
+                                audienceOverlay={audienceDisplay}
+                                stageAlert={stageAlert}
+                                stageMessageCenter={stageMessageCenter}
+                                embedded
+                                viewportWidth={stagePreviewViewport.width}
+                                viewportHeight={stagePreviewViewport.height}
+                                className="select-none"
+                              />
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between gap-2 text-[10px] text-zinc-500">
+                            <span>Drag timer or alert here. Expand for a larger stage editor.</span>
+                            <button
+                              onClick={() => setIsStagePreviewEditorOpen(true)}
+                              className="rounded border border-zinc-800 px-2 py-1 text-[8px] font-black uppercase tracking-[0.16em] text-zinc-300 transition-colors hover:border-zinc-600"
+                            >
+                              Edit Stage
+                            </button>
+                          </div>
+                        </div>
                       </div>
                       {presenterQueueUpNext.length > 0 && (
                         <div className="space-y-2">
@@ -7035,7 +8009,7 @@ function App() {
       </div>
 
       {
-        isOutputLive && (
+        isOutputLive && !(hasElectronDisplayControl && desktopServiceState.outputOpen) && (
           <OutputWindow
             title="Lumina Output (Projector)"
             externalWindow={outputWin}
@@ -7066,7 +8040,7 @@ function App() {
                     seekAmount={seekAmount}
                     isMuted={outputMuted}
                     isProjector={true}
-                    lowerThirds={routingMode !== 'PROJECTOR'}
+                    lowerThirds={lowerThirdsEnabled}
                     showSlideLabel={true}
                     showProjectorHelper={false}
                     audienceOverlay={audienceDisplay}
@@ -7080,7 +8054,7 @@ function App() {
       }
 
       {
-        isStageDisplayLive && (
+        isStageDisplayLive && !(hasElectronDisplayControl && desktopServiceState.stageOpen) && (
           <OutputWindow
             title="Lumina Stage Display"
             externalWindow={stageWin}
@@ -7110,13 +8084,9 @@ function App() {
                 timerFlashActive={stageTimerFlash.active}
                 timerFlashColor={stageTimerFlash.color}
                 timerLayout={workspaceSettings.stageTimerLayout}
-                onTimerLayoutChange={(layout) => {
-                  setWorkspaceSettings((prev) => ({ ...prev, stageTimerLayout: layout }));
-                }}
+                onTimerLayoutChange={handleStageTimerLayoutChange}
                 stageAlertLayout={workspaceSettings.stageAlertLayout}
-                onStageAlertLayoutChange={(layout) => {
-                  setWorkspaceSettings((prev) => ({ ...prev, stageAlertLayout: layout }));
-                }}
+                onStageAlertLayoutChange={handleStageAlertLayoutChange}
                 profile={workspaceSettings.stageProfile}
                 flowLayout={workspaceSettings.stageFlowLayout}
                 audienceOverlay={audienceDisplay}
@@ -7710,6 +8680,110 @@ function App() {
         </div>
       )}
 
+      {isStagePreviewEditorOpen && (
+        <div className="fixed inset-0 z-[145] bg-black/85 backdrop-blur-sm p-4 md:p-6 flex items-center justify-center">
+          <div className="w-full max-w-[1680px] rounded-2xl border border-zinc-800 bg-zinc-950 shadow-[0_32px_120px_rgba(0,0,0,0.48)] overflow-hidden">
+            <div className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-zinc-900 bg-zinc-950/95 px-4 py-3 backdrop-blur">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="text-[10px] font-black uppercase tracking-[0.24em] text-purple-300">Stage Preview</div>
+                  <div className="rounded-full border border-cyan-700/40 bg-cyan-950/25 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.18em] text-cyan-200">
+                    Live Sync
+                  </div>
+                  <div className="rounded-full border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.18em] text-zinc-400">
+                    Esc closes
+                  </div>
+                </div>
+                <div className="mt-1 text-sm font-semibold text-white">Edit pastor timer and alert from the control screen</div>
+                <div className="mt-1 text-[11px] text-zinc-500">Changes apply to the real stage layout immediately, so the operator can correct issues without turning to the stage TV.</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-zinc-400">
+                  {Math.round(stageEditorViewport.width)}x{Math.round(stageEditorViewport.height)}
+                </div>
+                <button
+                  onClick={() => setIsStagePreviewEditorOpen(false)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/50 bg-emerald-600 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-emerald-500 shadow-[0_8px_24px_rgba(5,150,105,0.3)]"
+                >
+                  <CheckIcon className="h-3.5 w-3.5" />
+                  Done / Back To Presenter
+                </button>
+                <button
+                  onClick={() => setIsStagePreviewEditorOpen(false)}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 transition-colors hover:border-zinc-600 hover:text-white"
+                  aria-label="Close stage preview editor"
+                >
+                  <XIcon className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div className="p-4">
+              <div ref={stageEditorFrameRef} className="relative w-full aspect-[16/9] overflow-hidden rounded-2xl border border-zinc-800 bg-black">
+                {blackout ? (
+                  <HoldScreen view="blackout" />
+                ) : holdScreenMode === 'clear' ? (
+                  <HoldScreen view="clear" />
+                ) : holdScreenMode === 'logo' ? (
+                  <HoldScreen view="logo" churchName={workspaceSettings.churchName} />
+                ) : (
+                  <StageDisplay
+                    currentSlide={activeSlide}
+                    nextSlide={nextSlidePreview}
+                    activeItem={activeItem}
+                    timerLabel={currentCueSpeaker ? `${currentCueSpeaker} Timer` : 'Pastor Timer'}
+                    timerDisplay={formatTimer(timerSeconds)}
+                    timerMode={timerMode}
+                    isTimerOvertime={isTimerOvertime}
+                    timerRemainingSec={timerSeconds}
+                    timerDurationSec={effectiveTimerDurationSec}
+                    timerAmberPercent={currentCueAmberPercent}
+                    timerRedPercent={currentCueRedPercent}
+                    timerFlashActive={stageTimerFlash.active}
+                    timerFlashColor={stageTimerFlash.color}
+                    timerLayout={workspaceSettings.stageTimerLayout}
+                    onTimerLayoutChange={handleStageTimerLayoutChange}
+                    stageAlertLayout={workspaceSettings.stageAlertLayout}
+                    onStageAlertLayoutChange={handleStageAlertLayoutChange}
+                    profile={workspaceSettings.stageProfile}
+                    flowLayout={workspaceSettings.stageFlowLayout}
+                    audienceOverlay={audienceDisplay}
+                    stageAlert={stageAlert}
+                    stageMessageCenter={stageMessageCenter}
+                    embedded
+                    viewportWidth={stageEditorViewport.width}
+                    viewportHeight={stageEditorViewport.height}
+                  />
+                )}
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-900 bg-zinc-950/75 px-3 py-3 text-[11px] text-zinc-500">
+                <span>Changes here write back to the stage layout used by the live stage screen.</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase tracking-[0.16em] text-zinc-600">Need to exit quickly?</span>
+                  <button
+                    onClick={() => setIsStagePreviewEditorOpen(false)}
+                    className="rounded-xl border border-emerald-500/40 bg-emerald-600 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-emerald-500"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="pointer-events-none fixed bottom-6 right-6 z-[155] flex flex-col items-end gap-2">
+            <div className="rounded-full border border-zinc-700/80 bg-zinc-950/90 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+              Need to exit stage editor?
+            </div>
+            <button
+              onClick={() => setIsStagePreviewEditorOpen(false)}
+              className="pointer-events-auto inline-flex items-center gap-2 rounded-2xl border border-emerald-400/70 bg-emerald-500 px-5 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-white shadow-[0_12px_32px_rgba(16,185,129,0.35)] transition-transform transition-colors hover:scale-[1.02] hover:bg-emerald-400"
+            >
+              <CheckIcon className="h-4 w-4" />
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <ConnectModal
         isOpen={isConnectOpen}
@@ -7743,6 +8817,31 @@ function App() {
         aetherBridgeStatusTone={aetherBridgeStatus.tone}
         aetherBridgeStatusText={aetherBridgeStatus.text}
       />
+      {hasElectronDisplayControl && (
+        <DisplaySetupModal
+          open={isDisplaySetupOpen}
+          displays={desktopDisplayCards}
+          detectedCount={desktopDisplays.length}
+          validationErrors={desktopDisplayValidationErrors}
+          statusText={desktopDisplayStatusText || (!desktopRoleAssignments.stage ? 'No stage screen assigned. Start Service will continue without stage.' : '')}
+          onClose={() => setIsDisplaySetupOpen(false)}
+          onRefresh={() => {
+            void refreshDesktopDisplays();
+          }}
+          onAutoAssign={handleDesktopAutoAssign}
+          onIdentifyAll={() => {
+            void electronMachineApi?.identifyAllDisplays?.();
+          }}
+          onRoleChange={handleDesktopRoleChange}
+          onTestDisplay={(displayId) => {
+            void electronMachineApi?.testDisplay?.(displayId);
+          }}
+          onSaveMapping={handleSaveDesktopDisplayMapping}
+          onStartService={() => {
+            void handleStartDesktopService();
+          }}
+        />
+      )}
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
       {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={handleWorkspaceSettingsSave} onLogout={handleLogout} currentSettings={workspaceSettings} currentUser={user} />}
       {presenterContextMenu && presenterContextMenuActions.length > 0 && (
@@ -7764,13 +8863,16 @@ function App() {
         isMotionLibOpen && (
           <MotionLibrary
             onClose={() => setIsMotionLibOpen(false)}
-            onSelect={async (url, mediaType = 'video') => {
-              const resolvedUrl = await persistRemoteMotionLibraryAsset(url, mediaType);
+            onSelect={async (asset) => {
+              const url = asset.url;
+              const mediaType = asset.mediaType;
+              const resolvedMediaType: 'image' | 'video' = mediaType === 'image' ? 'image' : 'video';
+              const resolvedUrl = await persistRemoteMotionLibraryAsset(url, resolvedMediaType);
               if (motionLibraryMode === 'new-item') {
                 const nextItem = finalizeGeneratedItemBackground({
                   id: `item-${Date.now()}`,
-                  title: mediaType === 'image' ? 'Still Background' : 'Motion Background',
-                  type: 'MEDIA',
+                  title: resolvedMediaType === 'image' ? 'Still Background' : 'Motion Background',
+                  type: ItemType.MEDIA,
                   slides: [{
                     id: `slide-${Date.now()}`,
                     label: 'Media Slide',
@@ -7778,17 +8880,34 @@ function App() {
                   }],
                   theme: {
                     backgroundUrl: resolvedUrl,
-                    mediaType,
+                    mediaType: resolvedMediaType,
+                    fontFamily: 'sans-serif',
+                    textColor: '#ffffff',
+                    shadow: true,
                   },
                   metadata: {
                     source: 'manual',
+                    backgroundProvider: asset.provider,
+                    backgroundCategory: asset.category,
+                    backgroundTitle: asset.name,
+                    backgroundSourceUrl: asset.sourceUrl || asset.url,
                   },
                 }, 'user');
                 addItem(nextItem);
                 setSelectedItemId(nextItem.id);
               } else if (selectedItem) {
-                updateItem({ ...selectedItem, theme: { ...selectedItem.theme, backgroundUrl: resolvedUrl, mediaType } });
-                logActivity(user?.uid, 'UPDATE_THEME', { type: 'MOTION_BG', itemId: selectedItem.id, mediaType });
+                updateItem({
+                  ...selectedItem,
+                  theme: { ...selectedItem.theme, backgroundUrl: resolvedUrl, mediaType: resolvedMediaType },
+                  metadata: {
+                    ...selectedItem.metadata,
+                    backgroundProvider: asset.provider,
+                    backgroundCategory: asset.category,
+                    backgroundTitle: asset.name,
+                    backgroundSourceUrl: asset.sourceUrl || asset.url,
+                  },
+                });
+                logActivity(user?.uid, 'UPDATE_THEME', { type: 'MOTION_BG', itemId: selectedItem.id, mediaType: resolvedMediaType });
               }
               setMotionLibraryMode('selected-item');
               setIsMotionLibOpen(false);

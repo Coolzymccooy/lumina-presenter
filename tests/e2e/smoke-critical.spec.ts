@@ -116,6 +116,56 @@ test('output route shows logo hold slate explicitly @smoke', async ({ page }) =>
   await expect(page.getByText('Logo Hold')).toBeVisible();
 });
 
+test('output route keeps bible text readable on inherited image backgrounds @smoke', async ({ page }) => {
+  const key = uniqueKey();
+  const itemId = `bible-item-${key}`;
+  const verseText = 'And the LORD spake unto Moses, saying,';
+
+  await page.addInitScript((payload) => {
+    localStorage.setItem('lumina_session_v1', JSON.stringify(payload));
+  }, {
+    schedule: [
+      {
+        id: itemId,
+        title: 'Numbers 5:4-11',
+        type: 'BIBLE',
+        slides: [
+          {
+            id: `bible-slide-${key}`,
+            label: 'Numbers 5:4 (King James Version)',
+            content: verseText,
+          },
+        ],
+        metadata: {
+          backgroundSource: 'inherited',
+          backgroundFallbackUrl: 'https://images.example.com/sunrise.jpg',
+          backgroundFallbackMediaType: 'image',
+        },
+        theme: {
+          backgroundUrl: 'https://images.example.com/sunrise.jpg',
+          mediaType: 'image',
+          fontFamily: 'serif',
+          textColor: '#ffffff',
+          shadow: true,
+          fontSize: 'large',
+        },
+      },
+    ],
+    activeItemId: itemId,
+    activeSlideIndex: 0,
+    blackout: false,
+    isPlaying: true,
+    outputMuted: false,
+    routingMode: 'PROJECTOR',
+    updatedAt: Date.now(),
+  });
+
+  await page.goto(`/#/output?session=${encodeURIComponent(`smoke-session-${key}`)}&workspace=${encodeURIComponent(`smoke-workspace-${key}`)}`);
+  await expect(page.getByText(verseText)).toBeVisible();
+  await expect(page.getByText('Numbers 5:4 (King James Version)')).toBeVisible();
+  await expect(page.locator('div[style*="backdrop-filter: blur(14px)"]')).toBeVisible();
+});
+
 test('stage timer widget can be dragged and resized in web route @smoke', async ({ page }) => {
   const key = uniqueKey();
   const { itemId, schedule } = buildSchedule(key, 'STAGE_TIMER_DRAG_SENTINEL');
@@ -211,6 +261,204 @@ test('stage timer widget can be dragged and resized in web route @smoke', async 
   }
   expect(afterResize.width).toBeGreaterThan(afterDrag.width + 40);
   expect(afterResize.height).toBeGreaterThan(afterDrag.height + 25);
+
+  const persistedStagePage = await page.context().newPage();
+  await persistedStagePage.goto(`/#/stage?session=${encodeURIComponent(`smoke-session-${key}`)}&workspace=${encodeURIComponent(`smoke-workspace-${key}`)}`);
+  await persistedStagePage.waitForTimeout(150);
+  const afterReload = await persistedStagePage.getByTestId('stage-timer-widget').boundingBox();
+  expect(afterReload).toBeTruthy();
+  if (!afterReload) {
+    throw new Error('Unable to read timer widget bounds after reload');
+  }
+  expect(Math.abs(afterReload.x - afterResize.x)).toBeLessThan(20);
+  expect(Math.abs(afterReload.y - afterResize.y)).toBeLessThan(20);
+  expect(Math.abs(afterReload.width - afterResize.width)).toBeLessThan(24);
+  expect(Math.abs(afterReload.height - afterResize.height)).toBeLessThan(24);
+  await persistedStagePage.close();
+});
+
+test('stage route shows scripture reference badge for current bible slide @smoke', async ({ page }) => {
+  const key = uniqueKey();
+  const itemId = `stage-bible-${key}`;
+  await page.addInitScript((payload) => {
+    localStorage.setItem('lumina_session_v1', JSON.stringify(payload));
+  }, {
+    schedule: [
+      {
+        id: itemId,
+        title: 'Numbers 1:4-7',
+        type: 'BIBLE',
+        slides: [
+          {
+            id: `stage-bible-slide-${key}`,
+            label: 'Numbers 1:4 (King James Version)',
+            content: 'And with you there shall be a man of every tribe;',
+            layoutType: 'scripture_ref',
+          },
+        ],
+        theme: {
+          backgroundUrl: '',
+          fontFamily: 'serif',
+          textColor: '#ffffff',
+          shadow: true,
+          fontSize: 'large',
+        },
+      },
+    ],
+    activeItemId: itemId,
+    activeSlideIndex: 0,
+    blackout: false,
+    workspaceSettings: {
+      stageProfile: 'classic',
+      stageFlowLayout: 'balanced',
+    },
+    updatedAt: Date.now(),
+  });
+
+  await page.goto(`/#/stage?session=${encodeURIComponent(`smoke-session-${key}`)}&workspace=${encodeURIComponent(`smoke-workspace-${key}`)}`);
+  await expect(page.getByText('Numbers 1:4-7')).toBeVisible();
+  await expect(page.getByText('Ref')).toBeVisible();
+  await expect(page.getByText('Numbers 1:4 (King James Version)')).toBeVisible();
+});
+
+test('stage alert widget drag and resize persist through reload @smoke', async ({ page }) => {
+  const key = uniqueKey();
+  const { itemId, schedule } = buildSchedule(key, 'STAGE_ALERT_PERSIST_SENTINEL');
+
+  await page.addInitScript((payload) => {
+    localStorage.setItem('lumina_session_v1', JSON.stringify(payload));
+  }, {
+    schedule,
+    activeItemId: itemId,
+    activeSlideIndex: 0,
+    blackout: false,
+    stageAlert: {
+      active: true,
+      text: 'Wrap up now',
+      priority: 'high',
+      category: 'urgent',
+      updatedAt: Date.now(),
+    },
+    workspaceSettings: {
+      stageProfile: 'classic',
+      stageFlowLayout: 'balanced',
+      stageAlertLayout: {
+        x: 120,
+        y: 84,
+        width: 920,
+        height: 140,
+        fontScale: 1,
+        locked: false,
+      },
+    },
+    updatedAt: Date.now(),
+  });
+
+  await page.goto(`/#/stage?session=${encodeURIComponent(`smoke-session-${key}`)}&workspace=${encodeURIComponent(`smoke-workspace-${key}`)}`);
+  await expect(page.getByText('Wrap up now')).toBeVisible();
+
+  const widget = page.getByTestId('stage-alert-widget');
+  const dragSurface = page.getByTestId('stage-alert-drag-surface');
+  const resizeHandle = page.getByTestId('stage-alert-resize-handle');
+
+  const beforeDrag = await widget.boundingBox();
+  const dragBox = await dragSurface.boundingBox();
+  expect(beforeDrag).toBeTruthy();
+  expect(dragBox).toBeTruthy();
+  if (!beforeDrag || !dragBox) {
+    throw new Error('Unable to read stage alert bounds before drag');
+  }
+
+  await page.mouse.move(dragBox.x + 120, dragBox.y + 40);
+  await page.mouse.down();
+  await page.mouse.move(dragBox.x + 260, dragBox.y + 170, { steps: 18 });
+  await page.mouse.up();
+
+  const afterDrag = await widget.boundingBox();
+  expect(afterDrag).toBeTruthy();
+  if (!afterDrag) {
+    throw new Error('Unable to read stage alert bounds after drag');
+  }
+  expect(afterDrag.x).toBeGreaterThan(beforeDrag.x + 40);
+  expect(afterDrag.y).toBeGreaterThan(beforeDrag.y + 30);
+
+  const resizeBox = await resizeHandle.boundingBox();
+  expect(resizeBox).toBeTruthy();
+  if (!resizeBox) {
+    throw new Error('Unable to read stage alert resize handle');
+  }
+
+  await page.mouse.move(resizeBox.x + resizeBox.width / 2, resizeBox.y + resizeBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(resizeBox.x + 180, resizeBox.y + 90, { steps: 18 });
+  await page.mouse.up();
+
+  await page.waitForTimeout(150);
+  const afterResize = await widget.boundingBox();
+  expect(afterResize).toBeTruthy();
+  if (!afterResize) {
+    throw new Error('Unable to read stage alert bounds after resize');
+  }
+  expect(afterResize.width).toBeGreaterThan(afterDrag.width + 40);
+  expect(afterResize.height).toBeGreaterThan(afterDrag.height + 20);
+
+  const persistedStagePage = await page.context().newPage();
+  await persistedStagePage.goto(`/#/stage?session=${encodeURIComponent(`smoke-session-${key}`)}&workspace=${encodeURIComponent(`smoke-workspace-${key}`)}`);
+  await persistedStagePage.waitForTimeout(150);
+  const afterReload = await persistedStagePage.getByTestId('stage-alert-widget').boundingBox();
+  expect(afterReload).toBeTruthy();
+  if (!afterReload) {
+    throw new Error('Unable to read stage alert bounds after reload');
+  }
+  expect(Math.abs(afterReload.x - afterResize.x)).toBeLessThan(20);
+  expect(Math.abs(afterReload.y - afterResize.y)).toBeLessThan(20);
+  expect(Math.abs(afterReload.width - afterResize.width)).toBeLessThan(24);
+  expect(Math.abs(afterReload.height - afterResize.height)).toBeLessThan(24);
+  await persistedStagePage.close();
+});
+
+test('saved background registry deduplicates assets and keeps them reusable offline @smoke', async ({ page }) => {
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    await new Promise<void>((resolve) => {
+      const request = indexedDB.deleteDatabase('LuminaMediaDB');
+      request.onsuccess = () => resolve();
+      request.onerror = () => resolve();
+      request.onblocked = () => resolve();
+    });
+    const mod = await import('/services/localMedia.ts');
+    const file = new File([new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8])], 'sunrise-beach.jpg', { type: 'image/jpeg' });
+    const first = await mod.saveBackgroundAsset(file, {
+      mediaType: 'image',
+      sourceUrl: 'https://images.example.com/sunrise-beach.jpg',
+      provider: 'pexels',
+      category: 'Sunrise',
+      title: 'Sunrise Beach',
+    });
+    const second = await mod.saveBackgroundAsset(file, {
+      mediaType: 'image',
+      sourceUrl: 'https://images.example.com/sunrise-beach.jpg',
+      provider: 'pexels',
+      category: 'Sunrise',
+      title: 'Sunrise Beach',
+    });
+    const listed = await mod.listSavedBackgrounds();
+    return {
+      firstId: first?.id || '',
+      secondId: second?.id || '',
+      total: listed.length,
+      provider: listed[0]?.provider || '',
+      category: listed[0]?.category || '',
+      localUrl: listed[0]?.localUrl || '',
+    };
+  });
+
+  expect(result.firstId).toBeTruthy();
+  expect(result.firstId).toBe(result.secondId);
+  expect(result.total).toBe(1);
+  expect(result.provider).toBe('pexels');
+  expect(result.category).toBe('Sunrise');
+  expect(result.localUrl.startsWith('local://')).toBeTruthy();
 });
 
 test('visionary semantic search fallback is context-aware when AI endpoint fails @smoke', async ({ page }) => {

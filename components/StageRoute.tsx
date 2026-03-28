@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState } from '../services/firebase';
-import { fetchServerSessionState, getOrCreateConnectionClientId, heartbeatSessionConnection } from '../services/serverApi';
+import { fetchServerSessionState, getOrCreateConnectionClientId, heartbeatSessionConnection, saveWorkspaceSettings } from '../services/serverApi';
 import { AudienceDisplayState, ServiceItem, StageAlertLayout, StageAlertState, StageFlowLayout, StageMessageCategory, StageMessageCenterState, StageTimerFlashColor, StageTimerFlashState, StageTimerLayout } from '../types';
 import { HoldScreen } from './presenter/HoldScreen';
 import { LoginScreen } from './LoginScreen';
@@ -71,6 +71,20 @@ const readLocalState = (): LocalStageState => {
   } catch {
     return {};
   }
+};
+
+const writeLocalStageWorkspaceSettings = (updates: Partial<NonNullable<LocalStageState['workspaceSettings']>>): LocalStageState => {
+  const current = readLocalState();
+  const next: LocalStageState = {
+    ...current,
+    workspaceSettings: {
+      ...(current.workspaceSettings || {}),
+      ...updates,
+    },
+    updatedAt: Date.now(),
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  return next;
 };
 
 const sanitizeStageMessageCenter = (value: unknown): StageMessageCenterState | undefined => {
@@ -164,10 +178,51 @@ export const StageRoute: React.FC = () => {
   const [serverState, setServerState] = useState<Record<string, any> | null>(null);
   const [stableEffective, setStableEffective] = useState<EffectiveStageState | null>(null);
   const localStateRawRef = useRef<string | null>(null);
+  const pendingWorkspaceLayoutRef = useRef<Partial<NonNullable<LocalStageState['workspaceSettings']>>>({});
+  const workspaceLayoutSaveTimeoutRef = useRef<number | null>(null);
   const canUseServerWorkspace = useMemo(
     () => !!workspaceId && (hasExplicitWorkspace || !!user?.uid),
     [workspaceId, hasExplicitWorkspace, user?.uid]
   );
+
+  const persistWorkspaceLayoutsLocally = useCallback((updates: Partial<NonNullable<LocalStageState['workspaceSettings']>>) => {
+    try {
+      const next = writeLocalStageWorkspaceSettings(updates);
+      localStateRawRef.current = JSON.stringify(next);
+      setLocalState(next);
+      setServerState((prev) => prev ? ({
+        ...prev,
+        workspaceSettings: {
+          ...(prev.workspaceSettings || {}),
+          ...updates,
+        },
+        updatedAt: Date.now(),
+      }) : prev);
+    } catch (error) {
+      console.warn('Failed to persist stage layout locally.', error);
+    }
+  }, []);
+
+  const queueWorkspaceLayoutSave = useCallback((updates: Partial<NonNullable<LocalStageState['workspaceSettings']>>) => {
+    pendingWorkspaceLayoutRef.current = {
+      ...pendingWorkspaceLayoutRef.current,
+      ...updates,
+    };
+    if (workspaceLayoutSaveTimeoutRef.current !== null) {
+      window.clearTimeout(workspaceLayoutSaveTimeoutRef.current);
+    }
+    workspaceLayoutSaveTimeoutRef.current = window.setTimeout(async () => {
+      const nextSettings = pendingWorkspaceLayoutRef.current;
+      pendingWorkspaceLayoutRef.current = {};
+      workspaceLayoutSaveTimeoutRef.current = null;
+      if (!user || !canUseServerWorkspace || Object.keys(nextSettings).length === 0) return;
+      try {
+        await saveWorkspaceSettings(workspaceId, user, nextSettings);
+      } catch (error) {
+        console.warn('Failed to persist stage layout to workspace settings.', error);
+      }
+    }, 420);
+  }, [canUseServerWorkspace, user, workspaceId]);
 
   useEffect(() => {
     if (!auth) {
@@ -246,6 +301,13 @@ export const StageRoute: React.FC = () => {
     const id = window.setInterval(beat, 4000);
     return () => window.clearInterval(id);
   }, [workspaceId, sessionId, stageClientId, canUseServerWorkspace]);
+
+  useEffect(() => () => {
+    if (workspaceLayoutSaveTimeoutRef.current !== null) {
+      window.clearTimeout(workspaceLayoutSaveTimeoutRef.current);
+      workspaceLayoutSaveTimeoutRef.current = null;
+    }
+  }, []);
 
   const buildEffective = (source: any): EffectiveStageState => {
     const schedule = Array.isArray(source?.scheduleSnapshot)
@@ -375,7 +437,15 @@ export const StageRoute: React.FC = () => {
       timerFlashActive={display.stageTimerFlash.active}
       timerFlashColor={display.stageTimerFlash.color}
       timerLayout={display.stageTimerLayout}
+      onTimerLayoutChange={(layout) => {
+        persistWorkspaceLayoutsLocally({ stageTimerLayout: layout });
+        queueWorkspaceLayoutSave({ stageTimerLayout: layout });
+      }}
       stageAlertLayout={display.stageAlertLayout}
+      onStageAlertLayoutChange={(layout) => {
+        persistWorkspaceLayoutsLocally({ stageAlertLayout: layout });
+        queueWorkspaceLayoutSave({ stageAlertLayout: layout });
+      }}
       flowLayout={display.stageFlowLayout}
       profile={display.stageProfile}
       audienceOverlay={display.audienceOverlay}

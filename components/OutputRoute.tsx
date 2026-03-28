@@ -259,7 +259,6 @@ export const OutputRoute: React.FC = () => {
     const seekCommand = typeof source?.seekCommand === 'number' ? source.seekCommand : null;
     const seekAmount = typeof source?.seekAmount === 'number' ? source.seekAmount : 0;
     const lowerThirdsEnabled = !!source?.lowerThirdsEnabled;
-    const lowerThirdsForRoute = lowerThirdsEnabled && routingMode !== 'PROJECTOR';
     const audienceOverlay = sanitizeAudienceOverlay(source?.audienceDisplay);
     const projectedAudienceQr = sanitizeAudienceQrProjection(source?.audienceQrProjection);
     const updatedAt = typeof source?.updatedAt === 'number' ? source.updatedAt : 0;
@@ -283,7 +282,7 @@ export const OutputRoute: React.FC = () => {
         outputMuted,
         seekCommand,
         seekAmount,
-        lowerThirdsEnabled: lowerThirdsForRoute,
+        lowerThirdsEnabled,
         audienceOverlay,
         projectedAudienceQr,
         updatedAt,
@@ -302,7 +301,7 @@ export const OutputRoute: React.FC = () => {
       outputMuted,
       seekCommand,
       seekAmount,
-      lowerThirdsEnabled: lowerThirdsForRoute,
+      lowerThirdsEnabled,
       audienceOverlay,
       projectedAudienceQr,
       updatedAt,
@@ -360,7 +359,11 @@ export const OutputRoute: React.FC = () => {
           isMuted={display.outputMuted}
           isProjector={true}
           lowerThirds={display.lowerThirdsEnabled}
-          showSlideLabel={false}
+          showSlideLabel={
+            display.item?.type === ItemType.BIBLE
+            || display.item?.type === ItemType.SCRIPTURE
+            || display.slide?.layoutType === 'scripture_ref'
+          }
           showProjectorHelper={false}
           audienceOverlay={display.audienceOverlay || undefined}
           projectedAudienceQr={display.projectedAudienceQr || undefined}

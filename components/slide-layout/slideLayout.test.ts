@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { getLayoutPreset } from './presets/index.ts';
 import { normalizeFrame } from './utils/frameMath.ts';
 import { buildStructuredSlide, getRenderableElements } from './utils/slideHydration.ts';
+import { PROGRAM_MEDIA_PRESENTATION_FILTER, shouldUseScriptureReadingPanel } from './render/backgroundTone.ts';
 import type { Slide } from '../../types.ts';
 
 test('legacy slides hydrate into a single visible body element', () => {
@@ -74,5 +75,25 @@ test('buildStructuredSlide keeps elements as the source of truth and summarizes 
   assert.equal(structured.elements?.length, 2);
   assert.match(structured.content, /Slide Title/);
   assert.match(structured.content, /Main content goes here/);
+});
+
+test('scripture slides on media backgrounds use the reading panel guardrail', () => {
+  assert.equal(PROGRAM_MEDIA_PRESENTATION_FILTER, 'brightness(1.06) saturate(1.06) contrast(1.03)');
+  assert.equal(shouldUseScriptureReadingPanel({
+    itemType: 'BIBLE',
+    layoutType: undefined,
+    hasStructuredElements: false,
+    hasReadableText: true,
+    hasBackground: true,
+    mediaType: 'image',
+  }), true);
+  assert.equal(shouldUseScriptureReadingPanel({
+    itemType: 'ANNOUNCEMENT',
+    layoutType: undefined,
+    hasStructuredElements: false,
+    hasReadableText: true,
+    hasBackground: true,
+    mediaType: 'image',
+  }), false);
 });
 

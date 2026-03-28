@@ -3,6 +3,12 @@ import type { MediaType, ServiceItem, ServiceItemBackgroundSource, Slide } from 
 export type BackgroundSnapshot = {
   backgroundUrl: string;
   mediaType: MediaType;
+  backgroundFallbackUrl?: string;
+  backgroundFallbackMediaType?: MediaType;
+  backgroundSourceUrl?: string;
+  backgroundProvider?: string;
+  backgroundCategory?: string;
+  backgroundTitle?: string;
 };
 
 const COLOR_TOKEN_PATTERN = /^(#|rgb\(|rgba\(|hsl\(|hsla\()/i;
@@ -55,9 +61,23 @@ export const getBackgroundSnapshotFromItem = (
   const themeUrl = String(item?.theme?.backgroundUrl || '').trim();
   const backgroundUrl = slideUrl || themeUrl;
   if (!backgroundUrl) return null;
+  const backgroundFallbackUrl = slideUrl
+    ? ''
+    : String(item?.metadata?.backgroundFallbackUrl || '').trim();
+  const backgroundFallbackMediaType = slideUrl
+    ? undefined
+    : item?.metadata?.backgroundFallbackMediaType;
   return {
     backgroundUrl,
     mediaType: inferMediaType(backgroundUrl, slide?.mediaType || item?.theme?.mediaType),
+    backgroundFallbackUrl: backgroundFallbackUrl || undefined,
+    backgroundFallbackMediaType: backgroundFallbackUrl
+      ? inferMediaType(backgroundFallbackUrl, backgroundFallbackMediaType || item?.theme?.mediaType)
+      : undefined,
+    backgroundSourceUrl: String(item?.metadata?.backgroundSourceUrl || '').trim() || undefined,
+    backgroundProvider: String(item?.metadata?.backgroundProvider || '').trim() || undefined,
+    backgroundCategory: String(item?.metadata?.backgroundCategory || '').trim() || undefined,
+    backgroundTitle: String(item?.metadata?.backgroundTitle || '').trim() || undefined,
   };
 };
 
@@ -73,11 +93,32 @@ export const inheritPrevailingBackground = (
     metadata: {
       ...item.metadata,
       backgroundSource: 'inherited',
+      backgroundFallbackUrl: prevailing.backgroundFallbackUrl || prevailing.backgroundUrl,
+      backgroundFallbackMediaType: prevailing.backgroundFallbackMediaType || prevailing.mediaType,
+      backgroundSourceUrl: prevailing.backgroundSourceUrl || prevailing.backgroundUrl,
+      backgroundProvider: prevailing.backgroundProvider,
+      backgroundCategory: prevailing.backgroundCategory,
+      backgroundTitle: prevailing.backgroundTitle,
     },
     theme: {
       ...item.theme,
       backgroundUrl: prevailing.backgroundUrl,
       mediaType: prevailing.mediaType,
     },
+  };
+};
+
+export const clearItemBackgroundFallback = (item: ServiceItem): ServiceItem => {
+  const metadata = item.metadata;
+  if (!metadata) return item;
+  if (!metadata.backgroundFallbackUrl && !metadata.backgroundFallbackMediaType) return item;
+  const {
+    backgroundFallbackUrl: _backgroundFallbackUrl,
+    backgroundFallbackMediaType: _backgroundFallbackMediaType,
+    ...restMetadata
+  } = metadata;
+  return {
+    ...item,
+    metadata: Object.keys(restMetadata).length > 0 ? restMetadata : undefined,
   };
 };

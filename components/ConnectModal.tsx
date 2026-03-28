@@ -102,6 +102,7 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
     const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
     const [activePanel, setActivePanel] = useState<ConnectPanel>(initialPanel);
     const [bridgeBusy, setBridgeBusy] = useState(false);
+    const [projectionBusy, setProjectionBusy] = useState(false);
     const [openSections, setOpenSections] = useState<Record<AetherSection, boolean>>({
         urls: true,
         bridge: true,
@@ -178,6 +179,16 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
         }
     };
 
+    const runProjectionAction = async (action: () => Promise<void> | void) => {
+        if (projectionBusy) return;
+        setProjectionBusy(true);
+        try {
+            await action();
+        } finally {
+            window.setTimeout(() => setProjectionBusy(false), 180);
+        }
+    };
+
     useEffect(() => {
         if (!dragging) return;
         const onPointerMove = (event: PointerEvent) => {
@@ -204,6 +215,7 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
             setDragging(false);
             setPosition(null);
             setBridgeBusy(false);
+            setProjectionBusy(false);
             return;
         }
         setActivePanel(initialPanel);
@@ -330,16 +342,19 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                                 </a>
 
                                 <button
-                                    onClick={() => onSetProjected(!isProjected)}
+                                    onClick={() => {
+                                        void runProjectionAction(() => onSetProjected(!isProjected));
+                                    }}
+                                    disabled={projectionBusy}
                                     className={`w-full py-3 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all active:scale-95 border ${
                                         isProjected
                                             ? 'bg-emerald-600/25 border-emerald-500 text-emerald-200 hover:bg-emerald-600/35'
                                             : 'bg-zinc-800/60 border-zinc-700 text-zinc-200 hover:bg-zinc-800'
-                                    }`}
+                                    } ${projectionBusy ? 'opacity-60 cursor-wait' : ''}`}
                                     data-no-drag
                                 >
                                     <MonitorIcon className="w-4 h-4" />
-                                    {isProjected ? 'HIDE QR FROM PROJECTOR' : 'PROJECT QR TO SCREEN'}
+                                    {projectionBusy ? 'UPDATING PROJECTOR...' : (isProjected ? 'HIDE QR FROM PROJECTOR' : 'PROJECT QR TO SCREEN')}
                                 </button>
 
                                 <div className="p-3 rounded-lg border border-zinc-800 bg-zinc-950/70 text-left">

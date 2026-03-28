@@ -82,6 +82,12 @@ export interface ServiceItemMetadata {
   createdAt?: number;
   source?: 'manual' | 'ai' | 'bible' | 'hymn-library' | 'import' | 'audience';
   backgroundSource?: ServiceItemBackgroundSource;
+  backgroundFallbackUrl?: string;
+  backgroundFallbackMediaType?: MediaType;
+  backgroundSourceUrl?: string;
+  backgroundProvider?: string;
+  backgroundCategory?: string;
+  backgroundTitle?: string;
   hymn?: HymnGeneratedItemMetadata;
 }
 

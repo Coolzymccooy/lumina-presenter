@@ -19,10 +19,21 @@ const BG_PRESETS = [
   { label: 'Sunrise',     query: 'sunrise sky background' },
 ];
 
-function SmartBgSearch({ onApply }: { onApply: (url: string, thumb: string) => void }) {
+type QuickBackgroundSelection = {
+  url: string;
+  thumb: string;
+  mediaType: 'video' | 'image';
+  provider: string;
+  category: string;
+  title: string;
+  sourceUrl: string;
+};
+
+function SmartBgSearch({ onApply }: { onApply: (selection: QuickBackgroundSelection) => void }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState('Quick BG');
   const [results, setResults] = useState<RemoteMotionAsset[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -55,12 +66,17 @@ function SmartBgSearch({ onApply }: { onApply: (url: string, thumb: string) => v
   const handlePreset = (preset: typeof BG_PRESETS[0]) => {
     setQuery(preset.query);
     setOpen(true);
+    setActiveCategory(preset.label);
     runSearch(preset.query);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (query.trim()) { setOpen(true); runSearch(query.trim()); }
+    if (query.trim()) {
+      setOpen(true);
+      setActiveCategory(query.trim());
+      runSearch(query.trim());
+    }
   };
 
   return (
@@ -106,7 +122,19 @@ function SmartBgSearch({ onApply }: { onApply: (url: string, thumb: string) => v
                 {results.map((asset) => (
                   <button
                     key={asset.id}
-                    onClick={() => { onApply(asset.url, asset.thumb); setOpen(false); setActiveQuery(''); }}
+                    onClick={() => {
+                      onApply({
+                        url: asset.url,
+                        thumb: asset.thumb,
+                        mediaType: asset.mediaType,
+                        provider: 'quick-bg',
+                        category: activeCategory,
+                        title: asset.name,
+                        sourceUrl: asset.url,
+                      });
+                      setOpen(false);
+                      setActiveQuery('');
+                    }}
                     className="group relative aspect-video rounded-md overflow-hidden border border-zinc-800 hover:border-blue-500 transition-all shadow-md"
                     title={asset.name}
                   >
@@ -260,7 +288,21 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
 
       {/* Smart Background Search */}
       <SmartBgSearch
-        onApply={(url, _thumb) => updateTheme({ backgroundUrl: url, mediaType: 'video' })}
+        onApply={(selection) => onUpdate({
+          ...item,
+          theme: {
+            ...item.theme,
+            backgroundUrl: selection.url,
+            mediaType: selection.mediaType,
+          },
+          metadata: {
+            ...item.metadata,
+            backgroundProvider: selection.provider,
+            backgroundCategory: selection.category,
+            backgroundTitle: selection.title,
+            backgroundSourceUrl: selection.sourceUrl,
+          },
+        })}
       />
 
       <div className="grid grid-cols-1 gap-2 rounded-xl border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(24,24,27,0.82),rgba(10,10,14,0.96))] p-2.5 shadow-[0_14px_28px_rgba(0,0,0,0.2)] sm:grid-cols-2 xl:grid-cols-12">
