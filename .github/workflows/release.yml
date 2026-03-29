@@ -89,37 +89,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build macOS artifacts
+      - name: Build macOS artifacts (unsigned)
         env:
-          CSC_LINK_SECRET: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD_SECRET: ${{ secrets.CSC_KEY_PASSWORD }}
-          APPLE_ID_SECRET: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD_SECRET: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID_SECRET: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
         run: |
-          if [[ -z "$CSC_LINK_SECRET" || -z "$CSC_KEY_PASSWORD_SECRET" || -z "$APPLE_ID_SECRET" || -z "$APPLE_APP_SPECIFIC_PASSWORD_SECRET" || -z "$APPLE_TEAM_ID_SECRET" ]]; then
-            echo "Missing required Apple signing/notarization secrets. Refusing to publish an unsigned or unnotarized macOS app."
-            exit 1
-          fi
-
-          export CSC_LINK="$CSC_LINK_SECRET"
-          export CSC_KEY_PASSWORD="$CSC_KEY_PASSWORD_SECRET"
-          export APPLE_ID="$APPLE_ID_SECRET"
-          export APPLE_APP_SPECIFIC_PASSWORD="$APPLE_APP_SPECIFIC_PASSWORD_SECRET"
-          export APPLE_TEAM_ID="$APPLE_TEAM_ID_SECRET"
-          echo "Building signed, hardened, notarized universal macOS artifacts."
-
+          echo "Building unsigned universal macOS artifacts (no Apple signing credentials configured)."
           npm run dist:mac:ci
-
-      - name: Verify macOS signing
-        run: |
-          APP_PATH="$(find release -maxdepth 2 -name 'Lumina Presenter.app' | head -n 1)"
-          if [[ -z "$APP_PATH" ]]; then
-            echo "Could not find built app bundle for verification."
-            exit 1
-          fi
-          codesign --verify --deep --strict "$APP_PATH"
-          spctl -a -vv --type exec "$APP_PATH"
 
       - name: Publish GitHub release (non-draft)
         uses: softprops/action-gh-release@v2

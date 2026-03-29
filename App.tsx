@@ -7805,7 +7805,7 @@ function App() {
                             ))}
                           </select>
                           <button onClick={applySelectedPresetToCurrentCue} disabled={!selectedSpeakerPresetId || !(currentCueItemId || selectedItemId)} className="text-[9px] px-2.5 py-0.5 bg-emerald-700 hover:bg-emerald-600 rounded text-white font-bold transition-colors disabled:opacity-30 uppercase">Apply</button>
-                          <button onClick={openSpeakerPresetStudio} className="h-6 w-6 flex items-center justify-center rounded border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all"><Settings className="w-3 h-3" /></button>
+                          <button onClick={openSpeakerPresetStudio} aria-label="Manage" data-testid="speaker-preset-studio-open" className="h-6 w-6 flex items-center justify-center rounded border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all"><Settings className="w-3 h-3" /></button>
                         </div>
                         <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-lg px-2 h-9">
                           <span className="text-[9px] text-zinc-500 font-black uppercase shrink-0 mr-0.5">Rundown</span>

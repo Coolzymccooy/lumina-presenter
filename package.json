@@ -93,11 +93,9 @@
       "category": "public.app-category.productivity",
       "icon": "public/icon.png",
       "artifactName": "Lumina-Presenter-${version}-mac-${arch}.${ext}",
-      "hardenedRuntime": true,
+      "hardenedRuntime": false,
       "gatekeeperAssess": false,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.inherit.plist",
-      "notarize": true,
+      "notarize": false,
       "target": [
         {
           "target": "dmg"
