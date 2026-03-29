@@ -246,6 +246,9 @@ type WorkspaceSettings = {
   aetherSceneProgram: string;
   aetherSceneBlackout: string;
   aetherSceneLobby: string;
+  slideBrandingEnabled: boolean;
+  slideBrandingSeriesLabel: string;
+  slideBrandingStyle: 'minimal' | 'bold' | 'frosted';
 };
 
 type ProtectedWorkspaceFieldKey = 'remoteAdminEmails' | 'sessionId';
@@ -837,6 +840,9 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
   if (typeof raw.aetherSceneProgram === 'string') safe.aetherSceneProgram = raw.aetherSceneProgram.slice(0, 120);
   if (typeof raw.aetherSceneBlackout === 'string') safe.aetherSceneBlackout = raw.aetherSceneBlackout.slice(0, 120);
   if (typeof raw.aetherSceneLobby === 'string') safe.aetherSceneLobby = raw.aetherSceneLobby.slice(0, 120);
+  if (typeof raw.slideBrandingEnabled === 'boolean') safe.slideBrandingEnabled = raw.slideBrandingEnabled;
+  if (typeof raw.slideBrandingSeriesLabel === 'string') safe.slideBrandingSeriesLabel = raw.slideBrandingSeriesLabel.slice(0, 80);
+  if (raw.slideBrandingStyle === 'minimal' || raw.slideBrandingStyle === 'bold' || raw.slideBrandingStyle === 'frosted') safe.slideBrandingStyle = raw.slideBrandingStyle;
   return safe;
 };
 
@@ -1257,6 +1263,9 @@ function App() {
     aetherSceneProgram: 'Program',
     aetherSceneBlackout: 'Blackout',
     aetherSceneLobby: 'Lobby',
+    slideBrandingEnabled: false,
+    slideBrandingSeriesLabel: '',
+    slideBrandingStyle: 'minimal',
   });
   const [presenterLayoutPrefs, setPresenterLayoutPrefs] = useState<PresenterLayoutPrefs>(() => (
     readPresenterLayoutPrefs('default-workspace', !!window.electron?.isElectron)
@@ -6060,6 +6069,7 @@ function App() {
             showSlideLabel={true}
             audienceOverlay={audienceDisplay}
             projectedAudienceQr={audienceQrProjection}
+            branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle }}
           />
         )}
       </div>
@@ -6837,6 +6847,7 @@ function App() {
                       isMuted={isPreviewMuted}
                       lowerThirds={previewLowerThirds}
                       audienceOverlay={audienceDisplay}
+                      branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle }}
                     />
                   )
                   : (
@@ -7693,6 +7704,7 @@ function App() {
                         isMuted={isPreviewMuted}
                         lowerThirds={lowerThirdsEnabled}
                         audienceOverlay={audienceDisplay}
+                        branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle }}
                       />
                     )}
                     <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-400 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">
