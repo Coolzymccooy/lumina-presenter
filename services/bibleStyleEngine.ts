@@ -210,6 +210,18 @@ const SPLIT_PANEL_CONFIGS: SplitPanelConfig[] = [
   { leftBg: '#6a1a1a', rightBg: '#0a0a18', accent1: '#f54040', accent2: '#f5c842', accent3: '#c080f0', shapeVariant: 0, divideX: 710 },
   // 6. Royal Blue (yellow shapes, navy right)
   { leftBg: '#1a2a7a', rightBg: '#050e28', accent1: '#f5c842', accent2: '#e04040', accent3: '#40c8f0', shapeVariant: 1, divideX: 700 },
+  // 7. Midnight Copper — dark copper left, deep brown-black right
+  { leftBg: '#3d1f0a', rightBg: '#0d0806', accent1: '#c8601a', accent2: '#f0a050', accent3: '#e8c880', shapeVariant: 2, divideX: 660 },
+  // 8. Ocean Depth — stormy teal left, ink-black right
+  { leftBg: '#0a3040', rightBg: '#040c12', accent1: '#20c8e8', accent2: '#f0f040', accent3: '#4080c0', shapeVariant: 3, divideX: 730 },
+  // 9. Neon Gospel — electric violet left, near-black right (contemporary praise)
+  { leftBg: '#280060', rightBg: '#080010', accent1: '#c040ff', accent2: '#40e0ff', accent3: '#ff4080', shapeVariant: 0, divideX: 670 },
+  // 10. Desert Gold — sandy gold left, dark terracotta right
+  { leftBg: '#7a5a10', rightBg: '#200800', accent1: '#f0d040', accent2: '#e87820', accent3: '#c0a840', shapeVariant: 1, divideX: 695 },
+  // 11. Arctic — icy steel-blue left, almost-white right text on deep navy
+  { leftBg: '#0a2040', rightBg: '#030812', accent1: '#80d8f8', accent2: '#f8f8ff', accent3: '#4090c0', shapeVariant: 2, divideX: 710 },
+  // 12. Rose Gold — blush left, rich plum right (worship ballads)
+  { leftBg: '#6a2040', rightBg: '#120010', accent1: '#f080a8', accent2: '#f8c080', accent3: '#e840a0', shapeVariant: 3, divideX: 680 },
 ];
 
 // Pre-defined torn-paper path profiles — x variation at each y-step
