@@ -664,7 +664,9 @@ async function loadMainContent(mainWindow, isProd) {
   if (!fs.existsSync(DIST_INDEX_PATH)) {
     throw new Error(`Renderer build not found at ${DIST_INDEX_PATH}`);
   }
-  await mainWindow.loadFile(DIST_INDEX_PATH);
+  await mainWindow.loadFile(DIST_INDEX_PATH, {
+    hash: `?api=${encodeURIComponent('https://api.luminalive.co.uk')}`,
+  });
 }
 
 function ensureAutoUpdaterInitialized() {
@@ -677,7 +679,11 @@ async function checkForUpdatesSafely(isManual = false) {
   if (!app.isPackaged) return;
   lastUpdateCheckWasManual = isManual;
   try {
-    const { autoUpdater } = await import('electron-updater');
+    const updaterMod = await import('electron-updater');
+    const autoUpdater = updaterMod.autoUpdater ?? updaterMod.default?.autoUpdater ?? updaterMod.default;
+    if (!autoUpdater || typeof autoUpdater.checkForUpdates !== 'function') {
+      throw new Error('electron-updater did not export a valid autoUpdater instance');
+    }
     autoUpdaterRef = autoUpdater;
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
