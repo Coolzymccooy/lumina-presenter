@@ -1132,6 +1132,97 @@ ${sermonText}`,
   }
 });
 
+app.post("/api/ai/assist-query", async (req, res) => {
+  const query = String(req.body?.query || "").trim();
+  const mode = String(req.body?.mode || "auto").trim().toLowerCase();
+  if (!query) return res.status(400).json({ ok: false, error: "QUERY_REQUIRED" });
+  const ai = ensureGoogleAiClient(res);
+  if (!ai) return;
+
+  const intentMap = {
+    song: "lyrics",
+    lyrics: "lyrics",
+    sermon: "sermon",
+    announcement: "announcement",
+    prayer: "prayer",
+  };
+  const detectedIntent = intentMap[mode] || "unknown";
+
+  const systemPrompt = detectedIntent === "lyrics"
+    ? `You are a church lyric content assistant. The user is searching for song lyrics or worship content.
+Task: Given the query, produce clean, presentation-ready lyrics with properly labelled sections.
+If the song is well-known, reproduce the public-domain or commonly-known version.
+If unknown, generate worship-appropriate lyrics inspired by the query theme.
+Label each section: "Verse 1", "Verse 2", "Chorus", "Bridge", "Pre-Chorus", etc.
+Detect the intent as "lyrics".`
+    : detectedIntent === "sermon"
+    ? `You are a church sermon content assistant.
+Task: Given the query, produce a structured sermon outline or content with clearly labelled sections.
+Each section should be a key point, scripture basis, or application.
+Label each: "Introduction", "Point 1 - Title", "Scripture", "Application", "Conclusion", etc.
+Detect the intent as "sermon".`
+    : detectedIntent === "announcement"
+    ? `You are a church communications assistant.
+Task: Given the query, produce concise, warm, presentation-ready announcement text.
+Split into logical sections for slides: Title, Main Body, Date/Time/Location, Call to Action.
+Detect the intent as "announcement".`
+    : detectedIntent === "prayer"
+    ? `You are a church liturgy assistant.
+Task: Given the query, produce a structured prayer or responsive reading suitable for projection.
+Split into: Opening, Body (stanzas), Response prompts if applicable, Closing.
+Detect the intent as "prayer".`
+    : `You are a church content assistant. Determine intent and produce structured, slide-ready content.
+Detect intent as one of: lyrics, sermon, announcement, prayer.
+Label every section clearly.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `${systemPrompt}\n\nQuery: "${query}"`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            intent: { type: Type.STRING },
+            confidence: { type: Type.NUMBER },
+            rawText: { type: Type.STRING },
+            sections: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  label: { type: Type.STRING },
+                  type: { type: Type.STRING },
+                  text: { type: Type.STRING },
+                },
+                required: ["label", "type", "text"],
+              },
+            },
+          },
+          required: ["title", "intent", "sections", "rawText", "confidence"],
+        },
+      },
+    });
+
+    const parsed = parseAiJson(response);
+    if (!parsed || !Array.isArray(parsed.sections) || !parsed.sections.length) {
+      return res.status(500).json({ ok: false, error: "AI_NO_CONTENT" });
+    }
+    return res.json({
+      ok: true,
+      data: {
+        ...parsed,
+        source: "ai",
+        confidence: Number(parsed.confidence) || 0.8,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: String(error?.message || error) });
+  }
+});
+
 app.post("/api/ai/transcribe-sermon-chunk", async (req, res) => {
   const locale = String(req.body?.locale || "").trim();
   const mimeType = String(req.body?.mimeType || "").trim().toLowerCase();

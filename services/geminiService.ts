@@ -313,3 +313,28 @@ export const analyzeSermonAndGenerateDeck = async (sermonText: string): Promise<
     slides,
   };
 };
+
+// ─── AI Assist Query ──────────────────────────────────────────────────────────
+
+export type AIAssistSectionType = 'verse' | 'chorus' | 'bridge' | 'intro' | 'outro' | 'point' | 'body' | 'heading';
+
+export interface AIAssistSection {
+  label: string;
+  type: AIAssistSectionType;
+  text: string;
+}
+
+export interface AIAssistResult {
+  title: string;
+  intent: 'lyrics' | 'sermon' | 'announcement' | 'prayer' | 'unknown';
+  source: 'ai';
+  sections: AIAssistSection[];
+  rawText: string;
+  confidence: number;
+}
+
+export const assistQueryWithAI = async (query: string, mode: string): Promise<AIAssistResult | null> => {
+  const response = await postAi('/api/ai/assist-query', { query, mode }, 45000);
+  if (!response?.ok || !response?.data) return null;
+  return response.data as AIAssistResult;
+};
