@@ -279,6 +279,7 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiSearchError, setAiSearchError] = useState<{ kind: 'unavailable' | 'not-found'; msg: string } | null>(null);
 
   // Search results
   const [hymnResults, setHymnResults] = useState<Hymn[]>([]);
@@ -300,6 +301,7 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
     setAiResult(null);
     setDetectedIntent(null);
     setError(null);
+    setAiSearchError(null);
     setSermonValidation(null);
   }, [isOpen]);
 
@@ -311,6 +313,7 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
       setDetectedIntent(null);
       return;
     }
+    setAiSearchError(null);   // clear stale AI error when user types
     const intent = detectQueryIntent(searchQuery);
     setDetectedIntent(intent);
     if (intent === 'SONG' || mode === 'SONG' || mode === 'SEARCH') {
@@ -327,17 +330,24 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
     if (!searchQuery.trim()) return;
     setIsSearching(true);
     setAiResult(null);
-    setError(null);
+    setAiSearchError(null);
     try {
       const modeParam = detectedIntent === 'SONG' ? 'lyrics' :
         detectedIntent === 'SERMON' ? 'sermon' :
         detectedIntent === 'ANNOUNCEMENT' ? 'announcement' :
         detectedIntent === 'SCRIPTURE' ? 'scripture' : 'auto';
       const result = await assistQueryWithAI(searchQuery, modeParam);
-      if (result) setAiResult(result);
-      else setError('No content found. Try a different query.');
+      if (result && result.sections?.length) {
+        setAiResult(result);
+      } else if (result) {
+        // AI responded but returned empty sections
+        setAiSearchError({ kind: 'not-found', msg: `Couldn't structure content for "${searchQuery}". Try rephrasing — e.g. "Jesus Iye lyrics" or paste the lyrics manually below.` });
+      } else {
+        // null = server unreachable / endpoint not found
+        setAiSearchError({ kind: 'unavailable', msg: 'AI search is warming up — the server may still be deploying. Try again in a moment, or paste the lyrics manually in the Lyrics tab.' });
+      }
     } catch (e: any) {
-      setError(e.message || 'AI search failed');
+      setAiSearchError({ kind: 'unavailable', msg: e.message || 'AI search failed. Check your connection and try again.' });
     } finally {
       setIsSearching(false);
     }
@@ -543,8 +553,36 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
                 </div>
               )}
 
+              {/* AI search error */}
+              {aiSearchError && (
+                <div className={`p-3 rounded-md border flex gap-3 items-start text-xs ${
+                  aiSearchError.kind === 'unavailable'
+                    ? 'bg-amber-950/20 border-amber-800/40 text-amber-300'
+                    : 'bg-zinc-900/60 border-zinc-700 text-zinc-400'
+                }`}>
+                  <span className="text-lg leading-none shrink-0">
+                    {aiSearchError.kind === 'unavailable' ? '⏳' : '🔍'}
+                  </span>
+                  <div className="space-y-1.5 flex-1">
+                    <p className="font-semibold text-[10px] uppercase tracking-wide">
+                      {aiSearchError.kind === 'unavailable' ? 'AI Search Warming Up' : 'No AI Content Found'}
+                    </p>
+                    <p className="text-[10px] leading-relaxed opacity-80">{aiSearchError.msg}</p>
+                    {aiSearchError.kind === 'not-found' && (
+                      <button
+                        onClick={() => { setMode('SONG'); setInputText(''); setAiSearchError(null); }}
+                        className="mt-1 px-2 py-1 rounded text-[8px] font-bold uppercase tracking-wide border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 transition-all"
+                      >
+                        Paste Lyrics Manually →
+                      </button>
+                    )}
+                  </div>
+                  <button onClick={() => setAiSearchError(null)} className="shrink-0 opacity-50 hover:opacity-100 transition-opacity">✕</button>
+                </div>
+              )}
+
               {/* Empty state */}
-              {!hasResults && !isSearching && (
+              {!hasResults && !isSearching && !aiSearchError && (
                 <div className="py-8 flex flex-col items-center justify-center text-center space-y-3 opacity-50">
                   <SearchIcon className="w-8 h-8 text-zinc-600" />
                   <div>
@@ -603,6 +641,16 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
                   )}
                   {aiResult && (
                     <AIResultCard result={aiResult} onGenerate={onGenerate} onClose={onClose} onInsertText={handleInsertText} />
+                  )}
+                  {aiSearchError && (
+                    <div className={`p-2.5 rounded border flex gap-2 items-start text-[10px] ${
+                      aiSearchError.kind === 'unavailable'
+                        ? 'bg-amber-950/20 border-amber-800/40 text-amber-300'
+                        : 'bg-zinc-900/60 border-zinc-700 text-zinc-400'
+                    }`}>
+                      <span className="shrink-0">{aiSearchError.kind === 'unavailable' ? '⏳' : '🔍'}</span>
+                      <span className="leading-relaxed opacity-80">{aiSearchError.msg}</span>
+                    </div>
                   )}
                   {(hymnResults.length > 0 || aiResult) && (
                     <div className="text-[9px] text-zinc-600 text-center">— or paste lyrics manually below —</div>
