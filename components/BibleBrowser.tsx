@@ -2,6 +2,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BibleIcon, SearchIcon, PlayIcon, SparklesIcon } from './Icons';
 import { ServiceItem, ItemType, MediaType } from '../types';
 import { DEFAULT_BACKGROUNDS } from '../constants';
+import { BibleStylePicker } from './BibleStylePicker.tsx';
+import {
+  generateBibleStyle,
+  applyBibleStyle,
+  type BibleStyleFamily,
+  type BibleStyleMode,
+} from '../services/bibleStyleEngine.ts';
 import { semanticBibleSearch, transcribeSermonChunk, type TranscribeSermonChunkResult } from '../services/geminiService';
 import { createBundledTopicBibleMemoryProvider, type BibleMemoryQueryOrigin } from '../services/bibleMemory.ts';
 import { resolveBibleIntent } from '../services/bibleIntentResolver.ts';
@@ -219,6 +226,9 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const [selectedMediaType, setSelectedMediaType] = useState<MediaType>('image');
   const [bibleLayout, setBibleLayout] = useState<'standard' | 'scripture_ref' | 'ticker'>('standard');
   const [bibleFontSize, setBibleFontSize] = useState<'small' | 'medium' | 'large' | 'xlarge'>('large');
+  const [bibleStyleMode, setBibleStyleMode] = useState<BibleStyleMode>('classic');
+  const [bibleStyleFamily, setBibleStyleFamily] = useState<BibleStyleFamily | null>(null);
+  const [bibleStyleSeed, setBibleStyleSeed] = useState<string>('');
 
   const [autoVisionaryEnabled, setAutoVisionaryEnabled] = useState(false);
   const [autoProjectEnabled, setAutoProjectEnabled] = useState(true);
@@ -495,31 +505,77 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     setVerseTo(nextVerseTo);
   }, []);
 
-  const createServiceItem = useCallback((verses: Verse[], overrideLayout?: typeof bibleLayout, overrideFontSize?: typeof bibleFontSize): ServiceItem => {
+  const createServiceItem = useCallback((
+    verses: Verse[],
+    overrideLayout?: typeof bibleLayout,
+    overrideFontSize?: typeof bibleFontSize,
+    overrideStyleMode?: BibleStyleMode,
+    overrideStyleFamily?: BibleStyleFamily | null,
+    overrideStyleSeed?: string,
+  ): ServiceItem => {
     const title = `${verses[0].book_name} ${verses[0].chapter}:${verses[0].verse}${verses.length > 1 ? `-${verses[verses.length - 1].verse}` : ''}`;
     const versionLabel = VERSIONS.find((v) => v.id === selectedVersion)?.name || selectedVersion.toUpperCase();
     const layout = overrideLayout ?? bibleLayout;
     const fontSize = overrideFontSize ?? bibleFontSize;
+    const styleMode = overrideStyleMode ?? bibleStyleMode;
+    const styleFamily = overrideStyleFamily !== undefined ? overrideStyleFamily : bibleStyleFamily;
+    const styleSeed = overrideStyleSeed !== undefined ? overrideStyleSeed : bibleStyleSeed;
+
+    // Classic mode: use original background/layout system unchanged
+    if (styleMode === 'classic') {
+      return {
+        id: `bible-${Date.now()}`,
+        title,
+        type: ItemType.BIBLE,
+        theme: {
+          backgroundUrl: selectedBg,
+          mediaType: selectedMediaType,
+          fontFamily: 'serif',
+          textColor: '#ffffff',
+          shadow: true,
+          fontSize,
+        },
+        slides: verses.map((v) => ({
+          id: `v-${v.verse}-${Date.now()}`,
+          content: v.text.trim(),
+          label: `${v.book_name} ${v.chapter}:${v.verse} (${versionLabel})`,
+          layoutType: layout !== 'standard' ? layout : undefined,
+        })),
+      };
+    }
+
+    // Smart-random or Preset mode: use style engine
+    const combinedText = verses.map((v) => v.text.trim()).join(' ');
+    const reference = title;
+    const profile = generateBibleStyle({
+      verseText: combinedText,
+      reference,
+      mode: styleMode,
+      family: styleFamily ?? undefined,
+      manualSeed: styleSeed || undefined,
+    });
+
+    const verseList = verses.map((v) => ({
+      text: v.text.trim(),
+      label: `${v.book_name} ${v.chapter}:${v.verse} (${versionLabel})`,
+    }));
+    const { theme, slides: styledSlides } = applyBibleStyle(verseList, profile);
+
     return {
       id: `bible-${Date.now()}`,
       title,
       type: ItemType.BIBLE,
-      theme: {
-        backgroundUrl: selectedBg,
-        mediaType: selectedMediaType,
-        fontFamily: 'serif',
-        textColor: '#ffffff',
-        shadow: true,
-        fontSize,
-      },
-      slides: verses.map((v) => ({
-        id: `v-${v.verse}-${Date.now()}`,
+      theme: { ...theme, fontSize },
+      slides: verses.map((v, i) => ({
+        id: `v-${v.verse}-${Date.now() + i}`,
         content: v.text.trim(),
         label: `${v.book_name} ${v.chapter}:${v.verse} (${versionLabel})`,
-        layoutType: layout !== 'standard' ? layout : undefined,
+        backgroundUrl: styledSlides[i]?.backgroundUrl,
+        mediaType: styledSlides[i]?.mediaType,
+        elements: styledSlides[i]?.elements,
       })),
     };
-  }, [selectedBg, selectedMediaType, selectedVersion, bibleLayout, bibleFontSize]);
+  }, [selectedBg, selectedMediaType, selectedVersion, bibleLayout, bibleFontSize, bibleStyleMode, bibleStyleFamily, bibleStyleSeed]);
 
   const fetchScripture = useCallback(async (query: string, useSemantic = false, silent = false): Promise<Verse[]> => {
     if (!query.trim()) return [];
@@ -1446,6 +1502,25 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                   >{label}</button>
                 ))}
               </div>
+              {/* Bible Style Engine picker */}
+              <BibleStylePicker
+                mode={bibleStyleMode}
+                family={bibleStyleFamily}
+                onModeChange={(m) => {
+                  setBibleStyleMode(m);
+                  if (results.length > 0) onProjectRequest(createServiceItem(results, undefined, undefined, m));
+                }}
+                onFamilyChange={(f) => {
+                  setBibleStyleFamily(f);
+                  if (results.length > 0) onProjectRequest(createServiceItem(results, undefined, undefined, undefined, f));
+                }}
+                onRandomize={() => {
+                  const newSeed = `rand-${Date.now()}`;
+                  setBibleStyleSeed(newSeed);
+                  if (results.length > 0) onProjectRequest(createServiceItem(results, undefined, undefined, undefined, undefined, newSeed));
+                }}
+                compact={compact}
+              />
             </div>
 
             <div className={actionFooterClassName}>

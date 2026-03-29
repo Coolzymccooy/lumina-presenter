@@ -23,7 +23,7 @@ export const GOSPEL_TRACKS: GospelTrack[] = [
   { id: 't10', title: "Holy Holy Holy (Brass)", artist: "Royal Praise", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-17.mp3", duration: "3:10" },
 ];
 
-const makeGradientBackground = (a: string, b: string, c: string) => {
+export const makeGradientBackground = (a: string, b: string, c: string) => {
   const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='${a}'/><stop offset='52%' stop-color='${b}'/><stop offset='100%' stop-color='${c}'/></linearGradient><radialGradient id='r1' cx='72%' cy='18%' r='78%'><stop offset='0%' stop-color='rgba(255,255,255,0.34)'/><stop offset='45%' stop-color='rgba(255,255,255,0.12)'/><stop offset='100%' stop-color='rgba(255,255,255,0)'/></radialGradient><radialGradient id='r2' cx='18%' cy='88%' r='72%'><stop offset='0%' stop-color='rgba(125,211,252,0.18)'/><stop offset='100%' stop-color='rgba(125,211,252,0)'/></radialGradient></defs><rect width='1920' height='1080' fill='url(#g)'/><rect width='1920' height='1080' fill='url(#r1)'/><rect width='1920' height='1080' fill='url(#r2)'/></svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 };
