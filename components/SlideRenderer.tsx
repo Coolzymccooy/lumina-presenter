@@ -5,6 +5,7 @@ import { getMediaAsset, getCachedMediaAsset } from "../services/localMedia";
 import { ElementRenderer } from "./slide-layout/render/ElementRenderer";
 import { PROGRAM_MEDIA_PRESENTATION_FILTER, shouldShowScriptureReferenceLabel, shouldUseScriptureReadingPanel, TEXT_CONTRAST_BACKGROUND_OVERLAY } from "./slide-layout/render/backgroundTone";
 import { getRenderableElements } from "./slide-layout/utils/slideHydration";
+import { SlideBrandingOverlay, type SlideBrandingConfig } from "./SlideBrandingOverlay";
 
 interface SlideRendererProps {
   slide: Slide | null;
@@ -31,6 +32,8 @@ interface SlideRendererProps {
   showProjectorHelper?: boolean;
   audienceOverlay?: AudienceDisplayState;
   projectedAudienceQr?: AudienceQrProjectionState;
+  /** Church branding strips shown on left/right edges. Only pass on full-size (non-thumbnail) renders. */
+  branding?: SlideBrandingConfig;
 }
 
 function safeString(v: unknown) {
@@ -126,6 +129,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   showProjectorHelper = true,
   audienceOverlay,
   projectedAudienceQr,
+  branding,
 }) => {
   const htmlVideoRef = useRef<HTMLVideoElement>(null);
   const youtubeIframeRef = useRef<HTMLIFrameElement>(null);
@@ -404,6 +408,9 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   }, [hasBackground, isYoutube, isYoutubeReady, isLoading, mediaError, seekCommand, seekAmount, postYoutubeCommand]);
 
   const hasStructuredElements = Array.isArray(slide?.elements) && slide.elements.length > 0;
+  // Guardrail: data-URI backgrounds (SVG split-panel, gradient SVG) always load — never
+  // trigger the retained-background fallback for structured-element slides.
+  const isDataUriBg = rawBgUrl.startsWith('data:');
   const structuredElements = useMemo(
     () => (hasStructuredElements && slide ? getRenderableElements(slide, item) : []),
     [hasStructuredElements, slide, item]
@@ -562,6 +569,21 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   const renderMedia = () => {
     if (!hasBackground) {
       return <div className="w-full h-full bg-black" />;
+    }
+
+    // Data URIs (SVG split-panel, gradient SVG) are always immediately available in memory.
+    // Bypass resolvedUrl state, loading states, and error fallback completely — use rawBgUrl directly.
+    // If the data URI itself fails (malformed SVG), fall through to the mediaError retained-background path.
+    if (isDataUriBg && !mediaError) {
+      return (
+        <img
+          src={rawBgUrl}
+          alt=""
+          className="w-full h-full object-cover"
+          draggable={false}
+          onError={handleMediaError}
+        />
+      );
     }
 
     if (mediaError) {
@@ -744,6 +766,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       isLoading={isLoading}
       audienceOverlay={audienceOverlay}
       projectedAudienceQr={projectedAudienceQr}
+      branding={branding}
     />
   );
 };
@@ -771,12 +794,13 @@ interface ScaledCanvasProps {
   isLoading: boolean;
   audienceOverlay?: AudienceDisplayState;
   projectedAudienceQr?: AudienceQrProjectionState;
+  branding?: SlideBrandingConfig;
 }
 
 const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
   fitContainer, slide, item, contentText, hasReadableText, hasStructuredElements, structuredElements, hasTextOverlay, textPx, textLayerStyle, useReadingPanel,
   lowerThirds, showSlideLabel, renderMedia, mediaType, hasBackground, mediaError, isLoading,
-  audienceOverlay, projectedAudienceQr,
+  audienceOverlay, projectedAudienceQr, branding,
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -854,6 +878,9 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
         {hasTextOverlay && hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
           <div style={{ position: "absolute", inset: 0, background: TEXT_CONTRAST_BACKGROUND_OVERLAY }} />
         )}
+
+        {/* Branding strips — left series label + right church name */}
+        {branding && <SlideBrandingOverlay config={branding} />}
 
         {/* Text layer */}
         <div

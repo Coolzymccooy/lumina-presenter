@@ -246,6 +246,10 @@ type WorkspaceSettings = {
   aetherSceneProgram: string;
   aetherSceneBlackout: string;
   aetherSceneLobby: string;
+  slideBrandingEnabled: boolean;
+  slideBrandingSeriesLabel: string;
+  slideBrandingStyle: 'minimal' | 'bold' | 'frosted';
+  slideBrandingOpacity: number;
 };
 
 type ProtectedWorkspaceFieldKey = 'remoteAdminEmails' | 'sessionId';
@@ -837,6 +841,10 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
   if (typeof raw.aetherSceneProgram === 'string') safe.aetherSceneProgram = raw.aetherSceneProgram.slice(0, 120);
   if (typeof raw.aetherSceneBlackout === 'string') safe.aetherSceneBlackout = raw.aetherSceneBlackout.slice(0, 120);
   if (typeof raw.aetherSceneLobby === 'string') safe.aetherSceneLobby = raw.aetherSceneLobby.slice(0, 120);
+  if (typeof raw.slideBrandingEnabled === 'boolean') safe.slideBrandingEnabled = raw.slideBrandingEnabled;
+  if (typeof raw.slideBrandingSeriesLabel === 'string') safe.slideBrandingSeriesLabel = raw.slideBrandingSeriesLabel.slice(0, 80);
+  if (raw.slideBrandingStyle === 'minimal' || raw.slideBrandingStyle === 'bold' || raw.slideBrandingStyle === 'frosted') safe.slideBrandingStyle = raw.slideBrandingStyle;
+  if (typeof raw.slideBrandingOpacity === 'number' && raw.slideBrandingOpacity >= 0 && raw.slideBrandingOpacity <= 1) safe.slideBrandingOpacity = raw.slideBrandingOpacity;
   return safe;
 };
 
@@ -1257,6 +1265,10 @@ function App() {
     aetherSceneProgram: 'Program',
     aetherSceneBlackout: 'Blackout',
     aetherSceneLobby: 'Lobby',
+    slideBrandingEnabled: false,
+    slideBrandingSeriesLabel: '',
+    slideBrandingStyle: 'minimal',
+    slideBrandingOpacity: 0.82,
   });
   const [presenterLayoutPrefs, setPresenterLayoutPrefs] = useState<PresenterLayoutPrefs>(() => (
     readPresenterLayoutPrefs('default-workspace', !!window.electron?.isElectron)
@@ -2787,6 +2799,13 @@ function App() {
         backgroundFallbackUrl: backgroundUrl,
         backgroundFallbackMediaType: 'color',
       };
+    }
+
+    // Data URIs (SVG split-panel, gradient backgrounds) are self-contained in memory.
+    // Never fetch, save, or replace them — doing so would swap the instant data URI for
+    // a local:// URL that requires an async round-trip, causing "BACKGROUND UNAVAILABLE".
+    if (isDataMediaUrl(backgroundUrl)) {
+      return { ...snapshot };
     }
 
     const sourceUrl = String(snapshot.backgroundSourceUrl || (isRemoteMediaUrl(backgroundUrl) ? backgroundUrl : '') || '').trim();
@@ -4997,6 +5016,27 @@ function App() {
     return normalizedItem;
   }, [addItem, finalizeGeneratedItemBackground, goLive]);
 
+  // Updates an already-live/active bible item in-place (style/layout chip presses).
+  // Preserves the existing item's ID so no duplicate runsheet entries are created.
+  const handleBibleLiveUpdate = useCallback((item: ServiceItem) => {
+    const normalizedItem = finalizeGeneratedItemBackground({
+      ...item,
+      metadata: { ...item.metadata, source: item.metadata?.source || 'bible' },
+    }, 'system');
+    const targetId = activeItemId || selectedItemId;
+    const existingItem = targetId ? schedule.find((i) => i.id === targetId) : null;
+    if (existingItem && (existingItem.type === ItemType.BIBLE || existingItem.type === ItemType.SCRIPTURE || existingItem.metadata?.source === 'bible')) {
+      const replacedItem: ServiceItem = { ...normalizedItem, id: existingItem.id };
+      pushHistory();
+      setSchedule((prev) => prev.map((i) => (i.id === existingItem.id ? replacedItem : i)));
+      setSelectedItemId(existingItem.id);
+      goLive(replacedItem, 0);
+      return;
+    }
+    // Fallback: no active bible item to update, stage as a fresh item
+    stageGeneratedItem({ ...item, metadata: { ...item.metadata, source: item.metadata?.source || 'bible' } }, 'system', { goLive: true });
+  }, [activeItemId, selectedItemId, schedule, finalizeGeneratedItemBackground, goLive, stageGeneratedItem]);
+
   const handleAIItemGenerated = (item: ServiceItem) => {
     const normalizedItem = finalizeGeneratedItemBackground({
       ...item,
@@ -6060,6 +6100,7 @@ function App() {
             showSlideLabel={true}
             audienceOverlay={audienceDisplay}
             projectedAudienceQr={audienceQrProjection}
+            branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle, textOpacity: workspaceSettings.slideBrandingOpacity }}
           />
         )}
       </div>
@@ -6577,6 +6618,7 @@ function App() {
                 },
               }, 'system', { select: false });
             }}
+            onLiveStyleUpdate={handleBibleLiveUpdate}
             speechLocaleMode={workspaceSettings.visionarySpeechLocaleMode}
             onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
             compact={true}
@@ -6837,6 +6879,7 @@ function App() {
                       isMuted={isPreviewMuted}
                       lowerThirds={previewLowerThirds}
                       audienceOverlay={audienceDisplay}
+                      branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle, textOpacity: workspaceSettings.slideBrandingOpacity }}
                     />
                   )
                   : (
@@ -7562,6 +7605,7 @@ function App() {
                       },
                     }, 'system', { select: false });
                   }}
+                  onLiveStyleUpdate={handleBibleLiveUpdate}
                   speechLocaleMode={workspaceSettings.visionarySpeechLocaleMode}
                   onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
                   compact={true}
@@ -7693,6 +7737,7 @@ function App() {
                         isMuted={isPreviewMuted}
                         lowerThirds={lowerThirdsEnabled}
                         audienceOverlay={audienceDisplay}
+                        branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle, textOpacity: workspaceSettings.slideBrandingOpacity }}
                       />
                     )}
                     <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-400 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">
@@ -8045,6 +8090,7 @@ function App() {
                     showProjectorHelper={false}
                     audienceOverlay={audienceDisplay}
                     projectedAudienceQr={audienceQrProjection}
+                    branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle, textOpacity: workspaceSettings.slideBrandingOpacity }}
                   />
                 );
               })()}
@@ -8092,6 +8138,7 @@ function App() {
                 audienceOverlay={audienceDisplay}
                 stageAlert={stageAlert}
                 stageMessageCenter={stageMessageCenter}
+                branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle, textOpacity: workspaceSettings.slideBrandingOpacity }}
               />
             )}
           </OutputWindow>

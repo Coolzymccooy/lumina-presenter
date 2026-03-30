@@ -6,6 +6,7 @@ import { AudienceDisplayState, ServiceItem, StageAlertLayout, StageAlertState, S
 import { HoldScreen } from './presenter/HoldScreen';
 import { LoginScreen } from './LoginScreen';
 import { StageDisplay } from './StageDisplay';
+import type { SlideBrandingConfig } from './SlideBrandingOverlay';
 
 const STORAGE_KEY = 'lumina_session_v1';
 
@@ -30,6 +31,11 @@ type LocalStageState = {
     stageTimerLayout?: StageTimerLayout;
     stageAlertLayout?: StageAlertLayout;
     stageFlowLayout?: StageFlowLayout;
+    churchName?: string;
+    slideBrandingEnabled?: boolean;
+    slideBrandingSeriesLabel?: string;
+    slideBrandingStyle?: 'minimal' | 'bold' | 'frosted';
+    slideBrandingOpacity?: number;
   };
   updatedAt?: number;
 };
@@ -55,6 +61,7 @@ type EffectiveStageState = {
   stageTimerLayout?: StageTimerLayout;
   stageAlertLayout?: StageAlertLayout;
   stageFlowLayout: StageFlowLayout;
+  branding: SlideBrandingConfig;
   updatedAt: number;
   hasRenderable: boolean;
 };
@@ -346,6 +353,13 @@ export const StageRoute: React.FC = () => {
     const updatedAt = Number.isFinite(source?.updatedAt) ? Number(source.updatedAt) : 0;
     const holdScreenMode = sanitizeHoldScreenMode(source?.holdScreenMode);
     const churchName = typeof source?.workspaceSettings?.churchName === 'string' ? source.workspaceSettings.churchName : '';
+    const branding: SlideBrandingConfig = {
+      enabled: !!source?.workspaceSettings?.slideBrandingEnabled,
+      churchName,
+      seriesLabel: typeof source?.workspaceSettings?.slideBrandingSeriesLabel === 'string' ? source.workspaceSettings.slideBrandingSeriesLabel : '',
+      style: (source?.workspaceSettings?.slideBrandingStyle === 'bold' || source?.workspaceSettings?.slideBrandingStyle === 'frosted') ? source.workspaceSettings.slideBrandingStyle : 'minimal',
+      textOpacity: typeof source?.workspaceSettings?.slideBrandingOpacity === 'number' ? source.workspaceSettings.slideBrandingOpacity : 0.82,
+    };
 
     return {
       item: activeItem,
@@ -368,6 +382,7 @@ export const StageRoute: React.FC = () => {
       stageTimerLayout,
       stageAlertLayout,
       stageFlowLayout,
+      branding,
       updatedAt,
       hasRenderable: !!(activeItem && activeSlide),
     };
@@ -451,6 +466,7 @@ export const StageRoute: React.FC = () => {
       audienceOverlay={display.audienceOverlay}
       stageAlert={display.stageAlert}
       stageMessageCenter={display.stageMessageCenter}
+      branding={display.branding}
     />
   );
 };

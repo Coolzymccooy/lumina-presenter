@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ServiceItem, Slide, StageAlertLayout, StageAlertState, StageFlowLayout, StageMessageCenterState, StageTimerFlashColor, StageTimerLayout, StageTimerVariant } from '../types';
 import { getCachedMedia, getMedia } from '../services/localMedia';
+import { SlideRenderer } from './SlideRenderer';
+import type { SlideBrandingConfig } from './SlideBrandingOverlay';
 
 interface StageDisplayProps {
   currentSlide: Slide | null;
@@ -29,6 +31,7 @@ interface StageDisplayProps {
   viewportWidth?: number;
   viewportHeight?: number;
   className?: string;
+  branding?: SlideBrandingConfig;
 }
 
 const DEFAULT_LAYOUT: StageTimerLayout = {
@@ -184,6 +187,7 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
   viewportWidth,
   viewportHeight,
   className = '',
+  branding,
 }) => {
   const viewportOverride = useMemo<StageViewportOverride | null>(() => (
     embedded
@@ -780,36 +784,46 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-col justify-center">
-        <span className="text-sm font-bold text-green-500 uppercase tracking-widest mb-2">CURRENT</span>
-        {currentHasText ? (
-          <div className={`${currentTextClass} font-bold leading-tight text-white whitespace-pre-wrap`}>
-            {currentText}
-          </div>
-        ) : currentMediaUrl ? (
-          <div className="rounded-xl border border-zinc-700/60 bg-black/35 overflow-hidden max-h-[40vh]">
-            {currentMediaIsVideo ? (
-              <video src={currentMediaUrl} className="w-full h-full object-contain" muted autoPlay loop playsInline />
-            ) : (
-              <img src={currentMediaUrl} alt="Current visual slide" className="w-full h-full object-contain" />
-            )}
+      <div className="flex flex-col min-h-0 overflow-hidden">
+        <span className="text-sm font-bold text-green-500 uppercase tracking-widest mb-2 shrink-0">CURRENT</span>
+        {currentSlide ? (
+          <div className="flex gap-4 min-h-0 flex-1 overflow-hidden">
+            {/* Scaled replica of the projected output */}
+            <div className="shrink-0 rounded-xl overflow-hidden border border-zinc-700/50 shadow-xl" style={{ width: compact ? 320 : 480, aspectRatio: '16/9' }}>
+              <SlideRenderer
+                slide={currentSlide}
+                item={activeItem}
+                fitContainer={true}
+                isThumbnail={false}
+                isMuted={true}
+                isPlaying={true}
+                branding={branding}
+              />
+            </div>
+            {/* Speaker reading text — large, clear, never overflows */}
+            <div className="flex-1 min-w-0 flex flex-col justify-center overflow-hidden">
+              {currentHasText ? (
+                <div className={`${currentTextClass} font-bold leading-snug text-white overflow-hidden`} style={{ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 6, overflow: 'hidden' }}>
+                  {currentText}
+                </div>
+              ) : (
+                <div className={`${compact ? 'text-3xl' : 'text-4xl'} font-bold leading-tight text-zinc-500`}>
+                  Visual slide active
+                </div>
+              )}
+              {currentReferenceLabel && (
+                <div className="mt-3 shrink-0">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/25 bg-slate-950/80 px-4 py-2 shadow-[0_10px_35px_rgba(0,0,0,0.32)] backdrop-blur-md">
+                    <span className="text-[10px] uppercase tracking-[0.22em] font-black text-cyan-300/80">Ref</span>
+                    <span className="text-sm font-bold uppercase tracking-[0.08em] text-white/95">{currentReferenceLabel}</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <div className={`${compact ? 'text-4xl' : 'text-5xl'} font-bold leading-tight text-zinc-500`}>
             Waiting for active slide
-          </div>
-        )}
-        {!currentHasText && (
-          <div className="mt-2 text-[11px] uppercase tracking-wider text-cyan-300 font-bold">
-            {currentSlide?.label || 'Visual Slide Active'}
-          </div>
-        )}
-        {currentReferenceLabel && (
-          <div className="mt-5 flex justify-end">
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/25 bg-slate-950/80 px-4 py-2 text-right shadow-[0_10px_35px_rgba(0,0,0,0.32)] backdrop-blur-md">
-              <span className="text-[10px] uppercase tracking-[0.22em] font-black text-cyan-300/80">Ref</span>
-              <span className="text-sm font-bold uppercase tracking-[0.08em] text-white/95">{currentReferenceLabel}</span>
-            </div>
           </div>
         )}
       </div>
@@ -921,28 +935,41 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
           )}
         </div>
       )}
-      <div className={`flex flex-col justify-start ${nextPanelOpacityClass} ${highContrast ? 'bg-black border-white/30' : 'bg-gray-900/50 border-gray-800'} p-6 rounded-xl border`}>
-        <span className="text-sm font-bold text-blue-500 uppercase tracking-widest mb-2">NEXT</span>
-        {nextHasText ? (
-          <div className={`${nextTextClass} font-medium ${highContrast ? 'text-white' : 'text-gray-400'} leading-snug whitespace-pre-wrap opacity-70`}>
-            {nextText}
-          </div>
-        ) : nextMediaUrl ? (
-          <div className="rounded-xl border border-zinc-700/60 bg-black/30 overflow-hidden max-h-[26vh]">
-            {nextMediaIsVideo ? (
-              <video src={nextMediaUrl} className="w-full h-full object-contain opacity-80" muted autoPlay loop playsInline />
-            ) : (
-              <img src={nextMediaUrl} alt="Next visual slide" className="w-full h-full object-contain opacity-80" />
-            )}
+      <div className={`flex flex-col min-h-0 overflow-hidden ${nextPanelOpacityClass} ${highContrast ? 'bg-black border-white/30' : 'bg-gray-900/50 border-gray-800'} p-6 rounded-xl border`}>
+        <span className="text-sm font-bold text-blue-500 uppercase tracking-widest mb-2 shrink-0">NEXT</span>
+        {nextSlide ? (
+          <div className="flex gap-4 min-h-0 flex-1 overflow-hidden">
+            <div className="shrink-0 rounded-lg overflow-hidden border border-zinc-700/40 opacity-80" style={{ width: compact ? 200 : 280, aspectRatio: '16/9' }}>
+              <SlideRenderer
+                slide={nextSlide}
+                item={activeItem}
+                fitContainer={true}
+                isThumbnail={false}
+                isMuted={true}
+                isPlaying={false}
+                branding={branding}
+              />
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col justify-center overflow-hidden">
+              {nextHasText ? (
+                <div className={`${nextTextClass} font-medium ${highContrast ? 'text-white' : 'text-gray-400'} leading-snug opacity-70 overflow-hidden`} style={{ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 5, overflow: 'hidden' }}>
+                  {nextText}
+                </div>
+              ) : (
+                <div className={`${nextTextClass} font-medium ${highContrast ? 'text-white' : 'text-gray-500'} leading-snug opacity-60`}>
+                  Visual slide
+                </div>
+              )}
+              {!nextHasText && (
+                <div className="mt-2 text-[10px] uppercase tracking-wider text-blue-300 font-bold opacity-80">
+                  {nextSlide?.label || (nextMediaUrl ? 'Visual Slide Preview' : 'End of Item')}
+                </div>
+              )}
+            </div>
           </div>
         ) : (
-          <div className={`${nextTextClass} font-medium ${highContrast ? 'text-white' : 'text-gray-500'} leading-snug whitespace-pre-wrap opacity-60`}>
+          <div className={`${nextTextClass} font-medium ${highContrast ? 'text-white' : 'text-gray-500'} leading-snug opacity-60`}>
             End of Item
-          </div>
-        )}
-        {!nextHasText && (
-          <div className="mt-2 text-[10px] uppercase tracking-wider text-blue-300 font-bold opacity-80">
-            {nextSlide?.label || (nextMediaUrl ? 'Visual Slide Preview' : 'End of Item')}
           </div>
         )}
       </div>
