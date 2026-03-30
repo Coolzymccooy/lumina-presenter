@@ -2801,6 +2801,13 @@ function App() {
       };
     }
 
+    // Data URIs (SVG split-panel, gradient backgrounds) are self-contained in memory.
+    // Never fetch, save, or replace them — doing so would swap the instant data URI for
+    // a local:// URL that requires an async round-trip, causing "BACKGROUND UNAVAILABLE".
+    if (isDataMediaUrl(backgroundUrl)) {
+      return { ...snapshot };
+    }
+
     const sourceUrl = String(snapshot.backgroundSourceUrl || (isRemoteMediaUrl(backgroundUrl) ? backgroundUrl : '') || '').trim();
     const provider = inferSavedBackgroundProvider(sourceUrl, backgroundUrl, snapshot.backgroundProvider || '');
     const category = inferSavedBackgroundCategory(sourceUrl, backgroundUrl, snapshot.backgroundCategory || '', provider);
@@ -5009,6 +5016,27 @@ function App() {
     return normalizedItem;
   }, [addItem, finalizeGeneratedItemBackground, goLive]);
 
+  // Updates an already-live/active bible item in-place (style/layout chip presses).
+  // Preserves the existing item's ID so no duplicate runsheet entries are created.
+  const handleBibleLiveUpdate = useCallback((item: ServiceItem) => {
+    const normalizedItem = finalizeGeneratedItemBackground({
+      ...item,
+      metadata: { ...item.metadata, source: item.metadata?.source || 'bible' },
+    }, 'system');
+    const targetId = activeItemId || selectedItemId;
+    const existingItem = targetId ? schedule.find((i) => i.id === targetId) : null;
+    if (existingItem && (existingItem.type === ItemType.BIBLE || existingItem.type === ItemType.SCRIPTURE || existingItem.metadata?.source === 'bible')) {
+      const replacedItem: ServiceItem = { ...normalizedItem, id: existingItem.id };
+      pushHistory();
+      setSchedule((prev) => prev.map((i) => (i.id === existingItem.id ? replacedItem : i)));
+      setSelectedItemId(existingItem.id);
+      goLive(replacedItem, 0);
+      return;
+    }
+    // Fallback: no active bible item to update, stage as a fresh item
+    stageGeneratedItem({ ...item, metadata: { ...item.metadata, source: item.metadata?.source || 'bible' } }, 'system', { goLive: true });
+  }, [activeItemId, selectedItemId, schedule, finalizeGeneratedItemBackground, goLive, stageGeneratedItem]);
+
   const handleAIItemGenerated = (item: ServiceItem) => {
     const normalizedItem = finalizeGeneratedItemBackground({
       ...item,
@@ -6590,6 +6618,7 @@ function App() {
                 },
               }, 'system', { select: false });
             }}
+            onLiveStyleUpdate={handleBibleLiveUpdate}
             speechLocaleMode={workspaceSettings.visionarySpeechLocaleMode}
             onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
             compact={true}
@@ -7576,6 +7605,7 @@ function App() {
                       },
                     }, 'system', { select: false });
                   }}
+                  onLiveStyleUpdate={handleBibleLiveUpdate}
                   speechLocaleMode={workspaceSettings.visionarySpeechLocaleMode}
                   onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
                   compact={true}
@@ -8060,6 +8090,7 @@ function App() {
                     showProjectorHelper={false}
                     audienceOverlay={audienceDisplay}
                     projectedAudienceQr={audienceQrProjection}
+                    branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle, textOpacity: workspaceSettings.slideBrandingOpacity }}
                   />
                 );
               })()}
@@ -8107,6 +8138,7 @@ function App() {
                 audienceOverlay={audienceDisplay}
                 stageAlert={stageAlert}
                 stageMessageCenter={stageMessageCenter}
+                branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle, textOpacity: workspaceSettings.slideBrandingOpacity }}
               />
             )}
           </OutputWindow>

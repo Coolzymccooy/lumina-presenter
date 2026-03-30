@@ -24,6 +24,7 @@ import {
 interface BibleBrowserProps {
   onAddRequest: (item: ServiceItem) => void;
   onProjectRequest: (item: ServiceItem) => void;
+  onLiveStyleUpdate?: (item: ServiceItem) => void;
   speechLocaleMode: VisionarySpeechLocaleMode;
   onSpeechLocaleModeChange: (mode: VisionarySpeechLocaleMode) => void;
   compact?: boolean;
@@ -202,6 +203,7 @@ export const resolveSpeechLanguageCandidates = (
 export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   onAddRequest,
   onProjectRequest,
+  onLiveStyleUpdate,
   speechLocaleMode,
   onSpeechLocaleModeChange,
   compact = false,
@@ -1499,7 +1501,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
             <div className="flex items-center gap-1.5">
               <span className="text-[7px] text-zinc-600 uppercase tracking-widest font-bold w-10 shrink-0">Layout</span>
               {([['standard', 'Standard'], ['scripture_ref', 'Scripture + Ref'], ['ticker', 'Ticker']] as const).map(([key, label]) => (
-                <button key={key} onClick={() => { setBibleLayout(key); onProjectRequest(createServiceItem(results, key)); }}
+                <button key={key} onClick={() => { setBibleLayout(key); (onLiveStyleUpdate ?? onProjectRequest)(createServiceItem(results, key)); }}
                   className={`px-2 py-1 rounded text-[8px] font-bold uppercase tracking-wide transition-all ${bibleLayout === key ? 'bg-blue-600 text-white shadow-md shadow-blue-900/40' : 'bg-zinc-800/80 text-zinc-500 border border-zinc-800 hover:text-zinc-300 hover:border-zinc-600'}`}
                 >{label}</button>
               ))}
@@ -1507,7 +1509,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
             <div className="flex items-center gap-1.5">
               <span className="text-[7px] text-zinc-600 uppercase tracking-widest font-bold w-10 shrink-0">Size</span>
               {([['small', 'SM'], ['medium', 'MD'], ['large', 'LG'], ['xlarge', 'XL']] as const).map(([key, label]) => (
-                <button key={key} onClick={() => { setBibleFontSize(key); onProjectRequest(createServiceItem(results, undefined, key)); }}
+                <button key={key} onClick={() => { setBibleFontSize(key); (onLiveStyleUpdate ?? onProjectRequest)(createServiceItem(results, undefined, key)); }}
                   className={`px-2 py-1 rounded text-[8px] font-bold tracking-wide transition-all ${bibleFontSize === key ? 'bg-purple-600 text-white shadow-md shadow-purple-900/40' : 'bg-zinc-800/80 text-zinc-500 border border-zinc-800 hover:text-zinc-300 hover:border-zinc-600'}`}
                 >{label}</button>
               ))}
@@ -1517,16 +1519,16 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
               family={bibleStyleFamily}
               onModeChange={(m) => {
                 setBibleStyleMode(m);
-                onProjectRequest(createServiceItem(results, undefined, undefined, m));
+                (onLiveStyleUpdate ?? onProjectRequest)(createServiceItem(results, undefined, undefined, m));
               }}
               onFamilyChange={(f) => {
                 setBibleStyleFamily(f);
-                onProjectRequest(createServiceItem(results, undefined, undefined, undefined, f));
+                (onLiveStyleUpdate ?? onProjectRequest)(createServiceItem(results, undefined, undefined, undefined, f));
               }}
               onRandomize={() => {
                 const newSeed = `rand-${Date.now()}`;
                 setBibleStyleSeed(newSeed);
-                onProjectRequest(createServiceItem(results, undefined, undefined, undefined, undefined, newSeed));
+                (onLiveStyleUpdate ?? onProjectRequest)(createServiceItem(results, undefined, undefined, undefined, undefined, newSeed));
               }}
               compact={compact}
             />

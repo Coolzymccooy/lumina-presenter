@@ -571,7 +571,22 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       return <div className="w-full h-full bg-black" />;
     }
 
-    if (mediaError && !(hasStructuredElements && isDataUriBg)) {
+    // Data URIs (SVG split-panel, gradient SVG) are always immediately available in memory.
+    // Bypass resolvedUrl state, loading states, and error fallback completely — use rawBgUrl directly.
+    // If the data URI itself fails (malformed SVG), fall through to the mediaError retained-background path.
+    if (isDataUriBg && !mediaError) {
+      return (
+        <img
+          src={rawBgUrl}
+          alt=""
+          className="w-full h-full object-cover"
+          draggable={false}
+          onError={handleMediaError}
+        />
+      );
+    }
+
+    if (mediaError) {
       return renderRetainedBackground(
         legacyLocalMediaMissing
           ? "Background missing - keeping last live visual"
@@ -579,7 +594,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       );
     }
 
-    if (isLoading && !isThumbnail && !(hasStructuredElements && isDataUriBg)) {
+    if (isLoading && !isThumbnail) {
       return renderRetainedBackground("Loading background...", true);
     }
 
@@ -695,17 +710,6 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       );
     }
 
-    if (hasStructuredElements && isDataUriBg) {
-      // Data-URI SVG background — render inline to guarantee it never falls back
-      return (
-        <img
-          src={resolvedUrl || rawBgUrl}
-          alt=""
-          className="w-full h-full object-cover"
-          draggable={false}
-        />
-      );
-    }
     return renderRetainedBackground("Background unavailable - keeping last live visual");
   };
 

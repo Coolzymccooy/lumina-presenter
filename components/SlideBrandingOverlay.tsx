@@ -22,7 +22,7 @@ export const SlideBrandingOverlay: React.FC<{ config: SlideBrandingConfig }> = (
   const textOpacity = config.textOpacity ?? 0.82;
 
   // Strip width in px (canvas is 1920 wide)
-  const stripW = styleVariant === 'bold' ? 54 : 46;
+  const stripW = styleVariant === 'bold' ? 68 : 58;
 
   const stripBase: React.CSSProperties = {
     position: 'absolute',
@@ -53,7 +53,7 @@ export const SlideBrandingOverlay: React.FC<{ config: SlideBrandingConfig }> = (
   // Fixed px font size — scales correctly with the canvas transform
   const textStyle: React.CSSProperties = {
     fontFamily: '"Inter", "Segoe UI", system-ui, sans-serif',
-    fontSize: 18,          // px relative to 1920×1080 canvas
+    fontSize: styleVariant === 'bold' ? 28 : 24,  // px relative to 1920×1080 canvas
     fontWeight: 700,
     letterSpacing: '0.22em',
     textTransform: 'uppercase',

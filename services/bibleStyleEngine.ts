@@ -263,7 +263,7 @@ function buildShapes(cfg: SplitPanelConfig): string {
     shapes.push(`<rect x="0" y="${1080 * 0.42}" width="${ox * 0.75}" height="${1080 * 0.06}" fill="${accent2}" opacity="0.75" transform="skewY(-3)"/>`);
     shapes.push(`<rect x="0" y="${1080 * 0.52}" width="${ox * 0.60}" height="${1080 * 0.05}" fill="${accent3}" opacity="0.65" transform="skewY(-3)"/>`);
     shapes.push(`<polygon points="0,0 ${ox * 0.45},0 0,${1080 * 0.28}" fill="${accent1}" opacity="0.60"/>`);
-    shapes.push(`<polygon points="0,${1080 * 0.72} ${ox * 0.55},${1080}" 0,${1080}" fill="${accent2}" opacity="0.60"/>`);
+    shapes.push(`<polygon points="0,${1080 * 0.72} ${ox * 0.55},${1080} 0,${1080}" fill="${accent2}" opacity="0.60"/>`);
   } else if (shapeVariant === 2) {
     // Diamond / rhombus cluster
     const cx = ox * 0.35; const cy = 1080 * 0.38; const r = 160;

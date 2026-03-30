@@ -6,6 +6,7 @@ import { AudienceDisplayState, AudienceMessage, AudienceQrProjectionState, ItemT
 import { HoldScreen } from './presenter/HoldScreen';
 import { LoginScreen } from './LoginScreen';
 import { SlideRenderer } from './SlideRenderer';
+import type { SlideBrandingConfig } from './SlideBrandingOverlay';
 
 const STORAGE_KEY = 'lumina_session_v1';
 
@@ -26,6 +27,10 @@ type LocalPresenterState = {
   audienceQrProjection?: AudienceQrProjectionState;
   workspaceSettings?: {
     churchName?: string;
+    slideBrandingEnabled?: boolean;
+    slideBrandingSeriesLabel?: string;
+    slideBrandingStyle?: 'minimal' | 'bold' | 'frosted';
+    slideBrandingOpacity?: number;
   };
   updatedAt?: number;
 };
@@ -43,6 +48,7 @@ type EffectiveOutputState = {
   lowerThirdsEnabled: boolean;
   audienceOverlay: AudienceDisplayState | null;
   projectedAudienceQr: AudienceQrProjectionState | null;
+  branding: SlideBrandingConfig;
   updatedAt: number;
   hasRenderable: boolean;
 };
@@ -263,6 +269,13 @@ export const OutputRoute: React.FC = () => {
     const projectedAudienceQr = sanitizeAudienceQrProjection(source?.audienceQrProjection);
     const updatedAt = typeof source?.updatedAt === 'number' ? source.updatedAt : 0;
     const churchName = typeof source?.workspaceSettings?.churchName === 'string' ? source.workspaceSettings.churchName : '';
+    const branding: SlideBrandingConfig = {
+      enabled: !!source?.workspaceSettings?.slideBrandingEnabled,
+      churchName,
+      seriesLabel: typeof source?.workspaceSettings?.slideBrandingSeriesLabel === 'string' ? source.workspaceSettings.slideBrandingSeriesLabel : '',
+      style: (source?.workspaceSettings?.slideBrandingStyle === 'bold' || source?.workspaceSettings?.slideBrandingStyle === 'frosted') ? source.workspaceSettings.slideBrandingStyle : 'minimal',
+      textOpacity: typeof source?.workspaceSettings?.slideBrandingOpacity === 'number' ? source.workspaceSettings.slideBrandingOpacity : 0.82,
+    };
 
     const activeItem = activeItemId
       ? (schedule.find((item) => item.id === activeItemId) || null)
@@ -285,6 +298,7 @@ export const OutputRoute: React.FC = () => {
         lowerThirdsEnabled,
         audienceOverlay,
         projectedAudienceQr,
+        branding,
         updatedAt,
         hasRenderable,
       };
@@ -304,6 +318,7 @@ export const OutputRoute: React.FC = () => {
       lowerThirdsEnabled,
       audienceOverlay,
       projectedAudienceQr,
+      branding,
       updatedAt,
       hasRenderable,
     };
@@ -367,6 +382,7 @@ export const OutputRoute: React.FC = () => {
           showProjectorHelper={false}
           audienceOverlay={display.audienceOverlay || undefined}
           projectedAudienceQr={display.projectedAudienceQr || undefined}
+          branding={display.branding}
         />
       )}
     </div>
