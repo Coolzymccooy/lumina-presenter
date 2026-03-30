@@ -206,7 +206,7 @@ test('stage timer widget can be dragged and resized in web route @smoke', async 
 
   await page.goto(`/#/stage?session=${encodeURIComponent(`smoke-session-${key}`)}&workspace=${encodeURIComponent(`smoke-workspace-${key}`)}`);
 
-  await expect(page.getByText('STAGE_TIMER_DRAG_SENTINEL')).toBeVisible();
+  await expect(page.getByText('STAGE_TIMER_DRAG_SENTINEL').first()).toBeVisible();
   await expect(page.getByText('OVERTIME')).toBeVisible();
 
   const widget = page.getByTestId('stage-timer-widget');
@@ -318,7 +318,7 @@ test('stage route shows scripture reference badge for current bible slide @smoke
   await page.goto(`/#/stage?session=${encodeURIComponent(`smoke-session-${key}`)}&workspace=${encodeURIComponent(`smoke-workspace-${key}`)}`);
   await expect(page.getByText('Numbers 1:4-7')).toBeVisible();
   await expect(page.getByText('Ref')).toBeVisible();
-  await expect(page.getByText('Numbers 1:4 (King James Version)')).toBeVisible();
+  await expect(page.getByText('Numbers 1:4 (King James Version)').first()).toBeVisible();
 });
 
 test('stage alert widget drag and resize persist through reload @smoke', async ({ page }) => {
