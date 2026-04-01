@@ -1112,6 +1112,7 @@ function App() {
 
   const [saveError, setSaveError] = useState<boolean>(false);
   const [popupBlocked, setPopupBlocked] = useState(false);
+  const [splitPanelConflictDismissed, setSplitPanelConflictDismissed] = useState(false);
   const [syncIssue, setSyncIssue] = useState<string | null>(null);
   const [dismissedSyncGuidance, setDismissedSyncGuidance] = useState<SyncGuidanceDismissals>(() => readSyncGuidanceDismissals());
   const [desktopUpdateStatus, setDesktopUpdateStatus] = useState<DesktopUpdateStatus>({
@@ -2705,6 +2706,25 @@ function App() {
   const selectedItem = schedule.find(i => i.id === selectedItemId) || null;
   const activeItem = schedule.find(i => i.id === activeItemId) || null;
   const activeSlide = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex] : null;
+
+  // Detect PPTX visual items in the schedule (imported as MEDIA with source 'import')
+  const hasPptxImportedItems = useMemo(() =>
+    schedule.some(item => item.type === ItemType.MEDIA && item.metadata?.source === 'import'),
+    [schedule],
+  );
+  // Detect Bible items using the split-panel style (SVG data URI background)
+  const hasSplitPanelBibleItems = useMemo(() =>
+    schedule.some(item =>
+      item.type === ItemType.BIBLE &&
+      item.slides.some(s => typeof s.backgroundUrl === 'string' && s.backgroundUrl.startsWith('data:image/svg+xml')),
+    ),
+    [schedule],
+  );
+  const splitPanelPptxConflict = hasPptxImportedItems && hasSplitPanelBibleItems;
+  // Re-show the warning if the conflict reappears after being dismissed
+  useEffect(() => {
+    if (!splitPanelPptxConflict) setSplitPanelConflictDismissed(false);
+  }, [splitPanelPptxConflict]);
   const presenterExperience = sanitizePresenterExperience(workspaceSettings.presenterExperience);
   const isPresenterBeta = viewMode === 'PRESENTER' && presenterExperience === 'next_gen_beta';
   const previewLowerThirds = lowerThirdsEnabled;
@@ -6622,6 +6642,7 @@ function App() {
             speechLocaleMode={workspaceSettings.visionarySpeechLocaleMode}
             onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
             compact={true}
+            hasPptxItems={hasPptxImportedItems}
           />
         </div>
       );
@@ -7192,6 +7213,21 @@ function App() {
         </div>
       )}
 
+      {splitPanelPptxConflict && !splitPanelConflictDismissed && (
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-[90] flex items-start gap-3 px-4 py-3 bg-amber-950/95 border border-amber-700/70 rounded-b-lg shadow-2xl shadow-amber-900/30 backdrop-blur-md max-w-xl w-full mx-auto" style={{ minWidth: 320 }}>
+          <span className="text-amber-400 text-base font-black shrink-0 mt-0.5">!</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-bold text-amber-200 leading-snug">Split-panel Bible style + PowerPoint slides detected</p>
+            <p className="text-[10px] text-amber-300/70 mt-0.5 leading-snug">This combination may cause display instability. Switch the Bible style to Classic, or remove the imported PowerPoint item from your schedule.</p>
+          </div>
+          <button
+            onClick={() => setSplitPanelConflictDismissed(true)}
+            className="shrink-0 text-amber-500 hover:text-amber-200 transition-colors text-xs font-bold px-1.5 py-0.5 rounded hover:bg-amber-900/40"
+            title="Dismiss"
+          >✕</button>
+        </div>
+      )}
+
       <header className="h-14 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 flex items-center justify-between px-6 shrink-0 z-[100] shadow-xl">
         {/* LEFT: BRAND & MODES */}
         <div className="flex items-center gap-6">
@@ -7609,6 +7645,7 @@ function App() {
                   speechLocaleMode={workspaceSettings.visionarySpeechLocaleMode}
                   onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
                   compact={true}
+                  hasPptxItems={hasPptxImportedItems}
                 />
               </div>
             </div>

@@ -127,7 +127,7 @@ export const searchHymns = (
         matchedFields: Array.from(matchedFields),
       };
     })
-    .filter((entry) => entry.score > 0)
+    .filter((entry) => entry.score >= 120)
     .sort((left, right) => {
       if (right.score !== left.score) return right.score - left.score;
       return left.hymn.title.localeCompare(right.hymn.title);

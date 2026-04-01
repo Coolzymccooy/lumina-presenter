@@ -28,6 +28,7 @@ interface BibleBrowserProps {
   speechLocaleMode: VisionarySpeechLocaleMode;
   onSpeechLocaleModeChange: (mode: VisionarySpeechLocaleMode) => void;
   compact?: boolean;
+  hasPptxItems?: boolean;
 }
 
 interface SpeechRecognitionResultLike {
@@ -207,6 +208,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   speechLocaleMode,
   onSpeechLocaleModeChange,
   compact = false,
+  hasPptxItems = false,
 }) => {
   const [referenceInput, setReferenceInput] = useState('');
   const [bookInput, setBookInput] = useState('');
@@ -1531,6 +1533,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                 (onLiveStyleUpdate ?? onProjectRequest)(createServiceItem(results, undefined, undefined, undefined, undefined, newSeed));
               }}
               compact={compact}
+              hasPptxItems={hasPptxItems}
             />
           </div>
           {/* Action buttons */}

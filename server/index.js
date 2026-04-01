@@ -1149,11 +1149,15 @@ app.post("/api/ai/assist-query", async (req, res) => {
   const detectedIntent = intentMap[mode] || "unknown";
 
   const systemPrompt = detectedIntent === "lyrics"
-    ? `You are a church lyric content assistant. The user is searching for song lyrics or worship content.
-Task: Given the query, produce clean, presentation-ready lyrics with properly labelled sections.
-If the song is well-known, reproduce the public-domain or commonly-known version.
-If unknown, generate worship-appropriate lyrics inspired by the query theme.
-Label each section: "Verse 1", "Verse 2", "Chorus", "Bridge", "Pre-Chorus", etc.
+    ? `You are a church lyric content assistant. The user is searching for song lyrics to use in a live presentation.
+
+ACCURACY IS CRITICAL. Different people searching for the same song must get identical, exact lyrics. Do NOT paraphrase, approximate, or invent lyrics.
+
+Rules:
+1. If the song is well-known traditional/public-domain (e.g. "Amazing Grace", "How Great Thou Art", "Great Is Thy Faithfulness"): reproduce the exact, canonical public-domain text word-for-word with proper verse/chorus labels.
+2. If the song is a modern copyrighted worship song (e.g. Hillsong, Elevation, Bethel, Chris Tomlin, etc.) or you are not 100% certain of the exact lyrics: set requiresManualInput to true and return ONLY the song title and artist in the title field — do NOT generate any lyrics.
+3. Never approximate, paraphrase, or fill in gaps — accuracy over completeness.
+4. Label each section: "Verse 1", "Verse 2", "Chorus", "Bridge", etc.
 Detect the intent as "lyrics".`
     : detectedIntent === "sermon"
     ? `You are a church sermon content assistant.
@@ -1187,6 +1191,7 @@ Label every section clearly.`;
             title: { type: Type.STRING },
             intent: { type: Type.STRING },
             confidence: { type: Type.NUMBER },
+            requiresManualInput: { type: Type.BOOLEAN },
             rawText: { type: Type.STRING },
             sections: {
               type: Type.ARRAY,
@@ -1201,13 +1206,32 @@ Label every section clearly.`;
               },
             },
           },
-          required: ["title", "intent", "sections", "rawText", "confidence"],
+          required: ["title", "intent", "sections", "rawText", "confidence", "requiresManualInput"],
         },
       },
     });
 
     const parsed = parseAiJson(response);
-    if (!parsed || !Array.isArray(parsed.sections) || !parsed.sections.length) {
+    if (!parsed) {
+      return res.status(500).json({ ok: false, error: "AI_NO_CONTENT" });
+    }
+    // requiresManualInput: AI recognised the song but won't fabricate copyrighted lyrics —
+    // send it through even though sections will be empty
+    if (parsed.requiresManualInput === true) {
+      return res.json({
+        ok: true,
+        data: {
+          title: String(parsed.title || ""),
+          intent: "lyrics",
+          sections: [],
+          rawText: "",
+          confidence: 1,
+          source: "ai",
+          requiresManualInput: true,
+        },
+      });
+    }
+    if (!Array.isArray(parsed.sections) || !parsed.sections.length) {
       return res.status(500).json({ ok: false, error: "AI_NO_CONTENT" });
     }
     return res.json({
@@ -1216,6 +1240,7 @@ Label every section clearly.`;
         ...parsed,
         source: "ai",
         confidence: Number(parsed.confidence) || 0.8,
+        requiresManualInput: false,
       },
     });
   } catch (error) {

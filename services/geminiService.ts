@@ -331,6 +331,7 @@ export interface AIAssistResult {
   sections: AIAssistSection[];
   rawText: string;
   confidence: number;
+  requiresManualInput?: boolean;
 }
 
 export const assistQueryWithAI = async (query: string, mode: string): Promise<AIAssistResult | null> => {

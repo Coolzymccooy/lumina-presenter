@@ -12,6 +12,7 @@ interface BibleStylePickerProps {
   onFamilyChange: (family: BibleStyleFamily | null) => void;
   onRandomize: () => void;
   compact?: boolean;
+  hasPptxItems?: boolean;
 }
 
 // Dice icon inline so we avoid an extra import
@@ -33,6 +34,7 @@ export const BibleStylePicker: React.FC<BibleStylePickerProps> = ({
   onFamilyChange,
   onRandomize,
   compact = false,
+  hasPptxItems = false,
 }) => {
   const textSz = compact ? 'text-[7px]' : 'text-[8px]';
   const labelSz = compact ? 'text-[6.5px]' : 'text-[7px]';
@@ -71,6 +73,7 @@ export const BibleStylePicker: React.FC<BibleStylePickerProps> = ({
 
       {/* Family chips — visible when not in classic mode */}
       {mode !== 'classic' && (
+        <>
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className={`${labelSz} text-zinc-600 uppercase tracking-widest font-bold w-10 shrink-0`}>Family</span>
           {/* Auto option */}
@@ -84,31 +87,47 @@ export const BibleStylePicker: React.FC<BibleStylePickerProps> = ({
           >
             Auto
           </button>
-          {BIBLE_STYLE_FAMILIES.map((f) => (
-            <button
-              key={f.id}
-              onClick={() => onFamilyChange(f.id)}
-              title={f.description}
-              className={`flex items-center gap-1 px-2 ${chipPy} rounded ${textSz} font-bold uppercase tracking-wide transition-all ${
-                family === f.id
-                  ? 'text-white shadow-md'
-                  : 'bg-zinc-800/80 text-zinc-500 border border-zinc-800 hover:text-zinc-300 hover:border-zinc-600'
-              }`}
-              style={
-                family === f.id
-                  ? { backgroundColor: f.previewColors[0], borderColor: f.previewColors[1], borderWidth: 1, borderStyle: 'solid', color: f.previewColors[1] }
-                  : {}
-              }
-            >
-              {/* Colour swatch */}
-              <span
-                className="inline-block w-2 h-2 rounded-full shrink-0"
-                style={{ background: `linear-gradient(135deg, ${f.previewColors[0]}, ${f.previewColors[1]})` }}
-              />
-              {f.label}
-            </button>
-          ))}
+          {BIBLE_STYLE_FAMILIES.map((f) => {
+            const isSplitWithPptx = f.id === 'split-panel' && hasPptxItems;
+            return (
+              <button
+                key={f.id}
+                onClick={() => onFamilyChange(f.id)}
+                title={isSplitWithPptx ? 'Split style may cause display instability when PowerPoint slides are in your schedule' : f.description}
+                className={`relative flex items-center gap-1 px-2 ${chipPy} rounded ${textSz} font-bold uppercase tracking-wide transition-all ${
+                  family === f.id
+                    ? 'text-white shadow-md'
+                    : 'bg-zinc-800/80 text-zinc-500 border border-zinc-800 hover:text-zinc-300 hover:border-zinc-600'
+                }`}
+                style={
+                  family === f.id
+                    ? { backgroundColor: f.previewColors[0], borderColor: f.previewColors[1], borderWidth: 1, borderStyle: 'solid', color: f.previewColors[1] }
+                    : {}
+                }
+              >
+                {/* Colour swatch */}
+                <span
+                  className="inline-block w-2 h-2 rounded-full shrink-0"
+                  style={{ background: `linear-gradient(135deg, ${f.previewColors[0]}, ${f.previewColors[1]})` }}
+                />
+                {f.label}
+                {isSplitWithPptx && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 rounded-full border border-zinc-900 flex items-center justify-center text-[5px] font-black text-zinc-900 leading-none">!</span>
+                )}
+              </button>
+            );
+          })}
         </div>
+        {/* Inline advisory when Split is selected alongside PPTX slides */}
+        {hasPptxItems && family === 'split-panel' && (
+          <div className="flex items-start gap-1.5 px-2 py-1.5 rounded bg-amber-950/40 border border-amber-800/50 mt-0.5">
+            <span className="text-amber-400 font-black shrink-0" style={{ fontSize: '9px' }}>!</span>
+            <p className={`${labelSz} text-amber-300 leading-snug`}>
+              Split style may cause display instability with PowerPoint slides in your schedule. Switch to Classic or remove the PPTX item to avoid this.
+            </p>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

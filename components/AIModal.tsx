@@ -159,6 +159,35 @@ const HymnResultCard: React.FC<{
   );
 };
 
+// ─── Manual Input Prompt Card ─────────────────────────────────────────────────
+// Shown when AI recognises the song title but won't fabricate copyrighted lyrics
+
+const ManualInputCard: React.FC<{
+  title: string;
+  onPasteManually: () => void;
+}> = ({ title, onPasteManually }) => (
+  <div className="rounded-md border border-amber-800/50 bg-amber-950/30 overflow-hidden">
+    <div className="p-3">
+      <div className="flex items-start gap-2 mb-2">
+        <span className="text-lg leading-none shrink-0">🎵</span>
+        <div className="flex-1 min-w-0">
+          <div className="text-[11px] font-bold text-zinc-100 truncate mb-0.5">{title}</div>
+          <div className="text-[9px] text-amber-400 font-semibold">Song Recognised — Lyrics Not Generated</div>
+        </div>
+      </div>
+      <p className="text-[10px] text-zinc-400 leading-relaxed mb-3">
+        To protect accuracy, Lumina does not generate lyrics for modern copyrighted songs — AI lyrics are often wrong and will differ between users. Paste the exact lyrics from an authorised source (e.g. the song book, publisher website, or SongSelect).
+      </p>
+      <button
+        onClick={onPasteManually}
+        className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-amber-700/60 hover:bg-amber-600/70 text-amber-100 rounded text-[9px] font-bold uppercase tracking-wide transition-all active:scale-95 border border-amber-700/50"
+      >
+        Paste Lyrics Manually →
+      </button>
+    </div>
+  </div>
+);
+
 // ─── AI Result Card ───────────────────────────────────────────────────────────
 
 const AIResultCard: React.FC<{
@@ -337,11 +366,14 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
         detectedIntent === 'ANNOUNCEMENT' ? 'announcement' :
         detectedIntent === 'SCRIPTURE' ? 'scripture' : 'auto';
       const result = await assistQueryWithAI(searchQuery, modeParam);
-      if (result && result.sections?.length) {
+      if (result?.requiresManualInput) {
+        // AI recognised the song but won't fabricate copyrighted/uncertain lyrics
+        setAiResult(result);
+      } else if (result && result.sections?.length) {
         setAiResult(result);
       } else if (result) {
         // AI responded but returned empty sections
-        setAiSearchError({ kind: 'not-found', msg: `Couldn't structure content for "${searchQuery}". Try rephrasing — e.g. "Jesus Iye lyrics" or paste the lyrics manually below.` });
+        setAiSearchError({ kind: 'not-found', msg: `Couldn't find content for "${searchQuery}". Try a different spelling, or paste the lyrics manually in the Lyrics tab.` });
       } else {
         // null = server unreachable / endpoint not found
         setAiSearchError({ kind: 'unavailable', msg: 'AI search is warming up — the server may still be deploying. Try again in a moment, or paste the lyrics manually in the Lyrics tab.' });
@@ -540,16 +572,31 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
               {/* AI result */}
               {aiResult && (
                 <div className="space-y-2">
-                  <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
-                    AI Generated Content
-                  </div>
-                  <AIResultCard
-                    result={aiResult}
-                    onGenerate={onGenerate}
-                    onClose={onClose}
-                    onInsertText={handleInsertText}
-                  />
+                  {aiResult.requiresManualInput ? (
+                    <>
+                      <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+                        Song Found — Exact Lyrics Required
+                      </div>
+                      <ManualInputCard
+                        title={aiResult.title}
+                        onPasteManually={() => { setMode('SONG'); setInputText(''); setAiResult(null); setSearchQuery(''); }}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
+                        AI Generated Content
+                      </div>
+                      <AIResultCard
+                        result={aiResult}
+                        onGenerate={onGenerate}
+                        onClose={onClose}
+                        onInsertText={handleInsertText}
+                      />
+                    </>
+                  )}
                 </div>
               )}
 
