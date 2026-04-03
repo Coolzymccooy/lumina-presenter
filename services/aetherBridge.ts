@@ -1,7 +1,18 @@
 export type AetherBridgeEvent =
   | 'lumina.bridge.ping'
   | 'lumina.state.sync'
-  | 'lumina.scene.switch';
+  | 'lumina.scene.switch'
+  // Presentation state events
+  | 'lumina.slide.changed'
+  | 'lumina.item.started'
+  // Timer events
+  | 'lumina.countdown.started'
+  | 'lumina.countdown.ended'
+  // Service mode
+  | 'lumina.service.mode.changed'
+  // Production requests (Lumina → Aether)
+  | 'lumina.stream.request'
+  | 'lumina.recording.request';
 
 export type AetherBridgeRequest = {
   endpointUrl: string;
