@@ -10,6 +10,7 @@ import type { ServiceItem } from '../types';
 import { executeMacro, simulateMacro } from '../services/macroEngine';
 import type { MacroExecutionContext } from '../services/macroEngine';
 import { saveMacro, deleteMacro } from '../services/macroRegistry';
+import { getServerApiBaseUrl } from '../services/serverApi';
 import { MacroBuilder } from './MacroBuilder';
 import { PlusIcon, PlayIcon, EditIcon, TrashIcon, CheckIcon, XIcon } from './Icons';
 
@@ -95,6 +96,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({ macro, onConfirm, onCancel 
 
 interface MacroCardProps {
   macro: MacroDefinition;
+  workspaceId: string;
   isRunning: boolean;
   onRun: () => void;
   onEdit: () => void;
@@ -103,8 +105,12 @@ interface MacroCardProps {
 }
 
 const MacroCard: React.FC<MacroCardProps> = ({
-  macro, isRunning, onRun, onEdit, onDelete, onToggleEnabled,
-}) => (
+  macro, workspaceId, isRunning, onRun, onEdit, onDelete, onToggleEnabled,
+}) => {
+  const webhookTriggers = macro.triggers.filter(t => t.type === 'webhook' && typeof t.payload?.key === 'string');
+  const serverBase = getServerApiBaseUrl();
+
+  return (
   <div
     className={`rounded-xl border bg-zinc-900/60 p-3 transition-colors ${
       macro.isEnabled ? 'border-zinc-800' : 'border-zinc-800/40 opacity-50'
@@ -155,6 +161,28 @@ const MacroCard: React.FC<MacroCardProps> = ({
       )}
     </div>
 
+    {webhookTriggers.length > 0 && (
+      <div className="mb-2 flex flex-col gap-1">
+        {webhookTriggers.map((t) => {
+          const key = t.payload!.key as string;
+          const url = `${serverBase}/api/workspaces/${encodeURIComponent(workspaceId)}/macro-trigger/${encodeURIComponent(key)}`;
+          return (
+            <div key={key} className="flex items-center gap-1 rounded-lg border border-zinc-700/60 bg-zinc-800/40 px-2 py-1">
+              <span className="shrink-0 rounded border border-blue-800/50 bg-blue-950/30 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wide text-blue-400">POST</span>
+              <span className="min-w-0 flex-1 truncate font-mono text-[9px] text-zinc-400">{url}</span>
+              <button
+                onClick={() => void navigator.clipboard.writeText(url)}
+                className="shrink-0 rounded p-0.5 text-zinc-600 hover:text-zinc-300 transition-colors"
+                title="Copy URL"
+              >
+                <CheckIcon className="h-3 w-3" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    )}
+
     <div className="flex items-center gap-1.5">
       <button
         onClick={onRun}
@@ -184,7 +212,8 @@ const MacroCard: React.FC<MacroCardProps> = ({
       )}
     </div>
   </div>
-);
+  );
+};
 
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
@@ -383,6 +412,7 @@ export const MacroPanel: React.FC<MacroPanelProps> = ({
                         <MacroCard
                           key={macro.id}
                           macro={macro}
+                          workspaceId={workspaceId}
                           isRunning={runningIds.has(macro.id)}
                           onRun={() => handleRunRequest(macro)}
                           onEdit={() => { setEditingMacro(macro); setView('builder'); }}

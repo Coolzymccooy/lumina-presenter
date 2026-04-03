@@ -1949,6 +1949,17 @@ function App() {
     return () => window.clearInterval(interval);
   }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Macro service_mode_change trigger ────────────────────────────────────────
+  useEffect(() => {
+    const serviceMode = isPlaying ? 'live' : 'paused';
+    const triggered = matchTriggers({ type: 'service_mode_change', serviceMode }, macrosRef.current);
+    triggered.forEach((macro) => {
+      import('./services/macroEngine').then(({ executeMacro }) => {
+        executeMacro(macro, macroCtxRef.current).catch(() => {});
+      });
+    });
+  }, [isPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     const handleHashChange = () => {
       const h = window.location.hash;
