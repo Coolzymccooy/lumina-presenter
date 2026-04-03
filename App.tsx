@@ -255,6 +255,13 @@ type WorkspaceSettings = {
   slideBrandingSeriesLabel: string;
   slideBrandingStyle: 'minimal' | 'bold' | 'frosted';
   slideBrandingOpacity: number;
+  ndiSources: NdiSourceConfig[];
+};
+
+type NdiSourceConfig = {
+  id: string;
+  name: string;
+  sceneId: string;
 };
 
 type ProtectedWorkspaceFieldKey = 'remoteAdminEmails' | 'sessionId';
@@ -850,6 +857,16 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
   if (typeof raw.slideBrandingSeriesLabel === 'string') safe.slideBrandingSeriesLabel = raw.slideBrandingSeriesLabel.slice(0, 80);
   if (raw.slideBrandingStyle === 'minimal' || raw.slideBrandingStyle === 'bold' || raw.slideBrandingStyle === 'frosted') safe.slideBrandingStyle = raw.slideBrandingStyle;
   if (typeof raw.slideBrandingOpacity === 'number' && raw.slideBrandingOpacity >= 0 && raw.slideBrandingOpacity <= 1) safe.slideBrandingOpacity = raw.slideBrandingOpacity;
+  if (Array.isArray(raw.ndiSources)) {
+    safe.ndiSources = (raw.ndiSources as unknown[])
+      .filter((s): s is NdiSourceConfig => {
+        if (!s || typeof s !== 'object' || Array.isArray(s)) return false;
+        const e = s as Record<string, unknown>;
+        return typeof e.id === 'string' && typeof e.name === 'string' && typeof e.sceneId === 'string';
+      })
+      .slice(0, 32)
+      .map((s) => ({ id: s.id.trim().slice(0, 64), name: s.name.trim().slice(0, 120), sceneId: s.sceneId.trim().slice(0, 120) }));
+  }
   return safe;
 };
 
@@ -1276,6 +1293,7 @@ function App() {
     slideBrandingSeriesLabel: '',
     slideBrandingStyle: 'minimal',
     slideBrandingOpacity: 0.82,
+    ndiSources: [],
   });
   const [presenterLayoutPrefs, setPresenterLayoutPrefs] = useState<PresenterLayoutPrefs>(() => (
     readPresenterLayoutPrefs('default-workspace', !!window.electron?.isElectron)
@@ -1899,6 +1917,37 @@ function App() {
       });
     });
   }, [activeItemId, activeSlideIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Macro webhook trigger polling ────────────────────────────────────────────
+  const lastWebhookPollTsRef = useRef<number>(Date.now());
+  useEffect(() => {
+    if (!workspaceId) return;
+    const poll = async () => {
+      const since = lastWebhookPollTsRef.current;
+      try {
+        const res = await fetch(
+          `${getServerApiBaseUrl()}/api/workspaces/${encodeURIComponent(workspaceId)}/macro-triggers/pending?since=${since}`,
+          { headers: { 'Content-Type': 'application/json' } },
+        );
+        if (!res.ok) return;
+        const data = await res.json() as { ok: boolean; triggers?: Array<{ key: string; triggered_at: number }> };
+        if (!data.ok || !data.triggers?.length) return;
+        lastWebhookPollTsRef.current = Math.max(...data.triggers.map((t) => t.triggered_at)) + 1;
+        for (const trigger of data.triggers) {
+          const matched = matchTriggers({ type: 'webhook', webhookKey: trigger.key }, macrosRef.current);
+          matched.forEach((macro) => {
+            import('./services/macroEngine').then(({ executeMacro }) => {
+              executeMacro(macro, macroCtxRef.current).catch(() => {});
+            });
+          });
+        }
+      } catch {
+        // polling errors are non-fatal
+      }
+    };
+    const interval = window.setInterval(poll, 3000);
+    return () => window.clearInterval(interval);
+  }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -5925,6 +5974,17 @@ function App() {
         return;
       }
     }
+
+    // Fire timer_end macro triggers
+    const timerEndMatches = matchTriggers(
+      { type: 'timer_end', timerPresetId: currentCue.itemId },
+      macrosRef.current,
+    );
+    timerEndMatches.forEach((macro) => {
+      import('./services/macroEngine').then(({ executeMacro }) => {
+        executeMacro(macro, macroCtxRef.current).catch(() => {});
+      });
+    });
   }, [timerMode, timerRunning, timerSeconds, currentCue, currentCueIndex, enabledTimerCues, activateCueByItemId]);
 
   useEffect(() => {

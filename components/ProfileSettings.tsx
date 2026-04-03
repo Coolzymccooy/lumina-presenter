@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { UserIcon, Settings, X, Save, Church, ShieldCheck, ChevronDown, ChevronUp, CreditCard, Palette, Globe, Lock, Tv2 } from 'lucide-react';
+import { UserIcon, Settings, X, Save, Church, ShieldCheck, ChevronDown, ChevronUp, CreditCard, Palette, Globe, Lock, Tv2, Network } from 'lucide-react';
 
 interface ProfileSettingsProps {
   onClose: () => void;
@@ -38,6 +38,9 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
   const [slideBrandingSeriesLabel, setSlideBrandingSeriesLabel] = useState(currentSettings?.slideBrandingSeriesLabel || '');
   const [slideBrandingStyle, setSlideBrandingStyle] = useState<'minimal' | 'bold' | 'frosted'>(currentSettings?.slideBrandingStyle || 'minimal');
   const [slideBrandingOpacity, setSlideBrandingOpacity] = useState<number>(currentSettings?.slideBrandingOpacity ?? 0.82);
+  const [ndiSources, setNdiSources] = useState<Array<{ id: string; name: string; sceneId: string }>>(
+    Array.isArray(currentSettings?.ndiSources) ? currentSettings.ndiSources : []
+  );
 
   const [activeTab, setActiveTab] = useState<string | null>('account');
 
@@ -62,7 +65,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
 
   const handleSave = () => {
     const normalizedSessionId = String(sessionId || '').trim() || 'live';
-    onSave({ churchName, ccli, defaultVersion, theme, remoteAdminEmails, connectionTargetRoles, sessionId: normalizedSessionId, stageProfile, stageFlowLayout, machineMode, slideBrandingEnabled, slideBrandingSeriesLabel, slideBrandingStyle, slideBrandingOpacity });
+    onSave({ churchName, ccli, defaultVersion, theme, remoteAdminEmails, connectionTargetRoles, sessionId: normalizedSessionId, stageProfile, stageFlowLayout, machineMode, slideBrandingEnabled, slideBrandingSeriesLabel, slideBrandingStyle, slideBrandingOpacity, ndiSources });
     onClose();
   };
 
@@ -319,6 +322,47 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
                 </div>
                 <p className="text-[10px] text-zinc-500 font-medium px-1">Used for the Live Connections X/Y denominator.</p>
               </div>
+            </div>
+          )}
+
+          {/* NDI Sources Section */}
+          <SectionHeader id="ndi" icon={Network} title="NDI Sources" description="Source → Aether scene mapping" />
+          {activeTab === 'ndi' && (
+            <div className="p-6 space-y-3 bg-zinc-950/30 animate-in slide-in-from-top-4 duration-300">
+              {ndiSources.length === 0 && (
+                <p className="text-[11px] text-zinc-500 text-center py-3">No NDI sources configured.</p>
+              )}
+              {ndiSources.map((src) => (
+                <div key={src.id} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                  <input
+                    type="text"
+                    value={src.name}
+                    onChange={(e) => setNdiSources((prev) => prev.map((s) => s.id === src.id ? { ...s, name: e.target.value } : s))}
+                    placeholder="NDI source name"
+                    className="bg-black border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-white focus:border-blue-500 focus:outline-none placeholder:text-zinc-700 transition-all"
+                  />
+                  <input
+                    type="text"
+                    value={src.sceneId}
+                    onChange={(e) => setNdiSources((prev) => prev.map((s) => s.id === src.id ? { ...s, sceneId: e.target.value } : s))}
+                    placeholder="Aether scene ID"
+                    className="bg-black border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-white focus:border-blue-500 focus:outline-none font-mono placeholder:text-zinc-700 transition-all"
+                  />
+                  <button
+                    onClick={() => setNdiSources((prev) => prev.filter((s) => s.id !== src.id))}
+                    className="p-2 text-zinc-600 hover:text-red-400 transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => setNdiSources((prev) => [...prev, { id: `ndi-${Date.now()}`, name: '', sceneId: '' }])}
+                className="w-full py-2 border border-dashed border-zinc-700 rounded-xl text-xs font-bold text-zinc-500 hover:border-zinc-500 hover:text-zinc-300 transition-all"
+              >
+                + ADD NDI SOURCE
+              </button>
+              <p className="text-[10px] text-zinc-600 px-1">Source name is the NDI output name. Scene ID maps to an Aether scene for <span className="font-mono">trigger_aether_scene</span> macro actions.</p>
             </div>
           )}
         </div>
