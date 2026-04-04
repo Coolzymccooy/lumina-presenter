@@ -63,13 +63,33 @@ export function subscribeMacros(
   );
 }
 
+// ─── Firestore sanitiser ─────────────────────────────────────────────────────
+
+/**
+ * Recursively remove `undefined` values from a plain object so Firestore
+ * doesn't reject the document with "Unsupported field value: undefined".
+ */
+function stripUndefined<T>(obj: T): T {
+  if (Array.isArray(obj)) {
+    return obj.map(stripUndefined) as unknown as T;
+  }
+  if (obj !== null && typeof obj === 'object') {
+    return Object.fromEntries(
+      Object.entries(obj as Record<string, unknown>)
+        .filter(([, v]) => v !== undefined)
+        .map(([k, v]) => [k, stripUndefined(v)]),
+    ) as T;
+  }
+  return obj;
+}
+
 // ─── Write ────────────────────────────────────────────────────────────────────
 
 export async function saveMacro(
   workspaceId: string,
   macro: MacroDefinition,
 ): Promise<void> {
-  await setDoc(macroDocRef(workspaceId, macro.id), macro, { merge: true });
+  await setDoc(macroDocRef(workspaceId, macro.id), stripUndefined(macro), { merge: true });
 }
 
 export async function deleteMacro(
