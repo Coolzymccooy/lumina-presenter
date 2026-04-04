@@ -188,9 +188,16 @@ const MacroCard: React.FC<MacroCardProps> = ({
       <button
         onClick={onRun}
         disabled={isRunning || !macro.isEnabled}
-        className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-800 py-1.5 text-[11px] font-semibold text-zinc-300 hover:border-blue-600 hover:bg-blue-950/20 hover:text-blue-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border py-1.5 text-[11px] font-semibold transition-all active:scale-95 disabled:cursor-not-allowed
+          ${isRunning
+            ? 'border-emerald-500 bg-emerald-950/60 text-emerald-300 animate-pulse'
+            : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-blue-500 hover:bg-blue-950/30 hover:text-blue-300 disabled:opacity-40'
+          }`}
       >
-        <PlayIcon className="h-3 w-3" />
+        {isRunning
+          ? <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-ping" />
+          : <PlayIcon className="h-3 w-3" />
+        }
         {isRunning ? 'Running…' : 'Run'}
       </button>
       {!macro.isTemplate && (
