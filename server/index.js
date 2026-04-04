@@ -293,6 +293,13 @@ CREATE TABLE IF NOT EXISTS workspace_runsheet_files (
   last_used_at INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS macro_webhook_triggers (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  key TEXT NOT NULL,
+  triggered_at INTEGER NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_audit_workspace_time ON audit_logs(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_snapshots_workspace_time ON workspace_snapshots(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_audience_workspace_time ON audience_messages(workspace_id, created_at);
@@ -712,6 +719,22 @@ const listActiveSessionConnections = db.prepare(`
 const logAudit = db.prepare(`
   INSERT INTO audit_logs (workspace_id, session_id, actor_uid, actor_email, action, details_json, created_at)
   VALUES (@workspace_id, @session_id, @actor_uid, @actor_email, @action, @details_json, @created_at)
+`);
+
+const insertWebhookTrigger = db.prepare(`
+  INSERT INTO macro_webhook_triggers (id, workspace_id, key, triggered_at)
+  VALUES (@id, @workspace_id, @key, @triggered_at)
+`);
+
+const listPendingWebhookTriggers = db.prepare(`
+  SELECT id, key, triggered_at FROM macro_webhook_triggers
+  WHERE workspace_id = ? AND triggered_at > ?
+  ORDER BY triggered_at ASC
+  LIMIT 100
+`);
+
+const pruneOldWebhookTriggers = db.prepare(`
+  DELETE FROM macro_webhook_triggers WHERE triggered_at < ?
 `);
 
 const canOperateWorkspace = (workspace, actor) => {
@@ -2455,5 +2478,45 @@ app.post("/api/workspaces/:workspaceId/imports/pptx-visual", requireActor, async
     return res.status(500).json({ ok: false, error: "PPTX_IMPORT_FAILED", message: String(error?.message || error) });
   } finally {
     cleanupDir(tempDir);
+  }
+});
+
+// ── Macro Webhook Triggers ─────────────────────────────────────────────────────
+
+/**
+ * POST /api/workspaces/:workspaceId/macro-trigger/:key
+ * Called by external systems (physical buttons, automation) to fire a macro trigger.
+ * No auth required so any integration can call it; workspace ID acts as namespace.
+ */
+app.post("/api/workspaces/:workspaceId/macro-trigger/:key", (req, res) => {
+  const workspaceId = sanitizePathSegment(req.params.workspaceId, "workspace");
+  const key = String(req.params.key || "").trim().replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 120);
+  if (!workspaceId || workspaceId === "workspace" || !key) {
+    return res.status(400).json({ ok: false, error: "INVALID_PARAMS" });
+  }
+  const triggerId = `wh_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  try {
+    insertWebhookTrigger.run({ id: triggerId, workspace_id: workspaceId, key, triggered_at: now() });
+    // Prune triggers older than 5 minutes to keep the table small
+    pruneOldWebhookTriggers.run(now() - 300000);
+    return res.json({ ok: true, triggerId });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "INTERNAL_ERROR", message: String(error?.message || error) });
+  }
+});
+
+/**
+ * GET /api/workspaces/:workspaceId/macro-triggers/pending?since=<timestamp_ms>
+ * Frontend polls this to get triggers fired after the given timestamp.
+ */
+app.get("/api/workspaces/:workspaceId/macro-triggers/pending", (req, res) => {
+  const workspaceId = String(req.params.workspaceId || "").trim();
+  if (!workspaceId) return res.status(400).json({ ok: false, error: "INVALID_PARAMS" });
+  const since = Math.max(0, Number(req.query.since || 0));
+  try {
+    const triggers = listPendingWebhookTriggers.all(workspaceId, since);
+    return res.json({ ok: true, triggers });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "INTERNAL_ERROR", message: String(error?.message || error) });
   }
 });

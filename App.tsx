@@ -78,6 +78,12 @@ import {
 import { parsePptxFile } from './services/pptxImport';
 import { copyTextToClipboard } from './services/clipboardService';
 import { dispatchAetherBridgeEvent } from './services/aetherBridge';
+import { MacroPanel } from './components/MacroPanel';
+import { subscribeMacros, seedStarterMacrosIfEmpty } from './services/macroRegistry';
+import type { MacroDefinition, MacroAuditEntry } from './types/macros';
+import { matchTriggers, type MacroExecutionContext } from './services/macroEngine';
+import { nanoid } from 'nanoid';
+import { STARTER_MACROS } from './seed/starterMacros';
 import {
   type BackgroundSnapshot,
   clearItemBackgroundFallback,
@@ -250,6 +256,13 @@ type WorkspaceSettings = {
   slideBrandingSeriesLabel: string;
   slideBrandingStyle: 'minimal' | 'bold' | 'frosted';
   slideBrandingOpacity: number;
+  ndiSources: NdiSourceConfig[];
+};
+
+type NdiSourceConfig = {
+  id: string;
+  name: string;
+  sceneId: string;
 };
 
 type ProtectedWorkspaceFieldKey = 'remoteAdminEmails' | 'sessionId';
@@ -845,6 +858,16 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
   if (typeof raw.slideBrandingSeriesLabel === 'string') safe.slideBrandingSeriesLabel = raw.slideBrandingSeriesLabel.slice(0, 80);
   if (raw.slideBrandingStyle === 'minimal' || raw.slideBrandingStyle === 'bold' || raw.slideBrandingStyle === 'frosted') safe.slideBrandingStyle = raw.slideBrandingStyle;
   if (typeof raw.slideBrandingOpacity === 'number' && raw.slideBrandingOpacity >= 0 && raw.slideBrandingOpacity <= 1) safe.slideBrandingOpacity = raw.slideBrandingOpacity;
+  if (Array.isArray(raw.ndiSources)) {
+    safe.ndiSources = (raw.ndiSources as unknown[])
+      .filter((s): s is NdiSourceConfig => {
+        if (!s || typeof s !== 'object' || Array.isArray(s)) return false;
+        const e = s as Record<string, unknown>;
+        return typeof e.id === 'string' && typeof e.name === 'string' && typeof e.sceneId === 'string';
+      })
+      .slice(0, 32)
+      .map((s) => ({ id: s.id.trim().slice(0, 64), name: s.name.trim().slice(0, 120), sceneId: s.sceneId.trim().slice(0, 120) }));
+  }
   return safe;
 };
 
@@ -1134,7 +1157,14 @@ function App() {
     const hasSeen = localStorage.getItem('lumina_onboarding_v2.2.0');
     return !hasSeen;
   });
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES'>('SCHEDULE');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES' | 'MACROS'>('SCHEDULE');
+  const [macros, setMacros] = useState<MacroDefinition[]>([]);
+  const [macroAuditLog, setMacroAuditLog] = useState<MacroAuditEntry[]>([]);
+  const appendMacroAudit = useCallback((entry: MacroAuditEntry) => {
+    setMacroAuditLog(prev => [entry, ...prev].slice(0, 20));
+  }, []);
+  const appendMacroAuditRef = useRef(appendMacroAudit);
+  appendMacroAuditRef.current = appendMacroAudit;
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1440));
   const isSettingsHydratedRef = useRef(false);
   const studioShellRef = useRef<HTMLDivElement | null>(null);
@@ -1270,6 +1300,7 @@ function App() {
     slideBrandingSeriesLabel: '',
     slideBrandingStyle: 'minimal',
     slideBrandingOpacity: 0.82,
+    ndiSources: [],
   });
   const [presenterLayoutPrefs, setPresenterLayoutPrefs] = useState<PresenterLayoutPrefs>(() => (
     readPresenterLayoutPrefs('default-workspace', !!window.electron?.isElectron)
@@ -1793,6 +1824,14 @@ function App() {
     }
   }, [workspaceId]);
 
+  // ── Macro subscription ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!workspaceId) return undefined;
+    seedStarterMacrosIfEmpty(workspaceId, STARTER_MACROS).catch(() => {});
+    const unsub = subscribeMacros(workspaceId, setMacros);
+    return () => unsub();
+  }, [workspaceId]);
+
   useEffect(() => {
     try {
       if (!aetherBridgeToken.trim()) {
@@ -1833,6 +1872,106 @@ function App() {
     const saved = initialSavedState;
     return typeof saved?.isPlaying === 'boolean' ? saved.isPlaying : true;
   });
+
+  // ── Macro execution context ─────────────────────────────────────────────────
+  const macroCtx: MacroExecutionContext = useMemo(() => ({
+    workspaceId,
+    sessionId: liveSessionId,
+    schedule,
+    selectedItemId,
+    activeItemId,
+    activeSlideIndex,
+    aetherBridgeUrl: workspaceSettings.aetherBridgeUrl || '',
+    aetherBridgeToken,
+    setSelectedItemId,
+    setActiveItemId,
+    setActiveSlideIndex,
+    showStageMessage: (text: string, durationMs?: number) => {
+      handleSendStageMessageNow({ text, category: 'logistics' });
+      if (durationMs && durationMs > 0) {
+        window.setTimeout(handleClearStageAlert, durationMs);
+      }
+    },
+    hideStageMessage: handleClearStageAlert,
+    clearOutput: () => {
+      setActiveItemId(null);
+      setActiveSlideIndex(-1);
+    },
+    startTimer: (_presetId?: string, durationSec?: number) => {
+      if (durationSec !== undefined) {
+        setTimerDurationMin(Math.max(1, Math.ceil(durationSec / 60)));
+        setTimerSeconds(durationSec);
+      }
+      setTimerRunning(true);
+    },
+    stopTimer: () => setTimerRunning(false),
+  }), [workspaceId, liveSessionId, schedule, selectedItemId, activeItemId, activeSlideIndex, workspaceSettings.aetherBridgeUrl, aetherBridgeToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Macro slide_enter trigger ───────────────────────────────────────────────
+  const macroCtxRef = useRef(macroCtx);
+  macroCtxRef.current = macroCtx;
+  const macrosRef = useRef(macros);
+  macrosRef.current = macros;
+  useEffect(() => {
+    if (activeItemId === null || activeSlideIndex < 0) return;
+    const triggered = matchTriggers(
+      { type: 'slide_enter', itemId: activeItemId, slideIndex: activeSlideIndex },
+      macrosRef.current,
+    );
+    triggered.forEach((macro) => {
+      import('./services/macroEngine').then(({ executeMacro }) => {
+        executeMacro(macro, macroCtxRef.current).then((result) => {
+          appendMacroAuditRef.current({ id: nanoid(), macroId: macro.id, macroName: macro.name, triggeredBy: 'slide_enter', result, workspaceId: workspaceId ?? '', firedAt: new Date().toISOString() });
+        }).catch(() => {});
+      });
+    });
+  }, [activeItemId, activeSlideIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Macro webhook trigger polling ────────────────────────────────────────────
+  const lastWebhookPollTsRef = useRef<number>(Date.now());
+  useEffect(() => {
+    if (!workspaceId) return;
+    const poll = async () => {
+      const since = lastWebhookPollTsRef.current;
+      try {
+        const res = await fetch(
+          `${getServerApiBaseUrl()}/api/workspaces/${encodeURIComponent(workspaceId)}/macro-triggers/pending?since=${since}`,
+          { headers: { 'Content-Type': 'application/json' } },
+        );
+        if (!res.ok) return;
+        const data = await res.json() as { ok: boolean; triggers?: Array<{ key: string; triggered_at: number }> };
+        if (!data.ok || !data.triggers?.length) return;
+        lastWebhookPollTsRef.current = Math.max(...data.triggers.map((t) => t.triggered_at)) + 1;
+        for (const trigger of data.triggers) {
+          const matched = matchTriggers({ type: 'webhook', webhookKey: trigger.key }, macrosRef.current);
+          matched.forEach((macro) => {
+            import('./services/macroEngine').then(({ executeMacro }) => {
+              executeMacro(macro, macroCtxRef.current).then((result) => {
+                appendMacroAuditRef.current({ id: nanoid(), macroId: macro.id, macroName: macro.name, triggeredBy: 'webhook', result, workspaceId: workspaceId ?? '', firedAt: new Date().toISOString() });
+              }).catch(() => {});
+            });
+          });
+        }
+      } catch {
+        // polling errors are non-fatal
+      }
+    };
+    const interval = window.setInterval(poll, 3000);
+    return () => window.clearInterval(interval);
+  }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Macro service_mode_change trigger ────────────────────────────────────────
+  useEffect(() => {
+    const serviceMode = isPlaying ? 'live' : 'paused';
+    const triggered = matchTriggers({ type: 'service_mode_change', serviceMode }, macrosRef.current);
+    triggered.forEach((macro) => {
+      import('./services/macroEngine').then(({ executeMacro }) => {
+        executeMacro(macro, macroCtxRef.current).then((result) => {
+          appendMacroAuditRef.current({ id: nanoid(), macroId: macro.id, macroName: macro.name, triggeredBy: 'service_mode_change', result, workspaceId: workspaceId ?? '', firedAt: new Date().toISOString() });
+        }).catch(() => {});
+      });
+    });
+  }, [isPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -4731,6 +4870,16 @@ function App() {
     setHoldScreenMode('none');
     setIsPlaying(true);
     logActivity(user?.uid, 'PRESENTATION_START', { itemTitle: nextLiveItem.title });
+    // Fire item_start macro triggers
+    const itemStartMatches = matchTriggers(
+      { type: 'item_start', itemId: nextLiveItem.id },
+      macros,
+    );
+    itemStartMatches.forEach((macro) => {
+      import('./services/macroEngine').then(({ executeMacro }) => {
+        executeMacro(macro, macroCtx).catch(() => {});
+      });
+    });
   };
   const goLiveSelectedPreview = useCallback(() => {
     if (!presenterPreviewItem || presenterPreviewSlideIndex < 0) return;
@@ -5849,6 +5998,17 @@ function App() {
         return;
       }
     }
+
+    // Fire timer_end macro triggers
+    const timerEndMatches = matchTriggers(
+      { type: 'timer_end', timerPresetId: currentCue.itemId },
+      macrosRef.current,
+    );
+    timerEndMatches.forEach((macro) => {
+      import('./services/macroEngine').then(({ executeMacro }) => {
+        executeMacro(macro, macroCtxRef.current).catch(() => {});
+      });
+    });
   }, [timerMode, timerRunning, timerSeconds, currentCue, currentCueIndex, enabledTimerCues, activateCueByItemId]);
 
   useEffect(() => {
@@ -5923,7 +6083,7 @@ function App() {
     setSidebarPinned((prev) => !prev);
   };
 
-  const handleSidebarTabSelect = (tab: 'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES') => {
+  const handleSidebarTabSelect = (tab: 'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES' | 'MACROS') => {
     setActiveSidebarTab(tab);
     if (presenterSidebarCompact) {
       setPresenterSidebarDrawerOpen(true);
@@ -7496,6 +7656,7 @@ function App() {
               <button onClick={() => handleSidebarTabSelect('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIO MIXER"><Volume2Icon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audio Mixer</span></button>
               <button onClick={() => handleSidebarTabSelect('BIBLE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'BIBLE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="BIBLE LIBRARY"><BibleIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Bible Hub</span></button>
               <button onClick={() => handleSidebarTabSelect('AUDIENCE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIENCE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIENCE STUDIO"><ChatIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audience</span></button>
+              <button onClick={() => handleSidebarTabSelect('MACROS')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'MACROS' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="MACROS"><SparklesIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Macros</span></button>
             </div>
             <div className="p-1 border-t border-zinc-800">
               <button onClick={() => setIsProfileOpen(true)} className="w-full p-2.5 rounded-sm flex items-center gap-3 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors" title="SETTINGS"><Settings className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Settings</span></button>
@@ -7672,6 +7833,17 @@ function App() {
                 canUseStageAlert={canUsePastorAlert}
               />
             </div>
+          )}
+          {activeSidebarTab === 'MACROS' && (
+            <MacroPanel
+              macros={macros}
+              schedule={schedule}
+              workspaceId={workspaceId}
+              executionContext={macroCtx}
+              auditLog={macroAuditLog}
+              onMacrosChange={setMacros}
+              onAppendAudit={appendMacroAudit}
+            />
           )}
         </div>
       </div>
