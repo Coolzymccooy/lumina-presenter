@@ -2427,7 +2427,7 @@ function App() {
           }
         } catch (err) {
           console.warn('Server settings sync failed', err);
-          setSyncIssue('Settings sync failed (local values preserved). Retry by clicking Synchronize Workspace.');
+          setSyncIssue('Settings sync failed (local values preserved). Retry by clicking Save Settings.');
         }
       }
     };

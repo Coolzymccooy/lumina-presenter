@@ -476,7 +476,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
             </button>
             <button onClick={handleSave} className="px-8 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shadow-xl shadow-blue-900/40 transition-all transform active:scale-95 flex items-center gap-2 group">
               <Save size={16} className="group-hover:scale-110 transition-transform" />
-              SYNCHRONIZE WORKSPACE
+              SAVE SETTINGS
             </button>
           </div>
         </div>
