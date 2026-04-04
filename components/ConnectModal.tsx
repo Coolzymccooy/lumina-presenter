@@ -570,6 +570,9 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                                 <div className={`p-2.5 rounded-lg border text-[11px] font-medium ${aetherStatusClass}`}>
                                     {aetherBridgeStatusText || 'Bridge idle — no commands sent yet.'}
                                 </div>
+                                <div className="p-2.5 rounded-lg border border-zinc-800 bg-black/30 text-[11px] text-zinc-400 leading-relaxed">
+                                    With Aether Bridge enabled, Lumina&apos;s existing Presenter <span className="font-semibold text-zinc-200">Go Live</span> action also sends Aether to the Program scene and can trigger stream start when coming out of blackout, hold, or an idle state.
+                                </div>
                             </AccordionSection>
 
                             <AccordionSection

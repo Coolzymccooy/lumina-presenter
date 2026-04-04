@@ -80,7 +80,7 @@ import { parseEasyWorshipFile } from './services/easyWorshipImport';
 import { parseProPresenterFile } from './services/proPresenterImport';
 import { parseOpenSongFile } from './services/openSongImport';
 import { copyTextToClipboard } from './services/clipboardService';
-import { dispatchAetherBridgeEvent } from './services/aetherBridge';
+import { dispatchAetherBridgeEvent, type AetherBridgeEvent } from './services/aetherBridge';
 import { MacroPanel } from './components/MacroPanel';
 import { subscribeMacros, seedStarterMacrosIfEmpty } from './services/macroRegistry';
 import type { MacroDefinition, MacroAuditEntry } from './types/macros';
@@ -3910,7 +3910,7 @@ function App() {
   ]);
 
   const dispatchAetherEvent = useCallback(async (
-    event: 'lumina.bridge.ping' | 'lumina.state.sync' | 'lumina.scene.switch',
+    event: AetherBridgeEvent,
     payload: Record<string, unknown>,
     options?: { timeoutMs?: number; successLabel?: string; failureLabel?: string }
   ) => {
@@ -3992,6 +3992,27 @@ function App() {
       }
     );
   }, [dispatchAetherEvent, liveSessionId, resolveAetherSceneName, workspaceId]);
+
+  const handleAetherStreamRequest = useCallback(async (
+    action: 'start' | 'stop' | 'toggle',
+    payload: Record<string, unknown> = {},
+    options?: { timeoutMs?: number; successLabel?: string; failureLabel?: string }
+  ) => {
+    await dispatchAetherEvent(
+      'lumina.stream.request',
+      {
+        action,
+        ...payload,
+        workspaceId,
+        sessionId: liveSessionId,
+      },
+      {
+        timeoutMs: options?.timeoutMs ?? 5000,
+        successLabel: options?.successLabel ?? `Aether ${action} command sent`,
+        failureLabel: options?.failureLabel ?? `Aether ${action} command failed`,
+      }
+    );
+  }, [dispatchAetherEvent, liveSessionId, workspaceId]);
 
   useEffect(() => {
     if (viewState !== 'studio') return;
@@ -4860,6 +4881,9 @@ function App() {
     const nextLiveItem = prepareItemForGoLive(item);
     if (!nextLiveItem || !Array.isArray(nextLiveItem.slides) || nextLiveItem.slides.length === 0) return;
     const boundedIndex = Math.max(0, Math.min(nextLiveItem.slides.length - 1, slideIndex));
+    const bridgeReady = workspaceSettings.aetherBridgeEnabled && !!String(workspaceSettings.aetherBridgeUrl || '').trim();
+    const shouldRequestAetherStart = bridgeReady && (!activeItemId || blackout || holdScreenMode !== 'none' || !isPlaying);
+    const goLiveSlide = nextLiveItem.slides[boundedIndex];
     setActiveItemId(nextLiveItem.id);
     setActiveSlideIndex(boundedIndex);
     if (nextLiveItem.timerCue?.enabled) {
@@ -4886,6 +4910,28 @@ function App() {
         executeMacro(macro, macroCtx).catch(() => {});
       });
     });
+
+    if (bridgeReady) {
+      const programSceneName = resolveAetherSceneName('program');
+      const bridgePayload = {
+        target: 'program',
+        sceneTarget: 'program',
+        sceneName: programSceneName,
+        itemId: nextLiveItem.id,
+        itemTitle: nextLiveItem.title,
+        itemType: nextLiveItem.type,
+        slideIndex: boundedIndex,
+        slideLabel: String(goLiveSlide?.label || `Slide ${boundedIndex + 1}`),
+      };
+      if (shouldRequestAetherStart) {
+        void handleAetherStreamRequest('start', bridgePayload, {
+          successLabel: 'Aether live start sent',
+          failureLabel: 'Aether live start failed',
+        });
+      } else {
+        void handleAetherSceneSwitch('program');
+      }
+    }
   };
   const goLiveSelectedPreview = useCallback(() => {
     if (!presenterPreviewItem || presenterPreviewSlideIndex < 0) return;
