@@ -3974,6 +3974,15 @@ function App() {
     );
   }, [dispatchAetherEvent, liveSessionId, viewMode, workspaceId]);
 
+  // Heartbeat: ping Aether every 60s while bridge is enabled + configured
+  useEffect(() => {
+    if (!workspaceSettings.aetherBridgeEnabled || !workspaceSettings.aetherBridgeUrl.trim()) return;
+    const id = setInterval(() => {
+      void dispatchAetherEvent('lumina.bridge.ping', { app: 'lumina-presenter', heartbeat: true }, { timeoutMs: 4000 });
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [workspaceSettings.aetherBridgeEnabled, workspaceSettings.aetherBridgeUrl, dispatchAetherEvent]);
+
   const handleAetherBridgeSyncNow = useCallback(async () => {
     await dispatchAetherEvent(
       'lumina.state.sync',
