@@ -80,8 +80,9 @@ import { copyTextToClipboard } from './services/clipboardService';
 import { dispatchAetherBridgeEvent } from './services/aetherBridge';
 import { MacroPanel } from './components/MacroPanel';
 import { subscribeMacros, seedStarterMacrosIfEmpty } from './services/macroRegistry';
-import type { MacroDefinition } from './types/macros';
+import type { MacroDefinition, MacroAuditEntry } from './types/macros';
 import { matchTriggers, type MacroExecutionContext } from './services/macroEngine';
+import { nanoid } from 'nanoid';
 import { STARTER_MACROS } from './seed/starterMacros';
 import {
   type BackgroundSnapshot,
@@ -1158,6 +1159,12 @@ function App() {
   });
   const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES' | 'MACROS'>('SCHEDULE');
   const [macros, setMacros] = useState<MacroDefinition[]>([]);
+  const [macroAuditLog, setMacroAuditLog] = useState<MacroAuditEntry[]>([]);
+  const appendMacroAudit = useCallback((entry: MacroAuditEntry) => {
+    setMacroAuditLog(prev => [entry, ...prev].slice(0, 20));
+  }, []);
+  const appendMacroAuditRef = useRef(appendMacroAudit);
+  appendMacroAuditRef.current = appendMacroAudit;
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1440));
   const isSettingsHydratedRef = useRef(false);
   const studioShellRef = useRef<HTMLDivElement | null>(null);
@@ -1913,7 +1920,9 @@ function App() {
     );
     triggered.forEach((macro) => {
       import('./services/macroEngine').then(({ executeMacro }) => {
-        executeMacro(macro, macroCtxRef.current).catch(() => {});
+        executeMacro(macro, macroCtxRef.current).then((result) => {
+          appendMacroAuditRef.current({ id: nanoid(), macroId: macro.id, macroName: macro.name, triggeredBy: 'slide_enter', result, workspaceId: workspaceId ?? '', firedAt: new Date().toISOString() });
+        }).catch(() => {});
       });
     });
   }, [activeItemId, activeSlideIndex]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1937,7 +1946,9 @@ function App() {
           const matched = matchTriggers({ type: 'webhook', webhookKey: trigger.key }, macrosRef.current);
           matched.forEach((macro) => {
             import('./services/macroEngine').then(({ executeMacro }) => {
-              executeMacro(macro, macroCtxRef.current).catch(() => {});
+              executeMacro(macro, macroCtxRef.current).then((result) => {
+                appendMacroAuditRef.current({ id: nanoid(), macroId: macro.id, macroName: macro.name, triggeredBy: 'webhook', result, workspaceId: workspaceId ?? '', firedAt: new Date().toISOString() });
+              }).catch(() => {});
             });
           });
         }
@@ -1955,7 +1966,9 @@ function App() {
     const triggered = matchTriggers({ type: 'service_mode_change', serviceMode }, macrosRef.current);
     triggered.forEach((macro) => {
       import('./services/macroEngine').then(({ executeMacro }) => {
-        executeMacro(macro, macroCtxRef.current).catch(() => {});
+        executeMacro(macro, macroCtxRef.current).then((result) => {
+          appendMacroAuditRef.current({ id: nanoid(), macroId: macro.id, macroName: macro.name, triggeredBy: 'service_mode_change', result, workspaceId: workspaceId ?? '', firedAt: new Date().toISOString() });
+        }).catch(() => {});
       });
     });
   }, [isPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -7827,7 +7840,9 @@ function App() {
               schedule={schedule}
               workspaceId={workspaceId}
               executionContext={macroCtx}
+              auditLog={macroAuditLog}
               onMacrosChange={setMacros}
+              onAppendAudit={appendMacroAudit}
             />
           )}
         </div>

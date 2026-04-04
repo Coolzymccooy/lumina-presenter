@@ -29,6 +29,7 @@ const TRIGGERS: Array<{ id: MacroTriggerType; label: string; description: string
   { id: 'slide_enter', label: 'Slide Enter', description: 'When a specific slide is shown' },
   { id: 'timer_end', label: 'Timer End', description: 'When the speaker timer reaches zero' },
   { id: 'service_mode_change', label: 'Service Mode', description: 'When service mode changes' },
+  { id: 'webhook', label: 'Webhook', description: 'HTTP POST from an external system or button' },
 ];
 
 const ACTION_TYPES: Array<{ id: MacroActionType; label: string; group: string }> = [
@@ -236,6 +237,9 @@ export const MacroBuilder: React.FC<MacroBuilderProps> = ({
   const [triggerType, setTriggerType] = useState<MacroTriggerType>(
     initial?.triggers[0]?.type ?? 'manual',
   );
+  const [webhookKey, setWebhookKey] = useState<string>(
+    typeof initial?.triggers[0]?.payload?.key === 'string' ? initial.triggers[0].payload.key : '',
+  );
   const [actions, setActions] = useState<MacroAction[]>(initial?.actions ?? []);
   const [requiresConfirmation, setRequiresConfirmation] = useState(
     initial?.requiresConfirmation ?? false,
@@ -275,7 +279,7 @@ export const MacroBuilder: React.FC<MacroBuilderProps> = ({
       description: description.trim() || undefined,
       category,
       scope: 'workspace',
-      triggers: [{ type: triggerType }],
+      triggers: [{ type: triggerType, ...(triggerType === 'webhook' && webhookKey.trim() ? { payload: { key: webhookKey.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '-') } } : {}) }],
       actions,
       tags: initial?.tags ?? [],
       isEnabled: initial?.isEnabled ?? true,
@@ -287,7 +291,8 @@ export const MacroBuilder: React.FC<MacroBuilderProps> = ({
     onSave(macro);
   };
 
-  const isValid = name.trim().length > 0 && actions.length > 0;
+  const isValid = name.trim().length > 0 && actions.length > 0 &&
+    (triggerType !== 'webhook' || webhookKey.trim().length > 0);
 
   return (
     <div className="flex flex-col gap-4 p-3">
@@ -340,10 +345,27 @@ export const MacroBuilder: React.FC<MacroBuilderProps> = ({
             </button>
           ))}
         </div>
-        {triggerType !== 'manual' && (
+        {triggerType !== 'manual' && triggerType !== 'webhook' && (
           <p className="text-[10px] text-zinc-500 leading-relaxed">
             {TRIGGERS.find(t => t.id === triggerType)?.description}
           </p>
+        )}
+        {triggerType === 'webhook' && (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[10px] text-zinc-500 leading-relaxed">
+              POST to the URL shown on the macro card to fire this macro from any external system.
+            </p>
+            <div className="flex items-center gap-2">
+              <label className="shrink-0 text-[10px] text-zinc-500">Key</label>
+              <input
+                className="flex-1 rounded bg-zinc-800 px-2 py-1.5 text-[12px] font-mono text-zinc-100 border border-zinc-700 outline-none placeholder:text-zinc-600"
+                placeholder="e.g. start-service"
+                value={webhookKey}
+                onChange={e => setWebhookKey(e.target.value)}
+              />
+            </div>
+            <p className="text-[9px] text-zinc-600">Lowercase letters, numbers, dots, hyphens. Auto-sanitised on save.</p>
+          </div>
         )}
       </div>
 

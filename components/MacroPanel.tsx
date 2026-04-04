@@ -222,22 +222,21 @@ interface MacroPanelProps {
   schedule: ServiceItem[];
   workspaceId: string;
   executionContext: MacroExecutionContext;
+  auditLog: MacroAuditEntry[];
   onMacrosChange: (macros: MacroDefinition[]) => void;
+  onAppendAudit: (entry: MacroAuditEntry) => void;
 }
 
 export const MacroPanel: React.FC<MacroPanelProps> = ({
-  macros, schedule, workspaceId, executionContext, onMacrosChange,
+  macros, schedule, workspaceId, executionContext, auditLog, onMacrosChange, onAppendAudit,
 }) => {
   const [view, setView] = useState<'library' | 'builder' | 'console'>('library');
   const [editingMacro, setEditingMacro] = useState<MacroDefinition | null>(null);
   const [runningIds, setRunningIds] = useState<Set<string>>(new Set());
   const [pendingConfirm, setPendingConfirm] = useState<MacroDefinition | null>(null);
-  const [auditLog, setAuditLog] = useState<MacroAuditEntry[]>([]);
   const [filterCategory, setFilterCategory] = useState<MacroCategory | 'all'>('all');
 
-  const appendAudit = useCallback((entry: MacroAuditEntry) => {
-    setAuditLog(prev => [entry, ...prev].slice(0, MAX_AUDIT));
-  }, []);
+  const appendAudit = onAppendAudit;
 
   const runMacro = useCallback(async (macro: MacroDefinition) => {
     if (runningIds.has(macro.id)) return;
@@ -454,6 +453,9 @@ export const MacroPanel: React.FC<MacroPanelProps> = ({
                     <div className="text-[10px] text-zinc-500">
                       {new Date(entry.firedAt).toLocaleTimeString()} · {entry.result.durationMs}ms
                       · {entry.result.actionResults.length} actions
+                      {entry.triggeredBy !== 'manual' && (
+                        <span className="ml-1.5 rounded-full border border-blue-800/40 bg-blue-950/20 px-1.5 py-0.5 text-[8px] text-blue-400">{entry.triggeredBy}</span>
+                      )}
                     </div>
                     {entry.result.actionResults.some(r => r.status === 'error') && (
                       <div className="mt-1.5 flex flex-col gap-0.5">
