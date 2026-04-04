@@ -2486,9 +2486,19 @@ app.post("/api/workspaces/:workspaceId/imports/pptx-visual", requireActor, async
 /**
  * POST /api/workspaces/:workspaceId/macro-trigger/:key
  * Called by external systems (physical buttons, automation) to fire a macro trigger.
- * No auth required so any integration can call it; workspace ID acts as namespace.
+ * If MACRO_WEBHOOK_SECRET env var is set, requires Authorization: Bearer <secret>
+ * or X-Webhook-Secret header matching that value.
  */
 app.post("/api/workspaces/:workspaceId/macro-trigger/:key", (req, res) => {
+  const secret = process.env.MACRO_WEBHOOK_SECRET;
+  if (secret) {
+    const authHeader = String(req.headers["authorization"] || "");
+    const secretHeader = String(req.headers["x-webhook-secret"] || "");
+    const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (bearerToken !== secret && secretHeader !== secret) {
+      return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
+    }
+  }
   const workspaceId = sanitizePathSegment(req.params.workspaceId, "workspace");
   const key = String(req.params.key || "").trim().replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 120);
   if (!workspaceId || workspaceId === "workspace" || !key) {

@@ -63,7 +63,7 @@ const ACTION_LABELS: Record<string, string> = {
 async function executeNextSlide(ctx: MacroExecutionContext): Promise<void> {
   const item = ctx.schedule.find(i => i.id === ctx.activeItemId) ||
                ctx.schedule.find(i => i.id === ctx.selectedItemId);
-  if (!item) return;
+  if (!item || !Array.isArray(item.slides)) return;
   const nextIndex = ctx.activeSlideIndex + 1;
   if (nextIndex < item.slides.length) {
     ctx.setActiveSlideIndex(nextIndex);
@@ -96,7 +96,10 @@ async function executeGoToSlide(
 ): Promise<void> {
   const item = ctx.schedule.find(i => i.id === payload.itemId);
   if (!item) throw new Error(`Item "${payload.itemId}" not found in schedule`);
-  if (payload.slideIndex < 0 || payload.slideIndex >= item.slides.length) {
+  if (typeof payload.slideIndex !== 'number' || isNaN(payload.slideIndex)) {
+    throw new Error(`Invalid slide index for item "${item.title}"`);
+  }
+  if (!Array.isArray(item.slides) || payload.slideIndex < 0 || payload.slideIndex >= item.slides.length) {
     throw new Error(`Slide index ${payload.slideIndex} out of range for item "${item.title}"`);
   }
   ctx.setActiveItemId(item.id);
@@ -149,8 +152,11 @@ async function executeTriggerAetherScene(
   }
 }
 
+const MAX_WAIT_MS = 300_000; // 5 minutes
+
 async function executeWait(payload: WaitPayload): Promise<void> {
-  await new Promise<void>(resolve => setTimeout(resolve, Math.max(0, payload.delayMs)));
+  const delay = Math.min(Math.max(0, payload.delayMs ?? 0), MAX_WAIT_MS);
+  await new Promise<void>(resolve => setTimeout(resolve, delay));
 }
 
 // ─── Single Action Dispatcher ─────────────────────────────────────────────────
@@ -205,7 +211,8 @@ export async function executeMacro(
 
   for (const action of macro.actions) {
     if (action.delayMs && action.delayMs > 0) {
-      await new Promise<void>(resolve => setTimeout(resolve, action.delayMs));
+      const cappedDelay = Math.min(action.delayMs, MAX_WAIT_MS);
+      await new Promise<void>(resolve => setTimeout(resolve, cappedDelay));
     }
 
     const actionStart = performance.now();

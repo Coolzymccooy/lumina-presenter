@@ -20,12 +20,25 @@ const macrosRef = (workspaceId: string) =>
 const macroDocRef = (workspaceId: string, macroId: string) =>
   doc(db, 'workspaces', workspaceId, 'macros', macroId);
 
+// ─── Runtime sanitiser ───────────────────────────────────────────────────────
+
+function isValidMacro(data: unknown): data is MacroDefinition {
+  if (!data || typeof data !== 'object') return false;
+  const d = data as Record<string, unknown>;
+  return (
+    typeof d.id === 'string' && d.id.length > 0 &&
+    typeof d.name === 'string' && d.name.length > 0 &&
+    Array.isArray(d.triggers) &&
+    Array.isArray(d.actions)
+  );
+}
+
 // ─── Read ─────────────────────────────────────────────────────────────────────
 
 export async function loadMacros(workspaceId: string): Promise<MacroDefinition[]> {
   const q = query(macrosRef(workspaceId), orderBy('createdAt', 'asc'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => d.data() as MacroDefinition);
+  return snapshot.docs.map(d => d.data()).filter(isValidMacro);
 }
 
 /**
@@ -41,7 +54,7 @@ export function subscribeMacros(
   return onSnapshot(
     q,
     snapshot => {
-      const macros = snapshot.docs.map(d => d.data() as MacroDefinition);
+      const macros = snapshot.docs.map(d => d.data()).filter(isValidMacro);
       onUpdate(macros);
     },
     err => {

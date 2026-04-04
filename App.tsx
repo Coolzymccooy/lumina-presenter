@@ -1923,7 +1923,7 @@ function App() {
         executeMacro(macro, macroCtxRef.current).then((result) => {
           appendMacroAuditRef.current({ id: nanoid(), macroId: macro.id, macroName: macro.name, triggeredBy: 'slide_enter', result, workspaceId: workspaceId ?? '', firedAt: new Date().toISOString() });
         }).catch(() => {});
-      });
+      }).catch(() => {});
     });
   }, [activeItemId, activeSlideIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1949,7 +1949,7 @@ function App() {
               executeMacro(macro, macroCtxRef.current).then((result) => {
                 appendMacroAuditRef.current({ id: nanoid(), macroId: macro.id, macroName: macro.name, triggeredBy: 'webhook', result, workspaceId: workspaceId ?? '', firedAt: new Date().toISOString() });
               }).catch(() => {});
-            });
+            }).catch(() => {});
           });
         }
       } catch {
@@ -1969,7 +1969,7 @@ function App() {
         executeMacro(macro, macroCtxRef.current).then((result) => {
           appendMacroAuditRef.current({ id: nanoid(), macroId: macro.id, macroName: macro.name, triggeredBy: 'service_mode_change', result, workspaceId: workspaceId ?? '', firedAt: new Date().toISOString() });
         }).catch(() => {});
-      });
+      }).catch(() => {});
     });
   }, [isPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
 
