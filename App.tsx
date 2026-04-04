@@ -252,6 +252,7 @@ type WorkspaceSettings = {
   aetherBridgeEnabled: boolean;
   aetherBridgeAutoSync: boolean;
   aetherBridgeUrl: string;
+  aetherRoomId: string;
   aetherSceneProgram: string;
   aetherSceneBlackout: string;
   aetherSceneLobby: string;
@@ -854,6 +855,7 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
   if (typeof raw.aetherBridgeEnabled === 'boolean') safe.aetherBridgeEnabled = raw.aetherBridgeEnabled;
   if (typeof raw.aetherBridgeAutoSync === 'boolean') safe.aetherBridgeAutoSync = raw.aetherBridgeAutoSync;
   if (typeof raw.aetherBridgeUrl === 'string') safe.aetherBridgeUrl = raw.aetherBridgeUrl.slice(0, 500);
+  if (typeof raw.aetherRoomId === 'string') safe.aetherRoomId = raw.aetherRoomId.slice(0, 64);
   if (typeof raw.aetherSceneProgram === 'string') safe.aetherSceneProgram = raw.aetherSceneProgram.slice(0, 120);
   if (typeof raw.aetherSceneBlackout === 'string') safe.aetherSceneBlackout = raw.aetherSceneBlackout.slice(0, 120);
   if (typeof raw.aetherSceneLobby === 'string') safe.aetherSceneLobby = raw.aetherSceneLobby.slice(0, 120);
@@ -1296,6 +1298,7 @@ function App() {
     aetherBridgeEnabled: false,
     aetherBridgeAutoSync: true,
     aetherBridgeUrl: '',
+    aetherRoomId: '',
     aetherSceneProgram: 'Program',
     aetherSceneBlackout: 'Blackout',
     aetherSceneLobby: 'Lobby',
@@ -3922,9 +3925,11 @@ function App() {
       });
       return { ok: false };
     }
+    const roomId = String(workspaceSettings.aetherRoomId || '').trim() || undefined;
     const result = await dispatchAetherBridgeEvent({
       endpointUrl,
       accessToken: String(aetherBridgeToken || '').trim() || undefined,
+      roomId,
       event,
       workspaceId,
       sessionId: liveSessionId,
@@ -3945,7 +3950,7 @@ function App() {
       });
     }
     return result;
-  }, [aetherBridgeToken, liveSessionId, workspaceId, workspaceSettings.aetherBridgeUrl]);
+  }, [aetherBridgeToken, liveSessionId, workspaceId, workspaceSettings.aetherBridgeUrl, workspaceSettings.aetherRoomId]);
 
   const handleAetherBridgeTest = useCallback(async () => {
     await dispatchAetherEvent(
@@ -9246,6 +9251,8 @@ function App() {
         onSetAetherBridgeAutoSync={(enabled) => setWorkspaceSettings((prev) => ({ ...prev, aetherBridgeAutoSync: enabled }))}
         aetherBridgeUrl={workspaceSettings.aetherBridgeUrl}
         onSetAetherBridgeUrl={(url) => setWorkspaceSettings((prev) => ({ ...prev, aetherBridgeUrl: url }))}
+        aetherRoomId={workspaceSettings.aetherRoomId}
+        onSetAetherRoomId={(id) => setWorkspaceSettings((prev) => ({ ...prev, aetherRoomId: id }))}
         aetherBridgeToken={aetherBridgeToken}
         onSetAetherBridgeToken={setAetherBridgeToken}
         aetherSceneProgram={workspaceSettings.aetherSceneProgram}

@@ -17,6 +17,7 @@ export type AetherBridgeEvent =
 export type AetherBridgeRequest = {
   endpointUrl: string;
   accessToken?: string;
+  roomId?: string;
   event: AetherBridgeEvent;
   workspaceId: string;
   sessionId: string;
@@ -84,6 +85,7 @@ export const dispatchAetherBridgeEvent = async (request: AetherBridgeRequest): P
         'x-lumina-workspace': request.workspaceId,
         'x-lumina-session': request.sessionId,
         ...(request.accessToken ? { 'x-lumina-token': request.accessToken } : {}),
+        ...(request.roomId ? { 'x-lumina-room': request.roomId } : {}),
       },
       body: JSON.stringify({
         source: 'lumina-presenter',

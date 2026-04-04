@@ -22,6 +22,8 @@ interface ConnectModalProps {
     onSetAetherBridgeAutoSync: (enabled: boolean) => void;
     aetherBridgeUrl: string;
     onSetAetherBridgeUrl: (url: string) => void;
+    aetherRoomId: string;
+    onSetAetherRoomId: (id: string) => void;
     aetherBridgeToken: string;
     onSetAetherBridgeToken: (token: string) => void;
     aetherSceneProgram: string;
@@ -83,6 +85,8 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
     onSetAetherBridgeAutoSync,
     aetherBridgeUrl,
     onSetAetherBridgeUrl,
+    aetherRoomId,
+    onSetAetherRoomId,
     aetherBridgeToken,
     onSetAetherBridgeToken,
     aetherSceneProgram,
@@ -470,6 +474,20 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                                                 ? 'border-zinc-700 focus:border-cyan-600'
                                                 : 'border-amber-700/60 focus:border-amber-500'
                                         }`}
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-[10px] uppercase tracking-wider text-zinc-500">Aether Room ID</label>
+                                        {!aetherRoomId.trim() && (
+                                            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Optional — broadcasts to all</span>
+                                        )}
+                                    </div>
+                                    <input
+                                        value={aetherRoomId}
+                                        onChange={(e) => onSetAetherRoomId(e.target.value)}
+                                        placeholder="e.g. SLTN-1234 (matches ?room= in Aether URL)"
+                                        className="w-full px-2 py-2 rounded-lg border border-zinc-800 bg-black/60 text-[11px] text-zinc-200 font-mono"
                                     />
                                 </div>
                                 <div className="space-y-1">
