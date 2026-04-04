@@ -1479,7 +1479,7 @@ function App() {
   const [autoCueSeconds, setAutoCueSeconds] = useState(7);
   const [autoCueRemaining, setAutoCueRemaining] = useState(7);
   const [editingSlide, setEditingSlide] = useState<Slide | null>(null);
-  const [inlineSlideRename, setInlineSlideRename] = useState<{ itemId: string; slideId: string; value: string } | null>(null);
+  const [inlineSlideRename, setInlineSlideRename] = useState<{ itemId: string; slideId: string; value: string; source: 'runsheet' | 'thumbnail' } | null>(null);
   const inlineSlideRenameInputRef = useRef<HTMLInputElement | null>(null);
   const presenterMediaUploadInputRef = useRef<HTMLInputElement | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
@@ -5602,11 +5602,12 @@ function App() {
     }
   };
 
-  const startSlideLabelRename = useCallback((itemId: string, slideId: string, currentLabel: string) => {
+  const startSlideLabelRename = useCallback((itemId: string, slideId: string, currentLabel: string, source: 'runsheet' | 'thumbnail' = 'thumbnail') => {
     setInlineSlideRename({
       itemId,
       slideId,
       value: currentLabel.trim() || 'Slide',
+      source,
     });
   }, []);
 
@@ -6593,7 +6594,7 @@ function App() {
                   onClick={(e) => { e.stopPropagation(); if (viewMode === 'PRESENTER') goLive(item, sIdx); }}
                 >
                   <div className="flex justify-between items-center gap-2">
-                      {inlineSlideRename?.itemId === item.id && inlineSlideRename.slideId === slide.id ? (
+                      {inlineSlideRename?.itemId === item.id && inlineSlideRename.slideId === slide.id && inlineSlideRename.source === 'runsheet' ? (
                       <div className="flex flex-1 items-center gap-1">
                         <input
                           ref={inlineSlideRenameInputRef}
@@ -6690,12 +6691,12 @@ function App() {
                         </button>
                         <button
                           type="button"
-                          onMouseDown={(e) => {
+                          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                          onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            startSlideLabelRename(item.id, slide.id, slide.label || `Slide ${sIdx + 1}`);
+                            startSlideLabelRename(item.id, slide.id, slide.label || `Slide ${sIdx + 1}`, 'runsheet');
                           }}
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                           className="inline-flex items-center justify-center rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-zinc-400 hover:border-cyan-700 hover:text-cyan-300"
                           title="Rename slide/image"
                           aria-label={`Rename ${slide.label || `Slide ${sIdx + 1}`}`}
@@ -7996,7 +7997,7 @@ function App() {
                     </div>
                     <div className="absolute bottom-0 inset-x-0 p-1.5 flex items-center justify-between bg-gradient-to-t from-black/80 to-transparent">
                       <div className="flex-1 min-w-0">
-                        {inlineSlideRename?.slideId === slide.id ? (
+                        {inlineSlideRename?.slideId === slide.id && inlineSlideRename.source === 'thumbnail' ? (
                           <input
                             ref={inlineSlideRenameInputRef}
                             type="text"
@@ -8017,7 +8018,7 @@ function App() {
                     <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 z-10 transition-opacity">
                       <button 
                         type="button" 
-                        onClick={(e) => { e.stopPropagation(); startSlideLabelRename(selectedItem.id, slide.id, slide.label || `Slide ${idx + 1}`); }} 
+                        onClick={(e) => { e.stopPropagation(); startSlideLabelRename(selectedItem.id, slide.id, slide.label || `Slide ${idx + 1}`, 'thumbnail'); }}
                         className="p-1.5 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-cyan-300 text-zinc-400" 
                         title="Rename slide"
                       >
@@ -8976,6 +8977,7 @@ function App() {
                             {editingPresetId ? 'Update' : 'Save'}
                           </button>
                           <button
+                            data-testid="speaker-preset-new-draft"
                             onClick={openCreatePresetModal}
                             className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/10"
                           >

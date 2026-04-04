@@ -606,7 +606,7 @@ test('speaker timer studio stays open after save, drags freely, and leaves the s
   await expect(hero).toBeVisible();
   await expect(heroTimer).toBeVisible();
   await expect(saveButton).toBeVisible();
-  await studio.getByRole('button', { name: /new preset/i }).click();
+  await studio.getByTestId('speaker-preset-new-draft').click();
 
   const beforeWide = await studio.boundingBox();
   expect(beforeWide).toBeTruthy();
@@ -658,7 +658,7 @@ test('speaker timer studio stays open after save, drags freely, and leaves the s
   await saveButton.click();
 
   await expect(studio).toBeVisible();
-  await expect(page.getByText('Update this preset')).toBeVisible();
+  await expect(saveButton).toContainText(/update/i);
   await expect(page.getByTestId('speaker-preset-studio-status')).toHaveText(/saved just now/i);
   await expect(hero.getByText(`Preset ${key}`)).toBeVisible();
 });
@@ -798,7 +798,7 @@ test('smart slide editor supports preset selection, typing into inspector, and s
 
   await expect(page.getByText('Smart Layout Slide Editor')).not.toBeVisible();
   await expect(page.locator('[data-testid^="runsheet-slide-label-"]').first()).toHaveText('Sunday Welcome');
-  await expect(page.getByText('Welcome to Sunday Service')).toBeVisible();
+  await expect(page.getByText('Welcome to Sunday Service').first()).toBeVisible();
 });
 
 test('smart slide editor supports multiple bullet points and numbered lists', async ({ page }) => {

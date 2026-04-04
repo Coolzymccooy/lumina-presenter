@@ -83,6 +83,17 @@ service cloud.firestore {
       allow delete: if playlistTeamAllowed(resource.data.teamId);
     }
 
+    // Workspace-scoped resources (macros, etc.)
+    match /workspaces/{workspaceId} {
+      function isWorkspaceOwner() {
+        return signedIn() && request.auth.uid == workspaceId;
+      }
+
+      match /macros/{macroId} {
+        allow read, write: if isWorkspaceOwner();
+      }
+    }
+
     // App telemetry and operator analytics
     match /user_activity_logs/{logId} {
       allow create: if signedIn() && (
