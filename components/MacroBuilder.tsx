@@ -224,12 +224,14 @@ const ActionRow: React.FC<ActionRowProps> = ({
 interface MacroBuilderProps {
   initial?: MacroDefinition | null;
   schedule: ServiceItem[];
+  saveError?: string | null;
+  isSaving?: boolean;
   onSave: (macro: MacroDefinition) => void;
   onCancel: () => void;
 }
 
 export const MacroBuilder: React.FC<MacroBuilderProps> = ({
-  initial, schedule, onSave, onCancel,
+  initial, schedule, saveError, isSaving, onSave, onCancel,
 }) => {
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
@@ -291,8 +293,23 @@ export const MacroBuilder: React.FC<MacroBuilderProps> = ({
     onSave(macro);
   };
 
-  const isValid = name.trim().length > 0 && actions.length > 0 &&
-    (triggerType !== 'webhook' || webhookKey.trim().length > 0);
+  // Per-section validation errors shown inline
+  const nameError = name.trim().length === 0 ? 'Macro name is required.' : null;
+  const webhookError = triggerType === 'webhook' && webhookKey.trim().length === 0
+    ? 'A webhook key is required for this trigger type.' : null;
+  const actionsError = actions.length === 0 ? 'Add at least one action.' : null;
+  const actionPayloadErrors: string[] = actions.flatMap((a, i) => {
+    const p = a.payload as Record<string, unknown>;
+    const num = i + 1;
+    if (a.type === 'go_to_item' && !String(p.itemId ?? '').trim()) return [`Action ${num}: select a target item.`];
+    if (a.type === 'go_to_slide' && !String(p.itemId ?? '').trim()) return [`Action ${num}: select a target item.`];
+    if (a.type === 'show_message' && !String(p.text ?? '').trim()) return [`Action ${num}: message text is required.`];
+    if (a.type === 'trigger_aether_scene' && !String(p.sceneId ?? '').trim()) return [`Action ${num}: scene name/ID is required.`];
+    if (a.type === 'wait' && (p.delayMs === undefined || Number(p.delayMs) <= 0)) return [`Action ${num}: delay must be greater than 0.`];
+    return [];
+  });
+
+  const isValid = !nameError && !webhookError && !actionsError && actionPayloadErrors.length === 0;
 
   return (
     <div className="flex flex-col gap-4 p-3">
@@ -300,12 +317,15 @@ export const MacroBuilder: React.FC<MacroBuilderProps> = ({
       <div className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
         <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Details</div>
         <input
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-[13px] text-zinc-100 outline-none placeholder:text-zinc-600"
+          className={`w-full rounded-lg border bg-zinc-800 px-3 py-2 text-[13px] text-zinc-100 outline-none placeholder:text-zinc-600 ${nameError && name !== '' ? 'border-red-700' : 'border-zinc-700'}`}
           placeholder="Macro name…"
           value={name}
           onChange={e => setName(e.target.value)}
           autoFocus
         />
+        {nameError && name !== '' && (
+          <p className="text-[10px] text-red-400">{nameError}</p>
+        )}
         <input
           className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-[12px] text-zinc-300 outline-none placeholder:text-zinc-600"
           placeholder="Description (optional)"
@@ -365,6 +385,9 @@ export const MacroBuilder: React.FC<MacroBuilderProps> = ({
               />
             </div>
             <p className="text-[9px] text-zinc-600">Lowercase letters, numbers, dots, hyphens. Auto-sanitised on save.</p>
+            {webhookError && (
+              <p className="text-[10px] text-red-400">{webhookError}</p>
+            )}
           </div>
         )}
       </div>
@@ -383,8 +406,8 @@ export const MacroBuilder: React.FC<MacroBuilderProps> = ({
           </button>
         </div>
         {actions.length === 0 ? (
-          <p className="py-4 text-center text-[11px] text-zinc-600">
-            No actions yet — add one above.
+          <p className="py-4 text-center text-[11px] text-red-400/80">
+            Add at least one action to enable saving.
           </p>
         ) : (
           <div className="flex flex-col gap-2">
@@ -419,7 +442,25 @@ export const MacroBuilder: React.FC<MacroBuilderProps> = ({
         </label>
       </div>
 
-      {/* Actions */}
+      {/* Validation summary — only shown when user has interacted (name is filled) */}
+      {name.trim().length > 0 && !isValid && (
+        <div className="rounded-lg border border-amber-800/50 bg-amber-950/20 px-3 py-2 flex flex-col gap-0.5">
+          {webhookError && <p className="text-[10px] text-amber-300">{webhookError}</p>}
+          {actionsError && <p className="text-[10px] text-amber-300">{actionsError}</p>}
+          {actionPayloadErrors.map(e => (
+            <p key={e} className="text-[10px] text-amber-300">{e}</p>
+          ))}
+        </div>
+      )}
+
+      {/* Save error from Firestore / network */}
+      {saveError && (
+        <div className="rounded-lg border border-red-800/50 bg-red-950/20 px-3 py-2">
+          <p className="text-[11px] text-red-400">{saveError}</p>
+        </div>
+      )}
+
+      {/* Footer buttons */}
       <div className="flex gap-2">
         <button
           onClick={onCancel}
@@ -429,10 +470,10 @@ export const MacroBuilder: React.FC<MacroBuilderProps> = ({
         </button>
         <button
           onClick={handleSave}
-          disabled={!isValid}
+          disabled={!isValid || isSaving}
           className="flex-1 rounded-lg bg-blue-600 py-2 text-[12px] font-semibold text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          {initial ? 'Save changes' : 'Create macro'}
+          {isSaving ? 'Saving…' : initial ? 'Save changes' : 'Create macro'}
         </button>
       </div>
     </div>

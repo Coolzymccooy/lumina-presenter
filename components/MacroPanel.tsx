@@ -235,6 +235,8 @@ export const MacroPanel: React.FC<MacroPanelProps> = ({
   const [runningIds, setRunningIds] = useState<Set<string>>(new Set());
   const [pendingConfirm, setPendingConfirm] = useState<MacroDefinition | null>(null);
   const [filterCategory, setFilterCategory] = useState<MacroCategory | 'all'>('all');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const appendAudit = onAppendAudit;
 
@@ -270,14 +272,23 @@ export const MacroPanel: React.FC<MacroPanelProps> = ({
   }, [runMacro]);
 
   const handleSaveMacro = useCallback(async (macro: MacroDefinition) => {
-    await saveMacro(workspaceId, macro);
-    const existing = macros.find(m => m.id === macro.id);
-    const next = existing
-      ? macros.map(m => (m.id === macro.id ? macro : m))
-      : [...macros, macro];
-    onMacrosChange(next);
-    setEditingMacro(null);
-    setView('library');
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await saveMacro(workspaceId, macro);
+      const existing = macros.find(m => m.id === macro.id);
+      const next = existing
+        ? macros.map(m => (m.id === macro.id ? macro : m))
+        : [...macros, macro];
+      onMacrosChange(next);
+      setEditingMacro(null);
+      setView('library');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to save macro. Check your connection and try again.';
+      setSaveError(msg);
+    } finally {
+      setIsSaving(false);
+    }
   }, [workspaceId, macros, onMacrosChange]);
 
   const handleDelete = useCallback(async (macro: MacroDefinition) => {
@@ -431,8 +442,10 @@ export const MacroPanel: React.FC<MacroPanelProps> = ({
             <MacroBuilder
               initial={editingMacro}
               schedule={schedule}
+              saveError={saveError}
+              isSaving={isSaving}
               onSave={macro => void handleSaveMacro(macro)}
-              onCancel={() => { setEditingMacro(null); setView('library'); }}
+              onCancel={() => { setEditingMacro(null); setSaveError(null); setView('library'); }}
             />
           )}
 
