@@ -3925,7 +3925,12 @@ function App() {
       });
       return { ok: false };
     }
-    const roomId = String(workspaceSettings.aetherRoomId || '').trim() || undefined;
+    // Derive room ID from the bridge URL's ?room= query param (new pairing flow)
+    // Fall back to the legacy stored aetherRoomId for backwards compat
+    const roomId = (() => {
+      try { return new URL(workspaceSettings.aetherBridgeUrl).searchParams.get('room') || undefined; }
+      catch { return String(workspaceSettings.aetherRoomId || '').trim() || undefined; }
+    })();
     const result = await dispatchAetherBridgeEvent({
       endpointUrl,
       accessToken: String(aetherBridgeToken || '').trim() || undefined,
@@ -9251,8 +9256,6 @@ function App() {
         onSetAetherBridgeAutoSync={(enabled) => setWorkspaceSettings((prev) => ({ ...prev, aetherBridgeAutoSync: enabled }))}
         aetherBridgeUrl={workspaceSettings.aetherBridgeUrl}
         onSetAetherBridgeUrl={(url) => setWorkspaceSettings((prev) => ({ ...prev, aetherBridgeUrl: url }))}
-        aetherRoomId={workspaceSettings.aetherRoomId}
-        onSetAetherRoomId={(id) => setWorkspaceSettings((prev) => ({ ...prev, aetherRoomId: id }))}
         aetherBridgeToken={aetherBridgeToken}
         onSetAetherBridgeToken={setAetherBridgeToken}
         aetherSceneProgram={workspaceSettings.aetherSceneProgram}
