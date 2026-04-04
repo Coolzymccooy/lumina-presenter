@@ -808,16 +808,36 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
-    const update = () => {
-      const { width, height } = el.getBoundingClientRect();
-      const sx = width / CANVAS_W;
-      const sy = height / CANVAS_H;
-      setScale(Math.min(sx, sy));
-    };
-    update();
-    const ro = new ResizeObserver(update);
+
+    // Initial measurement — read once synchronously before observer fires
+    const initRect = el.getBoundingClientRect();
+    if (initRect.width > 0 && initRect.height > 0) {
+      setScale(Math.min(initRect.width / CANVAS_W, initRect.height / CANVAS_H));
+    }
+
+    let rafId: number | null = null;
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      // Use contentRect provided by the observer — avoids forced synchronous
+      // layout (getBoundingClientRect inside an observer callback) which can
+      // create a repaint→observe→repaint loop that makes the canvas shake.
+      const { width, height } = entry.contentRect;
+      // Debounce via rAF so rapid consecutive observations don't cause
+      // oscillating scale state (the primary source of PPTX + split-panel shake).
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        if (width > 0 && height > 0) {
+          setScale(Math.min(width / CANVAS_W, height / CANVAS_H));
+        }
+      });
+    });
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   const labelPx = Math.round(CANVAS_H * 0.026);   // ~28px at 1080p

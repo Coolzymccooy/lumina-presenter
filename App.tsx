@@ -76,6 +76,8 @@ import {
   uploadWorkspaceMedia,
 } from './services/serverApi';
 import { parsePptxFile } from './services/pptxImport';
+import { parseEasyWorshipFile } from './services/easyWorshipImport';
+import { parseProPresenterFile } from './services/proPresenterImport';
 import { copyTextToClipboard } from './services/clipboardService';
 import { dispatchAetherBridgeEvent } from './services/aetherBridge';
 import { MacroPanel } from './components/MacroPanel';
@@ -5491,6 +5493,76 @@ function App() {
     return text.slides;
   };
 
+  const importEasyWorshipAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setImportModalError(null);
+    setIsImportingDeck(true);
+    setImportDeckStatus('Parsing EasyWorship file...');
+    try {
+      const parsed = await parseEasyWorshipFile(file);
+      const now = Date.now();
+      const slides: Slide[] = parsed.slides.map((entry, idx) => ({
+        id: `${now}-ew-${idx + 1}`,
+        label: entry.label || `Slide ${idx + 1}`,
+        content: entry.content,
+        ...(entry.notes ? { notes: entry.notes } : {}),
+      }));
+      const importedItem = finalizeGeneratedItemBackground({
+        id: `${now}`,
+        title: resolveImportedDeckTitle(parsed.title),
+        type: ItemType.SONG,
+        slides,
+        theme: { backgroundUrl: DEFAULT_BACKGROUNDS[0], mediaType: 'image', fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'large' },
+        metadata: { source: 'import' },
+      }, 'system');
+      addItem(importedItem);
+      logActivity(user?.uid, 'IMPORT_EASYWORSHIP', { filename: file.name, slideCount: slides.length });
+      setIsLyricsImportOpen(false);
+    } catch (error: any) {
+      setImportModalError(error?.message || 'EasyWorship import failed.');
+    } finally {
+      setIsImportingDeck(false);
+      setImportDeckStatus('');
+    }
+  };
+
+  const importProPresenterAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setImportModalError(null);
+    setIsImportingDeck(true);
+    setImportDeckStatus('Parsing ProPresenter file...');
+    try {
+      const parsed = await parseProPresenterFile(file);
+      const now = Date.now();
+      const slides: Slide[] = parsed.slides.map((entry, idx) => ({
+        id: `${now}-pp-${idx + 1}`,
+        label: entry.label || `Slide ${idx + 1}`,
+        content: entry.content,
+        ...(entry.notes ? { notes: entry.notes } : {}),
+      }));
+      const importedItem = finalizeGeneratedItemBackground({
+        id: `${now}`,
+        title: resolveImportedDeckTitle(parsed.title),
+        type: ItemType.SONG,
+        slides,
+        theme: { backgroundUrl: DEFAULT_BACKGROUNDS[0], mediaType: 'image', fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'large' },
+        metadata: { source: 'import' },
+      }, 'system');
+      addItem(importedItem);
+      logActivity(user?.uid, 'IMPORT_PROPRESENTER', { filename: file.name, slideCount: slides.length });
+      setIsLyricsImportOpen(false);
+    } catch (error: any) {
+      setImportModalError(error?.message || 'ProPresenter import failed.');
+    } finally {
+      setIsImportingDeck(false);
+      setImportDeckStatus('');
+    }
+  };
+
   const startSlideLabelRename = useCallback((itemId: string, slideId: string, currentLabel: string) => {
     setInlineSlideRename({
       itemId,
@@ -6899,6 +6971,14 @@ function App() {
                 <label className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-[10px] font-bold text-zinc-200 hover:border-zinc-500 cursor-pointer">
                   Import PPTX Text
                   <input type="file" accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint" className="hidden" onChange={importPowerPointTextAsItem} disabled={isImportingDeck} />
+                </label>
+                <label className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-[10px] font-bold text-zinc-200 hover:border-zinc-500 cursor-pointer">
+                  EasyWorship (.ewsx)
+                  <input type="file" accept=".ewsx,.ewp" className="hidden" onChange={importEasyWorshipAsItem} disabled={isImportingDeck} />
+                </label>
+                <label className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-[10px] font-bold text-zinc-200 hover:border-zinc-500 cursor-pointer">
+                  ProPresenter (.pro6/.pro)
+                  <input type="file" accept=".pro6,.pro6x,.pro" className="hidden" onChange={importProPresenterAsItem} disabled={isImportingDeck} />
                 </label>
               </div>
             </div>
@@ -8390,6 +8470,16 @@ function App() {
                   <span className="font-semibold">Use Lumina Theme (.pptx Text)</span>
                   <input type="file" accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint" className="hidden" onChange={importPowerPointTextAsItem} disabled={isImportingDeck} />
                   <div className="text-[10px] text-zinc-500 mt-1">Imports text/notes so you can style with Lumina backgrounds.</div>
+                </label>
+                <label className="block border border-zinc-800 rounded px-3 py-2 bg-zinc-950 text-xs text-zinc-300 cursor-pointer hover:border-zinc-600 transition-colors">
+                  <span className="font-semibold">EasyWorship (.ewsx)</span>
+                  <input type="file" accept=".ewsx,.ewp" className="hidden" onChange={importEasyWorshipAsItem} disabled={isImportingDeck} />
+                  <div className="text-[10px] text-zinc-500 mt-1">Import songs or presentations exported from EasyWorship.</div>
+                </label>
+                <label className="block border border-zinc-800 rounded px-3 py-2 bg-zinc-950 text-xs text-zinc-300 cursor-pointer hover:border-zinc-600 transition-colors">
+                  <span className="font-semibold">ProPresenter (.pro6 / .pro)</span>
+                  <input type="file" accept=".pro6,.pro6x,.pro" className="hidden" onChange={importProPresenterAsItem} disabled={isImportingDeck} />
+                  <div className="text-[10px] text-zinc-500 mt-1">ProPresenter 6 (.pro6) is fully supported. PP7 (.pro): export as .pro6 if text is missing.</div>
                 </label>
               </div>
               {importDeckStatus && <div className="mb-2 text-[11px] text-cyan-300 border border-cyan-900/60 bg-cyan-950/20 rounded px-3 py-2">{importDeckStatus}</div>}
