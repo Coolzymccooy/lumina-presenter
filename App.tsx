@@ -3538,6 +3538,9 @@ function App() {
   const obsOutputUrl = typeof window !== 'undefined'
     ? buildSharedRouteUrl('output')
     : `/#/output?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&fullscreen=1`;
+  const cleanFeedUrl = typeof window !== 'undefined'
+    ? `${buildSharedRouteUrl('output')}&clean=1`
+    : `/#/output?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&fullscreen=1&clean=1`;
   const remoteControlUrl = typeof window !== 'undefined'
     ? buildSharedRouteUrl('remote')
     : `/#/remote?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}`;
@@ -8198,6 +8201,7 @@ function App() {
                         </div>
                         <button onClick={() => updateStageTimerFlash({ active: !stageTimerFlash.active })} className={`h-9 px-3 rounded-lg border font-black text-[9px] tracking-wider uppercase transition-all ${stageTimerFlash.active ? 'border-rose-600/60 bg-rose-950/40 text-rose-300 animate-pulse' : 'border-zinc-700 bg-zinc-900 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'}`}>Flash</button>
                         <button onClick={() => void copyShareUrl(obsOutputUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy OBS URL</button>
+                        <button onClick={() => void copyShareUrl(cleanFeedUrl, 'Clean feed URL copied!')} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-violet-300 hover:border-violet-600 transition-all uppercase tracking-wider" title="No branding or audience overlays — use for recording or streaming">Copy Clean Feed</button>
                         <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy Stage URL</button>
                         <button onClick={() => setBlackout(!blackout)} className={`h-9 px-5 rounded-lg border font-black text-[10px] tracking-widest uppercase active:scale-95 transition-all ml-auto shadow-lg ${blackout ? 'bg-zinc-900 text-red-400 border-red-600/80 animate-pulse shadow-red-950/20' : 'bg-red-600 border-red-500 text-white hover:bg-red-500 shadow-red-950/30'}`}>
                           {blackout ? 'Go Live' : 'BLACKOUT'}

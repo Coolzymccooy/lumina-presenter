@@ -124,27 +124,31 @@ export const OutputRoute: React.FC = () => {
     const fromSearch = (searchParams.get('session') || '').trim();
     const fromSearchWorkspace = (searchParams.get('workspace') || '').trim();
     const fromSearchFullscreen = (searchParams.get('fullscreen') || '').trim();
+    const fromSearchClean = (searchParams.get('clean') || '').trim();
 
     const hash = window.location.hash || '';
     const queryStart = hash.indexOf('?');
     let fromHash = '';
     let fromHashWorkspace = '';
     let fromHashFullscreen = '';
+    let fromHashClean = '';
     if (queryStart >= 0) {
       const hashParams = new URLSearchParams(hash.slice(queryStart + 1));
       fromHash = (hashParams.get('session') || '').trim();
       fromHashWorkspace = (hashParams.get('workspace') || '').trim();
       fromHashFullscreen = (hashParams.get('fullscreen') || '').trim();
+      fromHashClean = (hashParams.get('clean') || '').trim();
     }
 
     return {
       sessionId: fromSearch || fromHash || 'live',
       workspaceId: fromSearchWorkspace || fromHashWorkspace || 'default-workspace',
       fullscreen: fromSearchFullscreen || fromHashFullscreen,
+      clean: fromSearchClean || fromHashClean,
       hasExplicitWorkspace: !!(fromSearchWorkspace || fromHashWorkspace),
     };
   };
-  const [{ sessionId, workspaceId, fullscreen, hasExplicitWorkspace }] = useState(getRouteParams);
+  const [{ sessionId, workspaceId, fullscreen, clean, hasExplicitWorkspace }] = useState(getRouteParams);
   const outputClientId = useMemo(
     () => getOrCreateConnectionClientId(workspaceId, sessionId, 'output'),
     [workspaceId, sessionId]
@@ -341,9 +345,20 @@ export const OutputRoute: React.FC = () => {
     }
   }, [effective]);
 
-  const display = (effective.blackout || effective.holdScreenMode !== 'none' || effective.hasRenderable)
+  const rawDisplay = (effective.blackout || effective.holdScreenMode !== 'none' || effective.hasRenderable)
     ? effective
     : (stableEffective || effective);
+
+  // Clean feed: strip branding overlay and audience overlays for recording/streaming
+  const isClean = clean === '1';
+  const display: EffectiveOutputState = isClean
+    ? {
+        ...rawDisplay,
+        branding: { ...rawDisplay.branding, enabled: false },
+        audienceOverlay: null,
+        projectedAudienceQr: null,
+      }
+    : rawDisplay;
 
   if (authLoading && !hasLocalSchedule) {
     return <div className="h-screen w-screen bg-black text-zinc-500 flex items-center justify-center text-xs">Loading output...</div>;

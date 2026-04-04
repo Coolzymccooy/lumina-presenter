@@ -10,6 +10,7 @@ import type { ServiceItem } from '../types';
 import { executeMacro, simulateMacro } from '../services/macroEngine';
 import type { MacroExecutionContext } from '../services/macroEngine';
 import { saveMacro, deleteMacro } from '../services/macroRegistry';
+import { generateMacroDefinition } from '../services/geminiService';
 import { getServerApiBaseUrl } from '../services/serverApi';
 import { MacroBuilder } from './MacroBuilder';
 import { PlusIcon, PlayIcon, EditIcon, TrashIcon, CheckIcon, XIcon } from './Icons';
@@ -237,6 +238,31 @@ export const MacroPanel: React.FC<MacroPanelProps> = ({
   const [filterCategory, setFilterCategory] = useState<MacroCategory | 'all'>('all');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showAiPrompt, setShowAiPrompt] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const handleAiGenerate = useCallback(async () => {
+    const trimmed = aiPrompt.trim();
+    if (!trimmed || isAiGenerating) return;
+    setIsAiGenerating(true);
+    setAiError(null);
+    try {
+      const draft = await generateMacroDefinition(
+        trimmed,
+        schedule.map(i => ({ id: i.id, title: i.title })),
+      );
+      setAiPrompt('');
+      setShowAiPrompt(false);
+      setEditingMacro(draft);
+      setView('builder');
+    } catch (err: unknown) {
+      setAiError(err instanceof Error ? err.message : 'AI generation failed.');
+    } finally {
+      setIsAiGenerating(false);
+    }
+  }, [aiPrompt, isAiGenerating, schedule]);
 
   const appendAudit = onAppendAudit;
 
@@ -356,16 +382,53 @@ export const MacroPanel: React.FC<MacroPanelProps> = ({
             ))}
             <div className="flex-1" />
             {view === 'library' && (
-              <button
-                onClick={() => { setEditingMacro(null); setView('builder'); }}
-                className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-[10px] text-zinc-300 hover:border-blue-600 hover:text-blue-300 transition-colors"
-              >
-                <PlusIcon className="h-3 w-3" />
-                New
-              </button>
+              <>
+                <button
+                  onClick={() => { setShowAiPrompt(p => !p); setAiError(null); }}
+                  className={`flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[10px] transition-colors ${
+                    showAiPrompt
+                      ? 'border-violet-600 bg-violet-950/30 text-violet-300'
+                      : 'border-zinc-700 bg-zinc-800 text-zinc-400 hover:border-violet-600 hover:text-violet-300'
+                  }`}
+                  title="Generate macro with AI"
+                >
+                  AI
+                </button>
+                <button
+                  onClick={() => { setEditingMacro(null); setView('builder'); }}
+                  className="flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-[10px] text-zinc-300 hover:border-blue-600 hover:text-blue-300 transition-colors"
+                >
+                  <PlusIcon className="h-3 w-3" />
+                  New
+                </button>
+              </>
             )}
           </div>
         </div>
+
+        {/* AI prompt bar */}
+        {showAiPrompt && view === 'library' && (
+          <div className="px-2.5 pb-2 flex flex-col gap-1.5">
+            <div className="flex gap-1.5">
+              <input
+                className="flex-1 rounded-lg border border-violet-700/60 bg-zinc-800 px-2.5 py-1.5 text-[12px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-violet-500"
+                placeholder="Describe the macro… e.g. 'jump to Sermon item and start a 40-min timer'"
+                value={aiPrompt}
+                onChange={e => setAiPrompt(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') void handleAiGenerate(); }}
+                autoFocus
+              />
+              <button
+                onClick={() => void handleAiGenerate()}
+                disabled={!aiPrompt.trim() || isAiGenerating}
+                className="rounded-lg bg-violet-600 px-3 py-1.5 text-[11px] font-semibold text-white hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {isAiGenerating ? '…' : 'Generate'}
+              </button>
+            </div>
+            {aiError && <p className="text-[10px] text-red-400">{aiError}</p>}
+          </div>
+        )}
 
         {/* Body */}
         <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar">

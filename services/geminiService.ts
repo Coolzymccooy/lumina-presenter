@@ -1,4 +1,6 @@
 import type { GeneratedSlideData } from "../types";
+import type { MacroDefinition, MacroActionType, MacroCategory, MacroTriggerType } from "../types/macros";
+import { nanoid } from "nanoid";
 import { getServerApiBaseCandidates, getServerApiBaseUrl } from "./serverApi";
 import { getCachedSemanticReference, normalizeBibleReference, setCachedSemanticReference } from "./bibleLookup";
 
@@ -250,6 +252,64 @@ export const suggestVisualTheme = async (contextText: string): Promise<string> =
   const response = await postAi("/api/ai/suggest-visual-theme", { contextText }, 20000);
   if (!response?.ok) return "abstract";
   return String(response.keyword || "").trim() || "abstract";
+};
+
+const VALID_ACTION_TYPES = new Set<MacroActionType>([
+  'next_slide','prev_slide','go_to_item','go_to_slide','clear_output',
+  'show_message','hide_message','start_timer','stop_timer','trigger_aether_scene','wait',
+]);
+
+const VALID_TRIGGER_TYPES = new Set<MacroTriggerType>([
+  'manual','item_start','slide_enter','timer_end','service_mode_change','webhook',
+]);
+
+const VALID_CATEGORIES = new Set<MacroCategory>([
+  'service_flow','worship','sermon','streaming','emergency','stage','output','media','custom',
+]);
+
+export const generateMacroDefinition = async (
+  prompt: string,
+  scheduleItems: Array<{ id: string; title: string }>,
+): Promise<MacroDefinition> => {
+  const response = await postAi('/api/ai/generate-macro', { prompt, scheduleItems }, 30000);
+  if (!response?.ok) {
+    throw new Error(String(response?.message || response?.error || 'AI macro generation failed.'));
+  }
+  const d = response.data as Record<string, unknown>;
+  if (!d?.name || !Array.isArray(d?.actions)) {
+    throw new Error('AI returned an incomplete macro definition.');
+  }
+  const now = new Date().toISOString();
+  const triggerType = VALID_TRIGGER_TYPES.has(d.triggerType as MacroTriggerType)
+    ? (d.triggerType as MacroTriggerType)
+    : 'manual';
+  const category = VALID_CATEGORIES.has(d.category as MacroCategory)
+    ? (d.category as MacroCategory)
+    : 'custom';
+  const actions = (d.actions as Record<string, unknown>[])
+    .filter(a => VALID_ACTION_TYPES.has(a.type as MacroActionType))
+    .map(a => ({
+      id: nanoid(),
+      type: a.type as MacroActionType,
+      payload: (a.payload && typeof a.payload === 'object' ? a.payload : {}) as Record<string, unknown>,
+      delayMs: typeof a.delayMs === 'number' ? a.delayMs : undefined,
+      continueOnError: a.continueOnError === true,
+    }));
+  return {
+    id: nanoid(),
+    name: String(d.name).trim(),
+    description: String(d.description || '').trim() || undefined,
+    category,
+    scope: 'workspace',
+    triggers: [{ type: triggerType }],
+    actions,
+    tags: [],
+    isEnabled: true,
+    requiresConfirmation: false,
+    isTemplate: false,
+    createdAt: now,
+    updatedAt: now,
+  };
 };
 
 export interface SermonAnalysisResult {

@@ -94,6 +94,25 @@ export interface MacroTrigger {
   payload?: Record<string, unknown>;
 }
 
+// ─── Conditional Branching ───────────────────────────────────────────────────
+
+/** Context variables that can be evaluated at runtime */
+export type MacroConditionVariable =
+  | 'activeSlideIndex'   // 0-based index of current slide
+  | 'scheduleLength'     // total items in the run-sheet
+  | 'isFirstSlide'       // true when activeSlideIndex === 0
+  | 'isLastSlide'        // true when on the last slide of the active item
+  | 'isServiceLive';     // true when any item is actively presented
+
+export type MacroConditionOperator = 'eq' | 'neq' | 'gt' | 'lt' | 'gte' | 'lte';
+
+export interface MacroCondition {
+  variable: MacroConditionVariable;
+  operator: MacroConditionOperator;
+  /** Value to compare against. Booleans: use 'true' / 'false' strings. */
+  value: string | number;
+}
+
 export interface MacroAction {
   id: string;
   type: MacroActionType;
@@ -103,6 +122,8 @@ export interface MacroAction {
   /** If true, execution continues even if this action errors */
   continueOnError?: boolean;
   label?: string;
+  /** If set, the action is skipped when the condition evaluates to false */
+  condition?: MacroCondition;
 }
 
 export interface MacroDefinition {

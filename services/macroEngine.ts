@@ -8,6 +8,7 @@ import type {
   MacroSimulationResult,
   MacroSimulationStep,
   MacroRuntimeEvent,
+  MacroCondition,
   GoToItemPayload,
   GoToSlidePayload,
   ShowMessagePayload,
@@ -196,6 +197,54 @@ async function runAction(
   }
 }
 
+// ─── Condition Evaluator ──────────────────────────────────────────────────────
+
+function resolveVariable(
+  variable: MacroCondition['variable'],
+  ctx: MacroExecutionContext,
+): string | number | boolean {
+  const activeItem = ctx.schedule.find(
+    i => i.id === (ctx.activeItemId ?? ctx.selectedItemId),
+  );
+  switch (variable) {
+    case 'activeSlideIndex':
+      return ctx.activeSlideIndex;
+    case 'scheduleLength':
+      return ctx.schedule.length;
+    case 'isFirstSlide':
+      return ctx.activeSlideIndex === 0;
+    case 'isLastSlide': {
+      const slideCount = Array.isArray(activeItem?.slides) ? activeItem.slides.length : 0;
+      return slideCount > 0 && ctx.activeSlideIndex === slideCount - 1;
+    }
+    case 'isServiceLive':
+      return ctx.activeItemId !== null;
+    default:
+      return false;
+  }
+}
+
+function evaluateCondition(
+  condition: MacroCondition,
+  ctx: MacroExecutionContext,
+): boolean {
+  const lhsRaw = resolveVariable(condition.variable, ctx);
+  const rhs = condition.value;
+
+  // Normalise booleans to 'true'/'false' strings for comparison
+  const lhs = typeof lhsRaw === 'boolean' ? String(lhsRaw) : lhsRaw;
+
+  switch (condition.operator) {
+    case 'eq':  return String(lhs) === String(rhs);
+    case 'neq': return String(lhs) !== String(rhs);
+    case 'gt':  return Number(lhs) > Number(rhs);
+    case 'lt':  return Number(lhs) < Number(rhs);
+    case 'gte': return Number(lhs) >= Number(rhs);
+    case 'lte': return Number(lhs) <= Number(rhs);
+    default:    return true;
+  }
+}
+
 // ─── Main Execution Entry Point ───────────────────────────────────────────────
 
 export async function executeMacro(
@@ -210,6 +259,17 @@ export async function executeMacro(
   let rollbackTriggered = false;
 
   for (const action of macro.actions) {
+    // Evaluate condition — skip action if condition is false
+    if (action.condition && !evaluateCondition(action.condition, ctx)) {
+      actionResults.push({
+        actionId: action.id,
+        type: action.type,
+        status: 'skipped',
+        durationMs: 0,
+      });
+      continue;
+    }
+
     if (action.delayMs && action.delayMs > 0) {
       const cappedDelay = Math.min(action.delayMs, MAX_WAIT_MS);
       await new Promise<void>(resolve => setTimeout(resolve, cappedDelay));

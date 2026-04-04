@@ -1378,6 +1378,71 @@ app.post("/api/ai/transcribe-sermon-chunk", async (req, res) => {
   }
 });
 
+app.post("/api/ai/generate-macro", async (req, res) => {
+  const prompt = String(req.body?.prompt || "").trim();
+  const scheduleItems = Array.isArray(req.body?.scheduleItems) ? req.body.scheduleItems : [];
+  if (!prompt) return res.status(400).json({ ok: false, error: "PROMPT_REQUIRED" });
+  const ai = ensureGoogleAiClient(res);
+  if (!ai) return;
+
+  const scheduleContext = scheduleItems.length > 0
+    ? `\nCurrent run-sheet items: ${scheduleItems.slice(0, 20).map((i, idx) => `${idx + 1}. "${i.title}" (id: ${i.id})`).join(", ")}`
+    : "";
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `You are a church production automation expert. Generate a Lumina macro definition based on the user's description.
+A macro is a sequence of automation actions for a church presentation software.${scheduleContext}
+
+Available action types: next_slide, prev_slide, go_to_item, go_to_slide, clear_output, show_message, hide_message, start_timer, stop_timer, trigger_aether_scene, wait.
+Available trigger types: manual, item_start, slide_enter, timer_end, service_mode_change.
+Available categories: service_flow, worship, sermon, streaming, emergency, stage, output, media, custom.
+
+For go_to_item, set payload.itemId to the matching id from the run-sheet (or "__FIRST_ITEM__" if no specific item).
+For show_message, set payload.text to the message text.
+For wait, set payload.delayMs (number).
+
+User request: "${prompt}"
+
+Return a single JSON object with exactly these fields: name (string), description (string), category, triggerType (one of the trigger types), actions (array of action objects with: type, payload as object, delayMs as number or null, continueOnError as boolean).`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING },
+            description: { type: Type.STRING },
+            category: { type: Type.STRING },
+            triggerType: { type: Type.STRING },
+            actions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  type: { type: Type.STRING },
+                  payload: { type: Type.OBJECT, properties: {}, additionalProperties: true },
+                  delayMs: { type: Type.NUMBER },
+                  continueOnError: { type: Type.BOOLEAN },
+                },
+                required: ["type", "payload"],
+              },
+            },
+          },
+          required: ["name", "description", "category", "triggerType", "actions"],
+        },
+      },
+    });
+    const parsed = parseAiJson(response);
+    if (!parsed?.name || !Array.isArray(parsed?.actions)) {
+      return res.status(422).json({ ok: false, error: "INVALID_AI_PAYLOAD", message: "AI did not return a valid macro." });
+    }
+    return res.json({ ok: true, data: parsed });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "AI_MACRO_FAILED", message: String(error?.message || error) });
+  }
+});
+
 app.get("/api/workspaces/:workspaceId", requireActor, (req, res) => {
   try {
     const workspace = ensureWorkspaceRead(req.params.workspaceId, req.actor);

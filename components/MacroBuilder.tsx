@@ -6,6 +6,8 @@ import type {
   MacroActionType,
   MacroCategory,
   MacroTriggerType,
+  MacroConditionVariable,
+  MacroConditionOperator,
 } from '../types/macros';
 import type { ServiceItem } from '../types';
 
@@ -46,6 +48,27 @@ const ACTION_TYPES: Array<{ id: MacroActionType; label: string; group: string }>
   { id: 'trigger_aether_scene', label: 'Aether Scene', group: 'Integration' },
   { id: 'wait', label: 'Wait (delay)', group: 'Flow' },
 ];
+
+// ─── Condition constants ──────────────────────────────────────────────────────
+
+const CONDITION_VARIABLES: Array<{ id: MacroConditionVariable; label: string }> = [
+  { id: 'activeSlideIndex', label: 'Slide index' },
+  { id: 'scheduleLength',   label: 'Schedule length' },
+  { id: 'isFirstSlide',     label: 'Is first slide' },
+  { id: 'isLastSlide',      label: 'Is last slide' },
+  { id: 'isServiceLive',    label: 'Is service live' },
+];
+
+const CONDITION_OPERATORS: Array<{ id: MacroConditionOperator; label: string }> = [
+  { id: 'eq',  label: '=' },
+  { id: 'neq', label: '≠' },
+  { id: 'gt',  label: '>' },
+  { id: 'lt',  label: '<' },
+  { id: 'gte', label: '≥' },
+  { id: 'lte', label: '≤' },
+];
+
+const BOOL_VARIABLES: MacroConditionVariable[] = ['isFirstSlide', 'isLastSlide', 'isServiceLive'];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -163,61 +186,143 @@ interface ActionRowProps {
 
 const ActionRow: React.FC<ActionRowProps> = ({
   action, index, total, schedule, onChange, onRemove, onMoveUp, onMoveDown,
-}) => (
-  <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-2.5">
-    <div className="flex items-center gap-2">
-      <span className="shrink-0 text-[9px] font-black text-zinc-600 w-4 text-center">{index + 1}</span>
-      <select
-        className="flex-1 rounded bg-zinc-800 px-2 py-1.5 text-[12px] text-zinc-100 border border-zinc-700 outline-none"
-        value={action.type}
-        onChange={e => onChange({ ...action, type: e.target.value as MacroActionType, payload: {} })}
-      >
-        {ACTION_TYPES.map(at => (
-          <option key={at.id} value={at.id}>{at.group} — {at.label}</option>
-        ))}
-      </select>
-      <button
-        onClick={onMoveUp}
-        disabled={index === 0}
-        className="shrink-0 text-zinc-600 hover:text-zinc-300 disabled:opacity-30 transition-colors px-1"
-        title="Move up"
-      >↑</button>
-      <button
-        onClick={onMoveDown}
-        disabled={index === total - 1}
-        className="shrink-0 text-zinc-600 hover:text-zinc-300 disabled:opacity-30 transition-colors px-1"
-        title="Move down"
-      >↓</button>
-      <button
-        onClick={onRemove}
-        className="shrink-0 text-zinc-600 hover:text-red-400 transition-colors px-1"
-        title="Remove action"
-      >✕</button>
-    </div>
-    <ActionPayloadEditor action={action} schedule={schedule} onChange={onChange} />
-    <div className="mt-2 flex items-center gap-3">
-      <label className="flex items-center gap-1.5 text-[10px] text-zinc-500 cursor-pointer">
-        <input
-          type="checkbox"
-          className="accent-blue-500"
-          checked={action.continueOnError ?? false}
-          onChange={e => onChange({ ...action, continueOnError: e.target.checked })}
-        />
-        Continue on error
-      </label>
-      <div className="flex items-center gap-1.5">
-        <label className="text-[10px] text-zinc-500 shrink-0">Delay before (ms)</label>
-        <input
-          type="number"
-          className="w-20 rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] text-zinc-100 border border-zinc-700 outline-none"
-          placeholder="0"
-          value={action.delayMs !== undefined ? String(action.delayMs) : ''}
-          onChange={e => onChange({ ...action, delayMs: e.target.value ? Number(e.target.value) : undefined })}
-        />
+}) => {
+  const hasCondition = !!action.condition;
+  const condVar = action.condition?.variable ?? 'activeSlideIndex';
+  const condOp  = action.condition?.operator  ?? 'eq';
+  const condVal = action.condition?.value      ?? '';
+  const isBoolVar = BOOL_VARIABLES.includes(condVar as MacroConditionVariable);
+
+  const toggleCondition = () => {
+    if (hasCondition) {
+      const { condition: _c, ...rest } = action;
+      onChange(rest as MacroAction);
+    } else {
+      onChange({ ...action, condition: { variable: 'activeSlideIndex', operator: 'eq', value: 0 } });
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-2.5">
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 text-[9px] font-black text-zinc-600 w-4 text-center">{index + 1}</span>
+        <select
+          className="flex-1 rounded bg-zinc-800 px-2 py-1.5 text-[12px] text-zinc-100 border border-zinc-700 outline-none"
+          value={action.type}
+          onChange={e => onChange({ ...action, type: e.target.value as MacroActionType, payload: {} })}
+        >
+          {ACTION_TYPES.map(at => (
+            <option key={at.id} value={at.id}>{at.group} — {at.label}</option>
+          ))}
+        </select>
+        <button
+          onClick={onMoveUp}
+          disabled={index === 0}
+          className="shrink-0 text-zinc-600 hover:text-zinc-300 disabled:opacity-30 transition-colors px-1"
+          title="Move up"
+        >↑</button>
+        <button
+          onClick={onMoveDown}
+          disabled={index === total - 1}
+          className="shrink-0 text-zinc-600 hover:text-zinc-300 disabled:opacity-30 transition-colors px-1"
+          title="Move down"
+        >↓</button>
+        <button
+          onClick={onRemove}
+          className="shrink-0 text-zinc-600 hover:text-red-400 transition-colors px-1"
+          title="Remove action"
+        >✕</button>
       </div>
+      <ActionPayloadEditor action={action} schedule={schedule} onChange={onChange} />
+      <div className="mt-2 flex items-center gap-3">
+        <label className="flex items-center gap-1.5 text-[10px] text-zinc-500 cursor-pointer">
+          <input
+            type="checkbox"
+            className="accent-blue-500"
+            checked={action.continueOnError ?? false}
+            onChange={e => onChange({ ...action, continueOnError: e.target.checked })}
+          />
+          Continue on error
+        </label>
+        <div className="flex items-center gap-1.5">
+          <label className="text-[10px] text-zinc-500 shrink-0">Delay before (ms)</label>
+          <input
+            type="number"
+            className="w-20 rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] text-zinc-100 border border-zinc-700 outline-none"
+            placeholder="0"
+            value={action.delayMs !== undefined ? String(action.delayMs) : ''}
+            onChange={e => onChange({ ...action, delayMs: e.target.value ? Number(e.target.value) : undefined })}
+          />
+        </div>
+        <button
+          onClick={toggleCondition}
+          className={`ml-auto rounded px-2 py-0.5 text-[9px] font-semibold border transition-colors ${
+            hasCondition
+              ? 'bg-violet-900/40 border-violet-700 text-violet-300'
+              : 'bg-zinc-800 border-zinc-700 text-zinc-500 hover:border-zinc-500'
+          }`}
+          title={hasCondition ? 'Remove condition' : 'Add run condition'}
+        >
+          {hasCondition ? 'if: on' : '+ if'}
+        </button>
+      </div>
+      {hasCondition && (
+        <div className="mt-2 flex items-center gap-1.5 rounded bg-violet-950/30 border border-violet-800/40 px-2 py-1.5">
+          <span className="text-[9px] font-black text-violet-500 uppercase tracking-wider shrink-0">If</span>
+          <select
+            className="rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] text-zinc-100 border border-zinc-700 outline-none"
+            value={condVar}
+            onChange={e => onChange({
+              ...action,
+              condition: { variable: e.target.value as MacroConditionVariable, operator: condOp, value: condVal },
+            })}
+          >
+            {CONDITION_VARIABLES.map(v => (
+              <option key={v.id} value={v.id}>{v.label}</option>
+            ))}
+          </select>
+          <select
+            className="rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] text-zinc-100 border border-zinc-700 outline-none"
+            value={condOp}
+            onChange={e => onChange({
+              ...action,
+              condition: { variable: condVar as MacroConditionVariable, operator: e.target.value as MacroConditionOperator, value: condVal },
+            })}
+          >
+            {CONDITION_OPERATORS.map(o => (
+              <option key={o.id} value={o.id}>{o.label}</option>
+            ))}
+          </select>
+          {isBoolVar ? (
+            <select
+              className="rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] text-zinc-100 border border-zinc-700 outline-none"
+              value={String(condVal)}
+              onChange={e => onChange({
+                ...action,
+                condition: { variable: condVar as MacroConditionVariable, operator: condOp, value: e.target.value },
+              })}
+            >
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>
+          ) : (
+            <input
+              type="number"
+              className="w-16 rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] text-zinc-100 border border-zinc-700 outline-none"
+              placeholder="value"
+              value={String(condVal)}
+              onChange={e => onChange({
+                ...action,
+                condition: { variable: condVar as MacroConditionVariable, operator: condOp, value: e.target.value ? Number(e.target.value) : 0 },
+              })}
+            />
+          )}
+          <span className="text-[9px] text-violet-500/60 ml-auto">→ else skip</span>
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
