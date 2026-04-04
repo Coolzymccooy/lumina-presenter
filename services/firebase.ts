@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, onSnapshot, setDoc, collection, query, where } from 'firebase/firestore';
+import { initializeFirestore, doc, onSnapshot, setDoc, collection, query, where } from 'firebase/firestore';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
@@ -14,7 +14,11 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+// experimentalAutoDetectLongPolling prevents INTERNAL ASSERTION FAILED crashes
+// in Electron where WebChannel transport becomes unstable on reconnect.
+export const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+});
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
