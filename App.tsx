@@ -9257,6 +9257,14 @@ function App() {
         onAetherBridgePing={handleAetherBridgeTest}
         onAetherBridgeSyncNow={handleAetherBridgeSyncNow}
         onAetherSceneSwitch={handleAetherSceneSwitch}
+        onAetherStreamRequest={(action) => handleAetherStreamRequest(action, {
+          target: 'program',
+          sceneTarget: 'program',
+          sceneName: resolveAetherSceneName('program'),
+        }, {
+          successLabel: action === 'start' ? 'Aether live start sent' : 'Aether live stop sent',
+          failureLabel: action === 'start' ? 'Aether live start failed' : 'Aether live stop failed',
+        })}
         aetherBridgeStatusTone={aetherBridgeStatus.tone}
         aetherBridgeStatusText={aetherBridgeStatus.text}
       />

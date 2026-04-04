@@ -33,6 +33,7 @@ interface ConnectModalProps {
     onAetherBridgePing: () => Promise<void> | void;
     onAetherBridgeSyncNow: () => Promise<void> | void;
     onAetherSceneSwitch: (target: 'program' | 'blackout' | 'lobby') => Promise<void> | void;
+    onAetherStreamRequest: (action: 'start' | 'stop') => Promise<void> | void;
     aetherBridgeStatusTone: 'neutral' | 'ok' | 'error';
     aetherBridgeStatusText: string;
 }
@@ -93,6 +94,7 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
     onAetherBridgePing,
     onAetherBridgeSyncNow,
     onAetherSceneSwitch,
+    onAetherStreamRequest,
     aetherBridgeStatusTone,
     aetherBridgeStatusText,
 }) => {
@@ -541,6 +543,22 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                                     >
                                         <RefreshIcon className="w-3.5 h-3.5" />
                                         {bridgeBusy ? 'SENDING…' : 'SYNC NOW'}
+                                    </button>
+                                    <button
+                                        onClick={() => void runBridgeAction(() => onAetherStreamRequest('start'))}
+                                        className="flex items-center justify-center gap-2 px-3 py-3 rounded-lg border border-blue-500/80 bg-blue-950/40 text-blue-100 text-[11px] font-black tracking-widest transition-all duration-100 hover:bg-blue-900/50 hover:border-blue-400 hover:text-white active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm hover:shadow-blue-900/40"
+                                        disabled={bridgeBusy || !aetherBridgeUrl.trim()}
+                                    >
+                                        <span className="text-[13px] leading-none">▶</span>
+                                        GO LIVE AETHER
+                                    </button>
+                                    <button
+                                        onClick={() => void runBridgeAction(() => onAetherStreamRequest('stop'))}
+                                        className="flex items-center justify-center gap-2 px-3 py-3 rounded-lg border border-red-600/80 bg-red-950/40 text-red-200 text-[11px] font-black tracking-widest transition-all duration-100 hover:bg-red-900/50 hover:border-red-500 hover:text-white active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm hover:shadow-red-900/40"
+                                        disabled={bridgeBusy || !aetherBridgeUrl.trim()}
+                                    >
+                                        <span className="text-[13px] leading-none">■</span>
+                                        STOP LIVE AETHER
                                     </button>
                                     <button
                                         onClick={() => void runBridgeAction(() => onAetherSceneSwitch('program'))}
