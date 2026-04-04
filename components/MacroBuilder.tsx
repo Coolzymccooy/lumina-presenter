@@ -102,6 +102,40 @@ const ActionPayloadEditor: React.FC<ActionPayloadEditorProps> = ({ action, sched
         </select>
       );
 
+    case 'go_to_slide': {
+      const selectedItem = schedule.find(i => i.id === String(p.itemId ?? ''));
+      return (
+        <div className="mt-1.5 flex flex-col gap-1.5">
+          <select
+            className="w-full rounded bg-zinc-800 px-2 py-1.5 text-[12px] text-zinc-100 border border-zinc-700 outline-none"
+            value={String(p.itemId ?? '')}
+            onChange={e => {
+              const item = schedule.find(i => i.id === e.target.value);
+              set({ itemId: e.target.value, itemTitle: item?.title ?? '', slideIndex: 0 });
+            }}
+          >
+            <option value="">— select item —</option>
+            {schedule.map(item => (
+              <option key={item.id} value={item.id}>{item.title}</option>
+            ))}
+          </select>
+          {selectedItem && Array.isArray(selectedItem.slides) && selectedItem.slides.length > 0 && (
+            <select
+              className="w-full rounded bg-zinc-800 px-2 py-1.5 text-[12px] text-zinc-100 border border-zinc-700 outline-none"
+              value={String(p.slideIndex ?? 0)}
+              onChange={e => set({ slideIndex: Number(e.target.value) })}
+            >
+              {selectedItem.slides.map((slide, idx) => (
+                <option key={slide.id} value={idx}>
+                  Slide {idx + 1}{slide.label ? ` — ${slide.label}` : ''}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      );
+    }
+
     case 'show_message':
       return (
         <div className="mt-1.5 flex flex-col gap-1.5">
@@ -267,7 +301,7 @@ const ActionRow: React.FC<ActionRowProps> = ({
         </button>
       </div>
       {hasCondition && (
-        <div className="mt-2 flex items-center gap-1.5 rounded bg-violet-950/30 border border-violet-800/40 px-2 py-1.5">
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded bg-violet-950/30 border border-violet-800/40 px-2 py-1.5">
           <span className="text-[9px] font-black text-violet-500 uppercase tracking-wider shrink-0">If</span>
           <select
             className="rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] text-zinc-100 border border-zinc-700 outline-none"
@@ -317,7 +351,7 @@ const ActionRow: React.FC<ActionRowProps> = ({
               })}
             />
           )}
-          <span className="text-[9px] text-violet-500/60 ml-auto">→ else skip</span>
+          <span className="text-[9px] text-violet-500/60 shrink-0">→ else skip</span>
         </div>
       )}
     </div>
