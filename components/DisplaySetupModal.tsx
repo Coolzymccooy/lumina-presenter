@@ -114,28 +114,6 @@ export const DisplaySetupModal: React.FC<DisplaySetupModalProps> = ({
 
         <div className="grid min-h-0 flex-1 gap-0 xl:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="min-h-0 overflow-y-auto border-r border-zinc-900 px-5 py-5 custom-scrollbar">
-            {displays.length === 0 ? (
-              <div className="flex h-full min-h-[300px] flex-col items-center justify-center gap-4 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-zinc-800 bg-zinc-900">
-                  <MonitorIcon className="h-8 w-8 text-zinc-600" />
-                </div>
-                <div>
-                  <div className="text-sm font-bold text-zinc-300">No displays detected</div>
-                  <div className="mt-1 text-xs text-zinc-600 max-w-xs">
-                    {detectedCount === 0
-                      ? 'Make sure you are running the Lumina desktop app and have external displays connected.'
-                      : 'Click Refresh to re-scan for connected displays.'}
-                  </div>
-                </div>
-                <button
-                  onClick={() => { void runBusyAction('refresh', onRefresh); }}
-                  disabled={busyAction !== null}
-                  className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-200 transition-colors hover:border-zinc-500"
-                >
-                  <RefreshIcon className="h-3.5 w-3.5" /> {busyAction === 'refresh' ? 'Refreshing…' : 'Refresh Displays'}
-                </button>
-              </div>
-            ) : (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               {displays.map((display, index) => {
                 const meta = ROLE_META[display.role];
@@ -211,7 +189,6 @@ export const DisplaySetupModal: React.FC<DisplaySetupModalProps> = ({
                 );
               })}
             </div>
-            )}
           </div>
 
           <aside className="flex min-h-0 flex-col bg-zinc-950/70">
