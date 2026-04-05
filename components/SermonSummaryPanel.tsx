@@ -48,6 +48,7 @@ export const SermonSummaryPanel: React.FC<SermonSummaryPanelProps> = ({
   archived,
 }) => {
   const [activeTab, setActiveTab] = useState<"summary" | "quotes">("summary");
+  const [copyAllDone, setCopyAllDone] = useState(false);
 
   const fullText = [
     `SERMON: ${summary.title}`,
@@ -172,10 +173,32 @@ export const SermonSummaryPanel: React.FC<SermonSummaryPanelProps> = ({
       <div className="border-t border-zinc-800 px-3 py-2 space-y-1.5">
         <div className="flex gap-2">
           <button
-            onClick={async () => { await navigator.clipboard.writeText(fullText); }}
-            className="flex-1 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold transition-colors"
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(fullText);
+                setCopyAllDone(true);
+                setTimeout(() => setCopyAllDone(false), 2000);
+              } catch {
+                // Clipboard may be blocked — fall back to execCommand
+                const ta = document.createElement('textarea');
+                ta.value = fullText;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                setCopyAllDone(true);
+                setTimeout(() => setCopyAllDone(false), 2000);
+              }
+            }}
+            className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
+              copyAllDone
+                ? 'bg-emerald-900/40 border border-emerald-700/50 text-emerald-300'
+                : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300'
+            }`}
           >
-            Copy All
+            {copyAllDone ? 'Copied ✓' : 'Copy All'}
           </button>
           {onArchive && (
             <button

@@ -9,7 +9,7 @@ import {
   type BibleStyleFamily,
   type BibleStyleMode,
 } from '../services/bibleStyleEngine.ts';
-import { semanticBibleSearch, transcribeSermonChunk, type TranscribeSermonChunkResult } from '../services/geminiService';
+import { semanticBibleSearch, transcribeSermonChunk, transcribeSermonAudio, type TranscribeSermonChunkResult } from '../services/geminiService';
 import { summarizeSermon, canSummarize, type SermonSummary } from '../services/sermonSummaryService';
 import { archiveSermon } from '../services/sermonArchive';
 import { SermonSummaryPanel } from './SermonSummaryPanel';
@@ -32,6 +32,7 @@ interface BibleBrowserProps {
   onSpeechLocaleModeChange: (mode: VisionarySpeechLocaleMode) => void;
   compact?: boolean;
   hasPptxItems?: boolean;
+  workspaceId?: string;
 }
 
 interface SpeechRecognitionResultLike {
@@ -87,7 +88,7 @@ const AUTO_NETWORK_ERROR_LIMIT = 3;
 const AUTO_RESTART_BASE_MS = 600;
 const AUTO_MIC_PREFLIGHT_COOLDOWN_MS = 120000;
 const AUTO_NETWORK_FALLBACK_THRESHOLD = 2;
-const CLOUD_FALLBACK_CHUNK_MS = 6000;
+const CLOUD_FALLBACK_CHUNK_MS = 10000;
 const CLOUD_FALLBACK_RETRY_MS = 3500;
 const CLOUD_BROWSER_PROBE_INTERVAL_MS = 45000;
 const ENGINE_TOAST_MS = 4200;
@@ -212,6 +213,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   onSpeechLocaleModeChange,
   compact = false,
   hasPptxItems = false,
+  workspaceId = 'default-workspace',
 }) => {
   const [referenceInput, setReferenceInput] = useState('');
   const [bookInput, setBookInput] = useState('');
@@ -290,6 +292,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const [sermonWordCount, setSermonWordCount] = useState(0);
   const [sermonElapsed, setSermonElapsed] = useState(0);
   const [sermonSummarizing, setSermonSummarizing] = useState(false);
+  const [sermonTranscribing, setSermonTranscribing] = useState(false);
   const [sermonSummary, setSermonSummary] = useState<SermonSummary | null>(null);
   const [sermonSummaryOpen, setSermonSummaryOpen] = useState(false);
   const [sermonSummaryError, setSermonSummaryError] = useState<string | null>(null);
@@ -300,6 +303,9 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const sermonStartedAtRef = useRef<number | null>(null);
   const sermonAutoEnabledVisionaryRef = useRef(false);
   const sermonRestartAttemptRef = useRef(0);
+  // Audio blob collection for full-file transcription fallback (ScribeAI pattern)
+  const sermonAudioChunksRef = useRef<Blob[]>([]);
+  const sermonAudioMimeTypeRef = useRef<string>('audio/webm');
 
   const resolveSemanticReference = useCallback(async (
     rawQuery: string,
@@ -720,20 +726,47 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
 
   const toggleSermonRecording = useCallback(async () => {
     if (sermonRecordingRef.current) {
-      // STOP recording → summarize
+      // STOP recording → transcribe → summarize
       sermonRecordingRef.current = false;
       setSermonRecording(false);
       if (sermonAutoEnabledVisionaryRef.current) {
         sermonAutoEnabledVisionaryRef.current = false;
         setAutoVisionaryEnabled(false);
       }
-      const transcript = sermonTranscriptRef.current.trim();
+
+      let transcript = sermonTranscriptRef.current.trim();
+
+      // If browser STT gave us nothing, try full-file transcription (ScribeAI pattern)
       if (!transcript) {
-        setSermonSummaryError('No transcript was captured. Try recording a longer segment.');
-        return;
+        const audioChunks = sermonAudioChunksRef.current.slice();
+        sermonAudioChunksRef.current = [];
+        if (audioChunks.length > 0) {
+          setSermonTranscribing(true);
+          setSermonSummaryError(null);
+          const mimeType = sermonAudioMimeTypeRef.current;
+          const audioBlob = new Blob(audioChunks, { type: mimeType });
+          const locale = speechLocaleMode === 'en-GB' ? 'en-GB' : 'en-US';
+          const result = await transcribeSermonAudio(audioBlob, mimeType, locale);
+          setSermonTranscribing(false);
+          if (result.ok) {
+            transcript = result.transcript;
+            // Update word count from full transcript
+            const wc = transcript.trim().split(/\s+/).filter(Boolean).length;
+            setSermonWordCount(wc);
+          } else {
+            setSermonSummaryError('No transcript was captured. Try recording a longer segment.');
+            return;
+          }
+        } else {
+          setSermonSummaryError('No transcript was captured. Turn on Auto Visionary before recording, or try again.');
+          return;
+        }
+      } else {
+        sermonAudioChunksRef.current = [];
+        setSermonSummaryError(null);
       }
+
       setSermonSummarizing(true);
-      setSermonSummaryError(null);
       const accentHint = speechLocaleMode === 'en-GB' ? 'uk' : 'standard';
       const result = await summarizeSermon(transcript, accentHint);
       setSermonSummarizing(false);
@@ -747,6 +780,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     } else {
       // START recording
       sermonTranscriptRef.current = '';
+      sermonAudioChunksRef.current = [];
       sermonRecordingRef.current = true;
       sermonStartedAtRef.current = Date.now();
       sermonRestartAttemptRef.current = 0;
@@ -936,11 +970,18 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       cloudQueueRef.current = [];
       setCloudCooldownUntil(0);
 
+      // Track mimeType for sermon audio submission
+      sermonAudioMimeTypeRef.current = supportedMime;
+
       const recorder = new MediaRecorder(stream, { mimeType: supportedMime });
       recorder.ondataavailable = (event: BlobEvent) => {
         const chunk = event.data;
         if (!chunk || !chunk.size) return;
         cloudQueueRef.current.push(chunk);
+        // Also collect for full-file sermon transcription (ScribeAI pattern)
+        if (sermonRecordingRef.current) {
+          sermonAudioChunksRef.current.push(chunk);
+        }
         void processCloudQueue();
       };
       recorder.onerror = () => {
@@ -1105,6 +1146,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     if (!enabled) {
       setTranscriptionEngine('disabled');
       setCloudCooldownUntil(0);
+      setAutoError(null);
       stopAllVisionaryCapture();
       return;
     }
@@ -1444,54 +1486,19 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                   Heard: {autoTranscript}
                 </div>
               )}
-              {autoError && (
-                <div className="text-[9px] text-rose-300 font-mono">
-                  {autoError}
+              {autoError && autoVisionaryEnabled && (
+                <div className="flex items-start gap-1.5 bg-rose-950/40 border border-rose-800/50 rounded px-2 py-1">
+                  <span className="text-rose-400 text-[10px] leading-tight shrink-0 mt-px">⚠</span>
+                  <span className="text-[9px] text-rose-300 font-mono leading-tight line-clamp-2">{autoError}</span>
+                  <button
+                    onClick={() => setAutoError(null)}
+                    className="ml-auto text-rose-500 hover:text-rose-300 text-[10px] shrink-0 leading-tight"
+                    title="Dismiss"
+                  >✕</button>
                 </div>
               )}
             </div>
 
-            {/* ── Sermon Recording ─────────────────────────────────────── */}
-            <div className="rounded-sm border border-rose-900/50 bg-rose-950/15 p-2 space-y-2 mt-1">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[9px] font-bold tracking-wider text-rose-300 uppercase">Record Sermon</span>
-                <button
-                  onClick={() => { void toggleSermonRecording(); }}
-                  disabled={sermonSummarizing}
-                  className={`px-2 py-1 rounded-sm text-[9px] font-bold border transition-colors disabled:opacity-50 ${
-                    sermonRecording
-                      ? 'bg-rose-700/60 text-rose-200 border-rose-600 animate-pulse'
-                      : 'bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-rose-700 hover:text-rose-300'
-                  }`}
-                >
-                  {sermonSummarizing ? 'Summarizing…' : sermonRecording ? '⏹ Stop & Summarize' : '⏺ Start Recording'}
-                </button>
-              </div>
-              {sermonRecording && (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-[9px] font-mono">
-                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sermonMicWarning ? 'bg-amber-400 animate-pulse' : 'bg-rose-500 animate-pulse'}`} />
-                    <span className={sermonMicWarning ? 'text-amber-300' : 'text-rose-300'}>
-                      {Math.floor(sermonElapsed / 60)}:{String(sermonElapsed % 60).padStart(2, '0')} · {sermonWordCount.toLocaleString()} words
-                    </span>
-                  </div>
-                  {sermonMicWarning && (
-                    <div className="text-[9px] text-amber-300 font-mono">{sermonMicWarning}</div>
-                  )}
-                </div>
-              )}
-              {sermonSummaryError && !sermonRecording && (
-                <div className="text-[9px] text-rose-300 font-mono">{sermonSummaryError}</div>
-              )}
-              {sermonSummary && !sermonRecording && (
-                <button
-                  onClick={() => setSermonSummaryOpen(true)}
-                  className="w-full py-1 rounded-sm bg-purple-900/40 border border-purple-700/50 text-purple-200 text-[9px] font-bold hover:bg-purple-900/70 transition-colors"
-                >
-                  View Summary
-                </button>
-              )}
-            </div>
           </div>
         ) : (
           <div className="space-y-2">
@@ -1645,6 +1652,63 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
         </div>
       </div>
 
+      {/* ── Sermon Recording strip (always visible when Visionary mode on) ── */}
+      {isVisionaryMode && (
+        <div className="shrink-0 px-2.5 py-2 border-b border-zinc-900/80 bg-zinc-950/95">
+          <div className="rounded-sm border border-rose-900/50 bg-rose-950/15 p-2 space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[9px] font-bold tracking-wider text-rose-300 uppercase">Record Sermon</span>
+              <button
+                onClick={() => { void toggleSermonRecording(); }}
+                disabled={sermonSummarizing || sermonTranscribing}
+                className={`px-2 py-1 rounded-sm text-[9px] font-bold border transition-colors disabled:opacity-50 ${
+                  sermonRecording
+                    ? 'bg-rose-700/60 text-rose-200 border-rose-600 animate-pulse'
+                    : 'bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-rose-700 hover:text-rose-300'
+                }`}
+              >
+                {sermonTranscribing ? 'Transcribing…' : sermonSummarizing ? 'Summarizing…' : sermonRecording ? '⏹ Stop & Summarize' : '⏺ Start Recording'}
+              </button>
+            </div>
+            {sermonRecording && (
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-[9px] font-mono">
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sermonMicWarning ? 'bg-amber-400 animate-pulse' : 'bg-rose-500 animate-pulse'}`} />
+                  <span className={sermonMicWarning ? 'text-amber-300' : 'text-rose-300'}>
+                    {Math.floor(sermonElapsed / 60)}:{String(sermonElapsed % 60).padStart(2, '0')} · {sermonWordCount.toLocaleString()} words
+                  </span>
+                </div>
+                {sermonMicWarning && (
+                  <div className="text-[9px] text-amber-300 font-mono">{sermonMicWarning}</div>
+                )}
+              </div>
+            )}
+            {sermonTranscribing && (
+              <div className="text-[9px] text-zinc-400 font-mono animate-pulse">Transcribing audio… this may take a moment.</div>
+            )}
+            {sermonSummaryError && !sermonRecording && !sermonTranscribing && (
+              <div className="flex items-start gap-1.5 bg-rose-950/40 border border-rose-800/50 rounded px-2 py-1">
+                <span className="text-rose-400 text-[10px] leading-tight shrink-0 mt-px">⚠</span>
+                <span className="text-[9px] text-rose-300 font-mono leading-tight line-clamp-2">{sermonSummaryError}</span>
+                <button
+                  onClick={() => setSermonSummaryError(null)}
+                  className="ml-auto text-rose-500 hover:text-rose-300 text-[10px] shrink-0 leading-tight"
+                  title="Dismiss"
+                >✕</button>
+              </div>
+            )}
+            {sermonSummary && !sermonRecording && (
+              <button
+                onClick={() => setSermonSummaryOpen(true)}
+                className="w-full py-1 rounded-sm bg-purple-900/40 border border-purple-700/50 text-purple-200 text-[9px] font-bold hover:bg-purple-900/70 transition-colors"
+              >
+                View Summary
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Verse results (scrollable) ── */}
       <div className={resultsClassName}>
         {loading || aiLoading ? (
@@ -1746,9 +1810,9 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
             wordCount={sermonWordCount}
             archived={sermonArchived}
             onClose={() => setSermonSummaryOpen(false)}
-            onArchive={() => {
-              archiveSermon(sermonSummary, sermonWordCount);
-              setSermonArchived(true);
+            onArchive={async () => {
+              const result = await archiveSermon(sermonSummary, sermonWordCount, workspaceId);
+              if (result) setSermonArchived(true);
             }}
             onProjectRecap={() => {
               const item = createSermonRecapItem(sermonSummary);

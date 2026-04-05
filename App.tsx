@@ -83,6 +83,7 @@ import { copyTextToClipboard } from './services/clipboardService';
 import { dispatchAetherBridgeEvent, type AetherBridgeEvent } from './services/aetherBridge';
 import { MacroPanel } from './components/MacroPanel';
 import { subscribeMacros, seedStarterMacrosIfEmpty } from './services/macroRegistry';
+import { getArchivedSermons, deleteArchivedSermon, type ArchivedSermon } from './services/sermonArchive';
 import type { MacroDefinition, MacroAuditEntry } from './types/macros';
 import { matchTriggers, type MacroExecutionContext } from './services/macroEngine';
 import { nanoid } from 'nanoid';
@@ -1564,6 +1565,8 @@ function App() {
   const [runSheetFilesError, setRunSheetFilesError] = useState<string | null>(null);
   const [runSheetFileQuery, setRunSheetFileQuery] = useState('');
   const [runSheetArchiveTitle, setRunSheetArchiveTitle] = useState('');
+  const [archivedSermons, setArchivedSermons] = useState<ArchivedSermon[]>([]);
+  const [archivedSermonsLoading, setArchivedSermonsLoading] = useState(false);
   const [draggedScheduleItemId, setDraggedScheduleItemId] = useState<string | null>(null);
   const [scheduleDropIndicator, setScheduleDropIndicator] = useState<{ itemId: string; after: boolean } | null>(null);
   const [draggedRunSheetSlide, setDraggedRunSheetSlide] = useState<{ itemId: string; slideId: string } | null>(null);
@@ -2246,6 +2249,15 @@ function App() {
   useEffect(() => {
     refreshRunSheetFiles();
   }, [refreshRunSheetFiles]);
+
+  useEffect(() => {
+    if (activeSidebarTab !== 'FILES') return;
+    setArchivedSermonsLoading(true);
+    getArchivedSermons(workspaceId).then((items) => {
+      setArchivedSermons(items);
+      setArchivedSermonsLoading(false);
+    });
+  }, [activeSidebarTab, workspaceId]);
 
   // --- SESSION PERSISTENCE LOGIC ---
   useEffect(() => {
@@ -6999,6 +7011,7 @@ function App() {
             onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
             compact={true}
             hasPptxItems={hasPptxImportedItems}
+            workspaceId={workspaceId}
           />
         </div>
       );
@@ -8062,6 +8075,88 @@ function App() {
                     </div>
                   ))}
                 </div>
+
+                <div className="mx-3 border-t border-zinc-800/60" />
+
+                {/* ── SERMON ARCHIVE ── */}
+                <div className="px-3 pt-3 pb-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 flex-1">Sermon Archive</p>
+                    <button
+                      onClick={() => {
+                        setArchivedSermonsLoading(true);
+                        getArchivedSermons(workspaceId).then((items) => {
+                          setArchivedSermons(items);
+                          setArchivedSermonsLoading(false);
+                        });
+                      }}
+                      className="text-[9px] text-zinc-500 hover:text-zinc-300 transition-colors font-bold uppercase tracking-wide"
+                    >
+                      ↻ Refresh
+                    </button>
+                  </div>
+                </div>
+
+                <div className="px-3 pb-3 space-y-1">
+                  {archivedSermonsLoading && (
+                    <div className="text-[10px] text-zinc-600 py-2">Loading…</div>
+                  )}
+                  {!archivedSermonsLoading && archivedSermons.length === 0 && (
+                    <div className="text-[10px] text-zinc-700 py-4 text-center">No saved sermon summaries</div>
+                  )}
+                  {archivedSermons.map((item) => (
+                    <div key={item.id} className="rounded border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition-colors overflow-hidden">
+                      <div className="px-2.5 py-2">
+                        <div className="text-[11px] font-semibold text-zinc-200 truncate leading-tight">{item.summary.title || 'Untitled Sermon'}</div>
+                        <div className="text-[9px] text-zinc-500 mt-0.5 leading-tight line-clamp-1">{item.summary.mainTheme}</div>
+                        <div className="text-[9px] text-zinc-600 mt-0.5">
+                          {new Date(item.savedAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                          {' · '}
+                          {item.wordCount.toLocaleString()} words
+                        </div>
+                      </div>
+                      <div className="flex border-t border-zinc-800">
+                        <button
+                          onClick={() => {
+                            const text = [
+                              `SERMON: ${item.summary.title}`,
+                              ``,
+                              `THEME: ${item.summary.mainTheme}`,
+                              ``,
+                              `KEY POINTS:`,
+                              ...item.summary.keyPoints.map((p, i) => `${i + 1}. ${p}`),
+                              ``,
+                              `SCRIPTURES: ${item.summary.scripturesReferenced.join(' · ') || 'None'}`,
+                              ``,
+                              `CALL TO ACTION: ${item.summary.callToAction}`,
+                            ].join('\n');
+                            navigator.clipboard.writeText(text).catch(() => {
+                              const ta = document.createElement('textarea');
+                              ta.value = text;
+                              ta.style.cssText = 'position:fixed;opacity:0';
+                              document.body.appendChild(ta);
+                              ta.select();
+                              document.execCommand('copy');
+                              document.body.removeChild(ta);
+                            });
+                          }}
+                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-zinc-800 transition-colors border-r border-zinc-800"
+                        >
+                          Copy
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await deleteArchivedSermon(item.id, workspaceId);
+                            setArchivedSermons((prev) => prev.filter((s) => s.id !== item.id));
+                          }}
+                          className="flex-1 py-1.5 text-[9px] font-bold text-rose-500 hover:bg-rose-950/40 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -8103,6 +8198,7 @@ function App() {
                   onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
                   compact={true}
                   hasPptxItems={hasPptxImportedItems}
+                  workspaceId={workspaceId}
                 />
               </div>
             </div>

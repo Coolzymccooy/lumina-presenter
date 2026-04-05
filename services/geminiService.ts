@@ -192,13 +192,16 @@ export const transcribeSermonChunk = async (
   const message = String(response?.message || 'Cloud transcription request failed.').trim() || 'Cloud transcription request failed.';
   const retryAfterMs = Number(response?.retryAfterMs || 0);
 
-  if (errorCode === 'TRANSCRIBE_COOLDOWN') {
+  if (errorCode === 'TRANSCRIBE_COOLDOWN' || errorCode === 'QUOTA_EXCEEDED' || errorCode === 'HTTP_429') {
+    const cooldownMs = errorCode === 'QUOTA_EXCEEDED' || errorCode === 'HTTP_429'
+      ? 30000
+      : Number.isFinite(retryAfterMs) ? Math.max(0, retryAfterMs) : 0;
     return {
       ok: false,
       mode: 'cooldown',
-      retryAfterMs: Number.isFinite(retryAfterMs) ? Math.max(0, retryAfterMs) : 0,
+      retryAfterMs: cooldownMs,
       error: errorCode,
-      message,
+      message: errorCode === 'QUOTA_EXCEEDED' ? 'Gemini quota reached. Pausing 30s before retry.' : message,
     };
   }
 
@@ -217,6 +220,32 @@ export const transcribeSermonChunk = async (
     error: errorCode,
     message,
   };
+};
+
+export const transcribeSermonAudio = async (
+  audioBlob: Blob,
+  mimeType: string,
+  locale: 'en-GB' | 'en-US'
+): Promise<{ ok: true; transcript: string } | { ok: false; error: string }> => {
+  const apiBase = getServerApiBaseUrl();
+  const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('wav') ? 'wav' : 'webm';
+  const form = new FormData();
+  form.append('audio', audioBlob, `sermon.${ext}`);
+  form.append('mimeType', mimeType);
+  form.append('locale', locale);
+  try {
+    const res = await fetch(`${apiBase}/api/ai/transcribe-sermon-audio`, {
+      method: 'POST',
+      body: form,
+    });
+    const data = await res.json() as { ok: boolean; transcript?: string; message?: string; error?: string };
+    if (data.ok && typeof data.transcript === 'string') {
+      return { ok: true, transcript: data.transcript };
+    }
+    return { ok: false, error: data.message || data.error || 'Transcription failed.' };
+  } catch (err: unknown) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Transcription request failed.' };
+  }
 };
 
 export const semanticBibleSearch = async (query: string): Promise<string> => {

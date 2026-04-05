@@ -3,11 +3,12 @@ import cors from "cors";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import Database from "better-sqlite3";
+import multer from "multer";
 import { GoogleGenAI, Type } from "@google/genai";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -300,12 +301,21 @@ CREATE TABLE IF NOT EXISTS macro_webhook_triggers (
   triggered_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS sermon_summaries (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  saved_at INTEGER NOT NULL,
+  word_count INTEGER NOT NULL DEFAULT 0,
+  summary_json TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_audit_workspace_time ON audit_logs(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_snapshots_workspace_time ON workspace_snapshots(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_audience_workspace_time ON audience_messages(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_connections_workspace_session_seen ON session_connections(workspace_id, session_id, last_seen_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_runsheet_workspace_file_unique ON workspace_runsheet_files(workspace_id, file_id);
 CREATE INDEX IF NOT EXISTS idx_runsheet_workspace_updated ON workspace_runsheet_files(workspace_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sermons_workspace_time ON sermon_summaries(workspace_id, saved_at DESC);
 `);
 
 const ensureColumnExists = (tableName, columnName, definitionSql, backfillSql = null) => {
@@ -432,6 +442,31 @@ const parseBool = (value, fallback = false) => {
   if (!normalized) return fallback;
   return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
 };
+/**
+ * Extract a short, human-readable message from a Gemini SDK error.
+ * The SDK embeds the full JSON response body as the error message string.
+ */
+const extractGeminiErrorMessage = (error) => {
+  const raw = String(error?.message || error || "Unknown error");
+  // If it looks like a JSON blob, try to pull out the nested message field
+  if (raw.includes('"message"') || raw.startsWith("{")) {
+    try {
+      const start = raw.indexOf("{");
+      const parsed = JSON.parse(raw.slice(start));
+      const msg = parsed?.error?.message || parsed?.message;
+      if (msg && typeof msg === "string") {
+        // Trim at the first newline and cap at 120 chars
+        const clean = msg.split("\n")[0].trim();
+        return clean.length > 120 ? clean.slice(0, 120) + "…" : clean;
+      }
+    } catch {
+      // Not valid JSON after all — fall through
+    }
+  }
+  const firstLine = raw.split("\n")[0].trim();
+  return firstLine.length > 120 ? firstLine.slice(0, 120) + "…" : firstLine;
+};
+
 const parseBase64Payload = (value) => {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -1159,6 +1194,14 @@ app.post("/api/ai/summarize-sermon", async (req, res) => {
   const transcript = String(req.body?.transcript || "").trim();
   const accentHint = String(req.body?.accentHint || "standard").trim();
   if (!transcript) return res.status(400).json({ ok: false, error: "TRANSCRIPT_REQUIRED" });
+  const wordCount = transcript.split(/\s+/).filter(Boolean).length;
+  if (wordCount < 40) {
+    return res.status(422).json({
+      ok: false,
+      error: "TRANSCRIPT_TOO_SHORT",
+      message: `Only ${wordCount} words were captured. At least 40 words are needed for a meaningful summary. Try recording a longer segment.`,
+    });
+  }
   const ai = ensureGoogleAiClient(res);
   if (!ai) return;
 
@@ -1179,19 +1222,20 @@ app.post("/api/ai/summarize-sermon", async (req, res) => {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `You are a skilled sermon note-taker for a church service${accentHint !== "standard" ? ` (${accentHint} English accent)` : ""}.
-The following is a live speech transcript from a pastor's sermon, captured by a speech-to-text engine.
-There may be minor transcription errors. Extract the sermon's essence.
+      contents: `You are a sermon note-taker for a church service${accentHint !== "standard" ? ` (${accentHint} English accent)` : ""}.
+The following is a live speech transcript from a pastor's sermon captured by a speech-to-text engine. There may be minor transcription errors.
+
+IMPORTANT: Extract ONLY what is explicitly stated in the transcript below. Do NOT infer, assume, or fabricate any content that is not present. If a field cannot be determined from the transcript, return an empty string or empty array. Never fill in key points, scriptures, quotes, or a call to action that the pastor did not actually say.
 
 Return a JSON object with:
-- title: short inferred sermon title (max 8 words)
-- mainTheme: one sentence describing the central message
-- keyPoints: array of 3 to 7 concise main points the pastor made
-- scripturesReferenced: array of Bible references mentioned (book chapter:verse format)
-- callToAction: the closing exhortation or challenge given to the congregation (1-2 sentences)
-- quotableLines: array of up to 4 memorable or impactful quotes directly from the transcript
+- title: short sermon title based only on what was said (max 8 words, or "Untitled Sermon" if unclear)
+- mainTheme: one sentence describing the central message — only from what was said
+- keyPoints: array of 3 to 7 concise points the pastor explicitly made (only from the transcript)
+- scripturesReferenced: array of Bible references explicitly mentioned (book chapter:verse format)
+- callToAction: the closing challenge given to the congregation — only if clearly stated, otherwise empty string
+- quotableLines: array of up to 4 direct quotes from the transcript
 
-Transcript:
+Transcript (${wordCount} words):
 ${transcript.slice(0, 20000)}`,
       config: {
         responseMimeType: "application/json",
@@ -1228,6 +1272,57 @@ ${transcript.slice(0, 20000)}`,
     });
   } catch (error) {
     return res.json({ ok: true, summary: fallbackSummary(), warning: String(error?.message || error) });
+  }
+});
+
+// ─── Sermon Archive ───────────────────────────────────────────────────────────
+
+app.post("/api/sermons", (req, res) => {
+  const workspaceId = String(req.body?.workspaceId || "").trim();
+  const id = String(req.body?.id || "").trim();
+  const wordCount = Number(req.body?.wordCount || 0);
+  const summary = req.body?.summary;
+  if (!workspaceId || !id || !summary || typeof summary !== "object") {
+    return res.status(400).json({ ok: false, error: "INVALID_PAYLOAD" });
+  }
+  try {
+    db.prepare(
+      "INSERT OR REPLACE INTO sermon_summaries (id, workspace_id, saved_at, word_count, summary_json) VALUES (?, ?, ?, ?, ?)"
+    ).run(id, workspaceId, Date.now(), wordCount, JSON.stringify(summary));
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: "DB_ERROR", message: String(err?.message || err) });
+  }
+});
+
+app.get("/api/sermons", (req, res) => {
+  const workspaceId = String(req.query?.workspaceId || "").trim();
+  if (!workspaceId) return res.status(400).json({ ok: false, error: "WORKSPACE_ID_REQUIRED" });
+  try {
+    const rows = db.prepare(
+      "SELECT id, saved_at, word_count, summary_json FROM sermon_summaries WHERE workspace_id = ? ORDER BY saved_at DESC LIMIT 100"
+    ).all(workspaceId);
+    const items = rows.map((r) => ({
+      id: r.id,
+      savedAt: r.saved_at,
+      wordCount: r.word_count,
+      summary: JSON.parse(r.summary_json),
+    }));
+    res.json({ ok: true, items });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: "DB_ERROR", message: String(err?.message || err) });
+  }
+});
+
+app.delete("/api/sermons/:id", (req, res) => {
+  const id = String(req.params?.id || "").trim();
+  const workspaceId = String(req.query?.workspaceId || "").trim();
+  if (!id || !workspaceId) return res.status(400).json({ ok: false, error: "INVALID_PARAMS" });
+  try {
+    db.prepare("DELETE FROM sermon_summaries WHERE id = ? AND workspace_id = ?").run(id, workspaceId);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: "DB_ERROR", message: String(err?.message || err) });
   }
 });
 
@@ -1418,19 +1513,22 @@ app.post("/api/ai/transcribe-sermon-chunk", async (req, res) => {
   const ai = ensureGoogleAiClient(res);
   if (!ai) return;
 
+  // Gemini inlineData requires a base MIME type without codec parameters
+  const geminiMimeType = mimeType.includes(";") ? mimeType.split(";")[0].trim() : mimeType;
+
   try {
     const speechPrompt = locale === "en-GB"
       ? "Transcribe this church speech audio in British English. Return plain transcript text only."
       : "Transcribe this church speech audio in American English. Return plain transcript text only.";
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: {
         parts: [
           { text: speechPrompt },
           {
             inlineData: {
-              mimeType,
+              mimeType: geminiMimeType,
               data: audioBuffer.toString("base64"),
             },
           },
@@ -1446,11 +1544,108 @@ app.post("/api/ai/transcribe-sermon-chunk", async (req, res) => {
       bytes: audioBuffer.length,
     });
   } catch (error) {
-    return res.status(502).json({
+    const raw = String(error?.message || error);
+    const isQuota = raw.includes("RESOURCE_EXHAUSTED") || raw.includes("quota");
+    return res.status(isQuota ? 429 : 502).json({
       ok: false,
-      error: "TRANSCRIBE_FAILED",
-      message: String(error?.message || error),
+      error: isQuota ? "QUOTA_EXCEEDED" : "TRANSCRIBE_FAILED",
+      message: isQuota ? "Gemini quota reached. Will retry shortly." : extractGeminiErrorMessage(error),
     });
+  }
+});
+
+// Multer for sermon audio upload (disk storage, auto-cleaned after processing)
+const sermonAudioUpload = multer({
+  storage: multer.diskStorage({
+    destination: os.tmpdir(),
+    filename: (_req, file, cb) => {
+      const ext = file.originalname.endsWith(".mp4") ? ".mp4" : file.originalname.endsWith(".wav") ? ".wav" : ".webm";
+      cb(null, `sermon-${randomUUID()}${ext}`);
+    },
+  }),
+  limits: { fileSize: 300 * 1024 * 1024 },
+});
+
+const SERMON_INLINE_LIMIT = 15 * 1024 * 1024;
+
+app.post("/api/ai/transcribe-sermon-audio", sermonAudioUpload.single("audio"), async (req, res) => {
+  const audioFile = req.file;
+  if (!audioFile?.path) {
+    return res.status(400).json({ ok: false, error: "AUDIO_REQUIRED", message: "audio file is required." });
+  }
+
+  const rawMime = String(req.body?.mimeType || audioFile.mimetype || "audio/webm").trim().toLowerCase();
+  const locale = String(req.body?.locale || "en-US").trim();
+  // Strip codec params for Gemini
+  const geminiMimeType = rawMime.includes(";") ? rawMime.split(";")[0].trim() : rawMime;
+  const accentHint = locale === "en-GB" ? "British" : "American";
+
+  const ai = ensureGoogleAiClient(res);
+  if (!ai) {
+    try { fs.unlinkSync(audioFile.path); } catch { /* ignore */ }
+    return;
+  }
+
+  const speechPrompt = `Transcribe this church sermon audio in ${accentHint} English. Return plain transcript text only, no timestamps, no speaker labels.`;
+
+  try {
+    const fileStat = fs.statSync(audioFile.path);
+
+    let transcript = "";
+    if (fileStat.size <= SERMON_INLINE_LIMIT) {
+      // Small enough for inline data
+      const fileBuffer = fs.readFileSync(audioFile.path);
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: {
+          parts: [
+            { inlineData: { data: fileBuffer.toString("base64"), mimeType: geminiMimeType } },
+            { text: speechPrompt },
+          ],
+        },
+      });
+      transcript = String(response?.text || "").trim();
+    } else {
+      // Large file: upload via Gemini File API
+      let uploadResult;
+      try {
+        uploadResult = await ai.files.upload({ file: audioFile.path, config: { mimeType: geminiMimeType } });
+        const pollStart = Date.now();
+        let fileState = await ai.files.get({ name: uploadResult.name });
+        while (fileState.state === "PROCESSING") {
+          if (Date.now() - pollStart > 5 * 60 * 1000) throw new Error("Gemini File API processing timed out");
+          await new Promise((r) => setTimeout(r, 2000));
+          fileState = await ai.files.get({ name: uploadResult.name });
+        }
+        if (fileState.state === "FAILED") throw new Error("Gemini File processing failed.");
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: {
+            parts: [
+              { fileData: { fileUri: uploadResult.uri, mimeType: geminiMimeType } },
+              { text: speechPrompt },
+            ],
+          },
+        });
+        transcript = String(response?.text || "").trim();
+      } finally {
+        if (uploadResult?.name) {
+          ai.files.delete({ name: uploadResult.name }).catch(() => {});
+        }
+      }
+    }
+
+    return res.json({ ok: true, transcript });
+  } catch (error) {
+    const raw = String(error?.message || error);
+    const isQuota = raw.includes("RESOURCE_EXHAUSTED") || raw.includes("quota");
+    return res.status(isQuota ? 429 : 502).json({
+      ok: false,
+      error: isQuota ? "QUOTA_EXCEEDED" : "TRANSCRIBE_FAILED",
+      message: isQuota ? "Gemini quota reached. Please wait a moment and try again." : extractGeminiErrorMessage(error),
+    });
+  } finally {
+    try { fs.unlinkSync(audioFile.path); } catch { /* ignore */ }
   }
 });
 
