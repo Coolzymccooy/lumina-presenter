@@ -33,6 +33,7 @@ interface ConnectModalProps {
     onAetherBridgePing: () => Promise<void> | void;
     onAetherBridgeSyncNow: () => Promise<void> | void;
     onAetherSceneSwitch: (target: 'program' | 'blackout' | 'lobby') => Promise<void> | void;
+    onAetherStreamRequest: (action: 'start' | 'stop') => Promise<void> | void;
     aetherBridgeStatusTone: 'neutral' | 'ok' | 'error';
     aetherBridgeStatusText: string;
 }
@@ -93,6 +94,7 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
     onAetherBridgePing,
     onAetherBridgeSyncNow,
     onAetherSceneSwitch,
+    onAetherStreamRequest,
     aetherBridgeStatusTone,
     aetherBridgeStatusText,
 }) => {
@@ -470,6 +472,21 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                                         }`}
                                     />
                                 </div>
+                                {(() => {
+                                    let detectedRoom: string | null = null;
+                                    try { detectedRoom = new URL(aetherBridgeUrl).searchParams.get('room'); } catch { /* ignore */ }
+                                    return detectedRoom ? (
+                                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-700/50 bg-emerald-950/30">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                                            <span className="text-[10px] text-zinc-400 uppercase tracking-wider">Room detected:</span>
+                                            <span className="text-[12px] font-mono font-bold text-emerald-300 tracking-widest">{detectedRoom}</span>
+                                        </div>
+                                    ) : (
+                                        <p className="text-[10px] text-zinc-600 leading-relaxed">
+                                            Room is auto-detected from the bridge URL — paste the full URL copied from Aether › Lumina Pair.
+                                        </p>
+                                    );
+                                })()}
                                 <div className="space-y-1">
                                     <label className="text-[10px] uppercase tracking-wider text-zinc-500">Bridge Token (optional, local only)</label>
                                     <input
@@ -543,6 +560,22 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                                         {bridgeBusy ? 'SENDING…' : 'SYNC NOW'}
                                     </button>
                                     <button
+                                        onClick={() => void runBridgeAction(() => onAetherStreamRequest('start'))}
+                                        className="flex items-center justify-center gap-2 px-3 py-3 rounded-lg border border-blue-500/80 bg-blue-950/40 text-blue-100 text-[11px] font-black tracking-widest transition-all duration-100 hover:bg-blue-900/50 hover:border-blue-400 hover:text-white active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm hover:shadow-blue-900/40"
+                                        disabled={bridgeBusy || !aetherBridgeUrl.trim()}
+                                    >
+                                        <span className="text-[13px] leading-none">▶</span>
+                                        GO LIVE AETHER
+                                    </button>
+                                    <button
+                                        onClick={() => void runBridgeAction(() => onAetherStreamRequest('stop'))}
+                                        className="flex items-center justify-center gap-2 px-3 py-3 rounded-lg border border-red-600/80 bg-red-950/40 text-red-200 text-[11px] font-black tracking-widest transition-all duration-100 hover:bg-red-900/50 hover:border-red-500 hover:text-white active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm hover:shadow-red-900/40"
+                                        disabled={bridgeBusy || !aetherBridgeUrl.trim()}
+                                    >
+                                        <span className="text-[13px] leading-none">■</span>
+                                        STOP LIVE AETHER
+                                    </button>
+                                    <button
                                         onClick={() => void runBridgeAction(() => onAetherSceneSwitch('program'))}
                                         className="flex items-center justify-center gap-2 px-3 py-3 rounded-lg border border-emerald-700/70 bg-emerald-950/30 text-emerald-200 text-[11px] font-black tracking-widest transition-all duration-100 hover:bg-emerald-900/40 hover:border-emerald-500 hover:text-white active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                                         disabled={bridgeBusy || !aetherBridgeUrl.trim()}
@@ -569,6 +602,9 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                                 </div>
                                 <div className={`p-2.5 rounded-lg border text-[11px] font-medium ${aetherStatusClass}`}>
                                     {aetherBridgeStatusText || 'Bridge idle — no commands sent yet.'}
+                                </div>
+                                <div className="p-2.5 rounded-lg border border-zinc-800 bg-black/30 text-[11px] text-zinc-400 leading-relaxed">
+                                    With Aether Bridge enabled, Lumina&apos;s existing Presenter <span className="font-semibold text-zinc-200">Go Live</span> action also sends Aether to the Program scene and can trigger stream start when coming out of blackout, hold, or an idle state.
                                 </div>
                             </AccordionSection>
 

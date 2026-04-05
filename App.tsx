@@ -80,9 +80,10 @@ import { parseEasyWorshipFile } from './services/easyWorshipImport';
 import { parseProPresenterFile } from './services/proPresenterImport';
 import { parseOpenSongFile } from './services/openSongImport';
 import { copyTextToClipboard } from './services/clipboardService';
-import { dispatchAetherBridgeEvent } from './services/aetherBridge';
+import { dispatchAetherBridgeEvent, type AetherBridgeEvent } from './services/aetherBridge';
 import { MacroPanel } from './components/MacroPanel';
 import { subscribeMacros, seedStarterMacrosIfEmpty } from './services/macroRegistry';
+import { getArchivedSermons, deleteArchivedSermon, type ArchivedSermon } from './services/sermonArchive';
 import type { MacroDefinition, MacroAuditEntry } from './types/macros';
 import { matchTriggers, type MacroExecutionContext } from './services/macroEngine';
 import { nanoid } from 'nanoid';
@@ -252,6 +253,7 @@ type WorkspaceSettings = {
   aetherBridgeEnabled: boolean;
   aetherBridgeAutoSync: boolean;
   aetherBridgeUrl: string;
+  aetherRoomId: string;
   aetherSceneProgram: string;
   aetherSceneBlackout: string;
   aetherSceneLobby: string;
@@ -854,6 +856,7 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
   if (typeof raw.aetherBridgeEnabled === 'boolean') safe.aetherBridgeEnabled = raw.aetherBridgeEnabled;
   if (typeof raw.aetherBridgeAutoSync === 'boolean') safe.aetherBridgeAutoSync = raw.aetherBridgeAutoSync;
   if (typeof raw.aetherBridgeUrl === 'string') safe.aetherBridgeUrl = raw.aetherBridgeUrl.slice(0, 500);
+  if (typeof raw.aetherRoomId === 'string') safe.aetherRoomId = raw.aetherRoomId.slice(0, 64);
   if (typeof raw.aetherSceneProgram === 'string') safe.aetherSceneProgram = raw.aetherSceneProgram.slice(0, 120);
   if (typeof raw.aetherSceneBlackout === 'string') safe.aetherSceneBlackout = raw.aetherSceneBlackout.slice(0, 120);
   if (typeof raw.aetherSceneLobby === 'string') safe.aetherSceneLobby = raw.aetherSceneLobby.slice(0, 120);
@@ -1296,6 +1299,7 @@ function App() {
     aetherBridgeEnabled: false,
     aetherBridgeAutoSync: true,
     aetherBridgeUrl: '',
+    aetherRoomId: '',
     aetherSceneProgram: 'Program',
     aetherSceneBlackout: 'Blackout',
     aetherSceneLobby: 'Lobby',
@@ -1561,6 +1565,8 @@ function App() {
   const [runSheetFilesError, setRunSheetFilesError] = useState<string | null>(null);
   const [runSheetFileQuery, setRunSheetFileQuery] = useState('');
   const [runSheetArchiveTitle, setRunSheetArchiveTitle] = useState('');
+  const [archivedSermons, setArchivedSermons] = useState<ArchivedSermon[]>([]);
+  const [archivedSermonsLoading, setArchivedSermonsLoading] = useState(false);
   const [draggedScheduleItemId, setDraggedScheduleItemId] = useState<string | null>(null);
   const [scheduleDropIndicator, setScheduleDropIndicator] = useState<{ itemId: string; after: boolean } | null>(null);
   const [draggedRunSheetSlide, setDraggedRunSheetSlide] = useState<{ itemId: string; slideId: string } | null>(null);
@@ -2032,6 +2038,7 @@ function App() {
   const hasLoadedInitialSettingsRef = useRef(false);
   const lastRemoteCommandAtRef = useRef<number | null>(null);
   const lastServerRemoteCommandAtRef = useRef<number | null>(null);
+  const lastServerScheduleSnapshotAtRef = useRef<number | null>(null);
   const lastCueAutoAdvanceKeyRef = useRef<string>('');
   const lastSyncErrorRef = useRef<{ key: string; at: number } | null>(null);
   const syncFailureStreakRef = useRef(0);
@@ -2243,6 +2250,15 @@ function App() {
     refreshRunSheetFiles();
   }, [refreshRunSheetFiles]);
 
+  useEffect(() => {
+    if (activeSidebarTab !== 'FILES') return;
+    setArchivedSermonsLoading(true);
+    getArchivedSermons(workspaceId).then((items) => {
+      setArchivedSermons(items);
+      setArchivedSermonsLoading(false);
+    });
+  }, [activeSidebarTab, workspaceId]);
+
   // --- SESSION PERSISTENCE LOGIC ---
   useEffect(() => {
     if (isFirebaseConfigured() && auth) {
@@ -2287,6 +2303,7 @@ function App() {
     resetSyncBackoff();
     hasHydratedServerSnapshotRef.current = false;
     lastServerRemoteCommandAtRef.current = null;
+    lastServerScheduleSnapshotAtRef.current = null;
   }, [user?.uid, liveSessionId, resetSyncBackoff]);
 
 
@@ -2766,6 +2783,7 @@ function App() {
     const settingsUpdatedAt = workspaceSettingsUpdatedAtRef.current || updatedAt;
     syncLiveState({
       scheduleSnapshot: schedule,
+      scheduleSnapshotAt: updatedAt,
       workspaceSettings,
       workspaceSettingsUpdatedAt: settingsUpdatedAt,
       holdScreenMode,
@@ -3910,7 +3928,7 @@ function App() {
   ]);
 
   const dispatchAetherEvent = useCallback(async (
-    event: 'lumina.bridge.ping' | 'lumina.state.sync' | 'lumina.scene.switch',
+    event: AetherBridgeEvent,
     payload: Record<string, unknown>,
     options?: { timeoutMs?: number; successLabel?: string; failureLabel?: string }
   ) => {
@@ -3922,9 +3940,16 @@ function App() {
       });
       return { ok: false };
     }
+    // Derive room ID from the bridge URL's ?room= query param (new pairing flow)
+    // Fall back to the legacy stored aetherRoomId for backwards compat
+    const roomId = (() => {
+      try { return new URL(workspaceSettings.aetherBridgeUrl).searchParams.get('room') || undefined; }
+      catch { return String(workspaceSettings.aetherRoomId || '').trim() || undefined; }
+    })();
     const result = await dispatchAetherBridgeEvent({
       endpointUrl,
       accessToken: String(aetherBridgeToken || '').trim() || undefined,
+      roomId,
       event,
       workspaceId,
       sessionId: liveSessionId,
@@ -3945,7 +3970,7 @@ function App() {
       });
     }
     return result;
-  }, [aetherBridgeToken, liveSessionId, workspaceId, workspaceSettings.aetherBridgeUrl]);
+  }, [aetherBridgeToken, liveSessionId, workspaceId, workspaceSettings.aetherBridgeUrl, workspaceSettings.aetherRoomId]);
 
   const handleAetherBridgeTest = useCallback(async () => {
     await dispatchAetherEvent(
@@ -3963,6 +3988,15 @@ function App() {
       }
     );
   }, [dispatchAetherEvent, liveSessionId, viewMode, workspaceId]);
+
+  // Heartbeat: ping Aether every 60s while bridge is enabled + configured
+  useEffect(() => {
+    if (!workspaceSettings.aetherBridgeEnabled || !workspaceSettings.aetherBridgeUrl.trim()) return;
+    const id = setInterval(() => {
+      void dispatchAetherEvent('lumina.bridge.ping', { app: 'lumina-presenter', heartbeat: true }, { timeoutMs: 4000 });
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [workspaceSettings.aetherBridgeEnabled, workspaceSettings.aetherBridgeUrl, dispatchAetherEvent]);
 
   const handleAetherBridgeSyncNow = useCallback(async () => {
     await dispatchAetherEvent(
@@ -3992,6 +4026,27 @@ function App() {
       }
     );
   }, [dispatchAetherEvent, liveSessionId, resolveAetherSceneName, workspaceId]);
+
+  const handleAetherStreamRequest = useCallback(async (
+    action: 'start' | 'stop' | 'toggle',
+    payload: Record<string, unknown> = {},
+    options?: { timeoutMs?: number; successLabel?: string; failureLabel?: string }
+  ) => {
+    await dispatchAetherEvent(
+      'lumina.stream.request',
+      {
+        action,
+        ...payload,
+        workspaceId,
+        sessionId: liveSessionId,
+      },
+      {
+        timeoutMs: options?.timeoutMs ?? 5000,
+        successLabel: options?.successLabel ?? `Aether ${action} command sent`,
+        failureLabel: options?.failureLabel ?? `Aether ${action} command failed`,
+      }
+    );
+  }, [dispatchAetherEvent, liveSessionId, workspaceId]);
 
   useEffect(() => {
     if (viewState !== 'studio') return;
@@ -4860,6 +4915,9 @@ function App() {
     const nextLiveItem = prepareItemForGoLive(item);
     if (!nextLiveItem || !Array.isArray(nextLiveItem.slides) || nextLiveItem.slides.length === 0) return;
     const boundedIndex = Math.max(0, Math.min(nextLiveItem.slides.length - 1, slideIndex));
+    const bridgeReady = workspaceSettings.aetherBridgeEnabled && !!String(workspaceSettings.aetherBridgeUrl || '').trim();
+    const shouldRequestAetherStart = bridgeReady && (!activeItemId || blackout || holdScreenMode !== 'none' || !isPlaying);
+    const goLiveSlide = nextLiveItem.slides[boundedIndex];
     setActiveItemId(nextLiveItem.id);
     setActiveSlideIndex(boundedIndex);
     if (nextLiveItem.timerCue?.enabled) {
@@ -4886,6 +4944,28 @@ function App() {
         executeMacro(macro, macroCtx).catch(() => {});
       });
     });
+
+    if (bridgeReady) {
+      const programSceneName = resolveAetherSceneName('program');
+      const bridgePayload = {
+        target: 'program',
+        sceneTarget: 'program',
+        sceneName: programSceneName,
+        itemId: nextLiveItem.id,
+        itemTitle: nextLiveItem.title,
+        itemType: nextLiveItem.type,
+        slideIndex: boundedIndex,
+        slideLabel: String(goLiveSlide?.label || `Slide ${boundedIndex + 1}`),
+      };
+      if (shouldRequestAetherStart) {
+        void handleAetherStreamRequest('start', bridgePayload, {
+          successLabel: 'Aether live start sent',
+          failureLabel: 'Aether live start failed',
+        });
+      } else {
+        void handleAetherSceneSwitch('program');
+      }
+    }
   };
   const goLiveSelectedPreview = useCallback(() => {
     if (!presenterPreviewItem || presenterPreviewSlideIndex < 0) return;
@@ -5878,14 +5958,30 @@ function App() {
       const response = await fetchServerSessionState(workspaceId, liveSessionId);
       if (!active || !response?.state) return;
       const data = response.state;
+
+      // Remote command sync (existing)
       const rawIncomingAt = data.remoteCommandAt;
       const incomingAt = typeof rawIncomingAt === 'number' && Number.isFinite(rawIncomingAt) ? rawIncomingAt : null;
-      if (!incomingAt || incomingAt === lastServerRemoteCommandAtRef.current) return;
-      lastServerRemoteCommandAtRef.current = incomingAt;
+      if (incomingAt && incomingAt !== lastServerRemoteCommandAtRef.current) {
+        lastServerRemoteCommandAtRef.current = incomingAt;
+        const command = data.remoteCommand;
+        if (isRemoteCommand(command)) executeRemoteCommand(command);
+      }
 
-      const command = data.remoteCommand;
-      if (!isRemoteCommand(command)) return;
-      executeRemoteCommand(command);
+      // Schedule snapshot sync for collaborators: apply when controller wrote a newer snapshot
+      const rawScheduleAt = data.scheduleSnapshotAt;
+      const scheduleAt = typeof rawScheduleAt === 'number' && Number.isFinite(rawScheduleAt) ? rawScheduleAt : null;
+      const isCollaborator = typeof data.controllerOwnerUid === 'string' && data.controllerOwnerUid !== user.uid;
+      if (
+        scheduleAt &&
+        scheduleAt !== lastServerScheduleSnapshotAtRef.current &&
+        isCollaborator &&
+        Array.isArray(data.scheduleSnapshot) &&
+        data.scheduleSnapshot.length > 0
+      ) {
+        lastServerScheduleSnapshotAtRef.current = scheduleAt;
+        applyHydratedStudioState({ schedule: data.scheduleSnapshot });
+      }
     };
     pollServerCommands();
     const id = window.setInterval(pollServerCommands, 650);
@@ -5893,7 +5989,7 @@ function App() {
       active = false;
       window.clearInterval(id);
     };
-  }, [workspaceId, liveSessionId, user?.uid, cloudBootstrapComplete, executeRemoteCommand]);
+  }, [workspaceId, liveSessionId, user?.uid, user, cloudBootstrapComplete, executeRemoteCommand, applyHydratedStudioState]);
 
   useEffect(() => {
     if (!user?.uid || !cloudBootstrapComplete) return;
@@ -6915,6 +7011,7 @@ function App() {
             onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
             compact={true}
             hasPptxItems={hasPptxImportedItems}
+            workspaceId={workspaceId}
           />
         </div>
       );
@@ -7573,6 +7670,17 @@ function App() {
             </>
           )}
           <div className="h-4 w-px bg-zinc-800"></div>
+          <div
+            className="flex items-center gap-1.5 cursor-pointer"
+            title={syncIssue || 'Cloud sync healthy'}
+            onClick={() => { if (syncIssue) setDismissedSyncGuidance({}); }}
+          >
+            <div className={`w-1.5 h-1.5 rounded-full ${syncIssue ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
+            <span className={`text-[9px] font-black tracking-widest ${syncIssue ? 'text-red-400/80' : 'text-emerald-500/80'}`}>
+              {syncIssue ? 'SYNC ISSUE' : 'CLOUD SYNC'}
+            </span>
+          </div>
+          <div className="h-4 w-px bg-zinc-800"></div>
           <div className="flex items-center gap-2" title={`controller:${connectionCountsByRole.controller || 0} output:${connectionCountsByRole.output || 0} stage:${connectionCountsByRole.stage || 0} remote:${connectionCountsByRole.remote || 0}`}>
             <span className={`text-[9px] font-black tracking-widest ${activeTargetConnectionCount >= targetConnectionRoles.length ? 'text-emerald-400' : 'text-amber-400'}`}>
               LIVE CONNECTIONS {activeTargetConnectionCount}/{targetConnectionRoles.length}
@@ -7821,75 +7929,234 @@ function App() {
           )}
           {activeSidebarTab === 'FILES' && (
             <div className="flex-1 overflow-hidden flex flex-col">
-              <div className="p-3 border-b border-zinc-900 shrink-0">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Run Sheet Files</h3>
+              {/* Header */}
+              <div className="px-3 py-2.5 border-b border-zinc-800 shrink-0 flex items-center justify-between">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Files</h3>
               </div>
-              <div className="p-3 border-b border-zinc-900 bg-zinc-900/20 space-y-2 shrink-0">
-                <input
-                  value={runSheetArchiveTitle}
-                  onChange={(e) => setRunSheetArchiveTitle(e.target.value)}
-                  placeholder="Archive title (optional)"
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-zinc-200"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => handleArchiveRunSheet(false)}
-                    className="px-2 py-1.5 text-[10px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-200 hover:border-zinc-500"
-                  >
-                    Archive Current
-                  </button>
-                  <button
-                    onClick={() => handleArchiveRunSheet(true)}
-                    className="px-2 py-1.5 text-[10px] font-bold border border-zinc-700 rounded bg-blue-900/40 text-blue-200 hover:border-blue-500"
-                  >
-                    Archive + New
-                  </button>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {/* ── IMPORT ── */}
+                <div className="px-3 pt-3 pb-2">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 mb-2">Import</p>
+                  <div className="space-y-1">
+                    <label className="flex items-center gap-2.5 px-2.5 py-2 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer transition-colors group">
+                      <span className="w-6 h-6 rounded flex items-center justify-center bg-purple-900/50 text-purple-300 text-[9px] font-black shrink-0">PP</span>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white">ProPresenter</div>
+                        <div className="text-[9px] text-zinc-500">.pro6 / .pro6x / .pro</div>
+                      </div>
+                      <input type="file" accept=".pro6,.pro6x,.pro" className="hidden" onChange={importProPresenterAsItem} disabled={isImportingDeck} />
+                    </label>
+                    <label className="flex items-center gap-2.5 px-2.5 py-2 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer transition-colors group">
+                      <span className="w-6 h-6 rounded flex items-center justify-center bg-emerald-900/50 text-emerald-300 text-[9px] font-black shrink-0">EW</span>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white">EasyWorship</div>
+                        <div className="text-[9px] text-zinc-500">.ewsx / .ewp</div>
+                      </div>
+                      <input type="file" accept=".ewsx,.ewp" className="hidden" onChange={importEasyWorshipAsItem} disabled={isImportingDeck} />
+                    </label>
+                    <label className="flex items-center gap-2.5 px-2.5 py-2 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer transition-colors group">
+                      <span className="w-6 h-6 rounded flex items-center justify-center bg-amber-900/50 text-amber-300 text-[9px] font-black shrink-0">OS</span>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white">OpenSong</div>
+                        <div className="text-[9px] text-zinc-500">.ofs / .xml</div>
+                      </div>
+                      <input type="file" accept=".ofs,.xml,.opensong" className="hidden" onChange={importOpenSongAsItem} disabled={isImportingDeck} />
+                    </label>
+                    <button
+                      onClick={() => setIsLyricsImportOpen(true)}
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer transition-colors group text-left"
+                    >
+                      <span className="w-6 h-6 rounded flex items-center justify-center bg-blue-900/50 text-blue-300 text-[9px] font-black shrink-0">PPT</span>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white">PowerPoint / PDF</div>
+                        <div className="text-[9px] text-zinc-500">.pptx / .pdf / lyrics</div>
+                      </div>
+                    </button>
+                  </div>
+                  {isImportingDeck && (
+                    <div className="mt-2 text-[10px] text-cyan-300 border border-cyan-900/40 bg-cyan-950/20 rounded px-2 py-1.5">
+                      {importDeckStatus || 'Importing…'}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
+
+                <div className="mx-3 border-t border-zinc-800/60" />
+
+                {/* ── ARCHIVE ── */}
+                <div className="px-3 pt-3 pb-2">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 mb-2">Archive Run Sheet</p>
+                  <input
+                    value={runSheetArchiveTitle}
+                    onChange={(e) => setRunSheetArchiveTitle(e.target.value)}
+                    placeholder="Title (optional)"
+                    className="w-full mb-2 bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
+                  />
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      onClick={() => handleArchiveRunSheet(false)}
+                      className="py-1.5 text-[10px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500 transition-colors"
+                    >
+                      Archive
+                    </button>
+                    <button
+                      onClick={() => handleArchiveRunSheet(true)}
+                      className="py-1.5 text-[10px] font-bold border border-blue-800/60 rounded bg-blue-950/40 text-blue-300 hover:bg-blue-900/40 hover:border-blue-600 transition-colors"
+                    >
+                      Archive + New
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mx-3 border-t border-zinc-800/60" />
+
+                {/* ── SAVED FILES ── */}
+                <div className="px-3 pt-3 pb-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 flex-1">Saved Files</p>
+                    <button onClick={refreshRunSheetFiles} className="text-[9px] text-zinc-500 hover:text-zinc-300 transition-colors font-bold uppercase tracking-wide">↻ Refresh</button>
+                  </div>
                   <input
                     value={runSheetFileQuery}
                     onChange={(e) => setRunSheetFileQuery(e.target.value)}
-                    placeholder="Search files..."
-                    className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-zinc-200"
+                    placeholder="Search files…"
+                    className="w-full mb-2 bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
                   />
-                  <button
-                    onClick={refreshRunSheetFiles}
-                    className="px-2 py-1.5 text-[10px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300"
-                  >
-                    Refresh
-                  </button>
+                  {runSheetFilesError && (
+                    <div className="mb-2 text-[10px] text-amber-400 border border-amber-900/50 bg-amber-950/20 rounded px-2 py-1.5 leading-snug">
+                      {runSheetFilesError}
+                    </div>
+                  )}
                 </div>
-                {runSheetFilesError && (
-                  <div className="text-[10px] text-rose-400 border border-rose-900/60 bg-rose-950/30 rounded px-2 py-1">
-                    {runSheetFilesError}
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 overflow-y-auto p-3 custom-scrollbar space-y-2">
-                {runSheetFilesLoading && (
-                  <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Loading files...</div>
-                )}
-                {!runSheetFilesLoading && filteredRunSheetFiles.length === 0 && (
-                  <div className="text-[10px] text-zinc-600 uppercase tracking-wider">No archived run sheets</div>
-                )}
-                {filteredRunSheetFiles.map((file) => (
-                  <div key={file.fileId} className="border border-zinc-800 rounded p-2 bg-zinc-900/40">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-zinc-200 truncate">{file.title}</div>
-                        <div className="text-[9px] text-zinc-500">
-                          {new Date(file.updatedAt).toLocaleString()} • {(file.payload?.items || []).length} items
+
+                <div className="px-3 pb-3 space-y-1">
+                  {runSheetFilesLoading && (
+                    <div className="text-[10px] text-zinc-600 py-2">Loading…</div>
+                  )}
+                  {!runSheetFilesLoading && filteredRunSheetFiles.length === 0 && (
+                    <div className="text-[10px] text-zinc-700 py-4 text-center">No saved run sheets</div>
+                  )}
+                  {filteredRunSheetFiles.map((file) => (
+                    <div key={file.fileId} className="rounded border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition-colors overflow-hidden">
+                      <div className="px-2.5 py-2">
+                        <div className="text-[11px] font-semibold text-zinc-200 truncate leading-tight">{file.title}</div>
+                        <div className="text-[9px] text-zinc-600 mt-0.5">
+                          {new Date(file.updatedAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                          {' · '}
+                          {(file.payload?.items || []).length} item{(file.payload?.items || []).length !== 1 ? 's' : ''}
                         </div>
                       </div>
+                      <div className="flex border-t border-zinc-800">
+                        <button
+                          onClick={() => handleReuseRunSheet(file.fileId, 'replace')}
+                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-blue-900/30 hover:text-blue-200 transition-colors border-r border-zinc-800"
+                        >
+                          Reuse
+                        </button>
+                        <button
+                          onClick={() => handleReuseRunSheet(file.fileId, 'duplicate')}
+                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-zinc-800 transition-colors border-r border-zinc-800"
+                        >
+                          Duplicate
+                        </button>
+                        <button
+                          onClick={() => handleRenameRunSheet(file.fileId)}
+                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-zinc-800 transition-colors border-r border-zinc-800"
+                        >
+                          Rename
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRunSheet(file.fileId)}
+                          className="flex-1 py-1.5 text-[9px] font-bold text-rose-500 hover:bg-rose-950/40 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                    <div className="mt-2 grid grid-cols-2 gap-1">
-                      <button onClick={() => handleReuseRunSheet(file.fileId, 'replace')} className="px-2 py-1 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-200">Reuse</button>
-                      <button onClick={() => handleReuseRunSheet(file.fileId, 'duplicate')} className="px-2 py-1 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300">Duplicate</button>
-                      <button onClick={() => handleRenameRunSheet(file.fileId)} className="px-2 py-1 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300">Rename</button>
-                      <button onClick={() => handleDeleteRunSheet(file.fileId)} className="px-2 py-1 text-[9px] font-bold border border-rose-900/70 rounded bg-rose-950/20 text-rose-300">Delete</button>
-                    </div>
+                  ))}
+                </div>
+
+                <div className="mx-3 border-t border-zinc-800/60" />
+
+                {/* ── SERMON ARCHIVE ── */}
+                <div className="px-3 pt-3 pb-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 flex-1">Sermon Archive</p>
+                    <button
+                      onClick={() => {
+                        setArchivedSermonsLoading(true);
+                        getArchivedSermons(workspaceId).then((items) => {
+                          setArchivedSermons(items);
+                          setArchivedSermonsLoading(false);
+                        });
+                      }}
+                      className="text-[9px] text-zinc-500 hover:text-zinc-300 transition-colors font-bold uppercase tracking-wide"
+                    >
+                      ↻ Refresh
+                    </button>
                   </div>
-                ))}
+                </div>
+
+                <div className="px-3 pb-3 space-y-1">
+                  {archivedSermonsLoading && (
+                    <div className="text-[10px] text-zinc-600 py-2">Loading…</div>
+                  )}
+                  {!archivedSermonsLoading && archivedSermons.length === 0 && (
+                    <div className="text-[10px] text-zinc-700 py-4 text-center">No saved sermon summaries</div>
+                  )}
+                  {archivedSermons.map((item) => (
+                    <div key={item.id} className="rounded border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition-colors overflow-hidden">
+                      <div className="px-2.5 py-2">
+                        <div className="text-[11px] font-semibold text-zinc-200 truncate leading-tight">{item.summary.title || 'Untitled Sermon'}</div>
+                        <div className="text-[9px] text-zinc-500 mt-0.5 leading-tight line-clamp-1">{item.summary.mainTheme}</div>
+                        <div className="text-[9px] text-zinc-600 mt-0.5">
+                          {new Date(item.savedAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                          {' · '}
+                          {item.wordCount.toLocaleString()} words
+                        </div>
+                      </div>
+                      <div className="flex border-t border-zinc-800">
+                        <button
+                          onClick={() => {
+                            const text = [
+                              `SERMON: ${item.summary.title}`,
+                              ``,
+                              `THEME: ${item.summary.mainTheme}`,
+                              ``,
+                              `KEY POINTS:`,
+                              ...item.summary.keyPoints.map((p, i) => `${i + 1}. ${p}`),
+                              ``,
+                              `SCRIPTURES: ${item.summary.scripturesReferenced.join(' · ') || 'None'}`,
+                              ``,
+                              `CALL TO ACTION: ${item.summary.callToAction}`,
+                            ].join('\n');
+                            navigator.clipboard.writeText(text).catch(() => {
+                              const ta = document.createElement('textarea');
+                              ta.value = text;
+                              ta.style.cssText = 'position:fixed;opacity:0';
+                              document.body.appendChild(ta);
+                              ta.select();
+                              document.execCommand('copy');
+                              document.body.removeChild(ta);
+                            });
+                          }}
+                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-zinc-800 transition-colors border-r border-zinc-800"
+                        >
+                          Copy
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await deleteArchivedSermon(item.id, workspaceId);
+                            setArchivedSermons((prev) => prev.filter((s) => s.id !== item.id));
+                          }}
+                          className="flex-1 py-1.5 text-[9px] font-bold text-rose-500 hover:bg-rose-950/40 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -7931,6 +8198,7 @@ function App() {
                   onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
                   compact={true}
                   hasPptxItems={hasPptxImportedItems}
+                  workspaceId={workspaceId}
                 />
               </div>
             </div>
@@ -9211,6 +9479,14 @@ function App() {
         onAetherBridgePing={handleAetherBridgeTest}
         onAetherBridgeSyncNow={handleAetherBridgeSyncNow}
         onAetherSceneSwitch={handleAetherSceneSwitch}
+        onAetherStreamRequest={(action) => handleAetherStreamRequest(action, {
+          target: 'program',
+          sceneTarget: 'program',
+          sceneName: resolveAetherSceneName('program'),
+        }, {
+          successLabel: action === 'start' ? 'Aether live start sent' : 'Aether live stop sent',
+          failureLabel: action === 'start' ? 'Aether live start failed' : 'Aether live stop failed',
+        })}
         aetherBridgeStatusTone={aetherBridgeStatus.tone}
         aetherBridgeStatusText={aetherBridgeStatus.text}
       />
