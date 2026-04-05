@@ -10,6 +10,8 @@ import {
   type BibleStyleMode,
 } from '../services/bibleStyleEngine.ts';
 import { semanticBibleSearch, transcribeSermonChunk, type TranscribeSermonChunkResult } from '../services/geminiService';
+import { summarizeSermon, canSummarize, type SermonSummary } from '../services/sermonSummaryService';
+import { SermonSummaryPanel } from './SermonSummaryPanel';
 import { createBundledTopicBibleMemoryProvider, type BibleMemoryQueryOrigin } from '../services/bibleMemory.ts';
 import { resolveBibleIntent } from '../services/bibleIntentResolver.ts';
 import {
@@ -281,6 +283,19 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const fallbackClientIdRef = useRef(createFallbackClientId());
   const fallbackContextRef = useRef(getFallbackSessionContext());
   const bibleMemoryProviderRef = useRef(createBundledTopicBibleMemoryProvider());
+
+  // ── Sermon Recording ──────────────────────────────────────────────────────
+  const [sermonRecording, setSermonRecording] = useState(false);
+  const [sermonWordCount, setSermonWordCount] = useState(0);
+  const [sermonElapsed, setSermonElapsed] = useState(0);
+  const [sermonSummarizing, setSermonSummarizing] = useState(false);
+  const [sermonSummary, setSermonSummary] = useState<SermonSummary | null>(null);
+  const [sermonSummaryOpen, setSermonSummaryOpen] = useState(false);
+  const [sermonSummaryError, setSermonSummaryError] = useState<string | null>(null);
+  const sermonTranscriptRef = useRef('');
+  const sermonRecordingRef = useRef(false);
+  const sermonStartedAtRef = useRef<number | null>(null);
+  const sermonAutoEnabledVisionaryRef = useRef(false);
 
   const resolveSemanticReference = useCallback(async (
     rawQuery: string,
@@ -689,7 +704,69 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     setAutoTranscript(next);
     setAutoError(null);
     scheduleAutoProcess();
+    // Also feed the full sermon accumulator when recording
+    if (sermonRecordingRef.current) {
+      sermonTranscriptRef.current = sermonTranscriptRef.current
+        ? `${sermonTranscriptRef.current} ${cleaned}`
+        : cleaned;
+      const wc = sermonTranscriptRef.current.trim().split(/\s+/).filter(Boolean).length;
+      setSermonWordCount(wc);
+    }
   }, [scheduleAutoProcess]);
+
+  const toggleSermonRecording = useCallback(async () => {
+    if (sermonRecordingRef.current) {
+      // STOP recording → summarize
+      sermonRecordingRef.current = false;
+      setSermonRecording(false);
+      if (sermonAutoEnabledVisionaryRef.current) {
+        sermonAutoEnabledVisionaryRef.current = false;
+        setAutoVisionaryEnabled(false);
+      }
+      const transcript = sermonTranscriptRef.current.trim();
+      if (!transcript) {
+        setSermonSummaryError('No transcript was captured. Try recording a longer segment.');
+        return;
+      }
+      setSermonSummarizing(true);
+      setSermonSummaryError(null);
+      const accentHint = speechLocaleMode === 'en-GB' ? 'uk' : 'standard';
+      const result = await summarizeSermon(transcript, accentHint);
+      setSermonSummarizing(false);
+      if (result.ok && result.summary) {
+        setSermonSummary({ ...result.summary });
+        setSermonSummaryOpen(true);
+      } else {
+        setSermonSummaryError(result.error || 'Summarization failed. Please try again.');
+      }
+    } else {
+      // START recording
+      sermonTranscriptRef.current = '';
+      sermonRecordingRef.current = true;
+      sermonStartedAtRef.current = Date.now();
+      setSermonWordCount(0);
+      setSermonElapsed(0);
+      setSermonSummary(null);
+      setSermonSummaryError(null);
+      setSermonRecording(true);
+      // Auto-enable Auto Visionary if not already on so the mic activates
+      if (!autoEnabledRef.current) {
+        sermonAutoEnabledVisionaryRef.current = true;
+        setAutoVisionaryEnabled(true);
+      }
+    }
+  }, [speechLocaleMode]);
+
+  // Elapsed timer while sermon is recording
+  useEffect(() => {
+    if (!sermonRecording) return;
+    const id = window.setInterval(() => {
+      if (sermonStartedAtRef.current !== null) {
+        setSermonElapsed(Math.floor((Date.now() - sermonStartedAtRef.current) / 1000));
+      }
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [sermonRecording]);
 
   const processCloudQueue = useCallback(async () => {
     if (!autoEnabledRef.current || transcriptionEngineRef.current !== 'cloud_fallback') return;
@@ -1186,8 +1263,8 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       )
       : (autoListening ? 'Listening for sermon context...' : (autoVisionaryEnabled ? 'Starting microphone...' : 'Auto listen is off.')));
   const rootClassName = compact
-    ? 'flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-zinc-900/80 bg-zinc-950'
-    : 'flex flex-col h-full bg-zinc-950';
+    ? 'relative flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-zinc-900/80 bg-zinc-950'
+    : 'relative flex flex-col h-full bg-zinc-950';
   const headerClassName = compact
     ? 'h-9 px-2.5 border-b border-zinc-900 font-bold text-zinc-500 text-[9px] uppercase tracking-[0.22em] flex items-center justify-between bg-zinc-950'
     : 'h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex items-center justify-between bg-zinc-950';
@@ -1311,6 +1388,43 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                 <div className="text-[9px] text-rose-300 font-mono">
                   {autoError}
                 </div>
+              )}
+            </div>
+
+            {/* ── Sermon Recording ─────────────────────────────────────── */}
+            <div className="rounded-sm border border-rose-900/50 bg-rose-950/15 p-2 space-y-2 mt-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[9px] font-bold tracking-wider text-rose-300 uppercase">Record Sermon</span>
+                <button
+                  onClick={() => { void toggleSermonRecording(); }}
+                  disabled={sermonSummarizing}
+                  className={`px-2 py-1 rounded-sm text-[9px] font-bold border transition-colors disabled:opacity-50 ${
+                    sermonRecording
+                      ? 'bg-rose-700/60 text-rose-200 border-rose-600 animate-pulse'
+                      : 'bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-rose-700 hover:text-rose-300'
+                  }`}
+                >
+                  {sermonSummarizing ? 'Summarizing…' : sermonRecording ? '⏹ Stop & Summarize' : '⏺ Start Recording'}
+                </button>
+              </div>
+              {sermonRecording && (
+                <div className="flex items-center gap-2 text-[9px] font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse flex-shrink-0" />
+                  <span className="text-rose-300">
+                    {Math.floor(sermonElapsed / 60)}:{String(sermonElapsed % 60).padStart(2, '0')} · {sermonWordCount.toLocaleString()} words
+                  </span>
+                </div>
+              )}
+              {sermonSummaryError && !sermonRecording && (
+                <div className="text-[9px] text-rose-300 font-mono">{sermonSummaryError}</div>
+              )}
+              {sermonSummary && !sermonRecording && (
+                <button
+                  onClick={() => setSermonSummaryOpen(true)}
+                  className="w-full py-1 rounded-sm bg-purple-900/40 border border-purple-700/50 text-purple-200 text-[9px] font-bold hover:bg-purple-900/70 transition-colors"
+                >
+                  View Summary
+                </button>
               )}
             </div>
           </div>
@@ -1556,6 +1670,17 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
               {showSuccess ? 'SCHEDULED OK' : 'SCHEDULE'}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ── Sermon Summary overlay ─────────────────────────────────── */}
+      {sermonSummary && sermonSummaryOpen && (
+        <div className="absolute inset-0 z-50 flex flex-col bg-zinc-950/98 backdrop-blur-sm">
+          <SermonSummaryPanel
+            summary={sermonSummary}
+            wordCount={sermonWordCount}
+            onClose={() => setSermonSummaryOpen(false)}
+          />
         </div>
       )}
     </div>

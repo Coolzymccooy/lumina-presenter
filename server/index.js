@@ -1155,6 +1155,82 @@ ${sermonText}`,
   }
 });
 
+app.post("/api/ai/summarize-sermon", async (req, res) => {
+  const transcript = String(req.body?.transcript || "").trim();
+  const accentHint = String(req.body?.accentHint || "standard").trim();
+  if (!transcript) return res.status(400).json({ ok: false, error: "TRANSCRIPT_REQUIRED" });
+  const ai = ensureGoogleAiClient(res);
+  if (!ai) return;
+
+  const fallbackSummary = () => {
+    const scriptureRegex = /\b(?:[1-3]\s)?[A-Za-z]+\s\d{1,3}:\d{1,3}(?:-\d{1,3})?\b/g;
+    const scriptures = Array.from(new Set((transcript.match(scriptureRegex) || []).slice(0, 10)));
+    const sentences = transcript.split(/[.!?]+/).map((s) => s.trim()).filter((s) => s.length > 20);
+    return {
+      title: "Sermon",
+      mainTheme: sentences[0]?.slice(0, 120) || "Faith and purpose",
+      keyPoints: sentences.slice(0, 5).map((s) => s.slice(0, 160)),
+      scripturesReferenced: scriptures,
+      callToAction: sentences[sentences.length - 1]?.slice(0, 200) || "Walk in faith.",
+      quotableLines: [],
+    };
+  };
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `You are a skilled sermon note-taker for a church service${accentHint !== "standard" ? ` (${accentHint} English accent)` : ""}.
+The following is a live speech transcript from a pastor's sermon, captured by a speech-to-text engine.
+There may be minor transcription errors. Extract the sermon's essence.
+
+Return a JSON object with:
+- title: short inferred sermon title (max 8 words)
+- mainTheme: one sentence describing the central message
+- keyPoints: array of 3 to 7 concise main points the pastor made
+- scripturesReferenced: array of Bible references mentioned (book chapter:verse format)
+- callToAction: the closing exhortation or challenge given to the congregation (1-2 sentences)
+- quotableLines: array of up to 4 memorable or impactful quotes directly from the transcript
+
+Transcript:
+${transcript.slice(0, 20000)}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            mainTheme: { type: Type.STRING },
+            keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
+            scripturesReferenced: { type: Type.ARRAY, items: { type: Type.STRING } },
+            callToAction: { type: Type.STRING },
+            quotableLines: { type: Type.ARRAY, items: { type: Type.STRING } },
+          },
+          required: ["title", "mainTheme", "keyPoints", "scripturesReferenced", "callToAction", "quotableLines"],
+        },
+      },
+    });
+
+    const parsed = parseAiJson(response);
+    if (!parsed?.title) {
+      return res.json({ ok: true, summary: fallbackSummary() });
+    }
+
+    return res.json({
+      ok: true,
+      summary: {
+        title: String(parsed.title || "Sermon").slice(0, 100),
+        mainTheme: String(parsed.mainTheme || "").slice(0, 300),
+        keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints.slice(0, 7).map((p) => String(p).slice(0, 300)) : [],
+        scripturesReferenced: Array.isArray(parsed.scripturesReferenced) ? parsed.scripturesReferenced.slice(0, 20).map(String) : [],
+        callToAction: String(parsed.callToAction || "").slice(0, 400),
+        quotableLines: Array.isArray(parsed.quotableLines) ? parsed.quotableLines.slice(0, 4).map((q) => String(q).slice(0, 300)) : [],
+      },
+    });
+  } catch (error) {
+    return res.json({ ok: true, summary: fallbackSummary(), warning: String(error?.message || error) });
+  }
+});
+
 app.post("/api/ai/assist-query", async (req, res) => {
   const query = String(req.body?.query || "").trim();
   const mode = String(req.body?.mode || "auto").trim().toLowerCase();

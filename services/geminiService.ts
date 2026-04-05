@@ -12,7 +12,7 @@ type AiJson = {
   [key: string]: any;
 };
 
-const postAi = async (path: string, payload: Record<string, unknown>, timeoutMs = 45000): Promise<AiJson | null> => {
+export const postAi = async (path: string, payload: Record<string, unknown>, timeoutMs = 45000): Promise<AiJson | null> => {
   const apiBases = getServerApiBaseCandidates();
   if (!apiBases.length) {
     return {
