@@ -7,6 +7,9 @@ export interface RightDockProps {
   onToggleMachineMode: () => void;
   onOpenConnect: (panel: 'audience' | 'aether') => void;
   onOpenAI: () => void;
+  hasElectronDisplayControl?: boolean;
+  onOpenDisplaySetup?: () => void;
+  desktopServiceState?: { outputOpen: boolean; stageOpen: boolean };
 }
 
 export function RightDock({
@@ -15,6 +18,9 @@ export function RightDock({
   onToggleMachineMode,
   onOpenConnect,
   onOpenAI,
+  hasElectronDisplayControl = false,
+  onOpenDisplaySetup,
+  desktopServiceState,
 }: RightDockProps) {
   if (!isOpen) return null;
 
@@ -64,23 +70,42 @@ export function RightDock({
 
         <div className="h-px bg-zinc-800 my-1" />
 
-        {/* MACHINE MODE */}
-        <button
-          onClick={onToggleMachineMode}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black tracking-widest transition-all border text-left ${
-            machineMode
-              ? 'bg-cyan-600 border-cyan-500 text-white shadow-lg shadow-cyan-950/40'
-              : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'
-          }`}
-        >
-          <span className="text-base leading-none">⚡</span>
-          <div className="flex flex-col">
-            <span>MACHINE MODE</span>
-            <span className={`text-[8px] font-semibold normal-case tracking-normal ${machineMode ? 'text-cyan-200/70' : 'text-zinc-600'}`}>
-              {machineMode ? 'Active — minimal UI' : 'Distraction-free view'}
-            </span>
-          </div>
-        </button>
+        {/* START SERVICE / MACHINE MODE */}
+        {hasElectronDisplayControl ? (
+          <button
+            onClick={onOpenDisplaySetup}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black tracking-widest transition-all border text-left ${
+              desktopServiceState?.outputOpen || desktopServiceState?.stageOpen
+                ? 'bg-cyan-600 border-cyan-500 text-white shadow-lg shadow-cyan-950/40'
+                : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'
+            }`}
+          >
+            <span className="text-base leading-none">⚡</span>
+            <div className="flex flex-col">
+              <span>START SERVICE</span>
+              <span className={`text-[8px] font-semibold normal-case tracking-normal ${desktopServiceState?.outputOpen || desktopServiceState?.stageOpen ? 'text-cyan-200/70' : 'text-zinc-600'}`}>
+                {desktopServiceState?.outputOpen || desktopServiceState?.stageOpen ? 'Service running' : 'Launch display outputs'}
+              </span>
+            </div>
+          </button>
+        ) : (
+          <button
+            onClick={onToggleMachineMode}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black tracking-widest transition-all border text-left ${
+              machineMode
+                ? 'bg-cyan-600 border-cyan-500 text-white shadow-lg shadow-cyan-950/40'
+                : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'
+            }`}
+          >
+            <span className="text-base leading-none">⚡</span>
+            <div className="flex flex-col">
+              <span>MACHINE MODE</span>
+              <span className={`text-[8px] font-semibold normal-case tracking-normal ${machineMode ? 'text-cyan-200/70' : 'text-zinc-600'}`}>
+                {machineMode ? 'Active — minimal UI' : 'Distraction-free view'}
+              </span>
+            </div>
+          </button>
+        )}
       </div>
     </aside>
   );

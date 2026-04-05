@@ -11,7 +11,7 @@ const getInitialApiBaseUrl = () => {
   return (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8787').trim();
 };
 
-const DEFAULT_PROD_API_BASE_URL = 'https://lumina-presenter-api.onrender.com';
+const DEFAULT_PROD_API_BASE_URL = 'https://api.luminalive.co.uk';
 const normalizeApiBaseUrl = (input?: string | null) => String(input || '').trim().replace(/\/+$/, '');
 const INITIAL_API_BASE_URL = normalizeApiBaseUrl(getInitialApiBaseUrl());
 let activeApiBaseUrl = INITIAL_API_BASE_URL;
@@ -38,7 +38,6 @@ const buildApiBaseCandidates = (seedBaseUrl: string): string[] => {
 
   addCandidate(seedBaseUrl);
   addCandidate(withHostSwap(seedBaseUrl, '-docker.', '.'));
-  addCandidate(withHostSwap(seedBaseUrl, '.onrender.com', '-docker.onrender.com'));
   addCandidate(import.meta.env.VITE_API_BASE_URL || '');
   addCandidate(DEFAULT_PROD_API_BASE_URL);
   return candidates;
@@ -141,6 +140,7 @@ const requestJson = async <T,>(path: string, options: RequestOptions = {}): Prom
         method,
         headers,
         body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+        cache: method === 'GET' ? 'no-store' : 'default',
       }), timeoutMs);
       const contentType = String(response.headers.get('content-type') || '').toLowerCase();
       const canParseJson = contentType.includes('application/json');
@@ -226,6 +226,7 @@ export type WorkspaceSnapshotPayload = {
   selectedItemId: string;
   activeItemId: string | null;
   activeSlideIndex: number;
+  holdScreenMode?: 'none' | 'clear' | 'logo';
   workspaceSettings: any;
   workspaceSettingsUpdatedAt?: number;
   updatedAt: number;
@@ -726,6 +727,14 @@ export type {
   AudienceMessage
 };
 
+export type AudienceMessageStreamEvent = {
+  workspaceId: string;
+  updatedAt: number;
+  type: 'created' | 'updated' | 'deleted';
+  messageId?: number;
+  status?: AudienceStatus | 'pending' | 'approved' | 'dismissed' | 'projected';
+};
+
 export const submitAudienceMessage = async (
   workspaceId: string,
   payload: { category: AudienceCategory; text: string; name?: string }
@@ -761,4 +770,116 @@ export const deleteAudienceMessage = async (workspaceId: string, msgId: number, 
     `/api/workspaces/${encodeURIComponent(workspaceId)}/audience/messages/${msgId}`,
     { method: 'PATCH', body: { status: 'dismissed' }, user, timeoutMs: 6000 }
   );
+};
+
+const parseSseEventBlock = (rawBlock: string): { event: string; data: string } | null => {
+  const lines = rawBlock
+    .split(/\r?\n/)
+    .map((line) => line.trimEnd())
+    .filter(Boolean);
+  if (!lines.length) return null;
+  let event = 'message';
+  const dataLines: string[] = [];
+  lines.forEach((line) => {
+    if (line.startsWith(':')) return;
+    if (line.startsWith('event:')) {
+      event = line.slice(6).trim() || 'message';
+      return;
+    }
+    if (line.startsWith('data:')) {
+      dataLines.push(line.slice(5).trim());
+    }
+  });
+  if (!dataLines.length) return null;
+  return {
+    event,
+    data: dataLines.join('\n'),
+  };
+};
+
+export const subscribeAudienceMessagesStream = async (
+  workspaceId: string,
+  user: ActorLike,
+  handlers: {
+    onEvent: (event: AudienceMessageStreamEvent) => void;
+    onError?: (error: unknown) => void;
+  },
+): Promise<() => void> => {
+  let disposed = false;
+  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let activeController: AbortController | null = null;
+
+  const connect = async () => {
+    if (disposed) return;
+    const headers = await buildHeaders(user, false);
+    if (!headers) {
+      handlers.onError?.(new Error('AUDIENCE_STREAM_AUTH_REQUIRED'));
+      return;
+    }
+    delete headers['Content-Type'];
+    headers.Accept = 'text/event-stream';
+    activeController = new AbortController();
+
+    try {
+      const response = await fetch(
+        `${getServerApiBaseUrl()}/api/workspaces/${encodeURIComponent(workspaceId)}/audience/messages/stream`,
+        {
+          method: 'GET',
+          headers,
+          signal: activeController.signal,
+          cache: 'no-store',
+        },
+      );
+
+      if (!response.ok || !response.body) {
+        throw new Error(`AUDIENCE_STREAM_HTTP_${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (!disposed) {
+        const { value, done } = await reader.read();
+        if (done) {
+          throw new Error('AUDIENCE_STREAM_CLOSED');
+        }
+
+        buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+
+        let blockEnd = buffer.indexOf('\n\n');
+        while (blockEnd >= 0) {
+          const rawBlock = buffer.slice(0, blockEnd);
+          buffer = buffer.slice(blockEnd + 2);
+          const parsedBlock = parseSseEventBlock(rawBlock);
+          if (parsedBlock && parsedBlock.event === 'audience-message') {
+            try {
+              handlers.onEvent(JSON.parse(parsedBlock.data) as AudienceMessageStreamEvent);
+            } catch (error) {
+              handlers.onError?.(error);
+            }
+          }
+          blockEnd = buffer.indexOf('\n\n');
+        }
+      }
+    } catch (error) {
+      if (disposed || activeController?.signal.aborted) return;
+      handlers.onError?.(error);
+      reconnectTimer = setTimeout(() => {
+        void connect();
+      }, 1200);
+    }
+  };
+
+  void connect();
+
+  return () => {
+    disposed = true;
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = null;
+    }
+    activeController?.abort();
+    activeController = null;
+  };
 };

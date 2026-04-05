@@ -2,7 +2,17 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BibleIcon, SearchIcon, PlayIcon, SparklesIcon } from './Icons';
 import { ServiceItem, ItemType, MediaType } from '../types';
 import { DEFAULT_BACKGROUNDS } from '../constants';
-import { semanticBibleSearch, transcribeSermonChunk, type TranscribeSermonChunkResult } from '../services/geminiService';
+import { BibleStylePicker } from './BibleStylePicker.tsx';
+import {
+  generateBibleStyle,
+  applyBibleStyle,
+  type BibleStyleFamily,
+  type BibleStyleMode,
+} from '../services/bibleStyleEngine.ts';
+import { semanticBibleSearch, transcribeSermonChunk, transcribeSermonAudio, type TranscribeSermonChunkResult } from '../services/geminiService';
+import { summarizeSermon, canSummarize, type SermonSummary } from '../services/sermonSummaryService';
+import { archiveSermon } from '../services/sermonArchive';
+import { SermonSummaryPanel } from './SermonSummaryPanel';
 import { createBundledTopicBibleMemoryProvider, type BibleMemoryQueryOrigin } from '../services/bibleMemory.ts';
 import { resolveBibleIntent } from '../services/bibleIntentResolver.ts';
 import {
@@ -17,8 +27,12 @@ import {
 interface BibleBrowserProps {
   onAddRequest: (item: ServiceItem) => void;
   onProjectRequest: (item: ServiceItem) => void;
+  onLiveStyleUpdate?: (item: ServiceItem) => void;
   speechLocaleMode: VisionarySpeechLocaleMode;
   onSpeechLocaleModeChange: (mode: VisionarySpeechLocaleMode) => void;
+  compact?: boolean;
+  hasPptxItems?: boolean;
+  workspaceId?: string;
 }
 
 interface SpeechRecognitionResultLike {
@@ -74,7 +88,7 @@ const AUTO_NETWORK_ERROR_LIMIT = 3;
 const AUTO_RESTART_BASE_MS = 600;
 const AUTO_MIC_PREFLIGHT_COOLDOWN_MS = 120000;
 const AUTO_NETWORK_FALLBACK_THRESHOLD = 2;
-const CLOUD_FALLBACK_CHUNK_MS = 6000;
+const CLOUD_FALLBACK_CHUNK_MS = 10000;
 const CLOUD_FALLBACK_RETRY_MS = 3500;
 const CLOUD_BROWSER_PROBE_INTERVAL_MS = 45000;
 const ENGINE_TOAST_MS = 4200;
@@ -194,8 +208,12 @@ export const resolveSpeechLanguageCandidates = (
 export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   onAddRequest,
   onProjectRequest,
+  onLiveStyleUpdate,
   speechLocaleMode,
   onSpeechLocaleModeChange,
+  compact = false,
+  hasPptxItems = false,
+  workspaceId = 'default-workspace',
 }) => {
   const [referenceInput, setReferenceInput] = useState('');
   const [bookInput, setBookInput] = useState('');
@@ -217,6 +235,9 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const [selectedMediaType, setSelectedMediaType] = useState<MediaType>('image');
   const [bibleLayout, setBibleLayout] = useState<'standard' | 'scripture_ref' | 'ticker'>('standard');
   const [bibleFontSize, setBibleFontSize] = useState<'small' | 'medium' | 'large' | 'xlarge'>('large');
+  const [bibleStyleMode, setBibleStyleMode] = useState<BibleStyleMode>('classic');
+  const [bibleStyleFamily, setBibleStyleFamily] = useState<BibleStyleFamily | null>(null);
+  const [bibleStyleSeed, setBibleStyleSeed] = useState<string>('');
 
   const [autoVisionaryEnabled, setAutoVisionaryEnabled] = useState(false);
   const [autoProjectEnabled, setAutoProjectEnabled] = useState(true);
@@ -265,6 +286,26 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const fallbackClientIdRef = useRef(createFallbackClientId());
   const fallbackContextRef = useRef(getFallbackSessionContext());
   const bibleMemoryProviderRef = useRef(createBundledTopicBibleMemoryProvider());
+
+  // ── Sermon Recording ──────────────────────────────────────────────────────
+  const [sermonRecording, setSermonRecording] = useState(false);
+  const [sermonWordCount, setSermonWordCount] = useState(0);
+  const [sermonElapsed, setSermonElapsed] = useState(0);
+  const [sermonSummarizing, setSermonSummarizing] = useState(false);
+  const [sermonTranscribing, setSermonTranscribing] = useState(false);
+  const [sermonSummary, setSermonSummary] = useState<SermonSummary | null>(null);
+  const [sermonSummaryOpen, setSermonSummaryOpen] = useState(false);
+  const [sermonSummaryError, setSermonSummaryError] = useState<string | null>(null);
+  const [sermonMicWarning, setSermonMicWarning] = useState<string | null>(null);
+  const [sermonArchived, setSermonArchived] = useState(false);
+  const sermonTranscriptRef = useRef('');
+  const sermonRecordingRef = useRef(false);
+  const sermonStartedAtRef = useRef<number | null>(null);
+  const sermonAutoEnabledVisionaryRef = useRef(false);
+  const sermonRestartAttemptRef = useRef(0);
+  // Audio blob collection for full-file transcription fallback (ScribeAI pattern)
+  const sermonAudioChunksRef = useRef<Blob[]>([]);
+  const sermonAudioMimeTypeRef = useRef<string>('audio/webm');
 
   const resolveSemanticReference = useCallback(async (
     rawQuery: string,
@@ -493,31 +534,77 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     setVerseTo(nextVerseTo);
   }, []);
 
-  const createServiceItem = useCallback((verses: Verse[], overrideLayout?: typeof bibleLayout, overrideFontSize?: typeof bibleFontSize): ServiceItem => {
+  const createServiceItem = useCallback((
+    verses: Verse[],
+    overrideLayout?: typeof bibleLayout,
+    overrideFontSize?: typeof bibleFontSize,
+    overrideStyleMode?: BibleStyleMode,
+    overrideStyleFamily?: BibleStyleFamily | null,
+    overrideStyleSeed?: string,
+  ): ServiceItem => {
     const title = `${verses[0].book_name} ${verses[0].chapter}:${verses[0].verse}${verses.length > 1 ? `-${verses[verses.length - 1].verse}` : ''}`;
     const versionLabel = VERSIONS.find((v) => v.id === selectedVersion)?.name || selectedVersion.toUpperCase();
     const layout = overrideLayout ?? bibleLayout;
     const fontSize = overrideFontSize ?? bibleFontSize;
+    const styleMode = overrideStyleMode ?? bibleStyleMode;
+    const styleFamily = overrideStyleFamily !== undefined ? overrideStyleFamily : bibleStyleFamily;
+    const styleSeed = overrideStyleSeed !== undefined ? overrideStyleSeed : bibleStyleSeed;
+
+    // Classic mode: use original background/layout system unchanged
+    if (styleMode === 'classic') {
+      return {
+        id: `bible-${Date.now()}`,
+        title,
+        type: ItemType.BIBLE,
+        theme: {
+          backgroundUrl: selectedBg,
+          mediaType: selectedMediaType,
+          fontFamily: 'serif',
+          textColor: '#ffffff',
+          shadow: true,
+          fontSize,
+        },
+        slides: verses.map((v) => ({
+          id: `v-${v.verse}-${Date.now()}`,
+          content: v.text.trim(),
+          label: `${v.book_name} ${v.chapter}:${v.verse} (${versionLabel})`,
+          layoutType: layout !== 'standard' ? layout : undefined,
+        })),
+      };
+    }
+
+    // Smart-random or Preset mode: use style engine
+    const combinedText = verses.map((v) => v.text.trim()).join(' ');
+    const reference = title;
+    const profile = generateBibleStyle({
+      verseText: combinedText,
+      reference,
+      mode: styleMode,
+      family: styleFamily ?? undefined,
+      manualSeed: styleSeed || undefined,
+    });
+
+    const verseList = verses.map((v) => ({
+      text: v.text.trim(),
+      label: `${v.book_name} ${v.chapter}:${v.verse} (${versionLabel})`,
+    }));
+    const { theme, slides: styledSlides } = applyBibleStyle(verseList, profile);
+
     return {
       id: `bible-${Date.now()}`,
       title,
       type: ItemType.BIBLE,
-      theme: {
-        backgroundUrl: selectedBg,
-        mediaType: selectedMediaType,
-        fontFamily: 'serif',
-        textColor: '#ffffff',
-        shadow: true,
-        fontSize,
-      },
-      slides: verses.map((v) => ({
-        id: `v-${v.verse}-${Date.now()}`,
+      theme: { ...theme, fontSize },
+      slides: verses.map((v, i) => ({
+        id: `v-${v.verse}-${Date.now() + i}`,
         content: v.text.trim(),
         label: `${v.book_name} ${v.chapter}:${v.verse} (${versionLabel})`,
-        layoutType: layout !== 'standard' ? layout : undefined,
+        backgroundUrl: styledSlides[i]?.backgroundUrl,
+        mediaType: styledSlides[i]?.mediaType,
+        elements: styledSlides[i]?.elements,
       })),
     };
-  }, [selectedBg, selectedMediaType, selectedVersion, bibleLayout, bibleFontSize]);
+  }, [selectedBg, selectedMediaType, selectedVersion, bibleLayout, bibleFontSize, bibleStyleMode, bibleStyleFamily, bibleStyleSeed]);
 
   const fetchScripture = useCallback(async (query: string, useSemantic = false, silent = false): Promise<Verse[]> => {
     if (!query.trim()) return [];
@@ -627,7 +714,153 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     setAutoTranscript(next);
     setAutoError(null);
     scheduleAutoProcess();
+    // Also feed the full sermon accumulator when recording
+    if (sermonRecordingRef.current) {
+      sermonTranscriptRef.current = sermonTranscriptRef.current
+        ? `${sermonTranscriptRef.current} ${cleaned}`
+        : cleaned;
+      const wc = sermonTranscriptRef.current.trim().split(/\s+/).filter(Boolean).length;
+      setSermonWordCount(wc);
+    }
   }, [scheduleAutoProcess]);
+
+  const toggleSermonRecording = useCallback(async () => {
+    if (sermonRecordingRef.current) {
+      // STOP recording → transcribe → summarize
+      sermonRecordingRef.current = false;
+      setSermonRecording(false);
+      if (sermonAutoEnabledVisionaryRef.current) {
+        sermonAutoEnabledVisionaryRef.current = false;
+        setAutoVisionaryEnabled(false);
+      }
+
+      let transcript = sermonTranscriptRef.current.trim();
+
+      // If browser STT gave us nothing, try full-file transcription (ScribeAI pattern)
+      if (!transcript) {
+        const audioChunks = sermonAudioChunksRef.current.slice();
+        sermonAudioChunksRef.current = [];
+        if (audioChunks.length > 0) {
+          setSermonTranscribing(true);
+          setSermonSummaryError(null);
+          const mimeType = sermonAudioMimeTypeRef.current;
+          const audioBlob = new Blob(audioChunks, { type: mimeType });
+          const locale = speechLocaleMode === 'en-GB' ? 'en-GB' : 'en-US';
+          const result = await transcribeSermonAudio(audioBlob, mimeType, locale);
+          setSermonTranscribing(false);
+          if (result.ok) {
+            transcript = result.transcript;
+            // Update word count from full transcript
+            const wc = transcript.trim().split(/\s+/).filter(Boolean).length;
+            setSermonWordCount(wc);
+          } else {
+            setSermonSummaryError('No transcript was captured. Try recording a longer segment.');
+            return;
+          }
+        } else {
+          setSermonSummaryError('No transcript was captured. Turn on Auto Visionary before recording, or try again.');
+          return;
+        }
+      } else {
+        sermonAudioChunksRef.current = [];
+        setSermonSummaryError(null);
+      }
+
+      setSermonSummarizing(true);
+      const accentHint = speechLocaleMode === 'en-GB' ? 'uk' : 'standard';
+      const result = await summarizeSermon(transcript, accentHint);
+      setSermonSummarizing(false);
+      if (result.ok && result.summary) {
+        setSermonSummary({ ...result.summary });
+        setSermonSummaryOpen(true);
+        setSermonArchived(false);
+      } else {
+        setSermonSummaryError(result.error || 'Summarization failed. Please try again.');
+      }
+    } else {
+      // START recording
+      sermonTranscriptRef.current = '';
+      sermonAudioChunksRef.current = [];
+      sermonRecordingRef.current = true;
+      sermonStartedAtRef.current = Date.now();
+      sermonRestartAttemptRef.current = 0;
+      setSermonWordCount(0);
+      setSermonElapsed(0);
+      setSermonSummary(null);
+      setSermonSummaryError(null);
+      setSermonMicWarning(null);
+      setSermonArchived(false);
+      setSermonRecording(true);
+      // Auto-enable Auto Visionary if not already on so the mic activates
+      if (!autoEnabledRef.current) {
+        sermonAutoEnabledVisionaryRef.current = true;
+        setAutoVisionaryEnabled(true);
+      }
+    }
+  }, [speechLocaleMode]);
+
+  // Elapsed timer while sermon is recording
+  useEffect(() => {
+    if (!sermonRecording) return;
+    const id = window.setInterval(() => {
+      if (sermonStartedAtRef.current !== null) {
+        setSermonElapsed(Math.floor((Date.now() - sermonStartedAtRef.current) / 1000));
+      }
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [sermonRecording]);
+
+  // Auto-restart STT if it dies while sermon is recording (up to 3 attempts)
+  useEffect(() => {
+    if (!sermonRecording) return;
+    if (autoVisionaryEnabled) {
+      sermonRestartAttemptRef.current = 0;
+      setSermonMicWarning(null);
+      return;
+    }
+    sermonRestartAttemptRef.current += 1;
+    if (sermonRestartAttemptRef.current <= 3) {
+      setSermonMicWarning('Mic interrupted — restarting capture...');
+      const id = window.setTimeout(() => {
+        if (sermonRecordingRef.current) {
+          setAutoVisionaryEnabled(true);
+        }
+      }, 3000);
+      return () => window.clearTimeout(id);
+    }
+    setSermonMicWarning('Mic unavailable after 3 retries. Words captured so far will still be summarized.');
+  }, [sermonRecording, autoVisionaryEnabled]);
+
+  // Create a service item from sermon key points for projection
+  const createSermonRecapItem = useCallback((summary: SermonSummary): ServiceItem => {
+    const ts = Date.now();
+    const slides: ServiceItem['slides'] = [
+      { id: `sr-title-${ts}`, label: 'Sermon Title', content: summary.title },
+      { id: `sr-theme-${ts}`, label: 'Main Theme', content: summary.mainTheme },
+      ...summary.keyPoints.map((point, i) => ({
+        id: `sr-kp-${i}-${ts}`,
+        label: `Key Point ${i + 1}`,
+        content: point,
+      })),
+      ...(summary.callToAction
+        ? [{ id: `sr-cta-${ts}`, label: 'Call to Action', content: summary.callToAction }]
+        : []),
+    ];
+    return {
+      id: `sermon-recap-${ts}`,
+      title: summary.title || 'Sermon Recap',
+      type: ItemType.ANNOUNCEMENT,
+      theme: {
+        backgroundUrl: DEFAULT_BACKGROUNDS[1],
+        mediaType: 'image',
+        fontFamily: 'sans-serif',
+        textColor: '#ffffff',
+        shadow: true,
+        fontSize: 'medium',
+      },
+      slides,
+    };
+  }, []);
 
   const processCloudQueue = useCallback(async () => {
     if (!autoEnabledRef.current || transcriptionEngineRef.current !== 'cloud_fallback') return;
@@ -737,11 +970,18 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       cloudQueueRef.current = [];
       setCloudCooldownUntil(0);
 
+      // Track mimeType for sermon audio submission
+      sermonAudioMimeTypeRef.current = supportedMime;
+
       const recorder = new MediaRecorder(stream, { mimeType: supportedMime });
       recorder.ondataavailable = (event: BlobEvent) => {
         const chunk = event.data;
         if (!chunk || !chunk.size) return;
         cloudQueueRef.current.push(chunk);
+        // Also collect for full-file sermon transcription (ScribeAI pattern)
+        if (sermonRecordingRef.current) {
+          sermonAudioChunksRef.current.push(chunk);
+        }
         void processCloudQueue();
       };
       recorder.onerror = () => {
@@ -906,6 +1146,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     if (!enabled) {
       setTranscriptionEngine('disabled');
       setCloudCooldownUntil(0);
+      setAutoError(null);
       stopAllVisionaryCapture();
       return;
     }
@@ -1120,34 +1361,58 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
             ? 'Cloud fallback uploading audio chunk...'
             : cloudRecorderState === 'recording'
               ? 'Cloud fallback listening for sermon context...'
-              : 'Cloud fallback starting...'
+          : 'Cloud fallback starting...'
       )
       : (autoListening ? 'Listening for sermon context...' : (autoVisionaryEnabled ? 'Starting microphone...' : 'Auto listen is off.')));
+  const rootClassName = compact
+    ? 'relative flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-zinc-900/80 bg-zinc-950'
+    : 'relative flex flex-col h-full bg-zinc-950';
+  const headerClassName = compact
+    ? 'h-9 px-2.5 border-b border-zinc-900 font-bold text-zinc-500 text-[9px] uppercase tracking-[0.22em] flex items-center justify-between bg-zinc-950'
+    : 'h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex items-center justify-between bg-zinc-950';
+  const controlsClassName = compact
+    ? 'shrink-0 px-2.5 py-2 space-y-2 border-b border-zinc-900/80 bg-zinc-950/95 overflow-y-auto custom-scrollbar max-h-[44%]'
+    : 'p-3 space-y-2';
+  const resultsClassName = compact
+    ? 'min-h-0 flex-1 overflow-y-auto p-2 custom-scrollbar'
+    : 'flex-1 overflow-y-auto p-2 scrollbar-thin';
+  const primaryInputClassName = compact
+    ? 'w-full bg-zinc-900 border border-blue-900/70 focus:border-blue-500 rounded-sm py-1.5 pl-8 pr-3 text-[11px] text-white focus:outline-none font-mono'
+    : 'w-full bg-zinc-900 border border-blue-900/70 focus:border-blue-500 rounded-sm py-2 pl-8 pr-3 text-xs text-white focus:outline-none font-mono';
+  const secondaryInputClassName = compact
+    ? 'w-full bg-zinc-900 border border-zinc-800 focus:border-blue-600 rounded-sm py-1.5 pl-8 pr-3 text-[11px] text-white focus:outline-none font-mono'
+    : 'w-full bg-zinc-900 border border-zinc-800 focus:border-blue-600 rounded-sm py-2 pl-8 pr-3 text-xs text-white focus:outline-none font-mono';
+  const visionaryInputClassName = compact
+    ? 'w-full bg-zinc-900 border border-purple-900 focus:border-purple-500 rounded-sm py-1.5 pl-8 pr-3 text-[11px] text-white focus:outline-none font-mono'
+    : 'w-full bg-zinc-900 border border-purple-900 focus:border-purple-500 rounded-sm py-2 pl-8 pr-3 text-xs text-white focus:outline-none font-mono';
+  const actionFooterClassName = compact
+    ? 'flex gap-2 p-1 pt-2 sticky bottom-0 bg-zinc-950/90 backdrop-blur-md pb-2'
+    : 'flex gap-2 p-1 pt-2 sticky bottom-0 bg-zinc-950/80 backdrop-blur-md pb-4';
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950">
-      <div className="h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex items-center justify-between bg-zinc-950">
+    <div className={rootClassName}>
+      <div className={headerClassName}>
         <div className="flex items-center">
           <BibleIcon className="w-3 h-3 mr-2" />
-          Scripture Engine
+          {compact ? 'Bible Hub' : 'Scripture Engine'}
         </div>
         <button
           onClick={() => setIsVisionaryMode(!isVisionaryMode)}
-          className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-[9px] border transition-all ${isVisionaryMode ? 'bg-purple-950/30 text-purple-400 border-purple-800' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300'}`}
+          className={`flex items-center gap-1 px-1.5 py-0.5 rounded-sm border transition-all ${compact ? 'text-[8px]' : 'text-[9px]'} ${isVisionaryMode ? 'bg-purple-950/30 text-purple-400 border-purple-800' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300'}`}
         >
           <SparklesIcon className="w-2 h-2" />
-          {isVisionaryMode ? 'VISIONARY ON' : 'AI MODE'}
+          {isVisionaryMode ? (compact ? 'VISIONARY' : 'VISIONARY ON') : 'AI MODE'}
         </button>
       </div>
 
-      <div className="p-3 space-y-2">
+      <div className={controlsClassName}>
         {isVisionaryMode ? (
           <div className="space-y-2">
             <div className="relative">
               <SparklesIcon className="absolute left-2 top-2.5 w-3.5 h-3.5 text-purple-600 animate-pulse" />
               <input
                 type="text"
-                className="w-full bg-zinc-900 border border-purple-900 focus:border-purple-500 rounded-sm py-2 pl-8 pr-3 text-xs text-white focus:outline-none font-mono"
+                className={visionaryInputClassName}
                 placeholder="e.g. I need peace and comfort..."
                 value={aiQuery}
                 onChange={(e) => setAiQuery(e.target.value)}
@@ -1156,7 +1421,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
             </div>
             <button
               onClick={() => fetchScripture(aiQuery, true)}
-              className="w-full py-1.5 bg-purple-700 hover:bg-purple-600 text-white rounded-sm text-[9px] font-bold transition-all"
+              className={`w-full bg-purple-700 hover:bg-purple-600 text-white rounded-sm font-bold transition-all ${compact ? 'py-1.5 text-[8px]' : 'py-1.5 text-[9px]'}`}
             >
               AI SEARCH
             </button>
@@ -1184,7 +1449,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                 <select
                   value={speechLocaleMode}
                   onChange={(e) => onSpeechLocaleModeChange(e.target.value as VisionarySpeechLocaleMode)}
-                  className="bg-zinc-900 border border-zinc-700 rounded-sm px-2 py-1 text-[9px] text-zinc-200"
+                  className={`bg-zinc-900 border border-zinc-700 rounded-sm px-2 py-1 text-zinc-200 ${compact ? 'text-[8px]' : 'text-[9px]'}`}
                 >
                   <option value="auto">Auto (System Locale)</option>
                   <option value="en-GB">English (UK) - en-GB</option>
@@ -1221,12 +1486,19 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                   Heard: {autoTranscript}
                 </div>
               )}
-              {autoError && (
-                <div className="text-[9px] text-rose-300 font-mono">
-                  {autoError}
+              {autoError && autoVisionaryEnabled && (
+                <div className="flex items-start gap-1.5 bg-rose-950/40 border border-rose-800/50 rounded px-2 py-1">
+                  <span className="text-rose-400 text-[10px] leading-tight shrink-0 mt-px">⚠</span>
+                  <span className="text-[9px] text-rose-300 font-mono leading-tight line-clamp-2">{autoError}</span>
+                  <button
+                    onClick={() => setAutoError(null)}
+                    className="ml-auto text-rose-500 hover:text-rose-300 text-[10px] shrink-0 leading-tight"
+                    title="Dismiss"
+                  >✕</button>
                 </div>
               )}
             </div>
+
           </div>
         ) : (
           <div className="space-y-2">
@@ -1234,7 +1506,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
               <SearchIcon className="absolute left-2 top-2.5 w-3.5 h-3.5 text-blue-500" />
               <input
                 type="text"
-                className="w-full bg-zinc-900 border border-blue-900/70 focus:border-blue-500 rounded-sm py-2 pl-8 pr-3 text-xs text-white focus:outline-none font-mono"
+                className={primaryInputClassName}
                 placeholder="Direct reference (e.g. John 3:16-19)"
                 value={referenceInput}
                 onChange={(e) => setReferenceInput(e.target.value)}
@@ -1246,7 +1518,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
               <input
                 ref={bookInputRef}
                 type="text"
-                className="w-full bg-zinc-900 border border-zinc-800 focus:border-blue-600 rounded-sm py-2 pl-8 pr-3 text-xs text-white focus:outline-none font-mono"
+                className={secondaryInputClassName}
                 placeholder="Book name (e.g. John)..."
                 value={bookInput}
                 onChange={(e) => { setBookInput(e.target.value); setSelectedBook(null); }}
@@ -1373,14 +1645,72 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
           <button
             onClick={() => void (isVisionaryMode ? fetchScripture(aiQuery, true) : handleManualSearch())}
             disabled={isVisionaryMode ? !aiQuery.trim() : !(normalizeBibleReference(referenceInput) || selectedBook)}
-            className="flex-1 px-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white rounded-sm text-[9px] font-bold transition-all active:scale-95"
+            className={`flex-1 px-3 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 text-white rounded-sm font-bold transition-all active:scale-95 ${compact ? 'py-1.5 text-[8px]' : 'text-[9px]'}`}
           >
             {isVisionaryMode ? 'AI SEARCH' : 'SEARCH PASSAGE'}
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
+      {/* ── Sermon Recording strip (always visible when Visionary mode on) ── */}
+      {isVisionaryMode && (
+        <div className="shrink-0 px-2.5 py-2 border-b border-zinc-900/80 bg-zinc-950/95">
+          <div className="rounded-sm border border-rose-900/50 bg-rose-950/15 p-2 space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[9px] font-bold tracking-wider text-rose-300 uppercase">Record Sermon</span>
+              <button
+                onClick={() => { void toggleSermonRecording(); }}
+                disabled={sermonSummarizing || sermonTranscribing}
+                className={`px-2 py-1 rounded-sm text-[9px] font-bold border transition-colors disabled:opacity-50 ${
+                  sermonRecording
+                    ? 'bg-rose-700/60 text-rose-200 border-rose-600 animate-pulse'
+                    : 'bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-rose-700 hover:text-rose-300'
+                }`}
+              >
+                {sermonTranscribing ? 'Transcribing…' : sermonSummarizing ? 'Summarizing…' : sermonRecording ? '⏹ Stop & Summarize' : '⏺ Start Recording'}
+              </button>
+            </div>
+            {sermonRecording && (
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-[9px] font-mono">
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sermonMicWarning ? 'bg-amber-400 animate-pulse' : 'bg-rose-500 animate-pulse'}`} />
+                  <span className={sermonMicWarning ? 'text-amber-300' : 'text-rose-300'}>
+                    {Math.floor(sermonElapsed / 60)}:{String(sermonElapsed % 60).padStart(2, '0')} · {sermonWordCount.toLocaleString()} words
+                  </span>
+                </div>
+                {sermonMicWarning && (
+                  <div className="text-[9px] text-amber-300 font-mono">{sermonMicWarning}</div>
+                )}
+              </div>
+            )}
+            {sermonTranscribing && (
+              <div className="text-[9px] text-zinc-400 font-mono animate-pulse">Transcribing audio… this may take a moment.</div>
+            )}
+            {sermonSummaryError && !sermonRecording && !sermonTranscribing && (
+              <div className="flex items-start gap-1.5 bg-rose-950/40 border border-rose-800/50 rounded px-2 py-1">
+                <span className="text-rose-400 text-[10px] leading-tight shrink-0 mt-px">⚠</span>
+                <span className="text-[9px] text-rose-300 font-mono leading-tight line-clamp-2">{sermonSummaryError}</span>
+                <button
+                  onClick={() => setSermonSummaryError(null)}
+                  className="ml-auto text-rose-500 hover:text-rose-300 text-[10px] shrink-0 leading-tight"
+                  title="Dismiss"
+                >✕</button>
+              </div>
+            )}
+            {sermonSummary && !sermonRecording && (
+              <button
+                onClick={() => setSermonSummaryOpen(true)}
+                className="w-full py-1 rounded-sm bg-purple-900/40 border border-purple-700/50 text-purple-200 text-[9px] font-bold hover:bg-purple-900/70 transition-colors"
+              >
+                View Summary
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Verse results (scrollable) ── */}
+      <div className={resultsClassName}>
         {loading || aiLoading ? (
           <div className="flex flex-col items-center justify-center p-8 space-y-3">
             <div className="w-6 h-6 border-2 border-zinc-800 border-t-purple-500 rounded-full animate-spin" />
@@ -1389,58 +1719,16 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
         ) : error ? (
           <div className="p-4 text-center text-[10px] text-red-400 font-mono opacity-60 uppercase">{error}</div>
         ) : results.length > 0 ? (
-          <div className="space-y-4 animate-in fade-in duration-500">
-            <div className="space-y-2">
-              <div className="px-1 text-[9px] font-bold text-zinc-600 uppercase tracking-tighter">
-                {results[0].book_name} {results[0].chapter} - {results.length} verse{results.length > 1 ? 's' : ''}
-              </div>
-              {results.map((v, i) => (
-                <div key={i} className="p-3 rounded-sm border bg-zinc-900/40 border-zinc-900">
-                  <div className="text-[9px] font-bold text-blue-500 uppercase tracking-tighter mb-1">Verse {v.verse}</div>
-                  <p className="text-[11px] leading-relaxed text-zinc-200 font-serif italic">"{v.text.trim()}"</p>
-                </div>
-              ))}
+          <div className="space-y-2 animate-in fade-in duration-500">
+            <div className="px-1 text-[9px] font-bold text-zinc-600 uppercase tracking-tighter">
+              {results[0].book_name} {results[0].chapter} - {results.length} verse{results.length > 1 ? 's' : ''}
             </div>
-
-            {/* Layout + Font Size chips */}
-            <div className="px-1 pt-3 pb-1 space-y-1.5">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[7px] text-zinc-600 uppercase tracking-widest font-bold w-10 shrink-0">Layout</span>
-                {([['standard', 'Standard'], ['scripture_ref', 'Scripture + Ref'], ['ticker', 'Ticker']] as const).map(([key, label]) => (
-                  <button key={key} onClick={() => { setBibleLayout(key); if (results.length > 0) onProjectRequest(createServiceItem(results, key)); }}
-                    className={`px-2 py-1 rounded text-[8px] font-bold uppercase tracking-wide transition-all ${bibleLayout === key ? 'bg-blue-600 text-white shadow-md shadow-blue-900/40' : 'bg-zinc-800/80 text-zinc-500 border border-zinc-800 hover:text-zinc-300 hover:border-zinc-600'}`}
-                  >{label}</button>
-                ))}
+            {results.map((v, i) => (
+              <div key={i} className="p-3 rounded-sm border bg-zinc-900/40 border-zinc-900">
+                <div className="text-[9px] font-bold text-blue-500 uppercase tracking-tighter mb-1">Verse {v.verse}</div>
+                <p className="text-[11px] leading-relaxed text-zinc-200 font-serif italic">"{v.text.trim()}"</p>
               </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[7px] text-zinc-600 uppercase tracking-widest font-bold w-10 shrink-0">Size</span>
-                {([['small', 'SM'], ['medium', 'MD'], ['large', 'LG'], ['xlarge', 'XL']] as const).map(([key, label]) => (
-                  <button key={key} onClick={() => { setBibleFontSize(key); if (results.length > 0) onProjectRequest(createServiceItem(results, undefined, key)); }}
-                    className={`px-2 py-1 rounded text-[8px] font-bold tracking-wide transition-all ${bibleFontSize === key ? 'bg-purple-600 text-white shadow-md shadow-purple-900/40' : 'bg-zinc-800/80 text-zinc-500 border border-zinc-800 hover:text-zinc-300 hover:border-zinc-600'}`}
-                  >{label}</button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex gap-2 p-1 pt-2 sticky bottom-0 bg-zinc-950/80 backdrop-blur-md pb-4">
-              <button
-                onClick={() => onProjectRequest(createServiceItem(results))}
-                className="flex-1 flex items-center justify-center gap-2 bg-red-950/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/50 py-2.5 rounded-sm text-[10px] font-bold transition-all group active:scale-95"
-              >
-                <PlayIcon className="w-3 h-3 fill-current group-hover:text-white" />
-                PROJECT NOW
-              </button>
-              <button
-                onClick={() => {
-                  onAddRequest(createServiceItem(results));
-                  setShowSuccess(true);
-                  window.setTimeout(() => setShowSuccess(false), 2000);
-                }}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-sm text-[10px] font-bold transition-all active:scale-95 border ${showSuccess ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-blue-600 hover:bg-blue-500 text-white border-transparent'}`}
-              >
-                {showSuccess ? 'SCHEDULED OK' : 'SCHEDULE'}
-              </button>
-            </div>
+            ))}
           </div>
         ) : (
           <div className="text-center py-20 opacity-20">
@@ -1449,6 +1737,95 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
           </div>
         )}
       </div>
+
+      {/* ── Persistent controls footer — always visible when results exist ── */}
+      {results.length > 0 && (
+        <div className="shrink-0 border-t border-zinc-900 bg-zinc-950/95 backdrop-blur-md">
+          {/* Layout + Size + Style chips */}
+          <div className={`${compact ? 'px-2.5 pt-2 pb-1' : 'px-3 pt-2.5 pb-1'} space-y-1.5`}>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[7px] text-zinc-600 uppercase tracking-widest font-bold w-10 shrink-0">Layout</span>
+              {([['standard', 'Standard'], ['scripture_ref', 'Scripture + Ref'], ['ticker', 'Ticker']] as const).map(([key, label]) => (
+                <button key={key} onClick={() => { setBibleLayout(key); (onLiveStyleUpdate ?? onProjectRequest)(createServiceItem(results, key)); }}
+                  className={`px-2 py-1 rounded text-[8px] font-bold uppercase tracking-wide transition-all ${bibleLayout === key ? 'bg-blue-600 text-white shadow-md shadow-blue-900/40' : 'bg-zinc-800/80 text-zinc-500 border border-zinc-800 hover:text-zinc-300 hover:border-zinc-600'}`}
+                >{label}</button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[7px] text-zinc-600 uppercase tracking-widest font-bold w-10 shrink-0">Size</span>
+              {([['small', 'SM'], ['medium', 'MD'], ['large', 'LG'], ['xlarge', 'XL']] as const).map(([key, label]) => (
+                <button key={key} onClick={() => { setBibleFontSize(key); (onLiveStyleUpdate ?? onProjectRequest)(createServiceItem(results, undefined, key)); }}
+                  className={`px-2 py-1 rounded text-[8px] font-bold tracking-wide transition-all ${bibleFontSize === key ? 'bg-purple-600 text-white shadow-md shadow-purple-900/40' : 'bg-zinc-800/80 text-zinc-500 border border-zinc-800 hover:text-zinc-300 hover:border-zinc-600'}`}
+                >{label}</button>
+              ))}
+            </div>
+            <BibleStylePicker
+              mode={bibleStyleMode}
+              family={bibleStyleFamily}
+              onModeChange={(m) => {
+                setBibleStyleMode(m);
+                (onLiveStyleUpdate ?? onProjectRequest)(createServiceItem(results, undefined, undefined, m));
+              }}
+              onFamilyChange={(f) => {
+                setBibleStyleFamily(f);
+                (onLiveStyleUpdate ?? onProjectRequest)(createServiceItem(results, undefined, undefined, undefined, f));
+              }}
+              onRandomize={() => {
+                const newSeed = `rand-${Date.now()}`;
+                setBibleStyleSeed(newSeed);
+                (onLiveStyleUpdate ?? onProjectRequest)(createServiceItem(results, undefined, undefined, undefined, undefined, newSeed));
+              }}
+              compact={compact}
+              hasPptxItems={hasPptxItems}
+            />
+          </div>
+          {/* Action buttons */}
+          <div className={actionFooterClassName}>
+            <button
+              onClick={() => onProjectRequest(createServiceItem(results))}
+              className={`flex-1 flex items-center justify-center gap-2 bg-red-950/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/50 rounded-sm font-bold transition-all group active:scale-95 ${compact ? 'py-2 text-[9px]' : 'py-2.5 text-[10px]'}`}
+            >
+              <PlayIcon className="w-3 h-3 fill-current group-hover:text-white" />
+              PROJECT NOW
+            </button>
+            <button
+              onClick={() => {
+                onAddRequest(createServiceItem(results));
+                setShowSuccess(true);
+                window.setTimeout(() => setShowSuccess(false), 2000);
+              }}
+              className={`flex-1 flex items-center justify-center gap-2 rounded-sm font-bold transition-all active:scale-95 border ${compact ? 'py-2 text-[9px]' : 'py-2.5 text-[10px]'} ${showSuccess ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-blue-600 hover:bg-blue-500 text-white border-transparent'}`}
+            >
+              {showSuccess ? 'SCHEDULED OK' : 'SCHEDULE'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Sermon Summary overlay ─────────────────────────────────── */}
+      {sermonSummary && sermonSummaryOpen && (
+        <div className="absolute inset-0 z-50 flex flex-col bg-zinc-950/98 backdrop-blur-sm">
+          <SermonSummaryPanel
+            summary={sermonSummary}
+            wordCount={sermonWordCount}
+            archived={sermonArchived}
+            onClose={() => setSermonSummaryOpen(false)}
+            onArchive={async () => {
+              const result = await archiveSermon(sermonSummary, sermonWordCount, workspaceId);
+              if (result) setSermonArchived(true);
+            }}
+            onProjectRecap={() => {
+              const item = createSermonRecapItem(sermonSummary);
+              onProjectRequest(item);
+            }}
+            onAddToSchedule={(text) => {
+              const item = createSermonRecapItem(sermonSummary);
+              onAddRequest(item);
+              void navigator.clipboard.writeText(text);
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };

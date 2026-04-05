@@ -1,11 +1,23 @@
 export type AetherBridgeEvent =
   | 'lumina.bridge.ping'
   | 'lumina.state.sync'
-  | 'lumina.scene.switch';
+  | 'lumina.scene.switch'
+  // Presentation state events
+  | 'lumina.slide.changed'
+  | 'lumina.item.started'
+  // Timer events
+  | 'lumina.countdown.started'
+  | 'lumina.countdown.ended'
+  // Service mode
+  | 'lumina.service.mode.changed'
+  // Production requests (Lumina → Aether)
+  | 'lumina.stream.request'
+  | 'lumina.recording.request';
 
 export type AetherBridgeRequest = {
   endpointUrl: string;
   accessToken?: string;
+  roomId?: string;
   event: AetherBridgeEvent;
   workspaceId: string;
   sessionId: string;
@@ -73,6 +85,7 @@ export const dispatchAetherBridgeEvent = async (request: AetherBridgeRequest): P
         'x-lumina-workspace': request.workspaceId,
         'x-lumina-session': request.sessionId,
         ...(request.accessToken ? { 'x-lumina-token': request.accessToken } : {}),
+        ...(request.roomId ? { 'x-lumina-room': request.roomId } : {}),
       },
       body: JSON.stringify({
         source: 'lumina-presenter',

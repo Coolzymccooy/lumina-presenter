@@ -1,0 +1,620 @@
+import React, { useCallback, useState } from 'react';
+import { nanoid } from 'nanoid';
+import type {
+  MacroDefinition,
+  MacroAction,
+  MacroActionType,
+  MacroCategory,
+  MacroTriggerType,
+  MacroConditionVariable,
+  MacroConditionOperator,
+} from '../types/macros';
+import type { ServiceItem } from '../types';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const CATEGORIES: Array<{ id: MacroCategory; label: string }> = [
+  { id: 'service_flow', label: 'Service Flow' },
+  { id: 'worship', label: 'Worship' },
+  { id: 'sermon', label: 'Sermon' },
+  { id: 'streaming', label: 'Streaming' },
+  { id: 'emergency', label: 'Emergency' },
+  { id: 'stage', label: 'Stage' },
+  { id: 'output', label: 'Output' },
+  { id: 'media', label: 'Media' },
+  { id: 'custom', label: 'Custom' },
+];
+
+const TRIGGERS: Array<{ id: MacroTriggerType; label: string; description: string }> = [
+  { id: 'manual', label: 'Manual', description: 'Click or keyboard shortcut' },
+  { id: 'item_start', label: 'Item Start', description: 'When a run sheet item goes live' },
+  { id: 'slide_enter', label: 'Slide Enter', description: 'When a specific slide is shown' },
+  { id: 'timer_end', label: 'Timer End', description: 'When the speaker timer reaches zero' },
+  { id: 'service_mode_change', label: 'Service Mode', description: 'When service mode changes' },
+  { id: 'webhook', label: 'Webhook', description: 'HTTP POST from an external system or button' },
+];
+
+const ACTION_TYPES: Array<{ id: MacroActionType; label: string; group: string }> = [
+  { id: 'next_slide', label: 'Next Slide', group: 'Navigation' },
+  { id: 'prev_slide', label: 'Previous Slide', group: 'Navigation' },
+  { id: 'go_to_item', label: 'Go to Item', group: 'Navigation' },
+  { id: 'go_to_slide', label: 'Go to Slide', group: 'Navigation' },
+  { id: 'clear_output', label: 'Clear Output', group: 'Output' },
+  { id: 'set_theme', label: 'Set Theme', group: 'Output' },
+  { id: 'show_message', label: 'Show Stage Message', group: 'Stage' },
+  { id: 'hide_message', label: 'Hide Stage Message', group: 'Stage' },
+  { id: 'start_timer', label: 'Start Timer', group: 'Timer' },
+  { id: 'stop_timer', label: 'Stop Timer', group: 'Timer' },
+  { id: 'trigger_aether_scene', label: 'Aether Scene', group: 'Integration' },
+  { id: 'wait', label: 'Wait (delay)', group: 'Flow' },
+];
+
+// ─── Condition constants ──────────────────────────────────────────────────────
+
+const CONDITION_VARIABLES: Array<{ id: MacroConditionVariable; label: string }> = [
+  { id: 'activeSlideIndex', label: 'Slide index' },
+  { id: 'scheduleLength',   label: 'Schedule length' },
+  { id: 'isFirstSlide',     label: 'Is first slide' },
+  { id: 'isLastSlide',      label: 'Is last slide' },
+  { id: 'isServiceLive',    label: 'Is service live' },
+];
+
+const CONDITION_OPERATORS: Array<{ id: MacroConditionOperator; label: string }> = [
+  { id: 'eq',  label: '=' },
+  { id: 'neq', label: '≠' },
+  { id: 'gt',  label: '>' },
+  { id: 'lt',  label: '<' },
+  { id: 'gte', label: '≥' },
+  { id: 'lte', label: '≤' },
+];
+
+const BOOL_VARIABLES: MacroConditionVariable[] = ['isFirstSlide', 'isLastSlide', 'isServiceLive'];
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+interface ActionPayloadEditorProps {
+  action: MacroAction;
+  schedule: ServiceItem[];
+  onChange: (updated: MacroAction) => void;
+}
+
+const ActionPayloadEditor: React.FC<ActionPayloadEditorProps> = ({ action, schedule, onChange }) => {
+  const set = (patch: Record<string, unknown>) =>
+    onChange({ ...action, payload: { ...action.payload, ...patch } });
+
+  const p = action.payload as Record<string, unknown>;
+
+  switch (action.type) {
+    case 'go_to_item':
+      return (
+        <select
+          className="mt-1.5 w-full rounded bg-zinc-800 px-2 py-1.5 text-[12px] text-zinc-100 border border-zinc-700 outline-none"
+          value={String(p.itemId ?? '')}
+          onChange={e => {
+            const item = schedule.find(i => i.id === e.target.value);
+            set({ itemId: e.target.value, itemTitle: item?.title ?? '' });
+          }}
+        >
+          <option value="">— select item —</option>
+          {schedule.map(item => (
+            <option key={item.id} value={item.id}>{item.title}</option>
+          ))}
+        </select>
+      );
+
+    case 'go_to_slide': {
+      const selectedItem = schedule.find(i => i.id === String(p.itemId ?? ''));
+      return (
+        <div className="mt-1.5 flex flex-col gap-1.5">
+          <select
+            className="w-full rounded bg-zinc-800 px-2 py-1.5 text-[12px] text-zinc-100 border border-zinc-700 outline-none"
+            value={String(p.itemId ?? '')}
+            onChange={e => {
+              const item = schedule.find(i => i.id === e.target.value);
+              set({ itemId: e.target.value, itemTitle: item?.title ?? '', slideIndex: 0 });
+            }}
+          >
+            <option value="">— select item —</option>
+            {schedule.map(item => (
+              <option key={item.id} value={item.id}>{item.title}</option>
+            ))}
+          </select>
+          {selectedItem && Array.isArray(selectedItem.slides) && selectedItem.slides.length > 0 && (
+            <select
+              className="w-full rounded bg-zinc-800 px-2 py-1.5 text-[12px] text-zinc-100 border border-zinc-700 outline-none"
+              value={String(p.slideIndex ?? 0)}
+              onChange={e => set({ slideIndex: Number(e.target.value) })}
+            >
+              {selectedItem.slides.map((slide, idx) => (
+                <option key={slide.id} value={idx}>
+                  Slide {idx + 1}{slide.label ? ` — ${slide.label}` : ''}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      );
+    }
+
+    case 'show_message':
+      return (
+        <div className="mt-1.5 flex flex-col gap-1.5">
+          <input
+            className="w-full rounded bg-zinc-800 px-2 py-1.5 text-[12px] text-zinc-100 border border-zinc-700 outline-none placeholder:text-zinc-600"
+            placeholder="Stage message text…"
+            value={String(p.text ?? '')}
+            onChange={e => set({ text: e.target.value })}
+          />
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] text-zinc-500 shrink-0">Duration (ms)</label>
+            <input
+              type="number"
+              className="w-24 rounded bg-zinc-800 px-2 py-1 text-[12px] text-zinc-100 border border-zinc-700 outline-none"
+              placeholder="0 = persistent"
+              value={p.durationMs !== undefined ? String(p.durationMs) : ''}
+              onChange={e => set({ durationMs: e.target.value ? Number(e.target.value) : 0 })}
+            />
+          </div>
+        </div>
+      );
+
+    case 'start_timer':
+      return (
+        <div className="mt-1.5 flex items-center gap-2">
+          <label className="text-[10px] text-zinc-500 shrink-0">Duration (sec)</label>
+          <input
+            type="number"
+            className="w-24 rounded bg-zinc-800 px-2 py-1 text-[12px] text-zinc-100 border border-zinc-700 outline-none"
+            placeholder="e.g. 2400"
+            value={p.durationSec !== undefined ? String(p.durationSec) : ''}
+            onChange={e => set({ durationSec: e.target.value ? Number(e.target.value) : undefined })}
+          />
+          <input
+            className="flex-1 rounded bg-zinc-800 px-2 py-1 text-[12px] text-zinc-100 border border-zinc-700 outline-none placeholder:text-zinc-600"
+            placeholder="Label (optional)"
+            value={String(p.label ?? '')}
+            onChange={e => set({ label: e.target.value })}
+          />
+        </div>
+      );
+
+    case 'trigger_aether_scene':
+      return (
+        <input
+          className="mt-1.5 w-full rounded bg-zinc-800 px-2 py-1.5 text-[12px] text-zinc-100 border border-zinc-700 outline-none placeholder:text-zinc-600"
+          placeholder="Aether scene name / ID"
+          value={String(p.sceneId ?? '')}
+          onChange={e => set({ sceneId: e.target.value, sceneName: e.target.value })}
+        />
+      );
+
+    case 'wait':
+      return (
+        <div className="mt-1.5 flex items-center gap-2">
+          <label className="text-[10px] text-zinc-500 shrink-0">Delay (ms)</label>
+          <input
+            type="number"
+            className="w-28 rounded bg-zinc-800 px-2 py-1 text-[12px] text-zinc-100 border border-zinc-700 outline-none"
+            placeholder="e.g. 1000"
+            value={p.delayMs !== undefined ? String(p.delayMs) : ''}
+            onChange={e => set({ delayMs: e.target.value ? Number(e.target.value) : 0 })}
+          />
+        </div>
+      );
+
+    default:
+      return null;
+  }
+};
+
+interface ActionRowProps {
+  action: MacroAction;
+  index: number;
+  total: number;
+  schedule: ServiceItem[];
+  onChange: (updated: MacroAction) => void;
+  onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+}
+
+const ActionRow: React.FC<ActionRowProps> = ({
+  action, index, total, schedule, onChange, onRemove, onMoveUp, onMoveDown,
+}) => {
+  const hasCondition = !!action.condition;
+  const condVar = action.condition?.variable ?? 'activeSlideIndex';
+  const condOp  = action.condition?.operator  ?? 'eq';
+  const condVal = action.condition?.value      ?? '';
+  const isBoolVar = BOOL_VARIABLES.includes(condVar as MacroConditionVariable);
+
+  const toggleCondition = () => {
+    if (hasCondition) {
+      const { condition: _c, ...rest } = action;
+      onChange(rest as MacroAction);
+    } else {
+      onChange({ ...action, condition: { variable: 'activeSlideIndex', operator: 'eq', value: 0 } });
+    }
+  };
+
+  return (
+    <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-2.5">
+      <div className="flex items-center gap-2">
+        <span className="shrink-0 text-[9px] font-black text-zinc-600 w-4 text-center">{index + 1}</span>
+        <select
+          className="flex-1 rounded bg-zinc-800 px-2 py-1.5 text-[12px] text-zinc-100 border border-zinc-700 outline-none"
+          value={action.type}
+          onChange={e => onChange({ ...action, type: e.target.value as MacroActionType, payload: {} })}
+        >
+          {ACTION_TYPES.map(at => (
+            <option key={at.id} value={at.id}>{at.group} — {at.label}</option>
+          ))}
+        </select>
+        <button
+          onClick={onMoveUp}
+          disabled={index === 0}
+          className="shrink-0 text-zinc-600 hover:text-zinc-300 disabled:opacity-30 transition-colors px-1"
+          title="Move up"
+        >↑</button>
+        <button
+          onClick={onMoveDown}
+          disabled={index === total - 1}
+          className="shrink-0 text-zinc-600 hover:text-zinc-300 disabled:opacity-30 transition-colors px-1"
+          title="Move down"
+        >↓</button>
+        <button
+          onClick={onRemove}
+          className="shrink-0 text-zinc-600 hover:text-red-400 transition-colors px-1"
+          title="Remove action"
+        >✕</button>
+      </div>
+      <ActionPayloadEditor action={action} schedule={schedule} onChange={onChange} />
+      <div className="mt-2 flex items-center gap-3">
+        <label className="flex items-center gap-1.5 text-[10px] text-zinc-500 cursor-pointer">
+          <input
+            type="checkbox"
+            className="accent-blue-500"
+            checked={action.continueOnError ?? false}
+            onChange={e => onChange({ ...action, continueOnError: e.target.checked })}
+          />
+          Continue on error
+        </label>
+        <div className="flex items-center gap-1.5">
+          <label className="text-[10px] text-zinc-500 shrink-0">Delay before (ms)</label>
+          <input
+            type="number"
+            className="w-20 rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] text-zinc-100 border border-zinc-700 outline-none"
+            placeholder="0"
+            value={action.delayMs !== undefined ? String(action.delayMs) : ''}
+            onChange={e => onChange({ ...action, delayMs: e.target.value ? Number(e.target.value) : undefined })}
+          />
+        </div>
+        <button
+          onClick={toggleCondition}
+          className={`ml-auto rounded px-2 py-0.5 text-[9px] font-semibold border transition-colors ${
+            hasCondition
+              ? 'bg-violet-900/40 border-violet-700 text-violet-300'
+              : 'bg-zinc-800 border-zinc-700 text-zinc-500 hover:border-zinc-500'
+          }`}
+          title={hasCondition ? 'Remove condition' : 'Add run condition'}
+        >
+          {hasCondition ? 'if: on' : '+ if'}
+        </button>
+      </div>
+      {hasCondition && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded bg-violet-950/30 border border-violet-800/40 px-2 py-1.5">
+          <span className="text-[9px] font-black text-violet-500 uppercase tracking-wider shrink-0">If</span>
+          <select
+            className="rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] text-zinc-100 border border-zinc-700 outline-none"
+            value={condVar}
+            onChange={e => onChange({
+              ...action,
+              condition: { variable: e.target.value as MacroConditionVariable, operator: condOp, value: condVal },
+            })}
+          >
+            {CONDITION_VARIABLES.map(v => (
+              <option key={v.id} value={v.id}>{v.label}</option>
+            ))}
+          </select>
+          <select
+            className="rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] text-zinc-100 border border-zinc-700 outline-none"
+            value={condOp}
+            onChange={e => onChange({
+              ...action,
+              condition: { variable: condVar as MacroConditionVariable, operator: e.target.value as MacroConditionOperator, value: condVal },
+            })}
+          >
+            {CONDITION_OPERATORS.map(o => (
+              <option key={o.id} value={o.id}>{o.label}</option>
+            ))}
+          </select>
+          {isBoolVar ? (
+            <select
+              className="rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] text-zinc-100 border border-zinc-700 outline-none"
+              value={String(condVal)}
+              onChange={e => onChange({
+                ...action,
+                condition: { variable: condVar as MacroConditionVariable, operator: condOp, value: e.target.value },
+              })}
+            >
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>
+          ) : (
+            <input
+              type="number"
+              className="w-16 rounded bg-zinc-800 px-1.5 py-0.5 text-[11px] text-zinc-100 border border-zinc-700 outline-none"
+              placeholder="value"
+              value={String(condVal)}
+              onChange={e => onChange({
+                ...action,
+                condition: { variable: condVar as MacroConditionVariable, operator: condOp, value: e.target.value ? Number(e.target.value) : 0 },
+              })}
+            />
+          )}
+          <span className="text-[9px] text-violet-500/60 shrink-0">→ else skip</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
+interface MacroBuilderProps {
+  initial?: MacroDefinition | null;
+  schedule: ServiceItem[];
+  saveError?: string | null;
+  isSaving?: boolean;
+  onSave: (macro: MacroDefinition) => void;
+  onCancel: () => void;
+}
+
+export const MacroBuilder: React.FC<MacroBuilderProps> = ({
+  initial, schedule, saveError, isSaving, onSave, onCancel,
+}) => {
+  const [name, setName] = useState(initial?.name ?? '');
+  const [description, setDescription] = useState(initial?.description ?? '');
+  const [category, setCategory] = useState<MacroCategory>(initial?.category ?? 'service_flow');
+  const [triggerType, setTriggerType] = useState<MacroTriggerType>(
+    initial?.triggers[0]?.type ?? 'manual',
+  );
+  const [webhookKey, setWebhookKey] = useState<string>(
+    typeof initial?.triggers[0]?.payload?.key === 'string' ? initial.triggers[0].payload.key : '',
+  );
+  const [actions, setActions] = useState<MacroAction[]>(initial?.actions ?? []);
+  const [requiresConfirmation, setRequiresConfirmation] = useState(
+    initial?.requiresConfirmation ?? false,
+  );
+
+  const addAction = useCallback(() => {
+    setActions(prev => [
+      ...prev,
+      { id: nanoid(), type: 'next_slide', payload: {} },
+    ]);
+  }, []);
+
+  const updateAction = useCallback((index: number, updated: MacroAction) => {
+    setActions(prev => prev.map((a, i) => (i === index ? updated : a)));
+  }, []);
+
+  const removeAction = useCallback((index: number) => {
+    setActions(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const moveAction = useCallback((index: number, direction: -1 | 1) => {
+    setActions(prev => {
+      const next = [...prev];
+      const target = index + direction;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }, []);
+
+  const handleSave = () => {
+    if (!name.trim()) return;
+    const now = new Date().toISOString();
+    const macro: MacroDefinition = {
+      id: initial?.id ?? nanoid(),
+      name: name.trim(),
+      description: description.trim() || undefined,
+      category,
+      scope: 'workspace',
+      triggers: [{ type: triggerType, ...(triggerType === 'webhook' && webhookKey.trim() ? { payload: { key: webhookKey.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '-') } } : {}) }],
+      actions,
+      tags: initial?.tags ?? [],
+      isEnabled: initial?.isEnabled ?? true,
+      requiresConfirmation,
+      isTemplate: false,
+      createdAt: initial?.createdAt ?? now,
+      updatedAt: now,
+    };
+    onSave(macro);
+  };
+
+  // Per-section validation errors shown inline
+  const nameError = name.trim().length === 0 ? 'Macro name is required.' : null;
+  const webhookError = triggerType === 'webhook' && webhookKey.trim().length === 0
+    ? 'A webhook key is required for this trigger type.' : null;
+  const actionsError = actions.length === 0 ? 'Add at least one action.' : null;
+  const actionPayloadErrors: string[] = actions.flatMap((a, i) => {
+    const p = a.payload as Record<string, unknown>;
+    const num = i + 1;
+    if (a.type === 'go_to_item' && !String(p.itemId ?? '').trim()) return [`Action ${num}: select a target item.`];
+    if (a.type === 'go_to_slide' && !String(p.itemId ?? '').trim()) return [`Action ${num}: select a target item.`];
+    if (a.type === 'show_message' && !String(p.text ?? '').trim()) return [`Action ${num}: message text is required.`];
+    if (a.type === 'trigger_aether_scene' && !String(p.sceneId ?? '').trim()) return [`Action ${num}: scene name/ID is required.`];
+    if (a.type === 'wait' && (p.delayMs === undefined || Number(p.delayMs) <= 0)) return [`Action ${num}: delay must be greater than 0.`];
+    return [];
+  });
+
+  const isValid = !nameError && !webhookError && !actionsError && actionPayloadErrors.length === 0;
+
+  return (
+    <div className="flex flex-col gap-4 p-3">
+      {/* Name + Category */}
+      <div className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
+        <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Details</div>
+        <input
+          className={`w-full rounded-lg border bg-zinc-800 px-3 py-2 text-[13px] text-zinc-100 outline-none placeholder:text-zinc-600 ${nameError && name !== '' ? 'border-red-700' : 'border-zinc-700'}`}
+          placeholder="Macro name…"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          autoFocus
+        />
+        {nameError && name !== '' && (
+          <p className="text-[10px] text-red-400">{nameError}</p>
+        )}
+        <input
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-[12px] text-zinc-300 outline-none placeholder:text-zinc-600"
+          placeholder="Description (optional)"
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+        />
+        <div className="flex items-center gap-3">
+          <label className="text-[10px] text-zinc-500 shrink-0">Category</label>
+          <select
+            className="flex-1 rounded bg-zinc-800 px-2 py-1.5 text-[12px] text-zinc-100 border border-zinc-700 outline-none"
+            value={category}
+            onChange={e => setCategory(e.target.value as MacroCategory)}
+          >
+            {CATEGORIES.map(c => (
+              <option key={c.id} value={c.id}>{c.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Trigger */}
+      <div className="flex flex-col gap-2.5 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
+        <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Trigger</div>
+        <div className="flex flex-wrap gap-1.5">
+          {TRIGGERS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTriggerType(t.id)}
+              className={`rounded-full px-2.5 py-1 text-[10px] font-semibold border transition-colors ${
+                triggerType === t.id
+                  ? 'bg-blue-600 border-blue-500 text-white'
+                  : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500'
+              }`}
+              title={t.description}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        {triggerType !== 'manual' && triggerType !== 'webhook' && (
+          <p className="text-[10px] text-zinc-500 leading-relaxed">
+            {TRIGGERS.find(t => t.id === triggerType)?.description}
+          </p>
+        )}
+        {triggerType === 'webhook' && (
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[10px] text-zinc-500 leading-relaxed">
+              POST to the URL shown on the macro card to fire this macro from any external system.
+            </p>
+            <div className="flex items-center gap-2">
+              <label className="shrink-0 text-[10px] text-zinc-500">Key</label>
+              <input
+                className="flex-1 rounded bg-zinc-800 px-2 py-1.5 text-[12px] font-mono text-zinc-100 border border-zinc-700 outline-none placeholder:text-zinc-600"
+                placeholder="e.g. start-service"
+                value={webhookKey}
+                onChange={e => setWebhookKey(e.target.value)}
+              />
+            </div>
+            <p className="text-[9px] text-zinc-600">Lowercase letters, numbers, dots, hyphens. Auto-sanitised on save.</p>
+            {webhookError && (
+              <p className="text-[10px] text-red-400">{webhookError}</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex flex-col gap-2 rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
+        <div className="flex items-center justify-between">
+          <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">
+            Actions <span className="text-zinc-600 font-normal normal-case tracking-normal">({actions.length})</span>
+          </div>
+          <button
+            onClick={addAction}
+            className="rounded-full bg-zinc-800 border border-zinc-700 px-2.5 py-0.5 text-[10px] text-zinc-300 hover:border-blue-600 hover:text-blue-300 transition-colors"
+          >
+            + Add action
+          </button>
+        </div>
+        {actions.length === 0 ? (
+          <p className="py-4 text-center text-[11px] text-red-400/80">
+            Add at least one action to enable saving.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {actions.map((action, i) => (
+              <ActionRow
+                key={action.id}
+                action={action}
+                index={i}
+                total={actions.length}
+                schedule={schedule}
+                onChange={updated => updateAction(i, updated)}
+                onRemove={() => removeAction(i)}
+                onMoveUp={() => moveAction(i, -1)}
+                onMoveDown={() => moveAction(i, 1)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Options */}
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
+        <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500 mb-2">Options</div>
+        <label className="flex items-center gap-2 text-[12px] text-zinc-400 cursor-pointer">
+          <input
+            type="checkbox"
+            className="accent-amber-500"
+            checked={requiresConfirmation}
+            onChange={e => setRequiresConfirmation(e.target.checked)}
+          />
+          Require confirmation before running
+        </label>
+      </div>
+
+      {/* Validation summary — only shown when user has interacted (name is filled) */}
+      {name.trim().length > 0 && !isValid && (
+        <div className="rounded-lg border border-amber-800/50 bg-amber-950/20 px-3 py-2 flex flex-col gap-0.5">
+          {webhookError && <p className="text-[10px] text-amber-300">{webhookError}</p>}
+          {actionsError && <p className="text-[10px] text-amber-300">{actionsError}</p>}
+          {actionPayloadErrors.map(e => (
+            <p key={e} className="text-[10px] text-amber-300">{e}</p>
+          ))}
+        </div>
+      )}
+
+      {/* Save error from Firestore / network */}
+      {saveError && (
+        <div className="rounded-lg border border-red-800/50 bg-red-950/20 px-3 py-2">
+          <p className="text-[11px] text-red-400">{saveError}</p>
+        </div>
+      )}
+
+      {/* Footer buttons */}
+      <div className="flex gap-2">
+        <button
+          onClick={onCancel}
+          className="flex-1 rounded-lg border border-zinc-700 bg-zinc-800 py-2 text-[12px] text-zinc-400 hover:text-zinc-200 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={!isValid || isSaving}
+          className="flex-1 rounded-lg bg-blue-600 py-2 text-[12px] font-semibold text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          {isSaving ? 'Saving…' : initial ? 'Save changes' : 'Create macro'}
+        </button>
+      </div>
+    </div>
+  );
+};

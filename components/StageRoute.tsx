@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState } from '../services/firebase';
-import { fetchServerSessionState, getOrCreateConnectionClientId, heartbeatSessionConnection } from '../services/serverApi';
+import { fetchServerSessionState, getOrCreateConnectionClientId, heartbeatSessionConnection, saveWorkspaceSettings } from '../services/serverApi';
 import { AudienceDisplayState, ServiceItem, StageAlertLayout, StageAlertState, StageFlowLayout, StageMessageCategory, StageMessageCenterState, StageTimerFlashColor, StageTimerFlashState, StageTimerLayout } from '../types';
+import { HoldScreen } from './presenter/HoldScreen';
 import { LoginScreen } from './LoginScreen';
 import { StageDisplay } from './StageDisplay';
+import type { SlideBrandingConfig } from './SlideBrandingOverlay';
 
 const STORAGE_KEY = 'lumina_session_v1';
 
@@ -13,6 +15,7 @@ type LocalStageState = {
   activeItemId?: string | null;
   activeSlideIndex?: number;
   blackout?: boolean;
+  holdScreenMode?: 'none' | 'clear' | 'logo';
   audienceDisplay?: AudienceDisplayState;
   stageAlert?: StageAlertState;
   stageMessageCenter?: StageMessageCenterState;
@@ -28,6 +31,11 @@ type LocalStageState = {
     stageTimerLayout?: StageTimerLayout;
     stageAlertLayout?: StageAlertLayout;
     stageFlowLayout?: StageFlowLayout;
+    churchName?: string;
+    slideBrandingEnabled?: boolean;
+    slideBrandingSeriesLabel?: string;
+    slideBrandingStyle?: 'minimal' | 'bold' | 'frosted';
+    slideBrandingOpacity?: number;
   };
   updatedAt?: number;
 };
@@ -40,6 +48,8 @@ type EffectiveStageState = {
   stageAlert?: StageAlertState;
   stageMessageCenter?: StageMessageCenterState;
   blackout: boolean;
+  holdScreenMode: 'none' | 'clear' | 'logo';
+  churchName: string;
   timerMode: 'COUNTDOWN' | 'ELAPSED';
   timerSeconds: number;
   timerDurationSec: number;
@@ -51,6 +61,7 @@ type EffectiveStageState = {
   stageTimerLayout?: StageTimerLayout;
   stageAlertLayout?: StageAlertLayout;
   stageFlowLayout: StageFlowLayout;
+  branding: SlideBrandingConfig;
   updatedAt: number;
   hasRenderable: boolean;
 };
@@ -67,6 +78,20 @@ const readLocalState = (): LocalStageState => {
   } catch {
     return {};
   }
+};
+
+const writeLocalStageWorkspaceSettings = (updates: Partial<NonNullable<LocalStageState['workspaceSettings']>>): LocalStageState => {
+  const current = readLocalState();
+  const next: LocalStageState = {
+    ...current,
+    workspaceSettings: {
+      ...(current.workspaceSettings || {}),
+      ...updates,
+    },
+    updatedAt: Date.now(),
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  return next;
 };
 
 const sanitizeStageMessageCenter = (value: unknown): StageMessageCenterState | undefined => {
@@ -120,6 +145,10 @@ const sanitizeStageTimerFlash = (value: unknown): StageTimerFlashState => {
   };
 };
 
+const sanitizeHoldScreenMode = (value: unknown): 'none' | 'clear' | 'logo' => (
+  value === 'clear' || value === 'logo' ? value : 'none'
+);
+
 export const StageRoute: React.FC = () => {
   const getRouteParams = () => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -156,10 +185,51 @@ export const StageRoute: React.FC = () => {
   const [serverState, setServerState] = useState<Record<string, any> | null>(null);
   const [stableEffective, setStableEffective] = useState<EffectiveStageState | null>(null);
   const localStateRawRef = useRef<string | null>(null);
+  const pendingWorkspaceLayoutRef = useRef<Partial<NonNullable<LocalStageState['workspaceSettings']>>>({});
+  const workspaceLayoutSaveTimeoutRef = useRef<number | null>(null);
   const canUseServerWorkspace = useMemo(
     () => !!workspaceId && (hasExplicitWorkspace || !!user?.uid),
     [workspaceId, hasExplicitWorkspace, user?.uid]
   );
+
+  const persistWorkspaceLayoutsLocally = useCallback((updates: Partial<NonNullable<LocalStageState['workspaceSettings']>>) => {
+    try {
+      const next = writeLocalStageWorkspaceSettings(updates);
+      localStateRawRef.current = JSON.stringify(next);
+      setLocalState(next);
+      setServerState((prev) => prev ? ({
+        ...prev,
+        workspaceSettings: {
+          ...(prev.workspaceSettings || {}),
+          ...updates,
+        },
+        updatedAt: Date.now(),
+      }) : prev);
+    } catch (error) {
+      console.warn('Failed to persist stage layout locally.', error);
+    }
+  }, []);
+
+  const queueWorkspaceLayoutSave = useCallback((updates: Partial<NonNullable<LocalStageState['workspaceSettings']>>) => {
+    pendingWorkspaceLayoutRef.current = {
+      ...pendingWorkspaceLayoutRef.current,
+      ...updates,
+    };
+    if (workspaceLayoutSaveTimeoutRef.current !== null) {
+      window.clearTimeout(workspaceLayoutSaveTimeoutRef.current);
+    }
+    workspaceLayoutSaveTimeoutRef.current = window.setTimeout(async () => {
+      const nextSettings = pendingWorkspaceLayoutRef.current;
+      pendingWorkspaceLayoutRef.current = {};
+      workspaceLayoutSaveTimeoutRef.current = null;
+      if (!user || !canUseServerWorkspace || Object.keys(nextSettings).length === 0) return;
+      try {
+        await saveWorkspaceSettings(workspaceId, user, nextSettings);
+      } catch (error) {
+        console.warn('Failed to persist stage layout to workspace settings.', error);
+      }
+    }, 420);
+  }, [canUseServerWorkspace, user, workspaceId]);
 
   useEffect(() => {
     if (!auth) {
@@ -239,6 +309,13 @@ export const StageRoute: React.FC = () => {
     return () => window.clearInterval(id);
   }, [workspaceId, sessionId, stageClientId, canUseServerWorkspace]);
 
+  useEffect(() => () => {
+    if (workspaceLayoutSaveTimeoutRef.current !== null) {
+      window.clearTimeout(workspaceLayoutSaveTimeoutRef.current);
+      workspaceLayoutSaveTimeoutRef.current = null;
+    }
+  }, []);
+
   const buildEffective = (source: any): EffectiveStageState => {
     const schedule = Array.isArray(source?.scheduleSnapshot)
       ? source.scheduleSnapshot
@@ -274,6 +351,15 @@ export const StageRoute: React.FC = () => {
     const stageAlert = source?.stageAlert;
     const stageMessageCenter = sanitizeStageMessageCenter(source?.stageMessageCenter);
     const updatedAt = Number.isFinite(source?.updatedAt) ? Number(source.updatedAt) : 0;
+    const holdScreenMode = sanitizeHoldScreenMode(source?.holdScreenMode);
+    const churchName = typeof source?.workspaceSettings?.churchName === 'string' ? source.workspaceSettings.churchName : '';
+    const branding: SlideBrandingConfig = {
+      enabled: !!source?.workspaceSettings?.slideBrandingEnabled,
+      churchName,
+      seriesLabel: typeof source?.workspaceSettings?.slideBrandingSeriesLabel === 'string' ? source.workspaceSettings.slideBrandingSeriesLabel : '',
+      style: (source?.workspaceSettings?.slideBrandingStyle === 'bold' || source?.workspaceSettings?.slideBrandingStyle === 'frosted') ? source.workspaceSettings.slideBrandingStyle : 'minimal',
+      textOpacity: typeof source?.workspaceSettings?.slideBrandingOpacity === 'number' ? source.workspaceSettings.slideBrandingOpacity : 0.82,
+    };
 
     return {
       item: activeItem,
@@ -283,6 +369,8 @@ export const StageRoute: React.FC = () => {
       stageAlert,
       stageMessageCenter,
       blackout: !!source?.blackout,
+      holdScreenMode,
+      churchName,
       timerMode,
       timerSeconds,
       timerDurationSec,
@@ -294,6 +382,7 @@ export const StageRoute: React.FC = () => {
       stageTimerLayout,
       stageAlertLayout,
       stageFlowLayout,
+      branding,
       updatedAt,
       hasRenderable: !!(activeItem && activeSlide),
     };
@@ -305,17 +394,17 @@ export const StageRoute: React.FC = () => {
       buildEffective(serverState),
       buildEffective(liveState),
     ].sort((left, right) => right.updatedAt - left.updatedAt);
-    const firstRenderable = candidates.find((entry) => entry.blackout || entry.hasRenderable);
+    const firstRenderable = candidates.find((entry) => entry.blackout || entry.holdScreenMode !== 'none' || entry.hasRenderable);
     return firstRenderable || candidates[0];
   }, [localState, serverState, liveState]);
 
   useEffect(() => {
-    if (effective.blackout || effective.hasRenderable) {
+    if (effective.blackout || effective.holdScreenMode !== 'none' || effective.hasRenderable) {
       setStableEffective(effective);
     }
   }, [effective]);
 
-  const display = (effective.blackout || effective.hasRenderable)
+  const display = (effective.blackout || effective.holdScreenMode !== 'none' || effective.hasRenderable)
     ? effective
     : (stableEffective || effective);
 
@@ -329,11 +418,15 @@ export const StageRoute: React.FC = () => {
   }
 
   if (display.blackout) {
-    return (
-      <div className="h-screen w-screen bg-black flex items-center justify-center">
-        <div className="text-zinc-500 text-xs uppercase tracking-[0.25em] font-mono">BLACKOUT ACTIVE</div>
-      </div>
-    );
+    return <HoldScreen view="blackout" />;
+  }
+
+  if (display.holdScreenMode === 'clear') {
+    return <HoldScreen view="clear" />;
+  }
+
+  if (display.holdScreenMode === 'logo') {
+    return <HoldScreen view="logo" churchName={display.churchName} />;
   }
 
   return (
@@ -359,12 +452,21 @@ export const StageRoute: React.FC = () => {
       timerFlashActive={display.stageTimerFlash.active}
       timerFlashColor={display.stageTimerFlash.color}
       timerLayout={display.stageTimerLayout}
+      onTimerLayoutChange={(layout) => {
+        persistWorkspaceLayoutsLocally({ stageTimerLayout: layout });
+        queueWorkspaceLayoutSave({ stageTimerLayout: layout });
+      }}
       stageAlertLayout={display.stageAlertLayout}
+      onStageAlertLayoutChange={(layout) => {
+        persistWorkspaceLayoutsLocally({ stageAlertLayout: layout });
+        queueWorkspaceLayoutSave({ stageAlertLayout: layout });
+      }}
       flowLayout={display.stageFlowLayout}
       profile={display.stageProfile}
       audienceOverlay={display.audienceOverlay}
       stageAlert={display.stageAlert}
       stageMessageCenter={display.stageMessageCenter}
+      branding={display.branding}
     />
   );
 };

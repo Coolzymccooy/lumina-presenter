@@ -3,11 +3,12 @@ import cors from "cors";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import Database from "better-sqlite3";
+import multer from "multer";
 import { GoogleGenAI, Type } from "@google/genai";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -293,12 +294,28 @@ CREATE TABLE IF NOT EXISTS workspace_runsheet_files (
   last_used_at INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS macro_webhook_triggers (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  key TEXT NOT NULL,
+  triggered_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sermon_summaries (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL,
+  saved_at INTEGER NOT NULL,
+  word_count INTEGER NOT NULL DEFAULT 0,
+  summary_json TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_audit_workspace_time ON audit_logs(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_snapshots_workspace_time ON workspace_snapshots(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_audience_workspace_time ON audience_messages(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_connections_workspace_session_seen ON session_connections(workspace_id, session_id, last_seen_at);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_runsheet_workspace_file_unique ON workspace_runsheet_files(workspace_id, file_id);
 CREATE INDEX IF NOT EXISTS idx_runsheet_workspace_updated ON workspace_runsheet_files(workspace_id, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sermons_workspace_time ON sermon_summaries(workspace_id, saved_at DESC);
 `);
 
 const ensureColumnExists = (tableName, columnName, definitionSql, backfillSql = null) => {
@@ -321,6 +338,41 @@ app.use(cors());
 app.use(express.json({ limit: JSON_LIMIT }));
 fs.mkdirSync(VIS_MEDIA_DIR, { recursive: true });
 fs.mkdirSync(WORKSPACE_MEDIA_DIR, { recursive: true });
+const audienceMessageStreamClients = new Map();
+
+const getAudienceStreamBucket = (workspaceId) => {
+  const key = String(workspaceId || "").trim() || "default-workspace";
+  const existing = audienceMessageStreamClients.get(key);
+  if (existing) return existing;
+  const created = new Set();
+  audienceMessageStreamClients.set(key, created);
+  return created;
+};
+
+const writeAudienceStreamEvent = (res, event, payload) => {
+  if (!res || res.writableEnded) return;
+  try {
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(payload)}\n\n`);
+  } catch {
+    // best effort for disconnected clients
+  }
+};
+
+const broadcastAudienceMessageEvent = (workspaceId, payload) => {
+  const bucket = audienceMessageStreamClients.get(String(workspaceId || "").trim() || "default-workspace");
+  if (!bucket || !bucket.size) return;
+  const message = {
+    workspaceId,
+    updatedAt: now(),
+    ...payload,
+  };
+  for (const res of bucket) {
+    if (!res || res.writableEnded) continue;
+    writeAudienceStreamEvent(res, "audience-message", message);
+  }
+};
+
 app.use(
   VIS_MEDIA_BASE_PATH,
   express.static(VIS_MEDIA_DIR, { index: false, fallthrough: false }),
@@ -390,6 +442,31 @@ const parseBool = (value, fallback = false) => {
   if (!normalized) return fallback;
   return normalized === "1" || normalized === "true" || normalized === "yes" || normalized === "on";
 };
+/**
+ * Extract a short, human-readable message from a Gemini SDK error.
+ * The SDK embeds the full JSON response body as the error message string.
+ */
+const extractGeminiErrorMessage = (error) => {
+  const raw = String(error?.message || error || "Unknown error");
+  // If it looks like a JSON blob, try to pull out the nested message field
+  if (raw.includes('"message"') || raw.startsWith("{")) {
+    try {
+      const start = raw.indexOf("{");
+      const parsed = JSON.parse(raw.slice(start));
+      const msg = parsed?.error?.message || parsed?.message;
+      if (msg && typeof msg === "string") {
+        // Trim at the first newline and cap at 120 chars
+        const clean = msg.split("\n")[0].trim();
+        return clean.length > 120 ? clean.slice(0, 120) + "…" : clean;
+      }
+    } catch {
+      // Not valid JSON after all — fall through
+    }
+  }
+  const firstLine = raw.split("\n")[0].trim();
+  return firstLine.length > 120 ? firstLine.slice(0, 120) + "…" : firstLine;
+};
+
 const parseBase64Payload = (value) => {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -677,6 +754,22 @@ const listActiveSessionConnections = db.prepare(`
 const logAudit = db.prepare(`
   INSERT INTO audit_logs (workspace_id, session_id, actor_uid, actor_email, action, details_json, created_at)
   VALUES (@workspace_id, @session_id, @actor_uid, @actor_email, @action, @details_json, @created_at)
+`);
+
+const insertWebhookTrigger = db.prepare(`
+  INSERT INTO macro_webhook_triggers (id, workspace_id, key, triggered_at)
+  VALUES (@id, @workspace_id, @key, @triggered_at)
+`);
+
+const listPendingWebhookTriggers = db.prepare(`
+  SELECT id, key, triggered_at FROM macro_webhook_triggers
+  WHERE workspace_id = ? AND triggered_at > ?
+  ORDER BY triggered_at ASC
+  LIMIT 100
+`);
+
+const pruneOldWebhookTriggers = db.prepare(`
+  DELETE FROM macro_webhook_triggers WHERE triggered_at < ?
 `);
 
 const canOperateWorkspace = (workspace, actor) => {
@@ -1097,6 +1190,258 @@ ${sermonText}`,
   }
 });
 
+app.post("/api/ai/summarize-sermon", async (req, res) => {
+  const transcript = String(req.body?.transcript || "").trim();
+  const accentHint = String(req.body?.accentHint || "standard").trim();
+  if (!transcript) return res.status(400).json({ ok: false, error: "TRANSCRIPT_REQUIRED" });
+  const wordCount = transcript.split(/\s+/).filter(Boolean).length;
+  if (wordCount < 40) {
+    return res.status(422).json({
+      ok: false,
+      error: "TRANSCRIPT_TOO_SHORT",
+      message: `Only ${wordCount} words were captured. At least 40 words are needed for a meaningful summary. Try recording a longer segment.`,
+    });
+  }
+  const ai = ensureGoogleAiClient(res);
+  if (!ai) return;
+
+  const fallbackSummary = () => {
+    const scriptureRegex = /\b(?:[1-3]\s)?[A-Za-z]+\s\d{1,3}:\d{1,3}(?:-\d{1,3})?\b/g;
+    const scriptures = Array.from(new Set((transcript.match(scriptureRegex) || []).slice(0, 10)));
+    const sentences = transcript.split(/[.!?]+/).map((s) => s.trim()).filter((s) => s.length > 20);
+    return {
+      title: "Sermon",
+      mainTheme: sentences[0]?.slice(0, 120) || "Faith and purpose",
+      keyPoints: sentences.slice(0, 5).map((s) => s.slice(0, 160)),
+      scripturesReferenced: scriptures,
+      callToAction: sentences[sentences.length - 1]?.slice(0, 200) || "Walk in faith.",
+      quotableLines: [],
+    };
+  };
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `You are a sermon note-taker for a church service${accentHint !== "standard" ? ` (${accentHint} English accent)` : ""}.
+The following is a live speech transcript from a pastor's sermon captured by a speech-to-text engine. There may be minor transcription errors.
+
+IMPORTANT: Extract ONLY what is explicitly stated in the transcript below. Do NOT infer, assume, or fabricate any content that is not present. If a field cannot be determined from the transcript, return an empty string or empty array. Never fill in key points, scriptures, quotes, or a call to action that the pastor did not actually say.
+
+Return a JSON object with:
+- title: short sermon title based only on what was said (max 8 words, or "Untitled Sermon" if unclear)
+- mainTheme: one sentence describing the central message — only from what was said
+- keyPoints: array of 3 to 7 concise points the pastor explicitly made (only from the transcript)
+- scripturesReferenced: array of Bible references explicitly mentioned (book chapter:verse format)
+- callToAction: the closing challenge given to the congregation — only if clearly stated, otherwise empty string
+- quotableLines: array of up to 4 direct quotes from the transcript
+
+Transcript (${wordCount} words):
+${transcript.slice(0, 20000)}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            mainTheme: { type: Type.STRING },
+            keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
+            scripturesReferenced: { type: Type.ARRAY, items: { type: Type.STRING } },
+            callToAction: { type: Type.STRING },
+            quotableLines: { type: Type.ARRAY, items: { type: Type.STRING } },
+          },
+          required: ["title", "mainTheme", "keyPoints", "scripturesReferenced", "callToAction", "quotableLines"],
+        },
+      },
+    });
+
+    const parsed = parseAiJson(response);
+    if (!parsed?.title) {
+      return res.json({ ok: true, summary: fallbackSummary() });
+    }
+
+    return res.json({
+      ok: true,
+      summary: {
+        title: String(parsed.title || "Sermon").slice(0, 100),
+        mainTheme: String(parsed.mainTheme || "").slice(0, 300),
+        keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints.slice(0, 7).map((p) => String(p).slice(0, 300)) : [],
+        scripturesReferenced: Array.isArray(parsed.scripturesReferenced) ? parsed.scripturesReferenced.slice(0, 20).map(String) : [],
+        callToAction: String(parsed.callToAction || "").slice(0, 400),
+        quotableLines: Array.isArray(parsed.quotableLines) ? parsed.quotableLines.slice(0, 4).map((q) => String(q).slice(0, 300)) : [],
+      },
+    });
+  } catch (error) {
+    return res.json({ ok: true, summary: fallbackSummary(), warning: String(error?.message || error) });
+  }
+});
+
+// ─── Sermon Archive ───────────────────────────────────────────────────────────
+
+app.post("/api/sermons", (req, res) => {
+  const workspaceId = String(req.body?.workspaceId || "").trim();
+  const id = String(req.body?.id || "").trim();
+  const wordCount = Number(req.body?.wordCount || 0);
+  const summary = req.body?.summary;
+  if (!workspaceId || !id || !summary || typeof summary !== "object") {
+    return res.status(400).json({ ok: false, error: "INVALID_PAYLOAD" });
+  }
+  try {
+    db.prepare(
+      "INSERT OR REPLACE INTO sermon_summaries (id, workspace_id, saved_at, word_count, summary_json) VALUES (?, ?, ?, ?, ?)"
+    ).run(id, workspaceId, Date.now(), wordCount, JSON.stringify(summary));
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: "DB_ERROR", message: String(err?.message || err) });
+  }
+});
+
+app.get("/api/sermons", (req, res) => {
+  const workspaceId = String(req.query?.workspaceId || "").trim();
+  if (!workspaceId) return res.status(400).json({ ok: false, error: "WORKSPACE_ID_REQUIRED" });
+  try {
+    const rows = db.prepare(
+      "SELECT id, saved_at, word_count, summary_json FROM sermon_summaries WHERE workspace_id = ? ORDER BY saved_at DESC LIMIT 100"
+    ).all(workspaceId);
+    const items = rows.map((r) => ({
+      id: r.id,
+      savedAt: r.saved_at,
+      wordCount: r.word_count,
+      summary: JSON.parse(r.summary_json),
+    }));
+    res.json({ ok: true, items });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: "DB_ERROR", message: String(err?.message || err) });
+  }
+});
+
+app.delete("/api/sermons/:id", (req, res) => {
+  const id = String(req.params?.id || "").trim();
+  const workspaceId = String(req.query?.workspaceId || "").trim();
+  if (!id || !workspaceId) return res.status(400).json({ ok: false, error: "INVALID_PARAMS" });
+  try {
+    db.prepare("DELETE FROM sermon_summaries WHERE id = ? AND workspace_id = ?").run(id, workspaceId);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: "DB_ERROR", message: String(err?.message || err) });
+  }
+});
+
+app.post("/api/ai/assist-query", async (req, res) => {
+  const query = String(req.body?.query || "").trim();
+  const mode = String(req.body?.mode || "auto").trim().toLowerCase();
+  if (!query) return res.status(400).json({ ok: false, error: "QUERY_REQUIRED" });
+  const ai = ensureGoogleAiClient(res);
+  if (!ai) return;
+
+  const intentMap = {
+    song: "lyrics",
+    lyrics: "lyrics",
+    sermon: "sermon",
+    announcement: "announcement",
+    prayer: "prayer",
+  };
+  const detectedIntent = intentMap[mode] || "unknown";
+
+  const systemPrompt = detectedIntent === "lyrics"
+    ? `You are a church lyric content assistant. The user is searching for song lyrics to use in a live presentation.
+
+ACCURACY IS CRITICAL. Different people searching for the same song must get identical, exact lyrics. Do NOT paraphrase, approximate, or invent lyrics.
+
+Rules:
+1. If the song is well-known traditional/public-domain (e.g. "Amazing Grace", "How Great Thou Art", "Great Is Thy Faithfulness"): reproduce the exact, canonical public-domain text word-for-word with proper verse/chorus labels.
+2. If the song is a modern copyrighted worship song (e.g. Hillsong, Elevation, Bethel, Chris Tomlin, etc.) or you are not 100% certain of the exact lyrics: set requiresManualInput to true and return ONLY the song title and artist in the title field — do NOT generate any lyrics.
+3. Never approximate, paraphrase, or fill in gaps — accuracy over completeness.
+4. Label each section: "Verse 1", "Verse 2", "Chorus", "Bridge", etc.
+Detect the intent as "lyrics".`
+    : detectedIntent === "sermon"
+    ? `You are a church sermon content assistant.
+Task: Given the query, produce a structured sermon outline or content with clearly labelled sections.
+Each section should be a key point, scripture basis, or application.
+Label each: "Introduction", "Point 1 - Title", "Scripture", "Application", "Conclusion", etc.
+Detect the intent as "sermon".`
+    : detectedIntent === "announcement"
+    ? `You are a church communications assistant.
+Task: Given the query, produce concise, warm, presentation-ready announcement text.
+Split into logical sections for slides: Title, Main Body, Date/Time/Location, Call to Action.
+Detect the intent as "announcement".`
+    : detectedIntent === "prayer"
+    ? `You are a church liturgy assistant.
+Task: Given the query, produce a structured prayer or responsive reading suitable for projection.
+Split into: Opening, Body (stanzas), Response prompts if applicable, Closing.
+Detect the intent as "prayer".`
+    : `You are a church content assistant. Determine intent and produce structured, slide-ready content.
+Detect intent as one of: lyrics, sermon, announcement, prayer.
+Label every section clearly.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `${systemPrompt}\n\nQuery: "${query}"`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            intent: { type: Type.STRING },
+            confidence: { type: Type.NUMBER },
+            requiresManualInput: { type: Type.BOOLEAN },
+            rawText: { type: Type.STRING },
+            sections: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  label: { type: Type.STRING },
+                  type: { type: Type.STRING },
+                  text: { type: Type.STRING },
+                },
+                required: ["label", "type", "text"],
+              },
+            },
+          },
+          required: ["title", "intent", "sections", "rawText", "confidence", "requiresManualInput"],
+        },
+      },
+    });
+
+    const parsed = parseAiJson(response);
+    if (!parsed) {
+      return res.status(500).json({ ok: false, error: "AI_NO_CONTENT" });
+    }
+    // requiresManualInput: AI recognised the song but won't fabricate copyrighted lyrics —
+    // send it through even though sections will be empty
+    if (parsed.requiresManualInput === true) {
+      return res.json({
+        ok: true,
+        data: {
+          title: String(parsed.title || ""),
+          intent: "lyrics",
+          sections: [],
+          rawText: "",
+          confidence: 1,
+          source: "ai",
+          requiresManualInput: true,
+        },
+      });
+    }
+    if (!Array.isArray(parsed.sections) || !parsed.sections.length) {
+      return res.status(500).json({ ok: false, error: "AI_NO_CONTENT" });
+    }
+    return res.json({
+      ok: true,
+      data: {
+        ...parsed,
+        source: "ai",
+        confidence: Number(parsed.confidence) || 0.8,
+        requiresManualInput: false,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: String(error?.message || error) });
+  }
+});
+
 app.post("/api/ai/transcribe-sermon-chunk", async (req, res) => {
   const locale = String(req.body?.locale || "").trim();
   const mimeType = String(req.body?.mimeType || "").trim().toLowerCase();
@@ -1168,19 +1513,22 @@ app.post("/api/ai/transcribe-sermon-chunk", async (req, res) => {
   const ai = ensureGoogleAiClient(res);
   if (!ai) return;
 
+  // Gemini inlineData requires a base MIME type without codec parameters
+  const geminiMimeType = mimeType.includes(";") ? mimeType.split(";")[0].trim() : mimeType;
+
   try {
     const speechPrompt = locale === "en-GB"
       ? "Transcribe this church speech audio in British English. Return plain transcript text only."
       : "Transcribe this church speech audio in American English. Return plain transcript text only.";
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-1.5-flash",
       contents: {
         parts: [
           { text: speechPrompt },
           {
             inlineData: {
-              mimeType,
+              mimeType: geminiMimeType,
               data: audioBuffer.toString("base64"),
             },
           },
@@ -1196,11 +1544,173 @@ app.post("/api/ai/transcribe-sermon-chunk", async (req, res) => {
       bytes: audioBuffer.length,
     });
   } catch (error) {
-    return res.status(502).json({
+    const raw = String(error?.message || error);
+    const isQuota = raw.includes("RESOURCE_EXHAUSTED") || raw.includes("quota");
+    return res.status(isQuota ? 429 : 502).json({
       ok: false,
-      error: "TRANSCRIBE_FAILED",
-      message: String(error?.message || error),
+      error: isQuota ? "QUOTA_EXCEEDED" : "TRANSCRIBE_FAILED",
+      message: isQuota ? "Gemini quota reached. Will retry shortly." : extractGeminiErrorMessage(error),
     });
+  }
+});
+
+// Multer for sermon audio upload (disk storage, auto-cleaned after processing)
+const sermonAudioUpload = multer({
+  storage: multer.diskStorage({
+    destination: os.tmpdir(),
+    filename: (_req, file, cb) => {
+      const ext = file.originalname.endsWith(".mp4") ? ".mp4" : file.originalname.endsWith(".wav") ? ".wav" : ".webm";
+      cb(null, `sermon-${randomUUID()}${ext}`);
+    },
+  }),
+  limits: { fileSize: 300 * 1024 * 1024 },
+});
+
+const SERMON_INLINE_LIMIT = 15 * 1024 * 1024;
+
+app.post("/api/ai/transcribe-sermon-audio", sermonAudioUpload.single("audio"), async (req, res) => {
+  const audioFile = req.file;
+  if (!audioFile?.path) {
+    return res.status(400).json({ ok: false, error: "AUDIO_REQUIRED", message: "audio file is required." });
+  }
+
+  const rawMime = String(req.body?.mimeType || audioFile.mimetype || "audio/webm").trim().toLowerCase();
+  const locale = String(req.body?.locale || "en-US").trim();
+  // Strip codec params for Gemini
+  const geminiMimeType = rawMime.includes(";") ? rawMime.split(";")[0].trim() : rawMime;
+  const accentHint = locale === "en-GB" ? "British" : "American";
+
+  const ai = ensureGoogleAiClient(res);
+  if (!ai) {
+    try { fs.unlinkSync(audioFile.path); } catch { /* ignore */ }
+    return;
+  }
+
+  const speechPrompt = `Transcribe this church sermon audio in ${accentHint} English. Return plain transcript text only, no timestamps, no speaker labels.`;
+
+  try {
+    const fileStat = fs.statSync(audioFile.path);
+
+    let transcript = "";
+    if (fileStat.size <= SERMON_INLINE_LIMIT) {
+      // Small enough for inline data
+      const fileBuffer = fs.readFileSync(audioFile.path);
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: {
+          parts: [
+            { inlineData: { data: fileBuffer.toString("base64"), mimeType: geminiMimeType } },
+            { text: speechPrompt },
+          ],
+        },
+      });
+      transcript = String(response?.text || "").trim();
+    } else {
+      // Large file: upload via Gemini File API
+      let uploadResult;
+      try {
+        uploadResult = await ai.files.upload({ file: audioFile.path, config: { mimeType: geminiMimeType } });
+        const pollStart = Date.now();
+        let fileState = await ai.files.get({ name: uploadResult.name });
+        while (fileState.state === "PROCESSING") {
+          if (Date.now() - pollStart > 5 * 60 * 1000) throw new Error("Gemini File API processing timed out");
+          await new Promise((r) => setTimeout(r, 2000));
+          fileState = await ai.files.get({ name: uploadResult.name });
+        }
+        if (fileState.state === "FAILED") throw new Error("Gemini File processing failed.");
+        const response = await ai.models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: {
+            parts: [
+              { fileData: { fileUri: uploadResult.uri, mimeType: geminiMimeType } },
+              { text: speechPrompt },
+            ],
+          },
+        });
+        transcript = String(response?.text || "").trim();
+      } finally {
+        if (uploadResult?.name) {
+          ai.files.delete({ name: uploadResult.name }).catch(() => {});
+        }
+      }
+    }
+
+    return res.json({ ok: true, transcript });
+  } catch (error) {
+    const raw = String(error?.message || error);
+    const isQuota = raw.includes("RESOURCE_EXHAUSTED") || raw.includes("quota");
+    return res.status(isQuota ? 429 : 502).json({
+      ok: false,
+      error: isQuota ? "QUOTA_EXCEEDED" : "TRANSCRIBE_FAILED",
+      message: isQuota ? "Gemini quota reached. Please wait a moment and try again." : extractGeminiErrorMessage(error),
+    });
+  } finally {
+    try { fs.unlinkSync(audioFile.path); } catch { /* ignore */ }
+  }
+});
+
+app.post("/api/ai/generate-macro", async (req, res) => {
+  const prompt = String(req.body?.prompt || "").trim();
+  const scheduleItems = Array.isArray(req.body?.scheduleItems) ? req.body.scheduleItems : [];
+  if (!prompt) return res.status(400).json({ ok: false, error: "PROMPT_REQUIRED" });
+  const ai = ensureGoogleAiClient(res);
+  if (!ai) return;
+
+  const scheduleContext = scheduleItems.length > 0
+    ? `\nCurrent run-sheet items: ${scheduleItems.slice(0, 20).map((i, idx) => `${idx + 1}. "${i.title}" (id: ${i.id})`).join(", ")}`
+    : "";
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `You are a church production automation expert. Generate a Lumina macro definition based on the user's description.
+A macro is a sequence of automation actions for a church presentation software.${scheduleContext}
+
+Available action types: next_slide, prev_slide, go_to_item, go_to_slide, clear_output, show_message, hide_message, start_timer, stop_timer, trigger_aether_scene, wait.
+Available trigger types: manual, item_start, slide_enter, timer_end, service_mode_change.
+Available categories: service_flow, worship, sermon, streaming, emergency, stage, output, media, custom.
+
+For go_to_item, set payload.itemId to the matching id from the run-sheet (or "__FIRST_ITEM__" if no specific item).
+For show_message, set payload.text to the message text.
+For wait, set payload.delayMs (number).
+
+User request: "${prompt}"
+
+Return a single JSON object with exactly these fields: name (string), description (string), category, triggerType (one of the trigger types), actions (array of action objects with: type, payload as object, delayMs as number or null, continueOnError as boolean).`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING },
+            description: { type: Type.STRING },
+            category: { type: Type.STRING },
+            triggerType: { type: Type.STRING },
+            actions: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  type: { type: Type.STRING },
+                  payload: { type: Type.OBJECT, properties: {}, additionalProperties: true },
+                  delayMs: { type: Type.NUMBER },
+                  continueOnError: { type: Type.BOOLEAN },
+                },
+                required: ["type", "payload"],
+              },
+            },
+          },
+          required: ["name", "description", "category", "triggerType", "actions"],
+        },
+      },
+    });
+    const parsed = parseAiJson(response);
+    if (!parsed?.name || !Array.isArray(parsed?.actions)) {
+      return res.status(422).json({ ok: false, error: "INVALID_AI_PAYLOAD", message: "AI did not return a valid macro." });
+    }
+    return res.json({ ok: true, data: parsed });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "AI_MACRO_FAILED", message: String(error?.message || error) });
   }
 });
 
@@ -1698,9 +2208,59 @@ app.post("/api/workspaces/:workspaceId/audience/messages", (req, res) => {
       INSERT INTO audience_messages (workspace_id, category, text, submitter_name, status, created_at, updated_at)
       VALUES (?, ?, ?, ?, 'pending', ?, ?)
     `).run(workspaceId, safeCategory, safeText, safeName, createdAt, createdAt);
+    broadcastAudienceMessageEvent(workspaceId, {
+      type: "created",
+      messageId: Number(result.lastInsertRowid || 0),
+      status: "pending",
+    });
     return res.json({ ok: true, id: result.lastInsertRowid, createdAt });
   } catch (error) {
     return res.status(500).json({ ok: false, error: "SUBMIT_FAILED", message: String(error?.message || error) });
+  }
+});
+
+app.get("/api/workspaces/:workspaceId/audience/messages/stream", requireActor, (req, res) => {
+  try {
+    const workspaceId = req.params.workspaceId;
+    const workspace = getWorkspaceRow.get(workspaceId);
+    if (workspace && !canOperateWorkspace(workspace, req.actor)) {
+      return res.status(403).json({ ok: false, error: "FORBIDDEN" });
+    }
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders?.();
+
+    const bucket = getAudienceStreamBucket(workspaceId);
+    bucket.add(res);
+    writeAudienceStreamEvent(res, "ready", {
+      workspaceId,
+      updatedAt: now(),
+    });
+
+    const heartbeatId = setInterval(() => {
+      if (res.writableEnded) return;
+      try {
+        res.write(`: keepalive ${Date.now()}\n\n`);
+      } catch {
+        // best effort
+      }
+    }, 15000);
+
+    const cleanup = () => {
+      clearInterval(heartbeatId);
+      bucket.delete(res);
+      if (!bucket.size) {
+        audienceMessageStreamClients.delete(String(workspaceId || "").trim() || "default-workspace");
+      }
+    };
+
+    req.on("close", cleanup);
+    req.on("end", cleanup);
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "STREAM_FAILED", message: String(error?.message || error) });
   }
 });
 
@@ -1739,6 +2299,11 @@ app.patch("/api/workspaces/:workspaceId/audience/messages/:msgId", requireActor,
     db.prepare("UPDATE audience_messages SET status = ?, updated_at = ? WHERE id = ? AND workspace_id = ?")
       .run(status, updatedAt, msgId, workspaceId);
     const row = db.prepare("SELECT * FROM audience_messages WHERE id = ?").get(msgId);
+    broadcastAudienceMessageEvent(workspaceId, {
+      type: "updated",
+      messageId: msgId,
+      status,
+    });
     return res.json({ ok: true, message: row });
   } catch (error) {
     return res.status(500).json({ ok: false, error: "PATCH_FAILED", message: String(error?.message || error) });
@@ -1755,6 +2320,11 @@ app.delete("/api/workspaces/:workspaceId/audience/messages/:msgId", requireActor
       return res.status(403).json({ ok: false, error: "FORBIDDEN" });
     }
     db.prepare("DELETE FROM audience_messages WHERE id = ? AND workspace_id = ?").run(msgId, workspaceId);
+    broadcastAudienceMessageEvent(workspaceId, {
+      type: "deleted",
+      messageId: msgId,
+      status: "dismissed",
+    });
     return res.json({ ok: true });
   } catch (error) {
     return res.status(500).json({ ok: false, error: "DELETE_FAILED", message: String(error?.message || error) });
@@ -2244,5 +2814,55 @@ app.post("/api/workspaces/:workspaceId/imports/pptx-visual", requireActor, async
     return res.status(500).json({ ok: false, error: "PPTX_IMPORT_FAILED", message: String(error?.message || error) });
   } finally {
     cleanupDir(tempDir);
+  }
+});
+
+// ── Macro Webhook Triggers ─────────────────────────────────────────────────────
+
+/**
+ * POST /api/workspaces/:workspaceId/macro-trigger/:key
+ * Called by external systems (physical buttons, automation) to fire a macro trigger.
+ * If MACRO_WEBHOOK_SECRET env var is set, requires Authorization: Bearer <secret>
+ * or X-Webhook-Secret header matching that value.
+ */
+app.post("/api/workspaces/:workspaceId/macro-trigger/:key", (req, res) => {
+  const secret = process.env.MACRO_WEBHOOK_SECRET;
+  if (secret) {
+    const authHeader = String(req.headers["authorization"] || "");
+    const secretHeader = String(req.headers["x-webhook-secret"] || "");
+    const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (bearerToken !== secret && secretHeader !== secret) {
+      return res.status(401).json({ ok: false, error: "UNAUTHORIZED" });
+    }
+  }
+  const workspaceId = sanitizePathSegment(req.params.workspaceId, "workspace");
+  const key = String(req.params.key || "").trim().replace(/[^a-zA-Z0-9._-]/g, "").slice(0, 120);
+  if (!workspaceId || workspaceId === "workspace" || !key) {
+    return res.status(400).json({ ok: false, error: "INVALID_PARAMS" });
+  }
+  const triggerId = `wh_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  try {
+    insertWebhookTrigger.run({ id: triggerId, workspace_id: workspaceId, key, triggered_at: now() });
+    // Prune triggers older than 5 minutes to keep the table small
+    pruneOldWebhookTriggers.run(now() - 300000);
+    return res.json({ ok: true, triggerId });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "INTERNAL_ERROR", message: String(error?.message || error) });
+  }
+});
+
+/**
+ * GET /api/workspaces/:workspaceId/macro-triggers/pending?since=<timestamp_ms>
+ * Frontend polls this to get triggers fired after the given timestamp.
+ */
+app.get("/api/workspaces/:workspaceId/macro-triggers/pending", (req, res) => {
+  const workspaceId = String(req.params.workspaceId || "").trim();
+  if (!workspaceId) return res.status(400).json({ ok: false, error: "INVALID_PARAMS" });
+  const since = Math.max(0, Number(req.query.since || 0));
+  try {
+    const triggers = listPendingWebhookTriggers.all(workspaceId, since);
+    return res.json({ ok: true, triggers });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: "INTERNAL_ERROR", message: String(error?.message || error) });
   }
 });

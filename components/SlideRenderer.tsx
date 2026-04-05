@@ -2,10 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Slide, ServiceItem, MediaType, AudienceDisplayState, AudienceQrProjectionState } from "../types";
 
 import { getMediaAsset, getCachedMediaAsset } from "../services/localMedia";
-import { DEFAULT_BACKGROUNDS } from "../constants";
 import { ElementRenderer } from "./slide-layout/render/ElementRenderer";
-import { TEXT_CONTRAST_BACKGROUND_OVERLAY } from "./slide-layout/render/backgroundTone";
+import { PROGRAM_MEDIA_PRESENTATION_FILTER, shouldShowScriptureReferenceLabel, shouldUseScriptureReadingPanel, TEXT_CONTRAST_BACKGROUND_OVERLAY } from "./slide-layout/render/backgroundTone";
 import { getRenderableElements } from "./slide-layout/utils/slideHydration";
+import { SlideBrandingOverlay, type SlideBrandingConfig } from "./SlideBrandingOverlay";
 
 interface SlideRendererProps {
   slide: Slide | null;
@@ -32,19 +32,12 @@ interface SlideRendererProps {
   showProjectorHelper?: boolean;
   audienceOverlay?: AudienceDisplayState;
   projectedAudienceQr?: AudienceQrProjectionState;
+  /** Church branding strips shown on left/right edges. Only pass on full-size (non-thumbnail) renders. */
+  branding?: SlideBrandingConfig;
 }
 
 function safeString(v: unknown) {
   return typeof v === "string" ? v : "";
-}
-
-function hashSeed(input: string): number {
-  let h = 0;
-  for (let i = 0; i < input.length; i += 1) {
-    h = (h << 5) - h + input.charCodeAt(i);
-    h |= 0;
-  }
-  return Math.abs(h);
 }
 
 function getYoutubeId(url: string): string | null {
@@ -69,6 +62,13 @@ function looksLikeDirectVideo(url: string): boolean {
 // then CSS-scaled to fill any container. Guarantees preview === output appearance.
 const CANVAS_W = 1920;
 const CANVAS_H = 1080;
+
+type RetainedBackgroundAsset = {
+  url: string;
+  mediaType: MediaType;
+  imageFit: "cover" | "contain";
+  youtubeId: string | null;
+};
 
 /**
  * Returns fixed pixel font size for the internal 1920×1080 canvas.
@@ -129,18 +129,44 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   showProjectorHelper = true,
   audienceOverlay,
   projectedAudienceQr,
+  branding,
 }) => {
   const htmlVideoRef = useRef<HTMLVideoElement>(null);
   const youtubeIframeRef = useRef<HTMLIFrameElement>(null);
+  const lastStableBackgroundRef = useRef<RetainedBackgroundAsset | null>(null);
   const [mediaError, setMediaError] = useState(false);
   const [legacyLocalMediaMissing, setLegacyLocalMediaMissing] = useState(false);
   const [isYoutubeReady, setIsYoutubeReady] = useState(false);
 
   const slideBackgroundUrl = useMemo(() => safeString(slide?.backgroundUrl), [slide?.backgroundUrl]);
   const itemBackgroundUrl = useMemo(() => safeString(item?.theme?.backgroundUrl), [item?.theme?.backgroundUrl]);
+  const projectorSafeItemBackgroundUrl = useMemo(
+    () => (slideBackgroundUrl ? "" : safeString(item?.metadata?.backgroundFallbackUrl)),
+    [slideBackgroundUrl, item?.metadata?.backgroundFallbackUrl],
+  );
+  const effectiveItemMediaType = useMemo(
+    () => (
+      !slideBackgroundUrl
+      && item?.metadata?.backgroundSource === "inherited"
+      && projectorSafeItemBackgroundUrl
+        ? (item?.metadata?.backgroundFallbackMediaType || item?.theme?.mediaType)
+        : item?.theme?.mediaType
+    ),
+    [
+      slideBackgroundUrl,
+      item?.metadata?.backgroundSource,
+      item?.metadata?.backgroundFallbackMediaType,
+      item?.theme?.mediaType,
+      projectorSafeItemBackgroundUrl,
+    ],
+  );
   const rawBgUrl = useMemo(() => {
-    return slideBackgroundUrl || itemBackgroundUrl || "";
-  }, [slideBackgroundUrl, itemBackgroundUrl]);
+    if (slideBackgroundUrl) return slideBackgroundUrl;
+    if (item?.metadata?.backgroundSource === "inherited" && projectorSafeItemBackgroundUrl) {
+      return projectorSafeItemBackgroundUrl;
+    }
+    return itemBackgroundUrl || "";
+  }, [slideBackgroundUrl, item?.metadata?.backgroundSource, projectorSafeItemBackgroundUrl, itemBackgroundUrl]);
 
   const hasBackground = !!rawBgUrl;
 
@@ -247,10 +273,10 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       if (looksLikeDirectVideo(effectiveUrl)) return "video";
       return "image";
     }
-    if (itemBackgroundUrl) {
-      if (item?.theme?.mediaType === "color" || effectiveUrl.startsWith("#")) return "color";
-      if (item?.theme?.mediaType === "video") return "video";
-      if (item?.theme?.mediaType === "image") return "image";
+    if (itemBackgroundUrl || projectorSafeItemBackgroundUrl) {
+      if (effectiveItemMediaType === "color" || effectiveUrl.startsWith("#")) return "color";
+      if (effectiveItemMediaType === "video") return "video";
+      if (effectiveItemMediaType === "image") return "image";
       if (rawBgUrl.startsWith("local://") && resolvedLocalKind === "video") return "video";
       if (rawBgUrl.startsWith("local://") && resolvedLocalKind === "image") return "image";
       if (isYoutube) return "video";
@@ -259,7 +285,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     if (effectiveUrl.startsWith("#")) return "color";
     if (looksLikeDirectVideo(effectiveUrl)) return "video";
     return "image";
-  }, [hasBackground, isYoutube, slide?.mediaType, item?.theme?.mediaType, resolvedUrl, rawBgUrl, slideBackgroundUrl, itemBackgroundUrl, resolvedLocalKind]);
+  }, [hasBackground, isYoutube, slide?.mediaType, effectiveItemMediaType, resolvedUrl, rawBgUrl, slideBackgroundUrl, itemBackgroundUrl, projectorSafeItemBackgroundUrl, resolvedLocalKind]);
 
   const imageFit = useMemo<'cover' | 'contain'>(() => {
     if (slide?.mediaFit === 'contain' || slide?.mediaFit === 'cover') return slide.mediaFit;
@@ -283,6 +309,26 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   useEffect(() => {
     setIsYoutubeReady(false);
   }, [youtubeId, resolvedUrl, slide?.id, item?.id]);
+
+  useEffect(() => {
+    if (!hasBackground || isLoading || mediaError) return;
+    if (mediaType === "color" && rawBgUrl) {
+      lastStableBackgroundRef.current = {
+        url: rawBgUrl,
+        mediaType: "color",
+        imageFit,
+        youtubeId: null,
+      };
+      return;
+    }
+    if (!resolvedUrl) return;
+    lastStableBackgroundRef.current = {
+      url: resolvedUrl,
+      mediaType,
+      imageFit,
+      youtubeId,
+    };
+  }, [hasBackground, isLoading, mediaError, mediaType, rawBgUrl, resolvedUrl, imageFit, youtubeId]);
 
   // HTML5 video control (for non-YouTube)
   useEffect(() => {
@@ -361,11 +407,10 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     }
   }, [hasBackground, isYoutube, isYoutubeReady, isLoading, mediaError, seekCommand, seekAmount, postYoutubeCommand]);
 
-  const fallbackBackground = useMemo(() => {
-    const seed = `${item?.id || "item"}:${slide?.id || "slide"}`;
-    return DEFAULT_BACKGROUNDS[hashSeed(seed) % DEFAULT_BACKGROUNDS.length];
-  }, [item?.id, slide?.id]);
   const hasStructuredElements = Array.isArray(slide?.elements) && slide.elements.length > 0;
+  // Guardrail: data-URI backgrounds (SVG split-panel, gradient SVG) always load — never
+  // trigger the retained-background fallback for structured-element slides.
+  const isDataUriBg = rawBgUrl.startsWith('data:');
   const structuredElements = useMemo(
     () => (hasStructuredElements && slide ? getRenderableElements(slide, item) : []),
     [hasStructuredElements, slide, item]
@@ -386,54 +431,179 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     (element) => element.type === "text" && element.visible !== false && safeString(element.content).trim().length > 0
   );
   const hasTextOverlay = hasStructuredElements ? hasRenderableStructuredText : hasReadableText;
+  const usesScriptureReadingPanel = shouldUseScriptureReadingPanel({
+    itemType: item.type,
+    layoutType: slide.layoutType,
+    hasStructuredElements,
+    hasReadableText,
+    hasBackground,
+    mediaType,
+  });
+  const usesMediaTextProtection = !hasStructuredElements && hasReadableText && hasBackground && mediaType !== "color";
+  const textStrokeWidth = usesScriptureReadingPanel ? 1.8 : usesMediaTextProtection && item.theme?.shadow ? 0.9 : 0;
 
   const textLayerStyle: React.CSSProperties = {
     fontFamily: item.theme?.fontFamily || "system-ui, sans-serif",
     color: item.theme?.textColor || "#fff",
-    textShadow: item.theme?.shadow ? "0 4px 16px rgba(0,0,0,0.78), 0 0 18px rgba(255,255,255,0.10)" : "none",
+    textShadow: usesScriptureReadingPanel
+      ? "0 8px 32px rgba(0,0,0,0.94), 0 3px 10px rgba(0,0,0,0.88), 0 0 18px rgba(255,255,255,0.08)"
+      : item.theme?.shadow
+        ? "0 4px 16px rgba(0,0,0,0.82), 0 0 18px rgba(255,255,255,0.10)"
+        : usesMediaTextProtection
+          ? "0 4px 12px rgba(0,0,0,0.9)"
+          : "none",
+    WebkitTextStroke: textStrokeWidth ? `${textStrokeWidth}px rgba(0,0,0,0.62)` : undefined,
+    paintOrder: textStrokeWidth ? "stroke fill" : undefined,
+  };
+
+  const renderRetainedBackground = (message?: string, loading = false) => {
+    const retained = lastStableBackgroundRef.current;
+    const retainedMediaStyle = !isThumbnail && retained?.mediaType !== "color"
+      ? { filter: PROGRAM_MEDIA_PRESENTATION_FILTER }
+      : undefined;
+    const overlay = !isThumbnail && message ? (
+      <div className="absolute top-3 right-3 text-[9px] uppercase tracking-wider bg-black/60 text-amber-100 border border-amber-300/30 px-2 py-1 rounded">
+        {message}
+      </div>
+    ) : null;
+
+    if (!retained) {
+      return (
+        <div className="w-full h-full relative bg-black">
+          {loading && !isThumbnail && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/35">
+              <div className="w-8 h-8 border-2 border-zinc-800 border-t-zinc-300 rounded-full animate-spin" />
+            </div>
+          )}
+          {overlay}
+        </div>
+      );
+    }
+
+    let content: React.ReactNode;
+    if (retained.mediaType === "color") {
+      content = <div className="w-full h-full" style={{ backgroundColor: retained.url }} />;
+    } else if (retained.mediaType === "video" && retained.youtubeId) {
+      const origin = getBestOrigin();
+      const params = new URLSearchParams({
+        autoplay: "1",
+        controls: "0",
+        modestbranding: "1",
+        rel: "0",
+        playsinline: "1",
+        iv_load_policy: "3",
+        loop: "1",
+        playlist: retained.youtubeId,
+        enablejsapi: "1",
+        mute: "1",
+      });
+      if (origin) params.set("origin", origin);
+      content = (
+        <iframe
+          className="w-full h-full"
+          src={`https://www.youtube-nocookie.com/embed/${retained.youtubeId}?${params.toString()}`}
+          title="Retained YouTube background"
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          referrerPolicy="no-referrer-when-downgrade"
+        />
+      );
+    } else if (retained.mediaType === "video") {
+      content = (
+        <video
+          src={retained.url}
+          className="w-full h-full object-cover"
+          loop
+          muted
+          playsInline
+          autoPlay
+          preload="auto"
+        />
+      );
+    } else if (retained.imageFit === "contain") {
+      content = (
+        <div className="w-full h-full relative overflow-hidden bg-black">
+          <div
+            className="absolute inset-0 bg-center bg-cover scale-110 blur-2xl opacity-90"
+            style={{ backgroundImage: `url(${retained.url})` }}
+          />
+          <div className="absolute inset-0 bg-black/20" />
+          <div className="relative z-10 w-full h-full flex items-center justify-center">
+            <img
+              src={retained.url}
+              alt=""
+              className="w-full h-full object-contain"
+              draggable={false}
+            />
+          </div>
+        </div>
+      );
+    } else {
+      content = (
+        <img
+          src={retained.url}
+          alt=""
+          className="w-full h-full object-cover"
+          draggable={false}
+        />
+      );
+    }
+
+    return (
+      <div className="w-full h-full relative">
+        {retainedMediaStyle ? (
+          <div className="w-full h-full" style={retainedMediaStyle}>
+            {content}
+          </div>
+        ) : content}
+        {loading && !isThumbnail && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/35">
+            <div className="w-8 h-8 border-2 border-zinc-800 border-t-zinc-300 rounded-full animate-spin" />
+          </div>
+        )}
+        {overlay}
+      </div>
+    );
   };
 
   const renderMedia = () => {
-    // ✅ MVP rule: if there is no background configured, just render black (no “asset missing” behind text)
     if (!hasBackground) {
       return <div className="w-full h-full bg-black" />;
     }
 
-    if (mediaError) {
+    // Data URIs (SVG split-panel, gradient SVG) are always immediately available in memory.
+    // Bypass resolvedUrl state, loading states, and error fallback completely — use rawBgUrl directly.
+    // If the data URI itself fails (malformed SVG), fall through to the mediaError retained-background path.
+    if (isDataUriBg && !mediaError) {
       return (
-        <div className="w-full h-full relative">
-          <img src={fallbackBackground} alt="" className="w-full h-full object-cover" />
-          {!isThumbnail && (
-            <div className="absolute top-3 right-3 text-[9px] uppercase tracking-wider bg-black/50 text-amber-200 border border-amber-400/40 px-2 py-1 rounded">
-              {legacyLocalMediaMissing
-                ? "Legacy local VIS media missing — re-import PPTX VIS"
-                : "Fallback Background"}
-            </div>
-          )}
-        </div>
+        <img
+          src={rawBgUrl}
+          alt=""
+          className="w-full h-full object-cover"
+          draggable={false}
+          onError={handleMediaError}
+        />
+      );
+    }
+
+    if (mediaError) {
+      return renderRetainedBackground(
+        legacyLocalMediaMissing
+          ? "Background missing - keeping last live visual"
+          : "Background unavailable - keeping last live visual",
       );
     }
 
     if (isLoading && !isThumbnail) {
-      return (
-        <div className="w-full h-full relative">
-          <img src={fallbackBackground} alt="" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 flex items-center justify-center bg-black/35">
-            <div className="w-8 h-8 border-2 border-zinc-800 border-t-zinc-300 rounded-full animate-spin" />
-          </div>
-        </div>
-      );
+      return renderRetainedBackground("Loading background...", true);
     }
 
-    // Solid color background
     if (mediaType === "color" && resolvedUrl) {
       return <div className="w-full h-full" style={{ backgroundColor: resolvedUrl }} />;
     }
 
-    // YouTube embed (MVP: best-effort + projector-safe)
     if (mediaType === "video" && isYoutube && youtubeId) {
       const origin = getBestOrigin();
-
       const params = new URLSearchParams({
         autoplay: isThumbnail ? "0" : "1",
         controls: "0",
@@ -444,17 +614,13 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
         loop: "1",
         playlist: youtubeId,
         enablejsapi: "1",
-        // ✅ Force mute in projector to satisfy autoplay policies and reduce failures
         mute: isThumbnail || isMuted ? "1" : "0",
       });
-
-      // Adding origin helps some browsers/contexts (especially popouts) avoid “player configuration error”.
       if (origin) params.set("origin", origin);
-
       const src = `https://www.youtube-nocookie.com/embed/${youtubeId}?${params.toString()}`;
 
       return (
-        <div className="w-full h-full">
+        <div className="w-full h-full" style={!isThumbnail ? { filter: PROGRAM_MEDIA_PRESENTATION_FILTER } : undefined}>
           <iframe
             ref={youtubeIframeRef}
             className="w-full h-full"
@@ -474,7 +640,6 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
             }}
             onError={handleMediaError}
           />
-          {/* MVP helper (only in projector) */}
           {isProjector && showProjectorHelper && !isThumbnail && (
             <div className="absolute bottom-6 left-0 right-0 flex justify-center pointer-events-none">
               <div className="bg-black/55 text-white/90 text-xs px-3 py-2 rounded-md">
@@ -486,7 +651,6 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       );
     }
 
-    // HTML5 video (local/blob/mp4)
     if (mediaType === "video" && resolvedUrl) {
       return (
         <video
@@ -495,6 +659,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
           ref={htmlVideoRef}
           src={resolvedUrl}
           className="w-full h-full object-cover"
+          style={!isThumbnail ? { filter: PROGRAM_MEDIA_PRESENTATION_FILTER } : undefined}
           loop
           muted={isThumbnail || isMuted}
           playsInline
@@ -504,11 +669,13 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       );
     }
 
-    // Image (never crop)
     if (resolvedUrl) {
       if (imageFit === "contain") {
         return (
-          <div className="w-full h-full relative overflow-hidden bg-black">
+          <div
+            className="w-full h-full relative overflow-hidden bg-black"
+            style={!isThumbnail ? { filter: PROGRAM_MEDIA_PRESENTATION_FILTER } : undefined}
+          >
             <div
               data-testid="slide-renderer-image-backdrop"
               className="absolute inset-0 bg-center bg-cover scale-110 blur-2xl opacity-90"
@@ -516,15 +683,15 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
             />
             <div className="absolute inset-0 bg-black/20" />
             <div className="relative z-10 w-full h-full flex items-center justify-center">
-            <img
-              data-testid="slide-renderer-image"
-              data-media-fit="contain"
-              src={resolvedUrl}
-              alt=""
-              className="w-full h-full object-contain"
-              draggable={false}
-              onError={handleMediaError}
-            />
+              <img
+                data-testid="slide-renderer-image"
+                data-media-fit="contain"
+                src={resolvedUrl}
+                alt=""
+                className="w-full h-full object-contain"
+                draggable={false}
+                onError={handleMediaError}
+              />
             </div>
           </div>
         );
@@ -536,13 +703,14 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
           src={resolvedUrl}
           alt=""
           className="w-full h-full object-cover"
+          style={!isThumbnail ? { filter: PROGRAM_MEDIA_PRESENTATION_FILTER } : undefined}
           draggable={false}
           onError={handleMediaError}
         />
       );
     }
 
-    return <img src={fallbackBackground} alt="" className="w-full h-full object-cover" />;
+    return renderRetainedBackground("Background unavailable - keeping last live visual");
   };
 
   // ── Scale-canvas rendering ─────────────────────────────────────────────────
@@ -564,6 +732,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
         hasTextOverlay={hasTextOverlay}
         textPx={textPx}
         textLayerStyle={textLayerStyle}
+        useReadingPanel={usesScriptureReadingPanel}
         lowerThirds={false}
         showSlideLabel={false}
         renderMedia={renderMedia}
@@ -587,6 +756,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       hasTextOverlay={hasTextOverlay}
       textPx={textPx}
       textLayerStyle={textLayerStyle}
+      useReadingPanel={usesScriptureReadingPanel}
       lowerThirds={lowerThirds}
       showSlideLabel={showSlideLabel}
       renderMedia={renderMedia}
@@ -596,6 +766,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       isLoading={isLoading}
       audienceOverlay={audienceOverlay}
       projectedAudienceQr={projectedAudienceQr}
+      branding={branding}
     />
   );
 };
@@ -613,6 +784,7 @@ interface ScaledCanvasProps {
   hasTextOverlay: boolean;
   textPx: number;
   textLayerStyle: React.CSSProperties;
+  useReadingPanel: boolean;
   lowerThirds: boolean;
   showSlideLabel: boolean;
   renderMedia: () => React.ReactNode;
@@ -622,12 +794,13 @@ interface ScaledCanvasProps {
   isLoading: boolean;
   audienceOverlay?: AudienceDisplayState;
   projectedAudienceQr?: AudienceQrProjectionState;
+  branding?: SlideBrandingConfig;
 }
 
 const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
-  fitContainer, slide, item, contentText, hasReadableText, hasStructuredElements, structuredElements, hasTextOverlay, textPx, textLayerStyle,
+  fitContainer, slide, item, contentText, hasReadableText, hasStructuredElements, structuredElements, hasTextOverlay, textPx, textLayerStyle, useReadingPanel,
   lowerThirds, showSlideLabel, renderMedia, mediaType, hasBackground, mediaError, isLoading,
-  audienceOverlay, projectedAudienceQr,
+  audienceOverlay, projectedAudienceQr, branding,
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -635,21 +808,49 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
-    const update = () => {
-      const { width, height } = el.getBoundingClientRect();
-      const sx = width / CANVAS_W;
-      const sy = height / CANVAS_H;
-      setScale(Math.min(sx, sy));
-    };
-    update();
-    const ro = new ResizeObserver(update);
+
+    // Initial measurement — read once synchronously before observer fires
+    const initRect = el.getBoundingClientRect();
+    if (initRect.width > 0 && initRect.height > 0) {
+      setScale(Math.min(initRect.width / CANVAS_W, initRect.height / CANVAS_H));
+    }
+
+    let rafId: number | null = null;
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      // Use contentRect provided by the observer — avoids forced synchronous
+      // layout (getBoundingClientRect inside an observer callback) which can
+      // create a repaint→observe→repaint loop that makes the canvas shake.
+      const { width, height } = entry.contentRect;
+      // Debounce via rAF so rapid consecutive observations don't cause
+      // oscillating scale state (the primary source of PPTX + split-panel shake).
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        if (width > 0 && height > 0) {
+          setScale(Math.min(width / CANVAS_W, height / CANVAS_H));
+        }
+      });
+    });
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   const labelPx = Math.round(CANVAS_H * 0.026);   // ~28px at 1080p
   const labelPadH = Math.round(CANVAS_H * 0.014);
   const labelPadV = Math.round(CANVAS_H * 0.009);
+  const shouldRenderReferenceLabel = !!slide.label
+    && !lowerThirds
+    && slide.layoutType !== 'ticker'
+    && shouldShowScriptureReferenceLabel({
+      itemType: item?.type,
+      layoutType: slide.layoutType,
+      showSlideLabel,
+    });
   const projectedQrScale = projectedAudienceQr?.scale && Number.isFinite(projectedAudienceQr.scale)
     ? Math.max(0.7, Math.min(2.2, projectedAudienceQr.scale))
     : 1;
@@ -658,6 +859,19 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
   const projectedQrTitlePx = Math.max(20, Math.min(42, Math.round(28 * projectedQrScale)));
   const projectedQrBodyPx = Math.max(12, Math.min(26, Math.round(18 * projectedQrScale)));
   const projectedQrPadding = Math.max(12, Math.min(24, Math.round(18 * projectedQrScale)));
+  const tickerQueue = audienceOverlay?.tickerEnabled && Array.isArray(audienceOverlay.queue) ? audienceOverlay.queue : [];
+  const tickerLoopItems = tickerQueue.length ? [...tickerQueue, ...tickerQueue] : [];
+  const tickerCharacterCount = tickerQueue.reduce((sum, entry) => (
+    sum
+    + String(entry.submitter_name || 'AUDIENCE').length
+    + String(entry.text || '').length
+  ), 0);
+  const tickerDuration = Math.max(22, Math.min(90, tickerCharacterCount * 0.2));
+  const tickerBandHeight = Math.round(CANVAS_H * 0.072);
+  const tickerLabelWidth = Math.round(CANVAS_W * 0.14);
+  const tickerItemGap = Math.round(CANVAS_W * 0.028);
+  const tickerTextPx = Math.round(CANVAS_H * 0.024);
+  const tickerNamePx = Math.round(CANVAS_H * 0.019);
 
   return (
     <div
@@ -684,6 +898,9 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
         {hasTextOverlay && hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
           <div style={{ position: "absolute", inset: 0, background: TEXT_CONTRAST_BACKGROUND_OVERLAY }} />
         )}
+
+        {/* Branding strips — left series label + right church name */}
+        {branding && <SlideBrandingOverlay config={branding} />}
 
         {/* Text layer */}
         <div
@@ -772,27 +989,56 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
                     justifyContent: "center",
                   }}
                 >
-                  <div
-                    style={{
-                      width: "100%",
-                      maxWidth: "92%",
-                      fontSize: textPx,
-                      lineHeight: 1.35,
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
-                      textAlign: "center",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {contentText}
-                  </div>
+                  {useReadingPanel ? (
+                    <div
+                      style={{
+                        width: "100%",
+                        maxWidth: slide.layoutType === "scripture_ref" ? "88%" : "84%",
+                        padding: `${CANVAS_H * 0.035}px ${CANVAS_W * 0.03}px`,
+                        borderRadius: 30,
+                        background: "linear-gradient(180deg, rgba(8,12,20,0.56) 0%, rgba(8,12,20,0.40) 100%)",
+                        border: "1px solid rgba(255,255,255,0.14)",
+                        backdropFilter: "blur(14px)",
+                        boxShadow: "0 24px 80px rgba(0,0,0,0.40)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "100%",
+                          fontSize: textPx,
+                          lineHeight: 1.33,
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                          textAlign: "center",
+                          overflow: "hidden",
+                        }}
+                      >
+                        {contentText}
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        width: "100%",
+                        maxWidth: "92%",
+                        fontSize: textPx,
+                        lineHeight: 1.35,
+                        whiteSpace: "pre-wrap",
+                        wordBreak: "break-word",
+                        textAlign: "center",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {contentText}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
 
           {/* Scripture / slide reference label */}
-          {showSlideLabel && slide.label && !lowerThirds && slide.layoutType !== 'ticker' && (
+          {shouldRenderReferenceLabel && (
             slide.layoutType === 'scripture_ref' ? (
               /* ── Scripture + Reference: prominent centered bottom label ── */
               <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: CANVAS_H * 0.18, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0) 100%)" }}>
@@ -879,39 +1125,71 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
             )}
 
             {/* Scrolling Ticker */}
-            {audienceOverlay.tickerEnabled && audienceOverlay.queue.length > 0 && (
+            {tickerQueue.length > 0 && (
               <div style={{
                 position: "absolute",
                 bottom: 0,
                 left: 0,
                 right: 0,
-                height: 64,
-                background: "rgba(0,0,0,0.85)",
-                borderTop: "1px solid rgba(255,255,255,0.1)",
-                backdropFilter: "blur(20px)",
-                display: "flex",
-                alignItems: "center",
-                overflow: "hidden"
+                height: tickerBandHeight,
+                background: "linear-gradient(180deg, rgba(4,10,18,0.78), rgba(2,6,14,0.94))",
+                borderTop: "1px solid rgba(148,163,184,0.15)",
+                backdropFilter: "blur(18px)",
+                display: "grid",
+                gridTemplateColumns: `${tickerLabelWidth}px minmax(0, 1fr)`,
+                alignItems: "stretch",
+                overflow: "hidden",
+                boxShadow: "0 -10px 30px rgba(0,0,0,0.25)"
               }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  background: "linear-gradient(90deg, rgba(30,64,175,0.22), rgba(3,7,18,0.1))",
+                  borderRight: "1px solid rgba(96,165,250,0.2)",
+                  position: "relative",
+                  zIndex: 2,
+                }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#38bdf8", boxShadow: "0 0 16px rgba(56,189,248,0.45)" }} />
+                  <span style={{ color: "#dbeafe", fontWeight: 900, fontSize: tickerNamePx, letterSpacing: "0.18em", textTransform: "uppercase" }}>
+                    Audience Feed
+                  </span>
+                </div>
+                <div style={{ position: "relative", overflow: "hidden" }}>
+                  <div style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "linear-gradient(90deg, rgba(2,6,23,0.98) 0%, rgba(2,6,23,0.0) 8%, rgba(2,6,23,0.0) 92%, rgba(2,6,23,0.98) 100%)",
+                    pointerEvents: "none",
+                    zIndex: 2,
+                  }} />
                 <div
-                  key={`ticker-${audienceOverlay.queue.map((entry) => entry.id).join('-')}-${audienceOverlay.queue.length}`}
-                  className="flex whitespace-nowrap items-center gap-12"
+                  key={`ticker-${tickerQueue.map((entry) => entry.id).join('-')}-${tickerQueue.length}`}
+                  className="flex whitespace-nowrap items-center"
                   style={{
                     width: "max-content",
-                    transform: `translateX(${CANVAS_W}px)`,
-                    animation: `luminaTickerRtl ${Math.max(15, audienceOverlay.queue.length * 8)}s linear infinite`
+                    minWidth: "200%",
+                    height: "100%",
+                    gap: tickerItemGap,
+                    padding: `0 ${tickerItemGap}px`,
+                    willChange: "transform",
+                    transform: "translate3d(0,0,0)",
+                    animation: `luminaTickerLoop ${tickerDuration}s linear infinite`,
+                    WebkitFontSmoothing: "antialiased",
+                    textRendering: "geometricPrecision",
                   }}
                 >
-                  {/* Double the queue for seamless loop */}
-                  {audienceOverlay.queue.map((m, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <span style={{ color: "#3b82f6", fontWeight: 900, fontSize: 14 }}>•</span>
-                      <span style={{ color: "white", fontSize: 24, fontWeight: 600 }}>
-                        <span style={{ color: "#93c5fd", marginRight: 8 }}>{m.submitter_name || "AUDIENCE"}:</span>
+                  {tickerLoopItems.map((m, i) => (
+                    <div key={`${m.id || 'msg'}-${i}`} style={{ display: "flex", alignItems: "center", gap: 14, flex: "0 0 auto" }}>
+                      <span style={{ color: "#3b82f6", fontWeight: 900, fontSize: tickerNamePx }}>&bull;</span>
+                      <span style={{ color: "white", fontSize: tickerTextPx, fontWeight: 650, letterSpacing: "0.01em" }}>
+                        <span style={{ color: "#93c5fd", marginRight: 8, fontWeight: 900, letterSpacing: "0.08em", textTransform: "uppercase" }}>{m.submitter_name || "Audience"}</span>
                         {m.text}
                       </span>
                     </div>
                   ))}
+                </div>
                 </div>
               </div>
             )}
@@ -975,9 +1253,9 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
       </div>
 
       <style>{`
-        @keyframes luminaTickerRtl {
-          0% { transform: translateX(${CANVAS_W}px); }
-          100% { transform: translateX(-100%); }
+        @keyframes luminaTickerLoop {
+          0% { transform: translate3d(0, 0, 0); }
+          100% { transform: translate3d(-50%, 0, 0); }
         }
       `}</style>
     </div>

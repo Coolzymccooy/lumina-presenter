@@ -23,6 +23,6 @@ services:
       - key: LUMINA_VIS_RASTER_ENGINE
         value: auto
       - key: LUMINA_KEEP_ALIVE_URL
-        value: https://lumina-presenter-api.onrender.com
+        value: https://api.luminalive.co.uk
       - key: GOOGLE_AI_API_KEY
         sync: false

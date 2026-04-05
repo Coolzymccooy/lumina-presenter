@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     AudienceMessage,
     fetchAudienceMessages,
     updateAudienceMessageStatus,
     deleteAudienceMessage,
+    subscribeAudienceMessagesStream,
 } from '../services/serverApi';
 import {
     AudienceCategory,
@@ -76,6 +77,8 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
     const [broadcastDraft, setBroadcastDraft] = useState('');
     const [broadcastCategory, setBroadcastCategory] = useState<AudienceCategory>('welcome');
     const [broadcastHistory, setBroadcastHistory] = useState<AudienceMessage[]>([]);
+    const refreshInFlightRef = useRef(false);
+    const refreshQueuedRef = useRef(false);
     const stageTemplates: Record<StageMessageCategory, Array<{ key: string; label: string }>> = {
         urgent: [
             { key: 'wrap_up_now', label: 'Wrap up now' },
@@ -94,9 +97,17 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
         ],
     };
 
-    const loadMessages = useCallback(async () => {
+    const loadMessages = useCallback(async (options?: { silent?: boolean }) => {
         if (!user) return;
-        setLoading(true);
+        const silent = options?.silent === true;
+        if (refreshInFlightRef.current) {
+            refreshQueuedRef.current = true;
+            return;
+        }
+        refreshInFlightRef.current = true;
+        if (!silent) {
+            setLoading(true);
+        }
         try {
             const statusFilter = filter === 'all' ? undefined : filter;
             const res = await fetchAudienceMessages(workspaceId, user, statusFilter);
@@ -107,14 +118,71 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
         } catch (err) {
             console.error('Failed to load audience messages', err);
         } finally {
-            setLoading(false);
+            refreshInFlightRef.current = false;
+            if (!silent) {
+                setLoading(false);
+            }
+            if (refreshQueuedRef.current) {
+                refreshQueuedRef.current = false;
+                window.setTimeout(() => {
+                    void loadMessages({ silent: true });
+                }, 0);
+            }
         }
     }, [workspaceId, user, filter]);
 
     useEffect(() => {
-        loadMessages();
-        const interval = setInterval(loadMessages, 5000);
-        return () => clearInterval(interval);
+        void loadMessages();
+    }, [loadMessages]);
+
+    useEffect(() => {
+        if (!user) return;
+
+        let disposed = false;
+        let unsubscribe: null | (() => void) = null;
+        const refreshQuietly = () => {
+            if (disposed) return;
+            void loadMessages({ silent: true });
+        };
+
+        void (async () => {
+            const nextUnsubscribe = await subscribeAudienceMessagesStream(workspaceId, user, {
+                onEvent: () => {
+                    refreshQuietly();
+                },
+                onError: (error) => {
+                    console.warn('Audience message stream dropped; falling back to reconnect.', error);
+                },
+            });
+            if (disposed) {
+                nextUnsubscribe();
+                return;
+            }
+            unsubscribe = nextUnsubscribe;
+        })();
+
+        const interval = window.setInterval(() => {
+            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+            refreshQuietly();
+        }, 10000);
+
+        const handleWindowFocus = () => refreshQuietly();
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                refreshQuietly();
+            }
+        };
+
+        window.addEventListener('focus', handleWindowFocus);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            disposed = true;
+            window.clearInterval(interval);
+            window.removeEventListener('focus', handleWindowFocus);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            unsubscribe?.();
+        };
     }, [loadMessages]);
 
     const activeStageMessage = stageMessageCenter?.queue?.find((entry) => entry.id === stageMessageCenter?.activeMessageId) || null;
@@ -303,7 +371,9 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
                         LAST UPDATE: {new Date(lastRefresh).toLocaleTimeString()}
                     </div>
                     <button
-                        onClick={loadMessages}
+                        onClick={() => {
+                            void loadMessages();
+                        }}
                         className="p-1.5 hover:bg-zinc-800 rounded-md transition-colors text-zinc-500 hover:text-white"
                     >
                         <RefreshIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />

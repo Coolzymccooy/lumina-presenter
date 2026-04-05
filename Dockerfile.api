@@ -27,6 +27,7 @@ RUN apt-get update \
     poppler-utils \
     fontconfig \
     ca-certificates \
+    curl \
   && fc-cache -f -v \
   && rm -rf /var/lib/apt/lists/*
 

@@ -1,4 +1,6 @@
 import type { GeneratedSlideData } from "../types";
+import type { MacroDefinition, MacroActionType, MacroCategory, MacroTriggerType } from "../types/macros";
+import { nanoid } from "nanoid";
 import { getServerApiBaseCandidates, getServerApiBaseUrl } from "./serverApi";
 import { getCachedSemanticReference, normalizeBibleReference, setCachedSemanticReference } from "./bibleLookup";
 
@@ -10,7 +12,7 @@ type AiJson = {
   [key: string]: any;
 };
 
-const postAi = async (path: string, payload: Record<string, unknown>, timeoutMs = 45000): Promise<AiJson | null> => {
+export const postAi = async (path: string, payload: Record<string, unknown>, timeoutMs = 45000): Promise<AiJson | null> => {
   const apiBases = getServerApiBaseCandidates();
   if (!apiBases.length) {
     return {
@@ -190,13 +192,16 @@ export const transcribeSermonChunk = async (
   const message = String(response?.message || 'Cloud transcription request failed.').trim() || 'Cloud transcription request failed.';
   const retryAfterMs = Number(response?.retryAfterMs || 0);
 
-  if (errorCode === 'TRANSCRIBE_COOLDOWN') {
+  if (errorCode === 'TRANSCRIBE_COOLDOWN' || errorCode === 'QUOTA_EXCEEDED' || errorCode === 'HTTP_429') {
+    const cooldownMs = errorCode === 'QUOTA_EXCEEDED' || errorCode === 'HTTP_429'
+      ? 30000
+      : Number.isFinite(retryAfterMs) ? Math.max(0, retryAfterMs) : 0;
     return {
       ok: false,
       mode: 'cooldown',
-      retryAfterMs: Number.isFinite(retryAfterMs) ? Math.max(0, retryAfterMs) : 0,
+      retryAfterMs: cooldownMs,
       error: errorCode,
-      message,
+      message: errorCode === 'QUOTA_EXCEEDED' ? 'Gemini quota reached. Pausing 30s before retry.' : message,
     };
   }
 
@@ -215,6 +220,32 @@ export const transcribeSermonChunk = async (
     error: errorCode,
     message,
   };
+};
+
+export const transcribeSermonAudio = async (
+  audioBlob: Blob,
+  mimeType: string,
+  locale: 'en-GB' | 'en-US'
+): Promise<{ ok: true; transcript: string } | { ok: false; error: string }> => {
+  const apiBase = getServerApiBaseUrl();
+  const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('wav') ? 'wav' : 'webm';
+  const form = new FormData();
+  form.append('audio', audioBlob, `sermon.${ext}`);
+  form.append('mimeType', mimeType);
+  form.append('locale', locale);
+  try {
+    const res = await fetch(`${apiBase}/api/ai/transcribe-sermon-audio`, {
+      method: 'POST',
+      body: form,
+    });
+    const data = await res.json() as { ok: boolean; transcript?: string; message?: string; error?: string };
+    if (data.ok && typeof data.transcript === 'string') {
+      return { ok: true, transcript: data.transcript };
+    }
+    return { ok: false, error: data.message || data.error || 'Transcription failed.' };
+  } catch (err: unknown) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Transcription request failed.' };
+  }
 };
 
 export const semanticBibleSearch = async (query: string): Promise<string> => {
@@ -250,6 +281,64 @@ export const suggestVisualTheme = async (contextText: string): Promise<string> =
   const response = await postAi("/api/ai/suggest-visual-theme", { contextText }, 20000);
   if (!response?.ok) return "abstract";
   return String(response.keyword || "").trim() || "abstract";
+};
+
+const VALID_ACTION_TYPES = new Set<MacroActionType>([
+  'next_slide','prev_slide','go_to_item','go_to_slide','clear_output',
+  'show_message','hide_message','start_timer','stop_timer','trigger_aether_scene','wait',
+]);
+
+const VALID_TRIGGER_TYPES = new Set<MacroTriggerType>([
+  'manual','item_start','slide_enter','timer_end','service_mode_change','webhook',
+]);
+
+const VALID_CATEGORIES = new Set<MacroCategory>([
+  'service_flow','worship','sermon','streaming','emergency','stage','output','media','custom',
+]);
+
+export const generateMacroDefinition = async (
+  prompt: string,
+  scheduleItems: Array<{ id: string; title: string }>,
+): Promise<MacroDefinition> => {
+  const response = await postAi('/api/ai/generate-macro', { prompt, scheduleItems }, 30000);
+  if (!response?.ok) {
+    throw new Error(String(response?.message || response?.error || 'AI macro generation failed.'));
+  }
+  const d = response.data as Record<string, unknown>;
+  if (!d?.name || !Array.isArray(d?.actions)) {
+    throw new Error('AI returned an incomplete macro definition.');
+  }
+  const now = new Date().toISOString();
+  const triggerType = VALID_TRIGGER_TYPES.has(d.triggerType as MacroTriggerType)
+    ? (d.triggerType as MacroTriggerType)
+    : 'manual';
+  const category = VALID_CATEGORIES.has(d.category as MacroCategory)
+    ? (d.category as MacroCategory)
+    : 'custom';
+  const actions = (d.actions as Record<string, unknown>[])
+    .filter(a => VALID_ACTION_TYPES.has(a.type as MacroActionType))
+    .map(a => ({
+      id: nanoid(),
+      type: a.type as MacroActionType,
+      payload: (a.payload && typeof a.payload === 'object' ? a.payload : {}) as Record<string, unknown>,
+      delayMs: typeof a.delayMs === 'number' ? a.delayMs : undefined,
+      continueOnError: a.continueOnError === true,
+    }));
+  return {
+    id: nanoid(),
+    name: String(d.name).trim(),
+    description: String(d.description || '').trim() || undefined,
+    category,
+    scope: 'workspace',
+    triggers: [{ type: triggerType }],
+    actions,
+    tags: [],
+    isEnabled: true,
+    requiresConfirmation: false,
+    isTemplate: false,
+    createdAt: now,
+    updatedAt: now,
+  };
 };
 
 export interface SermonAnalysisResult {
@@ -312,4 +401,30 @@ export const analyzeSermonAndGenerateDeck = async (sermonText: string): Promise<
       : fallback.keyPoints,
     slides,
   };
+};
+
+// ─── AI Assist Query ──────────────────────────────────────────────────────────
+
+export type AIAssistSectionType = 'verse' | 'chorus' | 'bridge' | 'intro' | 'outro' | 'point' | 'body' | 'heading';
+
+export interface AIAssistSection {
+  label: string;
+  type: AIAssistSectionType;
+  text: string;
+}
+
+export interface AIAssistResult {
+  title: string;
+  intent: 'lyrics' | 'sermon' | 'announcement' | 'prayer' | 'unknown';
+  source: 'ai';
+  sections: AIAssistSection[];
+  rawText: string;
+  confidence: number;
+  requiresManualInput?: boolean;
+}
+
+export const assistQueryWithAI = async (query: string, mode: string): Promise<AIAssistResult | null> => {
+  const response = await postAi('/api/ai/assist-query', { query, mode }, 45000);
+  if (!response?.ok || !response?.data) return null;
+  return response.data as AIAssistResult;
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
-import { INITIAL_SCHEDULE, MOCK_SONGS, DEFAULT_BACKGROUNDS, GOSPEL_TRACKS, GospelTrack } from './constants';
+import { INITIAL_SCHEDULE, MOCK_SONGS, DEFAULT_BACKGROUNDS, VIDEO_BACKGROUNDS, GOSPEL_TRACKS, GospelTrack } from './constants';
 import {
   ServiceItem,
   Slide,
@@ -19,6 +19,7 @@ import {
   StageMessageCenterState,
   SpeakerTimerPreset,
   StageFlowLayout,
+  ServiceItemBackgroundSource,
 } from './types';
 import { SlideRenderer } from './components/SlideRenderer';
 import { AIModal } from './components/AIModal';
@@ -36,14 +37,24 @@ import { WelcomeAnimation } from './components/WelcomeAnimation';
 import { AudienceSubmit } from './components/AudienceSubmit'; // NEW
 import { AudienceStudio } from './components/AudienceStudio'; // NEW
 import { ConnectModal } from './components/ConnectModal'; // NEW
+import { DisplaySetupModal, type DesktopDisplayCard } from './components/DisplaySetupModal';
 import { HymnLibrary } from './components/HymnLibrary';
 import { StageDisplay } from './components/StageDisplay';
 import { RemoteControl } from './components/RemoteControl';
 import { SmartSlideEditor } from './components/slide-layout/editor/SmartSlideEditor';
+import { ContextMenu, type ContextMenuAction } from './components/presenter/ContextMenu';
+import { HoldScreen } from './components/presenter/HoldScreen';
+import { LibraryTray } from './components/presenter/LibraryTray';
+import { LivePane } from './components/presenter/LivePane';
+import { PresenterOpsBar } from './components/presenter/PresenterOpsBar';
+import { PresenterShell } from './components/presenter/PresenterShell';
+import { PreviewPane } from './components/presenter/PreviewPane';
+import { SchedulePane } from './components/presenter/SchedulePane';
+import type { HoldScreenMode, PresenterExperience, PresenterFocusArea, PresenterLayoutPrefs, PresenterLibraryTab } from './components/presenter/types';
 import { logActivity, analyzeSentimentContext } from './services/analytics';
 import { auth, isFirebaseConfigured, subscribeToState, subscribeToTeamPlaylists, updateLiveState, upsertTeamPlaylist } from './services/firebase';
 import { onAuthStateChanged } from "firebase/auth";
-import { clearMediaCache, getMediaBinary, saveMedia } from './services/localMedia';
+import { clearMediaCache, findSavedBackgroundBySourceUrl, getMediaBinary, markSavedBackgroundUsed, registerSavedBackground, saveBackgroundAsset, saveMedia } from './services/localMedia';
 import {
   archiveRunSheetFile,
   deleteRunSheetFile,
@@ -65,8 +76,25 @@ import {
   uploadWorkspaceMedia,
 } from './services/serverApi';
 import { parsePptxFile } from './services/pptxImport';
+import { parseEasyWorshipFile } from './services/easyWorshipImport';
+import { parseProPresenterFile } from './services/proPresenterImport';
+import { parseOpenSongFile } from './services/openSongImport';
 import { copyTextToClipboard } from './services/clipboardService';
-import { dispatchAetherBridgeEvent } from './services/aetherBridge';
+import { dispatchAetherBridgeEvent, type AetherBridgeEvent } from './services/aetherBridge';
+import { MacroPanel } from './components/MacroPanel';
+import { subscribeMacros, seedStarterMacrosIfEmpty } from './services/macroRegistry';
+import { getArchivedSermons, deleteArchivedSermon, type ArchivedSermon } from './services/sermonArchive';
+import type { MacroDefinition, MacroAuditEntry } from './types/macros';
+import { matchTriggers, type MacroExecutionContext } from './services/macroEngine';
+import { nanoid } from 'nanoid';
+import { STARTER_MACROS } from './seed/starterMacros';
+import {
+  type BackgroundSnapshot,
+  clearItemBackgroundFallback,
+  getBackgroundSnapshotFromItem,
+  inheritPrevailingBackground,
+  stampItemBackgroundSource,
+} from './services/backgroundPersistence';
 import type { RunSheetInsertionResult } from './services/runSheetInsertion';
 import { PlayIcon, PauseIcon, RewindIcon, ForwardIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon, ArrowDownIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon, CheckIcon, XIcon, PinIcon, MinimizeIcon, MaximizeIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon, RewindIcon, ForwardIcon, PauseIcon
 import { AppHeader } from './components/layout/AppHeader';
@@ -79,20 +107,99 @@ const SETTINGS_UPDATED_AT_KEY = 'lumina_workspace_settings_updated_at_v1';
 const SETTINGS_INTENT_KEY = 'lumina_workspace_settings_intent_v1';
 const LIVE_STATE_QUEUE_KEY = 'lumina_live_state_queue_v1';
 const SYNC_GUIDANCE_DISMISSALS_KEY = 'lumina_sync_guidance_dismissals_v1';
+const PRESENTER_LAYOUT_KEY_PREFIX = 'lumina_presenter_layout_v1';
 const RUNSHEET_FILES_LOCAL_KEY_PREFIX = 'lumina_runsheet_files_local_v1';
 const AETHER_TOKEN_KEY_PREFIX = 'lumina_aether_bridge_token_v1';
+const DISPLAY_MAPPING_KEY = 'lumina_display_mapping_v1';
 const CLOUD_PLAYLIST_SUFFIX = 'default-playlist-v2';
 const SYNC_BACKOFF_BASE_MS = 5000;
 const SYNC_BACKOFF_MAX_MS = 60000;
 const MAX_LIVE_QUEUE_SIZE = 40;
 const SILENT_AUDIO_B64 = "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//OEAAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAABIADAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV6urq6urq6urq6urq6urq6urq6urq6urq6v////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAASCCOkiJAAAAAAAAAAAAAAAAAAAAAAA=";
-const PUBLIC_WEB_APP_ORIGIN = 'https://lumina-presenter.vercel.app';
+const PUBLIC_WEB_APP_ORIGIN = 'https://luminalive.co.uk';
 const getWorkspaceSettingsKey = (workspace: string) => `${SETTINGS_KEY}:${workspace || 'default-workspace'}`;
 const getWorkspaceSettingsUpdatedAtKey = (workspace: string) => `${SETTINGS_UPDATED_AT_KEY}:${workspace || 'default-workspace'}`;
 const getWorkspaceSettingsIntentKey = (workspace: string) => `${SETTINGS_INTENT_KEY}:${workspace || 'default-workspace'}`;
 const getAetherTokenKey = (workspace: string) => `${AETHER_TOKEN_KEY_PREFIX}:${workspace || 'default-workspace'}`;
 
 type SyncGuidanceDismissals = Record<string, number>;
+type DisplayRole = 'control' | 'audience' | 'stage' | 'none';
+type DesktopServiceState = {
+  controlDisplayId: number | null;
+  audienceDisplayId: number | null;
+  stageDisplayId: number | null;
+  outputOpen: boolean;
+  stageOpen: boolean;
+};
+type DesktopDisplayInfo = {
+  id: number;
+  key: string;
+  name: string;
+  isPrimary: boolean;
+  isInternal: boolean;
+  scaleFactor: number;
+  rotation: number;
+  bounds: { x: number; y: number; width: number; height: number };
+  workArea: { x: number; y: number; width: number; height: number };
+};
+type DesktopDisplayMappingEntry = {
+  role: DisplayRole;
+  displayId: number | null;
+  displayKey: string;
+};
+type DesktopDisplayMapping = {
+  assignments: DesktopDisplayMappingEntry[];
+  updatedAt: number;
+};
+
+const DEFAULT_DESKTOP_SERVICE_STATE: DesktopServiceState = {
+  controlDisplayId: null,
+  audienceDisplayId: null,
+  stageDisplayId: null,
+  outputOpen: false,
+  stageOpen: false,
+};
+
+const readDesktopDisplayMapping = (): DesktopDisplayMapping => {
+  if (typeof window === 'undefined') {
+    return { assignments: [], updatedAt: 0 };
+  }
+  try {
+    const raw = window.localStorage.getItem(DISPLAY_MAPPING_KEY);
+    if (!raw) return { assignments: [], updatedAt: 0 };
+    const parsed = JSON.parse(raw) as DesktopDisplayMapping;
+    const assignments = Array.isArray(parsed?.assignments)
+      ? parsed.assignments
+        .map((entry) => {
+          if (!entry || typeof entry !== 'object') return null;
+          const role = String((entry as DesktopDisplayMappingEntry).role || '').trim().toLowerCase();
+          if (role !== 'control' && role !== 'audience' && role !== 'stage' && role !== 'none') return null;
+          const displayId = Number((entry as DesktopDisplayMappingEntry).displayId || 0);
+          return {
+            role: role as DisplayRole,
+            displayId: Number.isFinite(displayId) && displayId > 0 ? displayId : null,
+            displayKey: String((entry as DesktopDisplayMappingEntry).displayKey || '').trim(),
+          };
+        })
+        .filter((entry): entry is DesktopDisplayMappingEntry => !!entry)
+      : [];
+    return {
+      assignments,
+      updatedAt: typeof parsed?.updatedAt === 'number' && Number.isFinite(parsed.updatedAt) ? parsed.updatedAt : 0,
+    };
+  } catch {
+    return { assignments: [], updatedAt: 0 };
+  }
+};
+
+const writeDesktopDisplayMapping = (mapping: DesktopDisplayMapping) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(DISPLAY_MAPPING_KEY, JSON.stringify(mapping));
+  } catch {
+    // ignore local storage write failures
+  }
+};
 
 const readSyncGuidanceDismissals = (): SyncGuidanceDismissals => {
   if (typeof window === 'undefined') return {};
@@ -135,6 +242,7 @@ type WorkspaceSettings = {
   defaultVersion: string;
   visionarySpeechLocaleMode: 'auto' | 'en-GB' | 'en-US';
   theme: 'dark' | 'light' | 'midnight';
+  presenterExperience: PresenterExperience;
   remoteAdminEmails: string;
   sessionId: string;
   stageProfile: 'classic' | 'compact' | 'high_contrast';
@@ -147,9 +255,21 @@ type WorkspaceSettings = {
   aetherBridgeEnabled: boolean;
   aetherBridgeAutoSync: boolean;
   aetherBridgeUrl: string;
+  aetherRoomId: string;
   aetherSceneProgram: string;
   aetherSceneBlackout: string;
   aetherSceneLobby: string;
+  slideBrandingEnabled: boolean;
+  slideBrandingSeriesLabel: string;
+  slideBrandingStyle: 'minimal' | 'bold' | 'frosted';
+  slideBrandingOpacity: number;
+  ndiSources: NdiSourceConfig[];
+};
+
+type NdiSourceConfig = {
+  id: string;
+  name: string;
+  sceneId: string;
 };
 
 type ProtectedWorkspaceFieldKey = 'remoteAdminEmails' | 'sessionId';
@@ -169,6 +289,22 @@ type DesktopUpdateStatus = {
   releaseName?: string | null;
 };
 
+type PresenterContextMenuState =
+  | {
+      type: 'schedule';
+      x: number;
+      y: number;
+      itemId: string;
+    }
+  | {
+      type: 'preview-slide' | 'live-slide';
+      x: number;
+      y: number;
+      itemId: string;
+      slideIndex: number;
+    }
+  | null;
+
 type SmokeTestResult = {
   name: string;
   ok: boolean;
@@ -183,6 +319,7 @@ type CloudPlaylistRecord = {
   selectedItemId?: string;
   activeItemId?: string | null;
   activeSlideIndex?: number;
+  holdScreenMode?: HoldScreenMode;
   stageAlert?: StageAlertState;
   stageMessageCenter?: StageMessageCenterState;
   audienceQrProjection?: AudienceQrProjectionState;
@@ -237,6 +374,40 @@ const VALID_STAGE_TIMER_VARIANTS: StageTimerVariant[] = ['top-right', 'top-left'
 const VALID_STAGE_MESSAGE_CATEGORIES: StageMessageCategory[] = ['urgent', 'timing', 'logistics'];
 const VALID_STAGE_FLOW_LAYOUTS: StageFlowLayout[] = ['balanced', 'speaker_focus', 'preview_focus', 'minimal_next'];
 const VALID_STAGE_TIMER_FLASH_COLORS: StageTimerFlashColor[] = ['white', 'amber', 'red', 'cyan'];
+const DEFAULT_PRESENTER_LAYOUT_PREFS: PresenterLayoutPrefs = {
+  leftPaneWidth: 340,
+  rightPaneWidth: 356,
+  bottomTrayHeight: 252,
+};
+
+const sanitizePresenterExperience = (_value: unknown): PresenterExperience => (
+  'classic'
+);
+
+const sanitizeHoldScreenMode = (value: unknown): HoldScreenMode => (
+  value === 'clear' || value === 'logo' ? value : 'none'
+);
+
+const getPresenterLayoutStorageKey = (workspace: string, desktop: boolean) => (
+  `${PRESENTER_LAYOUT_KEY_PREFIX}:${workspace || 'default-workspace'}:${desktop ? 'desktop' : 'web'}`
+);
+
+const clampPresenterLayoutPrefs = (value: Partial<PresenterLayoutPrefs> | null | undefined): PresenterLayoutPrefs => ({
+  leftPaneWidth: clamp(Number(value?.leftPaneWidth || DEFAULT_PRESENTER_LAYOUT_PREFS.leftPaneWidth), 248, 460),
+  rightPaneWidth: clamp(Number(value?.rightPaneWidth || DEFAULT_PRESENTER_LAYOUT_PREFS.rightPaneWidth), 280, 460),
+  bottomTrayHeight: clamp(Number(value?.bottomTrayHeight || DEFAULT_PRESENTER_LAYOUT_PREFS.bottomTrayHeight), 180, 360),
+});
+
+const readPresenterLayoutPrefs = (workspace: string, desktop: boolean): PresenterLayoutPrefs => {
+  if (typeof window === 'undefined') return DEFAULT_PRESENTER_LAYOUT_PREFS;
+  try {
+    const raw = window.localStorage.getItem(getPresenterLayoutStorageKey(workspace, desktop));
+    if (!raw) return DEFAULT_PRESENTER_LAYOUT_PREFS;
+    return clampPresenterLayoutPrefs(JSON.parse(raw) as PresenterLayoutPrefs);
+  } catch {
+    return DEFAULT_PRESENTER_LAYOUT_PREFS;
+  }
+};
 
 const areServiceItemCollectionsEqual = (
   left: ServiceItem[] | null | undefined,
@@ -309,6 +480,126 @@ const looksLikeVideoUrl = (url: string): boolean => {
     || normalized.includes('/video/');
 };
 
+const isRemoteMediaUrl = (url: string): boolean => /^https?:\/\//i.test(String(url || '').trim());
+const isBlobMediaUrl = (url: string): boolean => /^blob:/i.test(String(url || '').trim());
+const isDataMediaUrl = (url: string): boolean => /^data:/i.test(String(url || '').trim());
+const isProjectionSafeBackgroundUrl = (url: string): boolean => {
+  const trimmed = String(url || '').trim();
+  if (!trimmed) return false;
+  if (trimmed.startsWith('local://')) return true;
+  if (trimmed.startsWith('/')) return true;
+  if (trimmed.startsWith('./') || trimmed.startsWith('../')) return true;
+  return !isRemoteMediaUrl(trimmed) && !isBlobMediaUrl(trimmed) && !isDataMediaUrl(trimmed);
+};
+
+const extensionFromMimeType = (mimeType: string, mediaType: 'image' | 'video'): string => {
+  const normalized = String(mimeType || '').toLowerCase();
+  if (normalized.includes('mp4')) return 'mp4';
+  if (normalized.includes('webm')) return 'webm';
+  if (normalized.includes('quicktime') || normalized.includes('mov')) return 'mov';
+  if (normalized.includes('png')) return 'png';
+  if (normalized.includes('jpeg') || normalized.includes('jpg')) return 'jpg';
+  if (normalized.includes('gif')) return 'gif';
+  if (normalized.includes('webp')) return 'webp';
+  return mediaType === 'video' ? 'mp4' : 'jpg';
+};
+
+const inferRemoteMediaFileName = (sourceUrl: string, mediaType: 'image' | 'video', mimeType = ''): string => {
+  try {
+    const parsed = new URL(sourceUrl);
+    const lastSegment = parsed.pathname.split('/').filter(Boolean).pop() || '';
+    const cleanSegment = lastSegment.replace(/[^a-z0-9._-]/gi, '').trim();
+    if (cleanSegment && /\.[a-z0-9]{2,5}$/i.test(cleanSegment)) return cleanSegment;
+    if (cleanSegment) return `${cleanSegment}.${extensionFromMimeType(mimeType, mediaType)}`;
+  } catch {
+    // fall through to generated name
+  }
+  return `remote-${mediaType}-${Date.now()}.${extensionFromMimeType(mimeType, mediaType)}`;
+};
+
+const BUILT_IN_BACKGROUND_URLS = new Set([...DEFAULT_BACKGROUNDS, ...VIDEO_BACKGROUNDS]);
+const QUICK_BG_CATEGORY_LABELS = ['Worship', 'Church', 'Celebration', 'Cross', 'Nature', 'Abstract', 'Fire', 'Water', 'Stars', 'Sunrise'] as const;
+
+const normalizeBackgroundCategory = (value: string): string => {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return 'Used';
+  const directMatch = QUICK_BG_CATEGORY_LABELS.find((entry) => entry.toLowerCase() === trimmed.toLowerCase());
+  if (directMatch) return directMatch;
+  return trimmed
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((entry) => entry.charAt(0).toUpperCase() + entry.slice(1).toLowerCase())
+    .join(' ') || 'Used';
+};
+
+const isBuiltInBackgroundUrl = (url: string): boolean => {
+  const trimmed = String(url || '').trim();
+  if (!trimmed) return false;
+  return BUILT_IN_BACKGROUND_URLS.has(trimmed) || trimmed.startsWith('/assets/');
+};
+
+const inferSavedBackgroundProvider = (
+  sourceUrl: string,
+  backgroundUrl: string,
+  explicitProvider = '',
+): string => {
+  const provided = String(explicitProvider || '').trim();
+  if (provided) return provided;
+  const candidates = `${sourceUrl} ${backgroundUrl}`.toLowerCase();
+  if (candidates.includes('pexels')) return 'pexels';
+  if (candidates.includes('pixabay')) return 'pixabay';
+  if (candidates.includes('local://')) return 'inherited-live';
+  if (candidates.includes('/uploads/') || candidates.includes('/media/')) return 'workspace-upload';
+  if (candidates.includes('mixkit') || candidates.includes('vimeo')) return 'imported';
+  return 'used';
+};
+
+const inferSavedBackgroundCategory = (
+  sourceUrl: string,
+  backgroundUrl: string,
+  explicitCategory = '',
+  provider = '',
+): string => {
+  const provided = normalizeBackgroundCategory(explicitCategory);
+  if (explicitCategory.trim()) return provided;
+  const haystack = `${sourceUrl} ${backgroundUrl}`.toLowerCase();
+  if (haystack.includes('worship')) return 'Worship';
+  if (haystack.includes('church')) return 'Church';
+  if (haystack.includes('celebration') || haystack.includes('confetti')) return 'Celebration';
+  if (haystack.includes('cross')) return 'Cross';
+  if (haystack.includes('nature') || haystack.includes('forest') || haystack.includes('mountain') || haystack.includes('meadow') || haystack.includes('sky')) return 'Nature';
+  if (haystack.includes('abstract') || haystack.includes('bokeh') || haystack.includes('gradient') || haystack.includes('mesh')) return 'Abstract';
+  if (haystack.includes('fire') || haystack.includes('flame')) return 'Fire';
+  if (haystack.includes('water') || haystack.includes('wave') || haystack.includes('ocean') || haystack.includes('river') || haystack.includes('sea')) return 'Water';
+  if (haystack.includes('stars') || haystack.includes('galaxy') || haystack.includes('space') || haystack.includes('nebula')) return 'Stars';
+  if (haystack.includes('sunrise') || haystack.includes('sunset') || haystack.includes('golden')) return 'Sunrise';
+  if (provider === 'workspace-upload') return 'Imported';
+  return 'Used';
+};
+
+const inferSavedBackgroundTitle = (
+  sourceUrl: string,
+  backgroundUrl: string,
+  explicitTitle = '',
+  category = 'Used',
+): string => {
+  const provided = String(explicitTitle || '').trim();
+  if (provided) return provided;
+  const candidateUrl = String(sourceUrl || backgroundUrl || '').trim();
+  if (!candidateUrl) return `${category} Background`;
+  try {
+    const parsed = new URL(candidateUrl);
+    const lastSegment = parsed.pathname.split('/').filter(Boolean).pop() || '';
+    const cleaned = decodeURIComponent(lastSegment).replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[-_]+/g, ' ').trim();
+    if (cleaned) {
+      return cleaned.split(/\s+/).map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+    }
+  } catch {
+    // ignore url parse failures
+  }
+  return `${category} Background`;
+};
+
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 const normalizeSessionIdSetting = (value: unknown) => {
@@ -331,7 +622,12 @@ const normalizeSpeakerTimerThresholds = (amberPercent: number, redPercent: numbe
   };
 };
 
-const replaceMediaUrlAcrossSchedule = (entries: ServiceItem[], sourceUrl: string, nextUrl: string) => {
+const replaceMediaUrlAcrossSchedule = (
+  entries: ServiceItem[],
+  sourceUrl: string,
+  nextUrl: string,
+  metadataUpdates?: Partial<NonNullable<ServiceItem['metadata']>>,
+) => {
   let changed = false;
   const nextSchedule = entries.map((entry) => {
     const themeChanged = entry.theme.backgroundUrl === sourceUrl;
@@ -348,12 +644,32 @@ const replaceMediaUrlAcrossSchedule = (entries: ServiceItem[], sourceUrl: string
         mediaType: slide.mediaType || 'image',
       };
     });
-    if (!themeChanged && !slideChanged) return entry;
+    let nextMetadataBase = entry.metadata ? { ...entry.metadata } : undefined;
+    let metadataChanged = false;
+    if (nextMetadataBase?.backgroundFallbackUrl === sourceUrl) {
+      nextMetadataBase.backgroundFallbackUrl = nextUrl;
+      metadataChanged = true;
+    }
+    if (nextMetadataBase?.backgroundSourceUrl === sourceUrl && !metadataUpdates?.backgroundSourceUrl) {
+      nextMetadataBase.backgroundSourceUrl = nextUrl;
+      metadataChanged = true;
+    }
+    if ((themeChanged || slideChanged || metadataChanged) && metadataUpdates) {
+      const writableMetadata = nextMetadataBase ? { ...nextMetadataBase } : {};
+      Object.entries(metadataUpdates).forEach(([key, value]) => {
+        if (value === undefined) return;
+        (writableMetadata as NonNullable<ServiceItem['metadata']>)[key as keyof NonNullable<ServiceItem['metadata']>] = value as never;
+      });
+      nextMetadataBase = writableMetadata;
+      metadataChanged = true;
+    }
+    if (!themeChanged && !slideChanged && !metadataChanged) return entry;
     changed = true;
     return {
       ...entry,
       theme: nextTheme,
       slides: nextSlides,
+      metadata: nextMetadataBase && Object.keys(nextMetadataBase).length > 0 ? nextMetadataBase : undefined,
     };
   });
   return changed ? nextSchedule : entries;
@@ -386,6 +702,74 @@ const normalizeStageAlertLayout = (value: unknown): StageAlertLayout => {
     height: typeof raw.height === 'number' && Number.isFinite(raw.height) ? clamp(raw.height, 88, 640) : DEFAULT_STAGE_ALERT_LAYOUT.height,
     fontScale: typeof raw.fontScale === 'number' && Number.isFinite(raw.fontScale) ? clamp(raw.fontScale, 0.7, 2.2) : DEFAULT_STAGE_ALERT_LAYOUT.fontScale,
     locked: !!raw.locked,
+  };
+};
+
+const stageTimerLayoutsEqual = (left: StageTimerLayout, right: StageTimerLayout) => (
+  left.x === right.x
+  && left.y === right.y
+  && left.width === right.width
+  && left.height === right.height
+  && left.fontScale === right.fontScale
+  && left.variant === right.variant
+  && left.locked === right.locked
+);
+
+const stageAlertLayoutsEqual = (left: StageAlertLayout, right: StageAlertLayout) => (
+  left.x === right.x
+  && left.y === right.y
+  && left.width === right.width
+  && left.height === right.height
+  && left.fontScale === right.fontScale
+  && left.locked === right.locked
+);
+
+const readStoredStageWorkspaceSettings = (): Partial<WorkspaceSettings> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as { workspaceSettings?: Partial<WorkspaceSettings> };
+    const settings = parsed?.workspaceSettings;
+    if (!settings || typeof settings !== 'object') return {};
+    return {
+      stageTimerLayout: normalizeStageTimerLayout(settings.stageTimerLayout),
+      stageAlertLayout: normalizeStageAlertLayout(settings.stageAlertLayout),
+      stageFlowLayout: typeof settings.stageFlowLayout === 'string' && VALID_STAGE_FLOW_LAYOUTS.includes(settings.stageFlowLayout as StageFlowLayout)
+        ? settings.stageFlowLayout as StageFlowLayout
+        : undefined,
+    };
+  } catch {
+    return {};
+  }
+};
+
+const writeStoredStageWorkspaceSettings = (updates: Partial<WorkspaceSettings>) => {
+  if (typeof window === 'undefined') return;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) as Record<string, unknown> : {};
+    const nextWorkspaceSettings = {
+      ...((parsed.workspaceSettings && typeof parsed.workspaceSettings === 'object') ? parsed.workspaceSettings as Record<string, unknown> : {}),
+      ...updates,
+    };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      ...parsed,
+      workspaceSettings: nextWorkspaceSettings,
+      updatedAt: Date.now(),
+    }));
+  } catch {
+    // ignore local storage write failures
+  }
+};
+
+const mergeStoredStageLayoutsIntoWorkspaceSettings = (settings: WorkspaceSettings): WorkspaceSettings => {
+  const stored = readStoredStageWorkspaceSettings();
+  return {
+    ...settings,
+    stageTimerLayout: stored.stageTimerLayout ? normalizeStageTimerLayout(stored.stageTimerLayout) : settings.stageTimerLayout,
+    stageAlertLayout: stored.stageAlertLayout ? normalizeStageAlertLayout(stored.stageAlertLayout) : settings.stageAlertLayout,
+    stageFlowLayout: stored.stageFlowLayout || settings.stageFlowLayout,
   };
 };
 
@@ -447,6 +831,9 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
     safe.visionarySpeechLocaleMode = raw.visionarySpeechLocaleMode;
   }
   if (raw.theme === 'dark' || raw.theme === 'light' || raw.theme === 'midnight') safe.theme = raw.theme;
+  if (Object.prototype.hasOwnProperty.call(raw, 'presenterExperience')) {
+    safe.presenterExperience = sanitizePresenterExperience(raw.presenterExperience);
+  }
   if (typeof raw.remoteAdminEmails === 'string') safe.remoteAdminEmails = normalizeRemoteAdminEmailsSetting(raw.remoteAdminEmails);
   if (typeof raw.sessionId === 'string') safe.sessionId = normalizeSessionIdSetting(raw.sessionId);
   if (raw.stageProfile === 'classic' || raw.stageProfile === 'compact' || raw.stageProfile === 'high_contrast') {
@@ -471,9 +858,24 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
   if (typeof raw.aetherBridgeEnabled === 'boolean') safe.aetherBridgeEnabled = raw.aetherBridgeEnabled;
   if (typeof raw.aetherBridgeAutoSync === 'boolean') safe.aetherBridgeAutoSync = raw.aetherBridgeAutoSync;
   if (typeof raw.aetherBridgeUrl === 'string') safe.aetherBridgeUrl = raw.aetherBridgeUrl.slice(0, 500);
+  if (typeof raw.aetherRoomId === 'string') safe.aetherRoomId = raw.aetherRoomId.slice(0, 64);
   if (typeof raw.aetherSceneProgram === 'string') safe.aetherSceneProgram = raw.aetherSceneProgram.slice(0, 120);
   if (typeof raw.aetherSceneBlackout === 'string') safe.aetherSceneBlackout = raw.aetherSceneBlackout.slice(0, 120);
   if (typeof raw.aetherSceneLobby === 'string') safe.aetherSceneLobby = raw.aetherSceneLobby.slice(0, 120);
+  if (typeof raw.slideBrandingEnabled === 'boolean') safe.slideBrandingEnabled = raw.slideBrandingEnabled;
+  if (typeof raw.slideBrandingSeriesLabel === 'string') safe.slideBrandingSeriesLabel = raw.slideBrandingSeriesLabel.slice(0, 80);
+  if (raw.slideBrandingStyle === 'minimal' || raw.slideBrandingStyle === 'bold' || raw.slideBrandingStyle === 'frosted') safe.slideBrandingStyle = raw.slideBrandingStyle;
+  if (typeof raw.slideBrandingOpacity === 'number' && raw.slideBrandingOpacity >= 0 && raw.slideBrandingOpacity <= 1) safe.slideBrandingOpacity = raw.slideBrandingOpacity;
+  if (Array.isArray(raw.ndiSources)) {
+    safe.ndiSources = (raw.ndiSources as unknown[])
+      .filter((s): s is NdiSourceConfig => {
+        if (!s || typeof s !== 'object' || Array.isArray(s)) return false;
+        const e = s as Record<string, unknown>;
+        return typeof e.id === 'string' && typeof e.name === 'string' && typeof e.sceneId === 'string';
+      })
+      .slice(0, 32)
+      .map((s) => ({ id: s.id.trim().slice(0, 64), name: s.name.trim().slice(0, 120), sceneId: s.sceneId.trim().slice(0, 120) }));
+  }
   return safe;
 };
 
@@ -741,6 +1143,7 @@ function App() {
 
   const [saveError, setSaveError] = useState<boolean>(false);
   const [popupBlocked, setPopupBlocked] = useState(false);
+  const [splitPanelConflictDismissed, setSplitPanelConflictDismissed] = useState(false);
   const [syncIssue, setSyncIssue] = useState<string | null>(null);
   const [dismissedSyncGuidance, setDismissedSyncGuidance] = useState<SyncGuidanceDismissals>(() => readSyncGuidanceDismissals());
   const [desktopUpdateStatus, setDesktopUpdateStatus] = useState<DesktopUpdateStatus>({
@@ -749,6 +1152,11 @@ function App() {
     message: 'Idle',
   });
   const [dismissedUpdateKey, setDismissedUpdateKey] = useState<string | null>(null);
+  const [isDisplaySetupOpen, setIsDisplaySetupOpen] = useState(false);
+  const [desktopDisplays, setDesktopDisplays] = useState<DesktopDisplayInfo[]>([]);
+  const [desktopDisplayMapping, setDesktopDisplayMapping] = useState<DesktopDisplayMapping>(() => readDesktopDisplayMapping());
+  const [desktopServiceState, setDesktopServiceState] = useState<DesktopServiceState>(DEFAULT_DESKTOP_SERVICE_STATE);
+  const [desktopDisplayStatusText, setDesktopDisplayStatusText] = useState('');
 
   // ✅ Projector popout window handle (opened in click handler to avoid popup blockers)
   const [outputWin, setOutputWin] = useState<Window | null>(null);
@@ -758,11 +1166,22 @@ function App() {
     return !hasSeen;
   });
   const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES' | 'MACROS'>('SCHEDULE');
+  const [macros, setMacros] = useState<MacroDefinition[]>([]);
+  const [macroAuditLog, setMacroAuditLog] = useState<MacroAuditEntry[]>([]);
+  const appendMacroAudit = useCallback((entry: MacroAuditEntry) => {
+    setMacroAuditLog(prev => [entry, ...prev].slice(0, 20));
+  }, []);
+  const appendMacroAuditRef = useRef(appendMacroAudit);
+  appendMacroAuditRef.current = appendMacroAudit;
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1440));
   const isSettingsHydratedRef = useRef(false);
   const studioShellRef = useRef<HTMLDivElement | null>(null);
+  const stagePreviewFrameRef = useRef<HTMLDivElement | null>(null);
+  const stageEditorFrameRef = useRef<HTMLDivElement | null>(null);
   const workspaceSettingsIntentRef = useRef<WorkspaceSettingsIntentMetadata>({});
   const pendingProtectedSettingsSaveRef = useRef<WorkspaceSettingsIntentMetadata>({});
+  const [stagePreviewViewport, setStagePreviewViewport] = useState({ width: 320, height: 180 });
+  const [stageEditorViewport, setStageEditorViewport] = useState({ width: 1280, height: 720 });
 
   useEffect(() => {
     if (!window.electron?.updates) return undefined;
@@ -863,12 +1282,14 @@ function App() {
   const [isSlideEditorOpen, setIsSlideEditorOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false); // NEW
+  const [isStagePreviewEditorOpen, setIsStagePreviewEditorOpen] = useState(false);
   const [workspaceSettings, setWorkspaceSettings] = useState<WorkspaceSettings>({
     churchName: 'My Church',
     ccli: '',
     defaultVersion: 'kjv',
     visionarySpeechLocaleMode: 'auto',
     theme: 'dark',
+    presenterExperience: 'classic',
     remoteAdminEmails: '',
     sessionId: 'live',
     stageProfile: 'classic',
@@ -881,10 +1302,26 @@ function App() {
     aetherBridgeEnabled: false,
     aetherBridgeAutoSync: true,
     aetherBridgeUrl: '',
+    aetherRoomId: '',
     aetherSceneProgram: 'Program',
     aetherSceneBlackout: 'Blackout',
     aetherSceneLobby: 'Lobby',
+    slideBrandingEnabled: false,
+    slideBrandingSeriesLabel: '',
+    slideBrandingStyle: 'minimal',
+    slideBrandingOpacity: 0.82,
+    ndiSources: [],
   });
+  const [presenterLayoutPrefs, setPresenterLayoutPrefs] = useState<PresenterLayoutPrefs>(() => (
+    readPresenterLayoutPrefs('default-workspace', !!window.electron?.isElectron)
+  ));
+  const [presenterLibraryTab, setPresenterLibraryTab] = useState<PresenterLibraryTab>('songs');
+  const [presenterFocusArea, setPresenterFocusArea] = useState<PresenterFocusArea>('schedule');
+  const [presenterPreviewSelection, setPresenterPreviewSelection] = useState<{ itemId: string | null; slideIndex: number }>({
+    itemId: null,
+    slideIndex: 0,
+  });
+  const [presenterContextMenu, setPresenterContextMenu] = useState<PresenterContextMenuState>(null);
   const allowedAdminEmails = useMemo(() => {
     const raw = workspaceSettings.remoteAdminEmails || '';
     const parsed = raw
@@ -916,6 +1353,7 @@ function App() {
     if (urlWorkspace && viewState === 'audience') return urlWorkspace.trim();
     return resolveWorkspaceId(user);
   }, [user?.uid, viewState]);
+  const presenterLayoutStorageDesktop = !!(typeof window !== 'undefined' && window.electron?.isElectron);
 
   const controllerClientId = useMemo(
     () => getOrCreateConnectionClientId(workspaceId, liveSessionId, 'controller'),
@@ -933,6 +1371,20 @@ function App() {
     () => normalizeConnectionTargetRoles(workspaceSettings.connectionTargetRoles),
     [workspaceSettings.connectionTargetRoles]
   );
+  useEffect(() => {
+    setPresenterLayoutPrefs(readPresenterLayoutPrefs(workspaceId, presenterLayoutStorageDesktop));
+  }, [workspaceId, presenterLayoutStorageDesktop]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        getPresenterLayoutStorageKey(workspaceId, presenterLayoutStorageDesktop),
+        JSON.stringify(clampPresenterLayoutPrefs(presenterLayoutPrefs))
+      );
+    } catch {
+      // Ignore local layout persistence failures.
+    }
+  }, [workspaceId, presenterLayoutPrefs, presenterLayoutStorageDesktop]);
   const persistWorkspaceSettingsCache = useCallback((
     settings: WorkspaceSettings,
     updatedAt: number,
@@ -1021,6 +1473,7 @@ function App() {
     setWorkspaceSettings(nextSettings);
   }, [mergeIncomingWorkspaceSettings, persistWorkspaceSettingsCache, workspaceSettings]);
   const [isMotionLibOpen, setIsMotionLibOpen] = useState(false); // NEW
+  const [motionLibraryMode, setMotionLibraryMode] = useState<'selected-item' | 'new-item'>('selected-item');
   const [isTemplateOpen, setIsTemplateOpen] = useState(false);
   const [isLyricsImportOpen, setIsLyricsImportOpen] = useState(false);
   const [importTitle, setImportTitle] = useState('Imported Lyrics');
@@ -1033,8 +1486,9 @@ function App() {
   const [autoCueSeconds, setAutoCueSeconds] = useState(7);
   const [autoCueRemaining, setAutoCueRemaining] = useState(7);
   const [editingSlide, setEditingSlide] = useState<Slide | null>(null);
-  const [inlineSlideRename, setInlineSlideRename] = useState<{ itemId: string; slideId: string; value: string } | null>(null);
+  const [inlineSlideRename, setInlineSlideRename] = useState<{ itemId: string; slideId: string; value: string; source: 'runsheet' | 'thumbnail' } | null>(null);
   const inlineSlideRenameInputRef = useRef<HTMLInputElement | null>(null);
+  const presenterMediaUploadInputRef = useRef<HTMLInputElement | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
   const [isStageDisplayLive, setIsStageDisplayLive] = useState(false);
   const [lowerThirdsEnabled, setLowerThirdsEnabled] = useState(false);
@@ -1074,6 +1528,9 @@ function App() {
   const stageHeartbeatFailureRef = useRef(0);
   const stageHeartbeatPauseUntilRef = useRef(0);
   const pendingSharedMediaUploadsRef = useRef<Set<string>>(new Set());
+  const prevailingGeneratedBackgroundRef = useRef<BackgroundSnapshot | null>(null);
+  const prevailingGeneratedBackgroundSafeRef = useRef<BackgroundSnapshot | null>(null);
+  const prevailingGeneratedBackgroundKeyRef = useRef<string>('');
 
   const [audienceDisplay, setAudienceDisplay] = useState<AudienceDisplayState>(() => {
     const saved = initialSavedState;
@@ -1111,6 +1568,8 @@ function App() {
   const [runSheetFilesError, setRunSheetFilesError] = useState<string | null>(null);
   const [runSheetFileQuery, setRunSheetFileQuery] = useState('');
   const [runSheetArchiveTitle, setRunSheetArchiveTitle] = useState('');
+  const [archivedSermons, setArchivedSermons] = useState<ArchivedSermon[]>([]);
+  const [archivedSermonsLoading, setArchivedSermonsLoading] = useState(false);
   const [draggedScheduleItemId, setDraggedScheduleItemId] = useState<string | null>(null);
   const [scheduleDropIndicator, setScheduleDropIndicator] = useState<{ itemId: string; after: boolean } | null>(null);
   const [draggedRunSheetSlide, setDraggedRunSheetSlide] = useState<{ itemId: string; slideId: string } | null>(null);
@@ -1377,6 +1836,14 @@ function App() {
     }
   }, [workspaceId]);
 
+  // ── Macro subscription ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!workspaceId) return undefined;
+    seedStarterMacrosIfEmpty(workspaceId, STARTER_MACROS).catch(() => {});
+    const unsub = subscribeMacros(workspaceId, setMacros);
+    return () => unsub();
+  }, [workspaceId]);
+
   useEffect(() => {
     try {
       if (!aetherBridgeToken.trim()) {
@@ -1409,10 +1876,114 @@ function App() {
     const saved = initialSavedState;
     return !!saved?.blackout;
   });
+  const [holdScreenMode, setHoldScreenMode] = useState<HoldScreenMode>(() => {
+    const saved = initialSavedState;
+    return sanitizeHoldScreenMode(saved?.holdScreenMode);
+  });
   const [isPlaying, setIsPlaying] = useState(() => {
     const saved = initialSavedState;
     return typeof saved?.isPlaying === 'boolean' ? saved.isPlaying : true;
   });
+
+  // ── Macro execution context ─────────────────────────────────────────────────
+  const macroCtx: MacroExecutionContext = useMemo(() => ({
+    workspaceId,
+    sessionId: liveSessionId,
+    schedule,
+    selectedItemId,
+    activeItemId,
+    activeSlideIndex,
+    aetherBridgeUrl: workspaceSettings.aetherBridgeUrl || '',
+    aetherBridgeToken,
+    setSelectedItemId,
+    setActiveItemId,
+    setActiveSlideIndex,
+    showStageMessage: (text: string, durationMs?: number) => {
+      handleSendStageMessageNow({ text, category: 'logistics' });
+      if (durationMs && durationMs > 0) {
+        window.setTimeout(handleClearStageAlert, durationMs);
+      }
+    },
+    hideStageMessage: handleClearStageAlert,
+    clearOutput: () => {
+      setActiveItemId(null);
+      setActiveSlideIndex(-1);
+    },
+    startTimer: (_presetId?: string, durationSec?: number) => {
+      if (durationSec !== undefined) {
+        setTimerDurationMin(Math.max(1, Math.ceil(durationSec / 60)));
+        setTimerSeconds(durationSec);
+      }
+      setTimerRunning(true);
+    },
+    stopTimer: () => setTimerRunning(false),
+  }), [workspaceId, liveSessionId, schedule, selectedItemId, activeItemId, activeSlideIndex, workspaceSettings.aetherBridgeUrl, aetherBridgeToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Macro slide_enter trigger ───────────────────────────────────────────────
+  const macroCtxRef = useRef(macroCtx);
+  macroCtxRef.current = macroCtx;
+  const macrosRef = useRef(macros);
+  macrosRef.current = macros;
+  useEffect(() => {
+    if (activeItemId === null || activeSlideIndex < 0) return;
+    const triggered = matchTriggers(
+      { type: 'slide_enter', itemId: activeItemId, slideIndex: activeSlideIndex },
+      macrosRef.current,
+    );
+    triggered.forEach((macro) => {
+      import('./services/macroEngine').then(({ executeMacro }) => {
+        executeMacro(macro, macroCtxRef.current).then((result) => {
+          appendMacroAuditRef.current({ id: nanoid(), macroId: macro.id, macroName: macro.name, triggeredBy: 'slide_enter', result, workspaceId: workspaceId ?? '', firedAt: new Date().toISOString() });
+        }).catch(() => {});
+      }).catch(() => {});
+    });
+  }, [activeItemId, activeSlideIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Macro webhook trigger polling ────────────────────────────────────────────
+  const lastWebhookPollTsRef = useRef<number>(Date.now());
+  useEffect(() => {
+    if (!workspaceId) return;
+    const poll = async () => {
+      const since = lastWebhookPollTsRef.current;
+      try {
+        const res = await fetch(
+          `${getServerApiBaseUrl()}/api/workspaces/${encodeURIComponent(workspaceId)}/macro-triggers/pending?since=${since}`,
+          { headers: { 'Content-Type': 'application/json' } },
+        );
+        if (!res.ok) return;
+        const data = await res.json() as { ok: boolean; triggers?: Array<{ key: string; triggered_at: number }> };
+        if (!data.ok || !data.triggers?.length) return;
+        lastWebhookPollTsRef.current = Math.max(...data.triggers.map((t) => t.triggered_at)) + 1;
+        for (const trigger of data.triggers) {
+          const matched = matchTriggers({ type: 'webhook', webhookKey: trigger.key }, macrosRef.current);
+          matched.forEach((macro) => {
+            import('./services/macroEngine').then(({ executeMacro }) => {
+              executeMacro(macro, macroCtxRef.current).then((result) => {
+                appendMacroAuditRef.current({ id: nanoid(), macroId: macro.id, macroName: macro.name, triggeredBy: 'webhook', result, workspaceId: workspaceId ?? '', firedAt: new Date().toISOString() });
+              }).catch(() => {});
+            }).catch(() => {});
+          });
+        }
+      } catch {
+        // polling errors are non-fatal
+      }
+    };
+    const interval = window.setInterval(poll, 3000);
+    return () => window.clearInterval(interval);
+  }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Macro service_mode_change trigger ────────────────────────────────────────
+  useEffect(() => {
+    const serviceMode = isPlaying ? 'live' : 'paused';
+    const triggered = matchTriggers({ type: 'service_mode_change', serviceMode }, macrosRef.current);
+    triggered.forEach((macro) => {
+      import('./services/macroEngine').then(({ executeMacro }) => {
+        executeMacro(macro, macroCtxRef.current).then((result) => {
+          appendMacroAuditRef.current({ id: nanoid(), macroId: macro.id, macroName: macro.name, triggeredBy: 'service_mode_change', result, workspaceId: workspaceId ?? '', firedAt: new Date().toISOString() });
+        }).catch(() => {});
+      }).catch(() => {});
+    });
+  }, [isPlaying]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -1470,6 +2041,7 @@ function App() {
   const hasLoadedInitialSettingsRef = useRef(false);
   const lastRemoteCommandAtRef = useRef<number | null>(null);
   const lastServerRemoteCommandAtRef = useRef<number | null>(null);
+  const lastServerScheduleSnapshotAtRef = useRef<number | null>(null);
   const lastCueAutoAdvanceKeyRef = useRef<string>('');
   const lastSyncErrorRef = useRef<{ key: string; at: number } | null>(null);
   const syncFailureStreakRef = useRef(0);
@@ -1681,6 +2253,15 @@ function App() {
     refreshRunSheetFiles();
   }, [refreshRunSheetFiles]);
 
+  useEffect(() => {
+    if (activeSidebarTab !== 'FILES') return;
+    setArchivedSermonsLoading(true);
+    getArchivedSermons(workspaceId).then((items) => {
+      setArchivedSermons(items);
+      setArchivedSermonsLoading(false);
+    });
+  }, [activeSidebarTab, workspaceId]);
+
   // --- SESSION PERSISTENCE LOGIC ---
   useEffect(() => {
     if (isFirebaseConfigured() && auth) {
@@ -1725,6 +2306,7 @@ function App() {
     resetSyncBackoff();
     hasHydratedServerSnapshotRef.current = false;
     lastServerRemoteCommandAtRef.current = null;
+    lastServerScheduleSnapshotAtRef.current = null;
   }, [user?.uid, liveSessionId, resetSyncBackoff]);
 
 
@@ -1865,7 +2447,7 @@ function App() {
           }
         } catch (err) {
           console.warn('Server settings sync failed', err);
-          setSyncIssue('Settings sync failed (local values preserved). Retry by clicking Synchronize Workspace.');
+          setSyncIssue('Settings sync failed (local values preserved). Retry by clicking Save Settings.');
         }
       }
     };
@@ -1894,6 +2476,9 @@ function App() {
         activeItemId: typeof payload.activeItemId === 'string' ? payload.activeItemId : null,
         activeSlideIndex: typeof payload.activeSlideIndex === 'number' ? payload.activeSlideIndex : undefined,
       });
+      if (Object.prototype.hasOwnProperty.call(payload, 'holdScreenMode')) {
+        setHoldScreenMode(sanitizeHoldScreenMode(payload.holdScreenMode));
+      }
       if (payload.audienceQrProjection && typeof payload.audienceQrProjection === 'object') {
         const incomingQrProjection = sanitizeAudienceQrProjectionState(payload.audienceQrProjection);
         setAudienceQrProjection((prev) => (
@@ -1990,6 +2575,43 @@ function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    const previewNode = stagePreviewFrameRef.current;
+    const editorNode = stageEditorFrameRef.current;
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver((entries) => {
+      entries.forEach((entry) => {
+        const width = Math.max(320, Math.round(entry.contentRect.width));
+        const height = Math.max(180, Math.round(entry.contentRect.height));
+        if (entry.target === previewNode) {
+          setStagePreviewViewport((prev) => (
+            prev.width === width && prev.height === height ? prev : { width, height }
+          ));
+        }
+        if (entry.target === editorNode) {
+          setStageEditorViewport((prev) => (
+            prev.width === width && prev.height === height ? prev : { width, height }
+          ));
+        }
+      });
+    });
+    if (previewNode) observer.observe(previewNode);
+    if (editorNode) observer.observe(editorNode);
+    return () => observer.disconnect();
+  }, [isStagePreviewEditorOpen, viewMode]);
+
+  useEffect(() => {
+    if (!isStagePreviewEditorOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setIsStagePreviewEditorOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isStagePreviewEditorOpen]);
+
   // --- AUDIO PLAYER EFFECT ---
   useEffect(() => {
     if (!audioRef.current) {
@@ -2079,6 +2701,7 @@ function App() {
   useEffect(() => {
     if (!user) return;
     const id = window.setTimeout(() => {
+      const persistedWorkspaceSettings = mergeStoredStageLayoutsIntoWorkspaceSettings(workspaceSettings);
       const saveData = {
         schedule,
         selectedItemId,
@@ -2087,6 +2710,7 @@ function App() {
         activeItemId,
         activeSlideIndex,
         blackout,
+        holdScreenMode,
         isPlaying,
         outputMuted,
         seekCommand,
@@ -2102,7 +2726,7 @@ function App() {
         stageTimerFlash,
         stageAlert,
         stageMessageCenter,
-        workspaceSettings,
+        workspaceSettings: persistedWorkspaceSettings,
         updatedAt: Date.now(),
       };
       try {
@@ -2113,7 +2737,7 @@ function App() {
       }
     }, 180);
     return () => window.clearTimeout(id);
-  }, [schedule, selectedItemId, viewMode, sidebarPinned, activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, audienceQrProjection, stageTimerFlash, stageAlert, stageMessageCenter, workspaceSettings, user]);
+  }, [schedule, selectedItemId, viewMode, sidebarPinned, activeItemId, activeSlideIndex, blackout, holdScreenMode, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, audienceQrProjection, stageTimerFlash, stageAlert, stageMessageCenter, workspaceSettings, user]);
 
   useEffect(() => {
     const safeWorkspaceId = String(workspaceId || '').trim();
@@ -2162,8 +2786,10 @@ function App() {
     const settingsUpdatedAt = workspaceSettingsUpdatedAtRef.current || updatedAt;
     syncLiveState({
       scheduleSnapshot: schedule,
+      scheduleSnapshotAt: updatedAt,
       workspaceSettings,
       workspaceSettingsUpdatedAt: settingsUpdatedAt,
+      holdScreenMode,
       audienceQrProjection,
       stageTimerFlash,
       stageMessageCenter,
@@ -2182,6 +2808,7 @@ function App() {
           activeSlideIndex,
           workspaceSettings,
           workspaceSettingsUpdatedAt: settingsUpdatedAt,
+          holdScreenMode,
           audienceQrProjection,
           stageTimerFlash,
           stageMessageCenter,
@@ -2194,6 +2821,7 @@ function App() {
           activeSlideIndex,
           workspaceSettings,
           workspaceSettingsUpdatedAt: settingsUpdatedAt,
+          holdScreenMode,
           audienceQrProjection,
           stageTimerFlash,
           stageMessageCenter,
@@ -2209,6 +2837,7 @@ function App() {
     activeItemId,
     activeSlideIndex,
     workspaceSettings,
+    holdScreenMode,
     audienceQrProjection,
     stageTimerFlash,
     stageMessageCenter,
@@ -2240,9 +2869,44 @@ function App() {
   const selectedItem = schedule.find(i => i.id === selectedItemId) || null;
   const activeItem = schedule.find(i => i.id === activeItemId) || null;
   const activeSlide = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex] : null;
-  const previewLowerThirds = lowerThirdsEnabled && routingMode !== 'PROJECTOR';
+
+  // Detect PPTX visual items in the schedule (imported as MEDIA with source 'import')
+  const hasPptxImportedItems = useMemo(() =>
+    schedule.some(item => item.type === ItemType.MEDIA && item.metadata?.source === 'import'),
+    [schedule],
+  );
+  // Detect Bible items using the split-panel style (SVG data URI background)
+  const hasSplitPanelBibleItems = useMemo(() =>
+    schedule.some(item =>
+      item.type === ItemType.BIBLE &&
+      item.slides.some(s => typeof s.backgroundUrl === 'string' && s.backgroundUrl.startsWith('data:image/svg+xml')),
+    ),
+    [schedule],
+  );
+  const splitPanelPptxConflict = hasPptxImportedItems && hasSplitPanelBibleItems;
+  // Re-show the warning if the conflict reappears after being dismissed
+  useEffect(() => {
+    if (!splitPanelPptxConflict) setSplitPanelConflictDismissed(false);
+  }, [splitPanelPptxConflict]);
+  const presenterExperience = sanitizePresenterExperience(workspaceSettings.presenterExperience);
+  const isPresenterBeta = viewMode === 'PRESENTER' && presenterExperience === 'next_gen_beta';
+  const previewLowerThirds = lowerThirdsEnabled;
   const nextSlidePreview = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex + 1] || null : null;
   const lobbyItem = schedule.find((item) => item.type === ItemType.ANNOUNCEMENT) || activeItem;
+  const activeScheduleIndex = activeItemId ? schedule.findIndex((item) => item.id === activeItemId) : -1;
+  const presenterUpcomingItems = activeScheduleIndex >= 0
+    ? schedule.slice(activeScheduleIndex + 1)
+    : schedule;
+  const presenterPreviewItem = schedule.find((item) => item.id === presenterPreviewSelection.itemId) || selectedItem || activeItem || null;
+  const presenterPreviewSlides = presenterPreviewItem?.slides || [];
+  const presenterPreviewSlideIndex = presenterPreviewSlides.length > 0
+    ? clamp(presenterPreviewSelection.slideIndex, 0, presenterPreviewSlides.length - 1)
+    : -1;
+  const presenterPreviewSlide = presenterPreviewSlideIndex >= 0 ? presenterPreviewSlides[presenterPreviewSlideIndex] : null;
+  const currentLiveBackground = useMemo(
+    () => (isOutputLive ? getBackgroundSnapshotFromItem(activeItem, activeSlide) : null),
+    [isOutputLive, activeItem, activeSlide],
+  );
   const activeBackgroundUrl = (activeSlide?.backgroundUrl || activeItem?.theme?.backgroundUrl || '').trim();
   const isActiveVideo = !!activeSlide && (
     activeSlide.mediaType === 'video'
@@ -2268,7 +2932,8 @@ function App() {
     : -1;
   const presenterQueueCompact = presenterQueueSlides.length > 10;
   const presenterInlineQueueTight = isElectronShell && viewMode === 'PRESENTER' && !presenterSidebarCompact && viewportWidth < 1700;
-  const presenterQueueWidth = workspaceSettings.machineMode
+  const legacyMachineMode = workspaceSettings.machineMode && !isElectronShell;
+  const presenterQueueWidth = legacyMachineMode
     ? 0
     : presenterQueueCompact
       ? (presenterSidebarCompact
@@ -2281,7 +2946,7 @@ function App() {
     ? sidebarRailWidth + sidebarPanelWidth
     : sidebarRailWidth;
   const presenterMainWorkspaceWidth = viewMode === 'PRESENTER'
-    ? Math.max(0, viewportWidth - presenterSidebarInlineWidth - presenterQueueWidth - (workspaceSettings.machineMode ? 24 : 40))
+    ? Math.max(0, viewportWidth - presenterSidebarInlineWidth - presenterQueueWidth - (legacyMachineMode ? 24 : 40))
     : viewportWidth;
   const presenterCardsSingleColumn = viewMode === 'PRESENTER' && presenterMainWorkspaceWidth < 1120;
   const presenterCueEngineStacked = viewMode === 'PRESENTER' && presenterMainWorkspaceWidth < 1240;
@@ -2305,6 +2970,299 @@ function App() {
       .map((slide, idx) => ({ slide, idx }))
       .filter((entry) => entry.idx !== presenterQueueActiveIndex && !excluded.has(entry.slide.id));
   }, [presenterQueueSlides, presenterQueueActiveIndex, presenterQueueUpNext]);
+
+  const persistBackgroundSnapshotForProjection = useCallback(async (
+    snapshot: BackgroundSnapshot | null | undefined,
+  ): Promise<BackgroundSnapshot | null> => {
+    const backgroundUrl = String(snapshot?.backgroundUrl || '').trim();
+    if (!backgroundUrl || !snapshot) return null;
+    if (snapshot.mediaType === 'color') {
+      return {
+        ...snapshot,
+        backgroundFallbackUrl: backgroundUrl,
+        backgroundFallbackMediaType: 'color',
+      };
+    }
+
+    // Data URIs (SVG split-panel, gradient backgrounds) are self-contained in memory.
+    // Never fetch, save, or replace them — doing so would swap the instant data URI for
+    // a local:// URL that requires an async round-trip, causing "BACKGROUND UNAVAILABLE".
+    if (isDataMediaUrl(backgroundUrl)) {
+      return { ...snapshot };
+    }
+
+    const sourceUrl = String(snapshot.backgroundSourceUrl || (isRemoteMediaUrl(backgroundUrl) ? backgroundUrl : '') || '').trim();
+    const provider = inferSavedBackgroundProvider(sourceUrl, backgroundUrl, snapshot.backgroundProvider || '');
+    const category = inferSavedBackgroundCategory(sourceUrl, backgroundUrl, snapshot.backgroundCategory || '', provider);
+    const title = inferSavedBackgroundTitle(sourceUrl, backgroundUrl, snapshot.backgroundTitle || '', category);
+    const existingFallbackUrl = String(snapshot.backgroundFallbackUrl || '').trim();
+    const isBuiltIn = isBuiltInBackgroundUrl(backgroundUrl) || isBuiltInBackgroundUrl(sourceUrl);
+
+    const withSavedDescriptor = (
+      localUrl: string,
+      overrides?: { sourceUrl?: string; provider?: string; category?: string; title?: string },
+    ): BackgroundSnapshot => ({
+      ...snapshot,
+      backgroundUrl: localUrl,
+      backgroundFallbackUrl: localUrl,
+      backgroundFallbackMediaType: snapshot.mediaType,
+      backgroundSourceUrl: overrides?.sourceUrl || sourceUrl || undefined,
+      backgroundProvider: overrides?.provider || provider,
+      backgroundCategory: overrides?.category || category,
+      backgroundTitle: overrides?.title || title,
+    });
+
+    if (isBuiltIn) {
+      if (existingFallbackUrl && isProjectionSafeBackgroundUrl(existingFallbackUrl)) {
+        return {
+          ...snapshot,
+          backgroundFallbackUrl: existingFallbackUrl,
+          backgroundFallbackMediaType: snapshot.backgroundFallbackMediaType || snapshot.mediaType,
+        };
+      }
+      if (isProjectionSafeBackgroundUrl(backgroundUrl) || getYoutubeId(backgroundUrl)) {
+        return {
+          ...snapshot,
+          backgroundFallbackUrl: backgroundUrl,
+          backgroundFallbackMediaType: snapshot.mediaType,
+        };
+      }
+      try {
+        const response = await fetch(backgroundUrl);
+        if (!response.ok) throw new Error(`BACKGROUND_FETCH_${response.status}`);
+        const blob = await response.blob();
+        const mediaType = snapshot.mediaType === 'video' ? 'video' : 'image';
+        const mimeType = String(blob.type || '').trim() || (mediaType === 'video' ? 'video/mp4' : 'image/jpeg');
+        const fileName = inferRemoteMediaFileName(backgroundUrl, mediaType, mimeType);
+        const file = new File([blob], fileName, { type: mimeType });
+        const localUrl = await saveMedia(file);
+        return {
+          ...snapshot,
+          backgroundFallbackUrl: localUrl,
+          backgroundFallbackMediaType: snapshot.mediaType,
+        };
+      } catch {
+        return {
+          ...snapshot,
+          backgroundFallbackUrl: existingFallbackUrl || backgroundUrl,
+          backgroundFallbackMediaType: snapshot.mediaType,
+        };
+      }
+    }
+
+    if (backgroundUrl.startsWith('local://')) {
+      const registered = await registerSavedBackground({
+        localUrl: backgroundUrl,
+        mediaType: snapshot.mediaType === 'video' ? 'video' : 'image',
+        sourceUrl,
+        provider,
+        category,
+        title,
+      });
+      if (registered) {
+        return withSavedDescriptor(registered.localUrl, registered);
+      }
+      return {
+        ...snapshot,
+        backgroundFallbackUrl: existingFallbackUrl || backgroundUrl,
+        backgroundFallbackMediaType: snapshot.mediaType,
+      };
+    }
+
+    const knownSavedBackground = await findSavedBackgroundBySourceUrl(sourceUrl || backgroundUrl);
+    if (knownSavedBackground) {
+      await markSavedBackgroundUsed(knownSavedBackground.localUrl);
+      return withSavedDescriptor(knownSavedBackground.localUrl, knownSavedBackground);
+    }
+
+    if (existingFallbackUrl.startsWith('local://')) {
+      const registered = await registerSavedBackground({
+        localUrl: existingFallbackUrl,
+        mediaType: snapshot.mediaType === 'video' ? 'video' : 'image',
+        sourceUrl: sourceUrl || backgroundUrl,
+        provider,
+        category,
+        title,
+      });
+      if (registered) {
+        return withSavedDescriptor(registered.localUrl, registered);
+      }
+    }
+
+    if (isProjectionSafeBackgroundUrl(backgroundUrl) || getYoutubeId(backgroundUrl)) {
+      return {
+        ...snapshot,
+        backgroundFallbackUrl: existingFallbackUrl || backgroundUrl,
+        backgroundFallbackMediaType: snapshot.mediaType,
+        backgroundSourceUrl: sourceUrl || undefined,
+        backgroundProvider: provider,
+        backgroundCategory: category,
+        backgroundTitle: title,
+      };
+    }
+
+    try {
+      const response = await fetch(backgroundUrl);
+      if (!response.ok) throw new Error(`BACKGROUND_FETCH_${response.status}`);
+      const blob = await response.blob();
+      const mediaType = snapshot.mediaType === 'video' ? 'video' : 'image';
+      const mimeType = String(blob.type || '').trim() || (mediaType === 'video' ? 'video/mp4' : 'image/jpeg');
+      const fileName = inferRemoteMediaFileName(sourceUrl || backgroundUrl, mediaType, mimeType);
+      const file = new File([blob], fileName, { type: mimeType });
+      const savedAsset = await saveBackgroundAsset(file, {
+        mediaType,
+        sourceUrl: sourceUrl || backgroundUrl,
+        provider,
+        category,
+        title,
+      });
+      if (savedAsset) {
+        return withSavedDescriptor(savedAsset.localUrl, savedAsset);
+      }
+      const localUrl = await saveMedia(file);
+      return {
+        ...snapshot,
+        backgroundFallbackUrl: localUrl,
+        backgroundFallbackMediaType: snapshot.mediaType,
+        backgroundSourceUrl: sourceUrl || backgroundUrl,
+        backgroundProvider: provider,
+        backgroundCategory: category,
+        backgroundTitle: title,
+      };
+    } catch (error) {
+      console.warn('Failed to create projector-safe fallback for prevailing live background.', {
+        backgroundUrl,
+        sourceUrl,
+        mediaType: snapshot.mediaType,
+        error,
+      });
+      return {
+        ...snapshot,
+        backgroundFallbackUrl: existingFallbackUrl || backgroundUrl,
+        backgroundFallbackMediaType: snapshot.mediaType,
+        backgroundSourceUrl: sourceUrl || undefined,
+        backgroundProvider: provider,
+        backgroundCategory: category,
+        backgroundTitle: title,
+      };
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isOutputLive || !currentLiveBackground?.backgroundUrl) return;
+    prevailingGeneratedBackgroundRef.current = currentLiveBackground;
+    const backgroundKey = [
+      currentLiveBackground.backgroundUrl,
+      currentLiveBackground.mediaType,
+      currentLiveBackground.backgroundFallbackUrl || '',
+      currentLiveBackground.backgroundFallbackMediaType || '',
+    ].join('::');
+    if (
+      prevailingGeneratedBackgroundKeyRef.current === backgroundKey
+      && prevailingGeneratedBackgroundSafeRef.current
+    ) {
+      prevailingGeneratedBackgroundRef.current = prevailingGeneratedBackgroundSafeRef.current;
+      return;
+    }
+    let cancelled = false;
+    void persistBackgroundSnapshotForProjection(currentLiveBackground).then((persistedSnapshot) => {
+      if (cancelled || !persistedSnapshot?.backgroundUrl) return;
+      if (persistedSnapshot.backgroundUrl !== currentLiveBackground.backgroundUrl) {
+        const metadataUpdates = {
+          backgroundFallbackUrl: persistedSnapshot.backgroundFallbackUrl || persistedSnapshot.backgroundUrl,
+          backgroundFallbackMediaType: persistedSnapshot.backgroundFallbackMediaType || persistedSnapshot.mediaType,
+          backgroundSourceUrl: persistedSnapshot.backgroundSourceUrl || currentLiveBackground.backgroundSourceUrl || currentLiveBackground.backgroundUrl,
+          backgroundProvider: persistedSnapshot.backgroundProvider,
+          backgroundCategory: persistedSnapshot.backgroundCategory,
+          backgroundTitle: persistedSnapshot.backgroundTitle,
+        };
+        setSchedule((prev) => replaceMediaUrlAcrossSchedule(
+          prev,
+          currentLiveBackground.backgroundUrl,
+          persistedSnapshot.backgroundUrl,
+          metadataUpdates,
+        ));
+      }
+      prevailingGeneratedBackgroundSafeRef.current = persistedSnapshot;
+      prevailingGeneratedBackgroundRef.current = persistedSnapshot;
+      prevailingGeneratedBackgroundKeyRef.current = backgroundKey;
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentLiveBackground, isOutputLive, persistBackgroundSnapshotForProjection]);
+
+  const getPrevailingGeneratedBackground = useCallback(() => {
+    if (!isOutputLive) return null;
+    const liveSnapshot = currentLiveBackground || prevailingGeneratedBackgroundRef.current;
+    if (!liveSnapshot) return null;
+    const projectorSafeSnapshot = prevailingGeneratedBackgroundSafeRef.current;
+    if (
+      projectorSafeSnapshot
+      && projectorSafeSnapshot.backgroundUrl === liveSnapshot.backgroundUrl
+      && projectorSafeSnapshot.mediaType === liveSnapshot.mediaType
+    ) {
+      return projectorSafeSnapshot;
+    }
+    return prevailingGeneratedBackgroundRef.current || liveSnapshot;
+  }, [currentLiveBackground, isOutputLive]);
+
+  const finalizeGeneratedItemBackground = useCallback((
+    item: ServiceItem,
+    backgroundSource: ServiceItemBackgroundSource,
+  ) => {
+    const stampedItem = stampItemBackgroundSource(item, backgroundSource);
+    if (backgroundSource !== 'system') return stampedItem;
+    return inheritPrevailingBackground(stampedItem, getPrevailingGeneratedBackground());
+  }, [getPrevailingGeneratedBackground]);
+
+  const markItemBackgroundAsUserChanged = useCallback((item: ServiceItem, previousItem?: ServiceItem | null) => {
+    if (!previousItem) return item;
+    const themeChanged = String(previousItem.theme.backgroundUrl || '').trim() !== String(item.theme.backgroundUrl || '').trim()
+      || String(previousItem.theme.mediaType || '').trim() !== String(item.theme.mediaType || '').trim();
+    const previousSlidesById = new Map(previousItem.slides.map((slide) => [slide.id, slide]));
+    const slideBackgroundChanged = item.slides.some((slide) => {
+      const previousSlide = previousSlidesById.get(slide.id);
+      return String(previousSlide?.backgroundUrl || '').trim() !== String(slide.backgroundUrl || '').trim()
+        || String(previousSlide?.mediaType || '').trim() !== String(slide.mediaType || '').trim();
+    });
+    if (!themeChanged && !slideBackgroundChanged) return item;
+    return stampItemBackgroundSource(clearItemBackgroundFallback(item), 'user');
+  }, []);
+
+  const prepareItemForGoLive = useCallback((item: ServiceItem) => {
+    const nextItem = inheritPrevailingBackground(item, getPrevailingGeneratedBackground());
+    if (nextItem === item) return item;
+    setSchedule((prev) => prev.map((entry) => (
+      entry.id === nextItem.id ? nextItem : entry
+    )));
+    return nextItem;
+  }, [getPrevailingGeneratedBackground]);
+  useEffect(() => {
+    const nextItem = selectedItem || activeItem || schedule[0] || null;
+    if (!nextItem) {
+      setPresenterPreviewSelection((prev) => (
+        prev.itemId === null && prev.slideIndex === 0 ? prev : { itemId: null, slideIndex: 0 }
+      ));
+      return;
+    }
+    const maxSlideIndex = Math.max(0, nextItem.slides.length - 1);
+    setPresenterPreviewSelection((prev) => {
+      const nextItemId = nextItem.id;
+      const suggestedIndex = prev.itemId === nextItemId
+        ? clamp(prev.slideIndex, 0, maxSlideIndex)
+        : (activeItemId === nextItemId && activeSlideIndex >= 0
+          ? clamp(activeSlideIndex, 0, maxSlideIndex)
+          : 0);
+      if (prev.itemId === nextItemId && prev.slideIndex === suggestedIndex) {
+        return prev;
+      }
+      return {
+        itemId: nextItemId,
+        slideIndex: suggestedIndex,
+      };
+    });
+  }, [selectedItem, activeItem, schedule, activeItemId, activeSlideIndex]);
   const enabledTimerCues = useMemo(() => {
     return schedule
       .map((item, idx) => {
@@ -2601,12 +3559,245 @@ function App() {
   const obsOutputUrl = typeof window !== 'undefined'
     ? buildSharedRouteUrl('output')
     : `/#/output?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&fullscreen=1`;
+  const cleanFeedUrl = typeof window !== 'undefined'
+    ? `${buildSharedRouteUrl('output')}&clean=1`
+    : `/#/output?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}&fullscreen=1&clean=1`;
   const remoteControlUrl = typeof window !== 'undefined'
     ? buildSharedRouteUrl('remote')
     : `/#/remote?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}`;
   const stageDisplayUrl = typeof window !== 'undefined'
     ? buildSharedRouteUrl('stage')
     : `/#/stage?session=${encodeURIComponent(liveSessionId)}&workspace=${encodeURIComponent(workspaceId)}`;
+  const electronMachineApi = typeof window !== 'undefined' ? window.electron?.machine : undefined;
+  const hasElectronDisplayControl = !!(isElectronShell && electronMachineApi?.listDisplays && electronMachineApi?.startService);
+
+  const buildAutoDisplayMapping = useCallback((displays: DesktopDisplayInfo[]): DesktopDisplayMapping => {
+    const orderedDisplays = [...displays];
+    const primary = orderedDisplays.find((display) => display.isPrimary) || orderedDisplays[0] || null;
+    const externalDisplays = orderedDisplays
+      .filter((display) => !display.isInternal)
+      .sort((left, right) => (right.bounds.width * right.bounds.height) - (left.bounds.width * left.bounds.height));
+    const audience = externalDisplays[0]
+      || orderedDisplays.find((display) => display.id !== primary?.id)
+      || primary;
+    const stage = orderedDisplays.find((display) => display.id !== primary?.id && display.id !== audience?.id)
+      || externalDisplays.find((display) => display.id !== audience?.id && display.id !== primary?.id)
+      || null;
+    const roleByDisplayId = new Map<number, DisplayRole>();
+    if (primary) roleByDisplayId.set(primary.id, 'control');
+    if (audience && audience.id !== primary?.id) roleByDisplayId.set(audience.id, 'audience');
+    if (stage && stage.id !== primary?.id && stage.id !== audience?.id) roleByDisplayId.set(stage.id, 'stage');
+
+    return {
+      assignments: orderedDisplays.map((display) => ({
+        role: roleByDisplayId.get(display.id) || 'none',
+        displayId: display.id,
+        displayKey: display.key,
+      })),
+      updatedAt: Date.now(),
+    };
+  }, []);
+
+  const getMappedRoleForDisplay = useCallback((display: DesktopDisplayInfo) => {
+    const exact = desktopDisplayMapping.assignments.find((entry) => entry.displayId === display.id);
+    if (exact) return exact.role;
+    const keyed = desktopDisplayMapping.assignments.find((entry) => entry.displayKey && entry.displayKey === display.key);
+    return keyed?.role || 'none';
+  }, [desktopDisplayMapping.assignments]);
+
+  const desktopDisplayCards = useMemo<DesktopDisplayCard[]>(() => {
+    return desktopDisplays.map((display) => {
+      const role = getMappedRoleForDisplay(display);
+      const liveStatus = (
+        (role === 'audience' && desktopServiceState.outputOpen)
+        || (role === 'stage' && desktopServiceState.stageOpen)
+        || (role === 'control' && desktopServiceState.controlDisplayId === display.id)
+      ) ? 'active' : 'idle';
+      return {
+        id: display.id,
+        key: display.key,
+        name: display.name,
+        role,
+        isPrimary: display.isPrimary,
+        isInternal: display.isInternal,
+        width: display.bounds.width,
+        height: display.bounds.height,
+        scaleFactor: display.scaleFactor,
+        x: display.bounds.x,
+        y: display.bounds.y,
+        liveStatus,
+      };
+    });
+  }, [desktopDisplays, desktopServiceState.controlDisplayId, desktopServiceState.outputOpen, desktopServiceState.stageOpen, getMappedRoleForDisplay]);
+
+  const desktopRoleAssignments = useMemo(() => {
+    const entries: Record<Exclude<DisplayRole, 'none'>, number | null> = {
+      control: null,
+      audience: null,
+      stage: null,
+    };
+    desktopDisplayCards.forEach((display) => {
+      if (display.role !== 'none') {
+        entries[display.role] = display.id;
+      }
+    });
+    return entries;
+  }, [desktopDisplayCards]);
+
+  const desktopDisplayValidationErrors = useMemo(() => {
+    const errors: string[] = [];
+    if (!desktopRoleAssignments.control) {
+      errors.push('Assign one control display.');
+    }
+    if (!desktopRoleAssignments.audience) {
+      errors.push('Assign one audience display.');
+    }
+    return errors;
+  }, [desktopRoleAssignments.audience, desktopRoleAssignments.control]);
+
+  const persistDesktopDisplayMapping = useCallback((mapping: DesktopDisplayMapping, message?: string) => {
+    setDesktopDisplayMapping(mapping);
+    writeDesktopDisplayMapping(mapping);
+    if (message) {
+      setDesktopDisplayStatusText(message);
+    }
+  }, []);
+
+  const refreshDesktopDisplays = useCallback(async () => {
+    if (!hasElectronDisplayControl) return;
+    try {
+      const nextDisplays = await electronMachineApi?.listDisplays?.();
+      if (Array.isArray(nextDisplays)) {
+        setDesktopDisplays(nextDisplays);
+      }
+    } catch (error) {
+      console.error('Failed to enumerate desktop displays', error);
+      setDesktopDisplayStatusText('Could not refresh connected displays.');
+    }
+  }, [electronMachineApi, hasElectronDisplayControl]);
+
+  const handleDesktopRoleChange = useCallback((displayId: number, role: DisplayRole) => {
+    const nextAssignments = desktopDisplays.map((display) => {
+      const currentRole = getMappedRoleForDisplay(display);
+      let nextRole: DisplayRole = currentRole;
+      if (display.id === displayId) {
+        nextRole = role;
+      } else if (role !== 'none' && currentRole === role) {
+        nextRole = 'none';
+      }
+      return {
+        role: nextRole,
+        displayId: display.id,
+        displayKey: display.key,
+      };
+    });
+    persistDesktopDisplayMapping({
+      assignments: nextAssignments,
+      updatedAt: Date.now(),
+    });
+  }, [desktopDisplays, getMappedRoleForDisplay, persistDesktopDisplayMapping]);
+
+  const handleDesktopAutoAssign = useCallback(() => {
+    if (!desktopDisplays.length) return;
+    persistDesktopDisplayMapping(buildAutoDisplayMapping(desktopDisplays), 'Displays auto-assigned. Review and save if needed.');
+  }, [buildAutoDisplayMapping, desktopDisplays, persistDesktopDisplayMapping]);
+
+  const handleSaveDesktopDisplayMapping = useCallback(() => {
+    persistDesktopDisplayMapping({
+      assignments: desktopDisplays.map((display) => ({
+        role: getMappedRoleForDisplay(display),
+        displayId: display.id,
+        displayKey: display.key,
+      })),
+      updatedAt: Date.now(),
+    }, 'Display mapping saved on this machine.');
+  }, [desktopDisplays, getMappedRoleForDisplay, persistDesktopDisplayMapping]);
+
+  const handleOpenDisplaySetup = useCallback(() => {
+    if (!hasElectronDisplayControl) {
+      setWorkspaceSettings(prev => ({ ...prev, machineMode: !prev.machineMode }));
+      return;
+    }
+    setIsDisplaySetupOpen(true);
+    void refreshDesktopDisplays();
+  }, [hasElectronDisplayControl, refreshDesktopDisplays]);
+
+  const handleStartDesktopService = useCallback(async () => {
+    if (!hasElectronDisplayControl) return;
+    if (desktopDisplayValidationErrors.length > 0) {
+      setDesktopDisplayStatusText(desktopDisplayValidationErrors[0]);
+      return;
+    }
+    try {
+      const result = await electronMachineApi?.startService?.({
+        workspaceId,
+        sessionId: liveSessionId,
+        controlDisplayId: desktopRoleAssignments.control,
+        audienceDisplayId: desktopRoleAssignments.audience,
+        stageDisplayId: desktopRoleAssignments.stage,
+      });
+      if (result?.ok && result.state) {
+        setDesktopServiceState(result.state);
+        setIsOutputLive(!!result.state.outputOpen);
+        setIsStageDisplayLive(!!result.state.stageOpen);
+        setPopupBlocked(false);
+        setOutputWin(null);
+        setStageWin(null);
+        setDesktopDisplayStatusText(
+          desktopRoleAssignments.stage
+            ? 'Service started across control, audience, and stage displays.'
+            : 'Service started. No stage screen assigned.'
+        );
+        handleSaveDesktopDisplayMapping();
+        setIsDisplaySetupOpen(false);
+      } else {
+        setDesktopDisplayStatusText('Could not start service on the selected displays.');
+      }
+    } catch (error) {
+      console.error('Failed to start desktop service', error);
+      setDesktopDisplayStatusText('Desktop service launch failed.');
+    }
+  }, [desktopDisplayValidationErrors.length, desktopRoleAssignments.audience, desktopRoleAssignments.control, desktopRoleAssignments.stage, electronMachineApi, handleSaveDesktopDisplayMapping, hasElectronDisplayControl, liveSessionId, workspaceId]);
+
+  useEffect(() => {
+    if (!hasElectronDisplayControl) return;
+    void refreshDesktopDisplays();
+    void electronMachineApi?.getServiceState?.().then((state) => {
+      if (state) {
+        setDesktopServiceState(state);
+        setIsOutputLive(!!state.outputOpen);
+        setIsStageDisplayLive(!!state.stageOpen);
+      }
+    });
+    const offDisplays = electronMachineApi?.onDisplaysChanged?.((payload) => {
+      if (Array.isArray(payload)) {
+        setDesktopDisplays(payload);
+      }
+    });
+    const offService = electronMachineApi?.onServiceState?.((payload) => {
+      setDesktopServiceState(payload);
+      setIsOutputLive(!!payload.outputOpen);
+      setIsStageDisplayLive(!!payload.stageOpen);
+      if (payload.outputOpen || payload.stageOpen) {
+        setPopupBlocked(false);
+        setOutputWin(null);
+        setStageWin(null);
+      }
+    });
+    return () => {
+      offDisplays?.();
+      offService?.();
+    };
+  }, [electronMachineApi, hasElectronDisplayControl, refreshDesktopDisplays]);
+
+  useEffect(() => {
+    if (!hasElectronDisplayControl) return;
+    if (!desktopDisplays.length) return;
+    if (desktopDisplayMapping.assignments.length > 0) return;
+    const nextMapping = buildAutoDisplayMapping(desktopDisplays);
+    setDesktopDisplayMapping(nextMapping);
+    writeDesktopDisplayMapping(nextMapping);
+  }, [buildAutoDisplayMapping, desktopDisplayMapping.assignments.length, desktopDisplays, hasElectronDisplayControl]);
   const goLiveNextItem = () => {
     const idx = schedule.findIndex(i => i.id === activeItemId);
     const nextIdx = idx + 1;
@@ -2740,7 +3931,7 @@ function App() {
   ]);
 
   const dispatchAetherEvent = useCallback(async (
-    event: 'lumina.bridge.ping' | 'lumina.state.sync' | 'lumina.scene.switch',
+    event: AetherBridgeEvent,
     payload: Record<string, unknown>,
     options?: { timeoutMs?: number; successLabel?: string; failureLabel?: string }
   ) => {
@@ -2752,9 +3943,16 @@ function App() {
       });
       return { ok: false };
     }
+    // Derive room ID from the bridge URL's ?room= query param (new pairing flow)
+    // Fall back to the legacy stored aetherRoomId for backwards compat
+    const roomId = (() => {
+      try { return new URL(workspaceSettings.aetherBridgeUrl).searchParams.get('room') || undefined; }
+      catch { return String(workspaceSettings.aetherRoomId || '').trim() || undefined; }
+    })();
     const result = await dispatchAetherBridgeEvent({
       endpointUrl,
       accessToken: String(aetherBridgeToken || '').trim() || undefined,
+      roomId,
       event,
       workspaceId,
       sessionId: liveSessionId,
@@ -2775,7 +3973,7 @@ function App() {
       });
     }
     return result;
-  }, [aetherBridgeToken, liveSessionId, workspaceId, workspaceSettings.aetherBridgeUrl]);
+  }, [aetherBridgeToken, liveSessionId, workspaceId, workspaceSettings.aetherBridgeUrl, workspaceSettings.aetherRoomId]);
 
   const handleAetherBridgeTest = useCallback(async () => {
     await dispatchAetherEvent(
@@ -2793,6 +3991,15 @@ function App() {
       }
     );
   }, [dispatchAetherEvent, liveSessionId, viewMode, workspaceId]);
+
+  // Heartbeat: ping Aether every 60s while bridge is enabled + configured
+  useEffect(() => {
+    if (!workspaceSettings.aetherBridgeEnabled || !workspaceSettings.aetherBridgeUrl.trim()) return;
+    const id = setInterval(() => {
+      void dispatchAetherEvent('lumina.bridge.ping', { app: 'lumina-presenter', heartbeat: true }, { timeoutMs: 4000 });
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [workspaceSettings.aetherBridgeEnabled, workspaceSettings.aetherBridgeUrl, dispatchAetherEvent]);
 
   const handleAetherBridgeSyncNow = useCallback(async () => {
     await dispatchAetherEvent(
@@ -2822,6 +4029,27 @@ function App() {
       }
     );
   }, [dispatchAetherEvent, liveSessionId, resolveAetherSceneName, workspaceId]);
+
+  const handleAetherStreamRequest = useCallback(async (
+    action: 'start' | 'stop' | 'toggle',
+    payload: Record<string, unknown> = {},
+    options?: { timeoutMs?: number; successLabel?: string; failureLabel?: string }
+  ) => {
+    await dispatchAetherEvent(
+      'lumina.stream.request',
+      {
+        action,
+        ...payload,
+        workspaceId,
+        sessionId: liveSessionId,
+      },
+      {
+        timeoutMs: options?.timeoutMs ?? 5000,
+        successLabel: options?.successLabel ?? `Aether ${action} command sent`,
+        failureLabel: options?.failureLabel ?? `Aether ${action} command failed`,
+      }
+    );
+  }, [dispatchAetherEvent, liveSessionId, workspaceId]);
 
   useEffect(() => {
     if (viewState !== 'studio') return;
@@ -2921,6 +4149,75 @@ function App() {
     }));
   }, [audienceUrl]);
 
+  const handleStageTimerLayoutChange = useCallback((layout: StageTimerLayout) => {
+    const normalized = normalizeStageTimerLayout(layout);
+    writeStoredStageWorkspaceSettings({ stageTimerLayout: normalized });
+    setWorkspaceSettings((prev) => (
+      stageTimerLayoutsEqual(prev.stageTimerLayout, normalized)
+        ? prev
+        : { ...prev, stageTimerLayout: normalized }
+    ));
+  }, []);
+
+  const handleStageAlertLayoutChange = useCallback((layout: StageAlertLayout) => {
+    const normalized = normalizeStageAlertLayout(layout);
+    writeStoredStageWorkspaceSettings({ stageAlertLayout: normalized });
+    setWorkspaceSettings((prev) => (
+      stageAlertLayoutsEqual(prev.stageAlertLayout, normalized)
+        ? prev
+        : { ...prev, stageAlertLayout: normalized }
+    ));
+  }, []);
+
+  const handleStageFlowLayoutChange = useCallback((layout: StageFlowLayout) => {
+    const normalized = VALID_STAGE_FLOW_LAYOUTS.includes(layout) ? layout : 'balanced';
+    writeStoredStageWorkspaceSettings({ stageFlowLayout: normalized });
+    setWorkspaceSettings((prev) => (
+      prev.stageFlowLayout === normalized
+        ? prev
+        : { ...prev, stageFlowLayout: normalized }
+    ));
+  }, []);
+
+  useEffect(() => {
+    const syncStageLayoutsFromStorage = (raw: string | null) => {
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw) as { workspaceSettings?: Partial<WorkspaceSettings> };
+        const storedSettings = parsed?.workspaceSettings;
+        if (!storedSettings || typeof storedSettings !== 'object') return;
+        const nextTimerLayout = normalizeStageTimerLayout(storedSettings.stageTimerLayout);
+        const nextAlertLayout = normalizeStageAlertLayout(storedSettings.stageAlertLayout);
+        const nextFlowLayout = typeof storedSettings.stageFlowLayout === 'string' && VALID_STAGE_FLOW_LAYOUTS.includes(storedSettings.stageFlowLayout as StageFlowLayout)
+          ? storedSettings.stageFlowLayout as StageFlowLayout
+          : null;
+        setWorkspaceSettings((prev) => {
+          const timerChanged = !stageTimerLayoutsEqual(prev.stageTimerLayout, nextTimerLayout);
+          const alertChanged = !stageAlertLayoutsEqual(prev.stageAlertLayout, nextAlertLayout);
+          const flowChanged = !!nextFlowLayout && prev.stageFlowLayout !== nextFlowLayout;
+          if (!timerChanged && !alertChanged && !flowChanged) return prev;
+          return {
+            ...prev,
+            stageTimerLayout: nextTimerLayout,
+            stageAlertLayout: nextAlertLayout,
+            stageFlowLayout: nextFlowLayout || prev.stageFlowLayout,
+          };
+        });
+      } catch {
+        // ignore malformed shared storage payloads
+      }
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY) return;
+      syncStageLayoutsFromStorage(event.newValue);
+    };
+
+    window.addEventListener('storage', handleStorage);
+    syncStageLayoutsFromStorage(window.localStorage.getItem(STORAGE_KEY));
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   const cloneSchedule = (value: ServiceItem[]) => JSON.parse(JSON.stringify(value)) as ServiceItem[];
   const pushHistory = () => {
     historyRef.current.push({
@@ -2952,15 +4249,15 @@ function App() {
       fontSize: 'large' as const,
     };
     if (templateId === 'CLASSIC') {
-      return cloneSchedule(INITIAL_SCHEDULE).map((item, idx) => ({ ...item, id: `${now}-${idx}` }));
+      return cloneSchedule(INITIAL_SCHEDULE).map((item, idx) => stampItemBackgroundSource({ ...item, id: `${now}-${idx}` }, 'system'));
     }
     if (templateId === 'YOUTH') {
-      return [
+      const youthItems: ServiceItem[] = [
         {
           id: `${now}-1`,
           title: 'Countdown + Hype',
           type: ItemType.ANNOUNCEMENT,
-          theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[9], fontSize: 'xlarge' },
+          theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[9], fontSize: 'xlarge' as const },
           slides: [
             { id: `${now}-1a`, label: 'Start', content: 'Service starts in 05:00' },
             { id: `${now}-1b`, label: 'Welcome', content: 'Welcome to Youth Night' },
@@ -2970,7 +4267,7 @@ function App() {
           id: `${now}-2`,
           title: 'Worship Set',
           type: ItemType.SONG,
-          theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[7], fontSize: 'large' },
+          theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[7], fontSize: 'large' as const },
           slides: [
             { id: `${now}-2a`, label: 'Verse 1', content: 'You are here, moving in our midst' },
             { id: `${now}-2b`, label: 'Chorus', content: 'Way maker, miracle worker' },
@@ -2980,20 +4277,21 @@ function App() {
           id: `${now}-3`,
           title: 'Message + Call',
           type: ItemType.ANNOUNCEMENT,
-          theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[2], fontSize: 'medium' },
+          theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[2], fontSize: 'medium' as const },
           slides: [
             { id: `${now}-3a`, label: 'Main Point', content: 'Faith over fear' },
             { id: `${now}-3b`, label: 'Response', content: 'Prayer team available at the front' },
           ],
         },
       ];
+      return youthItems.map((item) => stampItemBackgroundSource(item, 'system'));
     }
-    return [
+    const prayerItems: ServiceItem[] = [
       {
         id: `${now}-p1`,
         title: 'Prayer + Reflection',
         type: ItemType.SCRIPTURE,
-        theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[5], fontFamily: 'serif', fontSize: 'medium' },
+        theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[5], fontFamily: 'serif', fontSize: 'medium' as const },
         slides: [
           { id: `${now}-p1a`, label: 'Reading', content: 'Psalm 23:1-3' },
           { id: `${now}-p1b`, label: 'Meditation', content: 'Be still and know that I am God.' },
@@ -3003,12 +4301,13 @@ function App() {
         id: `${now}-p2`,
         title: 'Intercession',
         type: ItemType.ANNOUNCEMENT,
-        theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[10], fontSize: 'large' },
+        theme: { ...baseTheme, backgroundUrl: DEFAULT_BACKGROUNDS[10], fontSize: 'large' as const },
         slides: [
           { id: `${now}-p2a`, label: 'Prayer Focus', content: 'Families, healing, and community leaders' },
         ],
       },
     ];
+    return prayerItems.map((item) => stampItemBackgroundSource(item, 'system'));
   };
 
   useEffect(() => {
@@ -3550,8 +4849,10 @@ function App() {
   };
 
   const updateItem = (item: ServiceItem) => {
+    const previousItem = schedule.find((entry) => entry.id === item.id) || null;
+    const normalizedItem = markItemBackgroundAsUserChanged(item, previousItem);
     pushHistory();
-    setSchedule((prev) => prev.map((i) => (i.id === item.id ? item : i)));
+    setSchedule((prev) => prev.map((i) => (i.id === normalizedItem.id ? normalizedItem : i)));
   };
 
   const removeItem = (itemId: string) => {
@@ -3571,25 +4872,60 @@ function App() {
   };
 
   const addEmptyItem = () => {
-    const newItem: ServiceItem = {
+    const newItem = finalizeGeneratedItemBackground({
       id: Date.now().toString(),
       title: "New Item",
       type: ItemType.ANNOUNCEMENT,
       slides: [],
-      theme: { backgroundUrl: DEFAULT_BACKGROUNDS[2], fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'medium' }
-    };
+      theme: { backgroundUrl: DEFAULT_BACKGROUNDS[2], fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'medium' },
+      metadata: {
+        source: 'manual',
+      },
+    }, 'system');
     addItem(newItem);
     setSelectedItemId(newItem.id);
   };
 
+  const cloneServiceItemForDuplication = useCallback((item: ServiceItem) => {
+    const stamp = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+    return {
+      ...JSON.parse(JSON.stringify(item)) as ServiceItem,
+      id: `item-${stamp}`,
+      title: `${item.title} Copy`,
+      slides: item.slides.map((slide, idx) => ({
+        ...slide,
+        id: `slide-${stamp}-${idx + 1}`,
+      })),
+    };
+  }, []);
+
+  const duplicateScheduleItem = useCallback((itemId: string) => {
+    const sourceIndex = schedule.findIndex((entry) => entry.id === itemId);
+    if (sourceIndex < 0) return;
+    const source = schedule[sourceIndex];
+    if (!source) return;
+    const duplicated = cloneServiceItemForDuplication(source);
+    pushHistory();
+    setSchedule((prev) => {
+      const next = [...prev];
+      next.splice(sourceIndex + 1, 0, duplicated);
+      return next;
+    });
+    setSelectedItemId(duplicated.id);
+  }, [cloneServiceItemForDuplication, schedule, pushHistory]);
+
   const goLive = (item: ServiceItem, slideIndex: number = 0) => {
-    if (!item || !Array.isArray(item.slides) || item.slides.length === 0) return;
-    const boundedIndex = Math.max(0, Math.min(item.slides.length - 1, slideIndex));
-    setActiveItemId(item.id);
+    const nextLiveItem = prepareItemForGoLive(item);
+    if (!nextLiveItem || !Array.isArray(nextLiveItem.slides) || nextLiveItem.slides.length === 0) return;
+    const boundedIndex = Math.max(0, Math.min(nextLiveItem.slides.length - 1, slideIndex));
+    const bridgeReady = workspaceSettings.aetherBridgeEnabled && !!String(workspaceSettings.aetherBridgeUrl || '').trim();
+    const shouldRequestAetherStart = bridgeReady && (!activeItemId || blackout || holdScreenMode !== 'none' || !isPlaying);
+    const goLiveSlide = nextLiveItem.slides[boundedIndex];
+    setActiveItemId(nextLiveItem.id);
     setActiveSlideIndex(boundedIndex);
-    if (item.timerCue?.enabled) {
-      const cueDuration = Number.isFinite(item.timerCue.durationSec) ? Math.max(1, Math.round(item.timerCue.durationSec)) : 300;
-      setCurrentCueItemId(item.id);
+    if (nextLiveItem.timerCue?.enabled) {
+      const cueDuration = Number.isFinite(nextLiveItem.timerCue.durationSec) ? Math.max(1, Math.round(nextLiveItem.timerCue.durationSec)) : 300;
+      setCurrentCueItemId(nextLiveItem.id);
       if (!timerRunning) {
         setTimerMode('COUNTDOWN');
         setTimerDurationMin(Math.max(1, Math.ceil(cueDuration / 60)));
@@ -3598,25 +4934,124 @@ function App() {
       }
     }
     setBlackout(false);
+    setHoldScreenMode('none');
     setIsPlaying(true);
-    logActivity(user?.uid, 'PRESENTATION_START', { itemTitle: item.title });
+    logActivity(user?.uid, 'PRESENTATION_START', { itemTitle: nextLiveItem.title });
+    // Fire item_start macro triggers
+    const itemStartMatches = matchTriggers(
+      { type: 'item_start', itemId: nextLiveItem.id },
+      macros,
+    );
+    itemStartMatches.forEach((macro) => {
+      import('./services/macroEngine').then(({ executeMacro }) => {
+        executeMacro(macro, macroCtx).catch(() => {});
+      });
+    });
+
+    if (bridgeReady) {
+      const programSceneName = resolveAetherSceneName('program');
+      const bridgePayload = {
+        target: 'program',
+        sceneTarget: 'program',
+        sceneName: programSceneName,
+        itemId: nextLiveItem.id,
+        itemTitle: nextLiveItem.title,
+        itemType: nextLiveItem.type,
+        slideIndex: boundedIndex,
+        slideLabel: String(goLiveSlide?.label || `Slide ${boundedIndex + 1}`),
+      };
+      if (shouldRequestAetherStart) {
+        void handleAetherStreamRequest('start', bridgePayload, {
+          successLabel: 'Aether live start sent',
+          failureLabel: 'Aether live start failed',
+        });
+      } else {
+        void handleAetherSceneSwitch('program');
+      }
+    }
   };
+  const goLiveSelectedPreview = useCallback(() => {
+    if (!presenterPreviewItem || presenterPreviewSlideIndex < 0) return;
+    goLive(presenterPreviewItem, presenterPreviewSlideIndex);
+  }, [presenterPreviewItem, presenterPreviewSlideIndex]);
+
+  const selectPresenterPreviewItem = useCallback((itemId: string) => {
+    setSelectedItemId(itemId);
+    setPresenterFocusArea('schedule');
+    setPresenterContextMenu(null);
+  }, []);
+
+  const selectPresenterPreviewSlide = useCallback((itemId: string, slideIndex: number, focusArea: PresenterFocusArea = 'filmstrip') => {
+    setSelectedItemId(itemId);
+    setPresenterPreviewSelection({
+      itemId,
+      slideIndex,
+    });
+    setPresenterFocusArea(focusArea);
+    setPresenterContextMenu(null);
+  }, []);
+
+  const movePreviewSelectionByOffset = useCallback((offset: number) => {
+    if (!presenterPreviewItem || !presenterPreviewSlides.length) return;
+    setPresenterPreviewSelection((prev) => ({
+      itemId: presenterPreviewItem.id,
+      slideIndex: clamp((prev.itemId === presenterPreviewItem.id ? prev.slideIndex : presenterPreviewSlideIndex) + offset, 0, presenterPreviewSlides.length - 1),
+    }));
+  }, [presenterPreviewItem, presenterPreviewSlideIndex, presenterPreviewSlides.length]);
+
+  const moveSelectedScheduleItemByOffset = useCallback((offset: number) => {
+    const baseIndex = schedule.findIndex((entry) => entry.id === selectedItemId);
+    if (baseIndex < 0) return;
+    const nextIndex = clamp(baseIndex + offset, 0, schedule.length - 1);
+    const nextItem = schedule[nextIndex];
+    if (!nextItem) return;
+    setSelectedItemId(nextItem.id);
+  }, [schedule, selectedItemId]);
+
+  const jumpToLiveSlide = useCallback((itemId: string, slideIndex: number) => {
+    const item = schedule.find((entry) => entry.id === itemId);
+    if (!item) return;
+    goLive(item, slideIndex);
+    setPresenterFocusArea('live');
+    setPresenterContextMenu(null);
+  }, [schedule]);
+
+  const updatePresenterLayoutPref = useCallback((field: keyof PresenterLayoutPrefs, delta: number) => {
+    setPresenterLayoutPrefs((prev) => clampPresenterLayoutPrefs({
+      ...prev,
+      [field]: Number(prev[field]) + delta,
+    }));
+  }, []);
+
+  const showPresenterContextMenu = useCallback((event: React.MouseEvent, nextMenu: Exclude<PresenterContextMenuState, null>) => {
+    event.preventDefault();
+    setPresenterContextMenu(nextMenu);
+  }, []);
+
+  const closePresenterContextMenu = useCallback(() => {
+    setPresenterContextMenu(null);
+  }, []);
   const handleApplyHymnInsertion = (result: RunSheetInsertionResult, options?: { goLive?: boolean }) => {
+    const insertedBackgroundSource = result.insertedItem.metadata?.backgroundSource === 'user' ? 'user' : 'system';
+    const normalizedInsertedItem = finalizeGeneratedItemBackground(result.insertedItem, insertedBackgroundSource);
+    const normalizedSchedule = result.schedule.map((entry) => (
+      entry.id === normalizedInsertedItem.id ? normalizedInsertedItem : entry
+    ));
     pushHistory();
-    setSchedule(result.schedule);
+    setSchedule(normalizedSchedule);
     setSelectedItemId(result.selectedItemId);
     logActivity(user?.uid, 'ADD_HYMN', {
-      hymnId: result.insertedItem.metadata?.hymn?.hymnId,
-      title: result.insertedItem.title,
-      slideCount: result.insertedItem.slides.length,
+      hymnId: normalizedInsertedItem.metadata?.hymn?.hymnId,
+      title: normalizedInsertedItem.title,
+      slideCount: normalizedInsertedItem.slides.length,
     });
     if (options?.goLive) {
-      goLive(result.insertedItem, 0);
+      goLive(normalizedInsertedItem, 0);
     }
   };
   const handleProjectAudienceMessage = (text: string, label?: string) => {
     const existingIdx = schedule.findIndex(i => i.id === 'audience-live-item');
-    const newItem: ServiceItem = {
+    const newItem = finalizeGeneratedItemBackground({
       id: 'audience-live-item',
       title: label || 'Audience Message',
       type: ItemType.ANNOUNCEMENT,
@@ -3631,11 +5066,17 @@ function App() {
         textColor: '#ffffff',
         shadow: true,
         fontSize: 'medium'
-      }
-    };
+      },
+      metadata: {
+        source: 'audience',
+      },
+    }, 'system');
 
     if (existingIdx >= 0) {
-      updateItem(newItem);
+      pushHistory();
+      setSchedule((prev) => prev.map((entry) => (
+        entry.id === newItem.id ? newItem : entry
+      )));
     } else {
       addItem(newItem);
     }
@@ -3647,6 +5088,7 @@ function App() {
 
   const nextSlide = useCallback(() => {
     setBlackout((prev) => (prev ? false : prev));
+    setHoldScreenMode('none');
     if (!activeItem) return;
     if (activeSlideIndex < activeItem.slides.length - 1) {
       setActiveSlideIndex(prev => prev + 1);
@@ -3664,6 +5106,7 @@ function App() {
 
   const prevSlide = useCallback(() => {
     setBlackout((prev) => (prev ? false : prev));
+    setHoldScreenMode('none');
     if (!activeItem) return;
     if (activeSlideIndex > 0) {
       setActiveSlideIndex(prev => prev - 1);
@@ -3694,6 +5137,7 @@ function App() {
         setActiveItemId(cueItem.id);
         setActiveSlideIndex(0);
         setBlackout(false);
+        setHoldScreenMode('none');
         setIsPlaying(true);
       }
     }
@@ -3814,10 +5258,54 @@ function App() {
     reorderScheduleItems(itemId, target.id, offset > 0);
   }, [reorderScheduleItems, schedule]);
 
+  const stageGeneratedItem = useCallback((
+    item: ServiceItem,
+    backgroundSource: ServiceItemBackgroundSource,
+    options?: { select?: boolean; goLive?: boolean; slideIndex?: number },
+  ) => {
+    const normalizedItem = finalizeGeneratedItemBackground(item, backgroundSource);
+    addItem(normalizedItem);
+    if (options?.select !== false) {
+      setSelectedItemId(normalizedItem.id);
+    }
+    if (options?.goLive) {
+      goLive(normalizedItem, options.slideIndex || 0);
+    }
+    return normalizedItem;
+  }, [addItem, finalizeGeneratedItemBackground, goLive]);
+
+  // Updates an already-live/active bible item in-place (style/layout chip presses).
+  // Preserves the existing item's ID so no duplicate runsheet entries are created.
+  const handleBibleLiveUpdate = useCallback((item: ServiceItem) => {
+    const normalizedItem = finalizeGeneratedItemBackground({
+      ...item,
+      metadata: { ...item.metadata, source: item.metadata?.source || 'bible' },
+    }, 'system');
+    const targetId = activeItemId || selectedItemId;
+    const existingItem = targetId ? schedule.find((i) => i.id === targetId) : null;
+    if (existingItem && (existingItem.type === ItemType.BIBLE || existingItem.type === ItemType.SCRIPTURE || existingItem.metadata?.source === 'bible')) {
+      const replacedItem: ServiceItem = { ...normalizedItem, id: existingItem.id };
+      pushHistory();
+      setSchedule((prev) => prev.map((i) => (i.id === existingItem.id ? replacedItem : i)));
+      setSelectedItemId(existingItem.id);
+      goLive(replacedItem, 0);
+      return;
+    }
+    // Fallback: no active bible item to update, stage as a fresh item
+    stageGeneratedItem({ ...item, metadata: { ...item.metadata, source: item.metadata?.source || 'bible' } }, 'system', { goLive: true });
+  }, [activeItemId, selectedItemId, schedule, finalizeGeneratedItemBackground, goLive, stageGeneratedItem]);
+
   const handleAIItemGenerated = (item: ServiceItem) => {
+    const normalizedItem = finalizeGeneratedItemBackground({
+      ...item,
+      metadata: {
+        ...item.metadata,
+        source: item.metadata?.source || 'ai',
+      },
+    }, 'system');
     const sentiment = analyzeSentimentContext(item.title + ' ' + (item.slides[0]?.content || ''));
-    logActivity(user?.uid, 'AI_GENERATION', { sentiment, slideCount: item.slides.length, type: item.type });
-    addItem(item);
+    logActivity(user?.uid, 'AI_GENERATION', { sentiment, slideCount: normalizedItem.slides.length, type: normalizedItem.type });
+    addItem(normalizedItem);
   };
 
   const resolveImportedDeckTitle = (fallbackTitle: string) => {
@@ -3836,6 +5324,32 @@ function App() {
     }
     return new File([bytes], filename, { type: mimeType });
   };
+
+  const persistRemoteMotionLibraryAsset = useCallback(async (sourceUrl: string, mediaType: 'image' | 'video') => {
+    const trimmedUrl = String(sourceUrl || '').trim();
+    if (!isRemoteMediaUrl(trimmedUrl)) return trimmedUrl;
+
+    try {
+      const response = await fetch(trimmedUrl, { mode: 'cors' });
+      if (!response.ok) throw new Error(`REMOTE_MEDIA_FETCH_${response.status}`);
+
+      const blob = await response.blob();
+      const mimeType = String(blob.type || '').trim() || (mediaType === 'video' ? 'video/mp4' : 'image/jpeg');
+      const fileName = inferRemoteMediaFileName(trimmedUrl, mediaType, mimeType);
+      const file = new File([blob], fileName, { type: mimeType });
+      const uploaded = user?.uid
+        ? await uploadWorkspaceMedia(workspaceId, user, file)
+        : null;
+      return String(uploaded?.url || '').trim() || await saveMedia(file);
+    } catch (error) {
+      console.warn('Failed to persist remote motion asset for projector-safe playback.', {
+        sourceUrl: trimmedUrl,
+        mediaType,
+        error,
+      });
+      return trimmedUrl;
+    }
+  }, [user, workspaceId]);
 
   const buildTextSlidesFromPptx = async (file: File) => {
     const parsed = await parsePptxFile(file);
@@ -3889,13 +5403,16 @@ function App() {
     if (!chunks.length) return;
     const now = Date.now();
     const slides: Slide[] = chunks.map((content, idx) => ({ id: `${now}-${idx}`, label: `Part ${idx + 1}`, content }));
-    const newItem: ServiceItem = {
+    const newItem = finalizeGeneratedItemBackground({
       id: `${now}`,
       title: importTitle.trim() || 'Imported Lyrics',
       type: ItemType.SONG,
       slides,
       theme: { backgroundUrl: DEFAULT_BACKGROUNDS[0], mediaType: 'image', fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'large' },
-    };
+      metadata: {
+        source: 'import',
+      },
+    }, 'system');
     addItem(newItem);
     setImportTitle('Imported Lyrics');
     setImportLyrics('');
@@ -3911,13 +5428,16 @@ function App() {
     setImportDeckStatus('Parsing PowerPoint text...');
     try {
       const parsed = await buildTextSlidesFromPptx(file);
-      const importedItem: ServiceItem = {
+      const importedItem = finalizeGeneratedItemBackground({
         id: `${Date.now()}`,
         title: resolveImportedDeckTitle(parsed.suggestedTitle),
         type: ItemType.ANNOUNCEMENT,
         slides: parsed.slides,
         theme: { backgroundUrl: DEFAULT_BACKGROUNDS[0], mediaType: 'image', fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'large' },
-      };
+        metadata: {
+          source: 'import',
+        },
+      }, 'system');
       addItem(importedItem);
       logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: parsed.slides.length, mode: 'text' });
       setImportTitle('Imported Lyrics');
@@ -3947,13 +5467,16 @@ function App() {
         converted = await buildTextSlidesFromPptx(file);
         fallbackToText = true;
       }
-      const importedItem: ServiceItem = {
+      const importedItem = finalizeGeneratedItemBackground({
         id: `${Date.now()}`,
         title: resolveImportedDeckTitle(converted.suggestedTitle),
         type: fallbackToText ? ItemType.ANNOUNCEMENT : ItemType.MEDIA,
         slides: converted.slides,
         theme: { backgroundUrl: fallbackToText ? DEFAULT_BACKGROUNDS[0] : '', mediaType: 'image', fontFamily: 'sans-serif', textColor: '#ffffff', shadow: fallbackToText, fontSize: fallbackToText ? 'large' : 'medium' },
-      };
+        metadata: {
+          source: 'import',
+        },
+      }, fallbackToText ? 'system' : 'user');
       addItem(importedItem);
       logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: converted.slides.length, mode: fallbackToText ? 'visual_fallback_text' : 'visual' });
       setImportTitle('Imported Lyrics');
@@ -3965,13 +5488,16 @@ function App() {
         try {
           setImportDeckStatus('Visual renderer unavailable. Falling back to PPTX text import...');
           const parsed = await buildTextSlidesFromPptx(file);
-          const importedItem: ServiceItem = {
+          const importedItem = finalizeGeneratedItemBackground({
             id: `${Date.now()}`,
             title: resolveImportedDeckTitle(parsed.suggestedTitle),
             type: ItemType.ANNOUNCEMENT,
             slides: parsed.slides,
             theme: { backgroundUrl: DEFAULT_BACKGROUNDS[0], mediaType: 'image', fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'large' },
-          };
+            metadata: {
+              source: 'import',
+            },
+          }, 'system');
           addItem(importedItem);
           logActivity(user?.uid, 'IMPORT_PPTX', { filename: file.name, slideCount: parsed.slides.length, mode: 'visual_server_unavailable_fallback_text' });
           setImportTitle('Imported Lyrics');
@@ -3987,6 +5513,47 @@ function App() {
     } finally {
       setIsImportingDeck(false);
       setImportDeckStatus('');
+    }
+  };
+
+  const insertMediaFileAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    const isVideo = file.type.startsWith('video/') || looksLikeVideoUrl(file.name);
+    try {
+      const uploaded = user?.uid
+        ? await uploadWorkspaceMedia(workspaceId, user, file)
+        : null;
+      const backgroundUrl = String(uploaded?.url || '').trim() || await saveMedia(file);
+      const now = Date.now();
+      const mediaItem = finalizeGeneratedItemBackground({
+        id: `${now}-media-item`,
+        title: file.name.replace(/\.[^.]+$/, '') || 'Media Item',
+        type: ItemType.MEDIA,
+        slides: [{
+          id: `${now}-media-slide`,
+          label: 'Media',
+          content: '',
+          backgroundUrl,
+          mediaType: isVideo ? 'video' : 'image',
+        }],
+        theme: {
+          backgroundUrl: '',
+          mediaType: isVideo ? 'video' : 'image',
+          fontFamily: 'sans-serif',
+          textColor: '#ffffff',
+          shadow: false,
+          fontSize: 'medium',
+        },
+        metadata: {
+          source: 'import',
+        },
+      }, 'user');
+      addItem(mediaItem);
+      setSelectedItemId(mediaItem.id);
+    } catch (error: any) {
+      setImportModalError(error?.message || 'Media import failed.');
     }
   };
 
@@ -4013,11 +5580,117 @@ function App() {
     return text.slides;
   };
 
-  const startSlideLabelRename = useCallback((itemId: string, slideId: string, currentLabel: string) => {
+  const importEasyWorshipAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setImportModalError(null);
+    setIsImportingDeck(true);
+    setImportDeckStatus('Parsing EasyWorship file...');
+    try {
+      const parsed = await parseEasyWorshipFile(file);
+      const now = Date.now();
+      const slides: Slide[] = parsed.slides.map((entry, idx) => ({
+        id: `${now}-ew-${idx + 1}`,
+        label: entry.label || `Slide ${idx + 1}`,
+        content: entry.content,
+        ...(entry.notes ? { notes: entry.notes } : {}),
+      }));
+      const importedItem = finalizeGeneratedItemBackground({
+        id: `${now}`,
+        title: resolveImportedDeckTitle(parsed.title),
+        type: ItemType.SONG,
+        slides,
+        theme: { backgroundUrl: DEFAULT_BACKGROUNDS[0], mediaType: 'image', fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'large' },
+        metadata: { source: 'import' },
+      }, 'system');
+      addItem(importedItem);
+      logActivity(user?.uid, 'IMPORT_EASYWORSHIP', { filename: file.name, slideCount: slides.length });
+      setIsLyricsImportOpen(false);
+    } catch (error: any) {
+      setImportModalError(error?.message || 'EasyWorship import failed.');
+    } finally {
+      setIsImportingDeck(false);
+      setImportDeckStatus('');
+    }
+  };
+
+  const importProPresenterAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setImportModalError(null);
+    setIsImportingDeck(true);
+    setImportDeckStatus('Parsing ProPresenter file...');
+    try {
+      const parsed = await parseProPresenterFile(file);
+      const now = Date.now();
+      const slides: Slide[] = parsed.slides.map((entry, idx) => ({
+        id: `${now}-pp-${idx + 1}`,
+        label: entry.label || `Slide ${idx + 1}`,
+        content: entry.content,
+        ...(entry.notes ? { notes: entry.notes } : {}),
+      }));
+      const importedItem = finalizeGeneratedItemBackground({
+        id: `${now}`,
+        title: resolveImportedDeckTitle(parsed.title),
+        type: ItemType.SONG,
+        slides,
+        theme: { backgroundUrl: DEFAULT_BACKGROUNDS[0], mediaType: 'image', fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'large' },
+        metadata: { source: 'import' },
+      }, 'system');
+      addItem(importedItem);
+      logActivity(user?.uid, 'IMPORT_PROPRESENTER', { filename: file.name, slideCount: slides.length });
+      setIsLyricsImportOpen(false);
+    } catch (error: any) {
+      setImportModalError(error?.message || 'ProPresenter import failed.');
+    } finally {
+      setIsImportingDeck(false);
+      setImportDeckStatus('');
+    }
+  };
+
+  const importOpenSongAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setImportModalError(null);
+    setIsImportingDeck(true);
+    setImportDeckStatus('Parsing OpenSong file...');
+    try {
+      const parsed = await parseOpenSongFile(file);
+      const now = Date.now();
+      const slides: Slide[] = parsed.slides.map((entry, idx) => ({
+        id: `${now}-os-${idx + 1}`,
+        label: entry.label || `Slide ${idx + 1}`,
+        content: entry.content,
+        ...(entry.notes ? { notes: entry.notes } : {}),
+      }));
+      const importedItem = finalizeGeneratedItemBackground({
+        id: `${now}`,
+        title: resolveImportedDeckTitle(parsed.title),
+        type: ItemType.SONG,
+        slides,
+        theme: { backgroundUrl: DEFAULT_BACKGROUNDS[0], mediaType: 'image', fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'large' },
+        metadata: { source: 'import' },
+      }, 'system');
+      addItem(importedItem);
+      logActivity(user?.uid, 'IMPORT_OPENSONG', { filename: file.name, slideCount: slides.length });
+      setIsLyricsImportOpen(false);
+    } catch (error: any) {
+      setImportModalError(error?.message || 'OpenSong import failed.');
+    } finally {
+      setIsImportingDeck(false);
+      setImportDeckStatus('');
+    }
+  };
+
+  const startSlideLabelRename = useCallback((itemId: string, slideId: string, currentLabel: string, source: 'runsheet' | 'thumbnail' = 'thumbnail') => {
     setInlineSlideRename({
       itemId,
       slideId,
       value: currentLabel.trim() || 'Slide',
+      source,
     });
   }, []);
 
@@ -4062,6 +5735,55 @@ function App() {
       if (isTypingTarget) return;
       if (isAIModalOpen || isSlideEditorOpen || isHelpOpen || isProfileOpen || isMotionLibOpen || isTemplateOpen || isLyricsImportOpen) return;
       if (viewMode !== 'PRESENTER') return;
+      if (isPresenterBeta) {
+        switch (e.key) {
+          case 'ArrowUp':
+            if (presenterFocusArea === 'schedule') {
+              e.preventDefault();
+              moveSelectedScheduleItemByOffset(-1);
+            }
+            break;
+          case 'ArrowDown':
+            if (presenterFocusArea === 'schedule') {
+              e.preventDefault();
+              moveSelectedScheduleItemByOffset(1);
+            }
+            break;
+          case 'ArrowLeft':
+            if (presenterFocusArea === 'filmstrip') {
+              e.preventDefault();
+              movePreviewSelectionByOffset(-1);
+            }
+            break;
+          case 'ArrowRight':
+            if (presenterFocusArea === 'filmstrip') {
+              e.preventDefault();
+              movePreviewSelectionByOffset(1);
+            }
+            break;
+          case 'Enter':
+            e.preventDefault();
+            goLiveSelectedPreview();
+            break;
+          case ' ':
+          case 'PageDown':
+            e.preventDefault();
+            nextSlide();
+            break;
+          case 'PageUp':
+            e.preventDefault();
+            prevSlide();
+            break;
+          case 'b':
+          case 'B':
+            setBlackout((prev) => !prev);
+            break;
+          case 'Escape':
+            closePresenterContextMenu();
+            break;
+        }
+        return;
+      }
       switch (e.key) {
         case 'ArrowRight': case ' ': case 'PageDown': e.preventDefault(); nextSlide(); break;
         case 'ArrowLeft': case 'PageUp': e.preventDefault(); prevSlide(); break;
@@ -4070,7 +5792,7 @@ function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [viewMode, nextSlide, prevSlide, isAIModalOpen, isSlideEditorOpen, isHelpOpen, isProfileOpen, isMotionLibOpen, isTemplateOpen, isLyricsImportOpen]);
+  }, [viewMode, nextSlide, prevSlide, isPresenterBeta, presenterFocusArea, goLiveSelectedPreview, movePreviewSelectionByOffset, moveSelectedScheduleItemByOffset, closePresenterContextMenu, isAIModalOpen, isSlideEditorOpen, isHelpOpen, isProfileOpen, isMotionLibOpen, isTemplateOpen, isLyricsImportOpen]);
 
 
 
@@ -4118,6 +5840,10 @@ function App() {
               activeItemId: activeItem ? activeItem.id : null,
               activeSlideIndex: activeItem && activeItem.slides.length > 0 ? boundedIndex : -1,
             });
+          }
+
+          if (Object.prototype.hasOwnProperty.call(preferred, 'holdScreenMode')) {
+            setHoldScreenMode(sanitizeHoldScreenMode(preferred.holdScreenMode));
           }
 
           if (preferred.stageMessageCenter && typeof preferred.stageMessageCenter === 'object') {
@@ -4235,14 +5961,30 @@ function App() {
       const response = await fetchServerSessionState(workspaceId, liveSessionId);
       if (!active || !response?.state) return;
       const data = response.state;
+
+      // Remote command sync (existing)
       const rawIncomingAt = data.remoteCommandAt;
       const incomingAt = typeof rawIncomingAt === 'number' && Number.isFinite(rawIncomingAt) ? rawIncomingAt : null;
-      if (!incomingAt || incomingAt === lastServerRemoteCommandAtRef.current) return;
-      lastServerRemoteCommandAtRef.current = incomingAt;
+      if (incomingAt && incomingAt !== lastServerRemoteCommandAtRef.current) {
+        lastServerRemoteCommandAtRef.current = incomingAt;
+        const command = data.remoteCommand;
+        if (isRemoteCommand(command)) executeRemoteCommand(command);
+      }
 
-      const command = data.remoteCommand;
-      if (!isRemoteCommand(command)) return;
-      executeRemoteCommand(command);
+      // Schedule snapshot sync for collaborators: apply when controller wrote a newer snapshot
+      const rawScheduleAt = data.scheduleSnapshotAt;
+      const scheduleAt = typeof rawScheduleAt === 'number' && Number.isFinite(rawScheduleAt) ? rawScheduleAt : null;
+      const isCollaborator = typeof data.controllerOwnerUid === 'string' && data.controllerOwnerUid !== user.uid;
+      if (
+        scheduleAt &&
+        scheduleAt !== lastServerScheduleSnapshotAtRef.current &&
+        isCollaborator &&
+        Array.isArray(data.scheduleSnapshot) &&
+        data.scheduleSnapshot.length > 0
+      ) {
+        lastServerScheduleSnapshotAtRef.current = scheduleAt;
+        applyHydratedStudioState({ schedule: data.scheduleSnapshot });
+      }
     };
     pollServerCommands();
     const id = window.setInterval(pollServerCommands, 650);
@@ -4250,7 +5992,7 @@ function App() {
       active = false;
       window.clearInterval(id);
     };
-  }, [workspaceId, liveSessionId, user?.uid, cloudBootstrapComplete, executeRemoteCommand]);
+  }, [workspaceId, liveSessionId, user?.uid, user, cloudBootstrapComplete, executeRemoteCommand, applyHydratedStudioState]);
 
   useEffect(() => {
     if (!user?.uid || !cloudBootstrapComplete) return;
@@ -4258,6 +6000,7 @@ function App() {
       activeItemId,
       activeSlideIndex,
       blackout,
+      holdScreenMode,
       isPlaying,
       outputMuted,
       seekCommand,
@@ -4282,9 +6025,10 @@ function App() {
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
-  }, [activeItemId, activeSlideIndex, blackout, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerSeconds, effectiveTimerDurationSec, currentCueSpeaker, currentCueAmberPercent, currentCueRedPercent, stageTimerFlash, currentCueItemId, audienceDisplay, audienceQrProjection, stageMessageCenter, workspaceSettings, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
+  }, [activeItemId, activeSlideIndex, blackout, holdScreenMode, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerSeconds, effectiveTimerDurationSec, currentCueSpeaker, currentCueAmberPercent, currentCueRedPercent, stageTimerFlash, currentCueItemId, audienceDisplay, audienceQrProjection, stageMessageCenter, workspaceSettings, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
 
   useEffect(() => {
+    if (hasElectronDisplayControl) return;
     if (user?.uid && cloudBootstrapComplete && workspaceSettings.machineMode) {
       const hasAutoLaunched = (window as any)._luminaAutoLaunched;
       if (!hasAutoLaunched) {
@@ -4296,7 +6040,7 @@ function App() {
         }, 3000);
       }
     }
-  }, [user?.uid, cloudBootstrapComplete, workspaceSettings.machineMode, isOutputLive, isStageDisplayLive]);
+  }, [user?.uid, cloudBootstrapComplete, workspaceSettings.machineMode, isOutputLive, isStageDisplayLive, hasElectronDisplayControl]);
 
   useEffect(() => {
     if (!user?.uid || !cloudBootstrapComplete) return;
@@ -4465,6 +6209,17 @@ function App() {
         return;
       }
     }
+
+    // Fire timer_end macro triggers
+    const timerEndMatches = matchTriggers(
+      { type: 'timer_end', timerPresetId: currentCue.itemId },
+      macrosRef.current,
+    );
+    timerEndMatches.forEach((macro) => {
+      import('./services/macroEngine').then(({ executeMacro }) => {
+        executeMacro(macro, macroCtxRef.current).catch(() => {});
+      });
+    });
   }, [timerMode, timerRunning, timerSeconds, currentCue, currentCueIndex, enabledTimerCues, activateCueByItemId]);
 
   useEffect(() => {
@@ -4554,6 +6309,44 @@ function App() {
       goLive(activeItem, 0);
     }
 
+    if (hasElectronDisplayControl) {
+      const audienceDisplayId = desktopRoleAssignments.audience;
+      if (desktopServiceState.outputOpen) {
+        void electronMachineApi?.closeRoleWindow?.('audience').then((state) => {
+          if (!state) return;
+          setDesktopServiceState(state);
+          setIsOutputLive(false);
+        });
+        return;
+      }
+
+      if (!audienceDisplayId) {
+        setDesktopDisplayStatusText('Assign an audience display before launching output.');
+        setIsDisplaySetupOpen(true);
+        return;
+      }
+
+      void electronMachineApi?.openRoleWindow?.({
+        role: 'audience',
+        displayId: audienceDisplayId,
+        workspaceId,
+        sessionId: liveSessionId,
+      }).then((result) => {
+        if (!result?.ok || !result.state) {
+          setDesktopDisplayStatusText('Could not open the audience display.');
+          return;
+        }
+        setDesktopServiceState(result.state);
+        setIsOutputLive(true);
+        setPopupBlocked(false);
+        setOutputWin(null);
+      }).catch((error) => {
+        console.error('Failed to open audience display', error);
+        setDesktopDisplayStatusText('Audience display launch failed.');
+      });
+      return;
+    }
+
     if (isOutputLive) {
       setIsOutputLive(false);
       try { outputWin?.close(); } catch { }
@@ -4599,6 +6392,44 @@ function App() {
   }, [isOutputLive, outputWin]);
 
   const handleToggleStageDisplay = () => {
+    if (hasElectronDisplayControl) {
+      const stageDisplayId = desktopRoleAssignments.stage;
+      if (desktopServiceState.stageOpen) {
+        void electronMachineApi?.closeRoleWindow?.('stage').then((state) => {
+          if (!state) return;
+          setDesktopServiceState(state);
+          setIsStageDisplayLive(false);
+        });
+        return;
+      }
+
+      if (!stageDisplayId) {
+        setDesktopDisplayStatusText('Assign a stage display before launching stage view.');
+        setIsDisplaySetupOpen(true);
+        return;
+      }
+
+      void electronMachineApi?.openRoleWindow?.({
+        role: 'stage',
+        displayId: stageDisplayId,
+        workspaceId,
+        sessionId: liveSessionId,
+      }).then((result) => {
+        if (!result?.ok || !result.state) {
+          setDesktopDisplayStatusText('Could not open the stage display.');
+          return;
+        }
+        setDesktopServiceState(result.state);
+        setIsStageDisplayLive(true);
+        setPopupBlocked(false);
+        setStageWin(null);
+      }).catch((error) => {
+        console.error('Failed to open stage display', error);
+        setDesktopDisplayStatusText('Stage display launch failed.');
+      });
+      return;
+    }
+
     if (isStageDisplayLive) {
       setIsStageDisplayLive(false);
       try { stageWin?.close(); } catch { }
@@ -4642,11 +6473,10 @@ function App() {
 
   // ROUTING: PROJECTOR / OBS OUTPUT
   if (viewState === 'output') {
+    const holdState = renderPresenterHoldState();
     return (
       <div className="h-screen w-screen bg-black overflow-hidden relative">
-        {blackout ? (
-          <div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em]">BLACKOUT</div>
-        ) : (!activeItem || !activeSlide) ? (
+        {holdState ? holdState : (!activeItem || !activeSlide) ? (
           <div className="w-full h-full bg-black flex items-center justify-center text-zinc-500 font-mono text-xs font-bold tracking-[0.2em]">WAITING_FOR_LIVE_CONTENT</div>
         ) : (
           <SlideRenderer
@@ -4657,10 +6487,11 @@ function App() {
             seekAmount={seekAmount}
             isMuted={outputMuted}
             isProjector={true}
-            lowerThirds={routingMode !== 'PROJECTOR'}
+            lowerThirds={lowerThirdsEnabled}
             showSlideLabel={true}
             audienceOverlay={audienceDisplay}
             projectedAudienceQr={audienceQrProjection}
+            branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle, textOpacity: workspaceSettings.slideBrandingOpacity }}
           />
         )}
       </div>
@@ -4668,8 +6499,9 @@ function App() {
   }
 
   if (viewState === 'stage') {
-    if (blackout) {
-      return <div className="h-screen w-screen bg-black flex items-center justify-center text-zinc-500 text-xs uppercase tracking-[0.25em] font-mono">BLACKOUT ACTIVE</div>;
+    const holdState = renderPresenterHoldState();
+    if (holdState) {
+      return <div className="h-screen w-screen bg-black overflow-hidden">{holdState}</div>;
     }
     return (
       <StageDisplay
@@ -4687,13 +6519,9 @@ function App() {
         timerFlashActive={stageTimerFlash.active}
         timerFlashColor={stageTimerFlash.color}
         timerLayout={workspaceSettings.stageTimerLayout}
-        onTimerLayoutChange={(layout) => {
-          setWorkspaceSettings((prev) => ({ ...prev, stageTimerLayout: layout }));
-        }}
+        onTimerLayoutChange={handleStageTimerLayoutChange}
         stageAlertLayout={workspaceSettings.stageAlertLayout}
-        onStageAlertLayoutChange={(layout) => {
-          setWorkspaceSettings((prev) => ({ ...prev, stageAlertLayout: layout }));
-        }}
+        onStageAlertLayoutChange={handleStageAlertLayoutChange}
         profile={workspaceSettings.stageProfile}
         flowLayout={workspaceSettings.stageFlowLayout}
         audienceOverlay={audienceDisplay}
@@ -4865,7 +6693,7 @@ function App() {
                   onClick={(e) => { e.stopPropagation(); if (viewMode === 'PRESENTER') goLive(item, sIdx); }}
                 >
                   <div className="flex justify-between items-center gap-2">
-                      {inlineSlideRename?.itemId === item.id && inlineSlideRename.slideId === slide.id ? (
+                      {inlineSlideRename?.itemId === item.id && inlineSlideRename.slideId === slide.id && inlineSlideRename.source === 'runsheet' ? (
                       <div className="flex flex-1 items-center gap-1">
                         <input
                           ref={inlineSlideRenameInputRef}
@@ -4962,12 +6790,12 @@ function App() {
                         </button>
                         <button
                           type="button"
-                          onMouseDown={(e) => {
+                          onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                          onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            startSlideLabelRename(item.id, slide.id, slide.label || `Slide ${sIdx + 1}`);
+                            startSlideLabelRename(item.id, slide.id, slide.label || `Slide ${sIdx + 1}`, 'runsheet');
                           }}
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                           className="inline-flex items-center justify-center rounded border border-zinc-800 bg-zinc-950 px-1.5 py-1 text-zinc-400 hover:border-cyan-700 hover:text-cyan-300"
                           title="Rename slide/image"
                           aria-label={`Rename ${slide.label || `Slide ${sIdx + 1}`}`}
@@ -5014,6 +6842,711 @@ function App() {
        console.log(message);
     }
   };
+
+  const clearHold = () => {
+    setHoldScreenMode('clear');
+    setBlackout(false);
+  };
+
+  const logoHold = () => {
+    setHoldScreenMode('logo');
+    setBlackout(false);
+  };
+
+  const resumeProgramOutput = () => {
+    if (activeItem && activeSlide) {
+      setBlackout(false);
+      setHoldScreenMode('none');
+      setIsPlaying(true);
+      return;
+    }
+    goLiveSelectedPreview();
+  };
+
+  function renderPresenterHoldState(compact = false) {
+    if (blackout) return <HoldScreen view="blackout" compact={compact} />;
+    if (holdScreenMode === 'clear') return <HoldScreen view="clear" compact={compact} />;
+    if (holdScreenMode === 'logo') return <HoldScreen view="logo" churchName={workspaceSettings.churchName} compact={compact} />;
+    return null;
+  }
+
+  const presenterContextMenuActions: ContextMenuAction[] = (() => {
+    if (!presenterContextMenu) return [];
+
+    if (presenterContextMenu.type === 'schedule') {
+      const targetIndex = schedule.findIndex((entry) => entry.id === presenterContextMenu.itemId);
+      const targetItem = targetIndex >= 0 ? schedule[targetIndex] : null;
+      if (!targetItem) return [];
+      return [
+        {
+          id: 'select',
+          label: 'Select Item',
+          onSelect: () => selectPresenterPreviewItem(targetItem.id),
+        },
+        {
+          id: 'go-live',
+          label: 'Go Live',
+          disabled: !targetItem.slides.length,
+          onSelect: () => goLive(targetItem, 0),
+        },
+        {
+          id: 'duplicate',
+          label: 'Duplicate Item',
+          onSelect: () => duplicateScheduleItem(targetItem.id),
+        },
+        {
+          id: 'move-up',
+          label: 'Move Up',
+          disabled: targetIndex <= 0,
+          onSelect: () => moveScheduleItemByOffset(targetItem.id, -1),
+        },
+        {
+          id: 'move-down',
+          label: 'Move Down',
+          disabled: targetIndex >= schedule.length - 1,
+          onSelect: () => moveScheduleItemByOffset(targetItem.id, 1),
+        },
+        {
+          id: 'archive',
+          label: 'Archive Item',
+          onSelect: () => {
+            void handleArchiveSingleRunSheetItem(targetItem.id);
+          },
+        },
+        {
+          id: 'delete',
+          label: 'Delete Item',
+          danger: true,
+          onSelect: () => removeItem(targetItem.id),
+        },
+      ];
+    }
+
+    const targetItem = schedule.find((entry) => entry.id === presenterContextMenu.itemId);
+    const targetSlide = targetItem?.slides?.[presenterContextMenu.slideIndex] || null;
+    if (!targetItem || !targetSlide) return [];
+
+    if (presenterContextMenu.type === 'preview-slide') {
+      return [
+        {
+          id: 'preview',
+          label: 'Preview This Slide',
+          onSelect: () => selectPresenterPreviewSlide(targetItem.id, presenterContextMenu.slideIndex, 'filmstrip'),
+        },
+        {
+          id: 'go-live',
+          label: 'Send Slide Live',
+          onSelect: () => goLive(targetItem, presenterContextMenu.slideIndex),
+        },
+        {
+          id: 'copy-text',
+          label: 'Copy Slide Text',
+          disabled: !targetSlide.content.trim(),
+          onSelect: () => {
+            void copyTextToClipboard(targetSlide.content);
+          },
+        },
+      ];
+    }
+
+    return [
+      {
+        id: 'load-live',
+        label: 'Jump Live Here',
+        onSelect: () => jumpToLiveSlide(targetItem.id, presenterContextMenu.slideIndex),
+      },
+      {
+        id: 'copy-text',
+        label: 'Copy Slide Text',
+        disabled: !targetSlide.content.trim(),
+        onSelect: () => {
+          void copyTextToClipboard(targetSlide.content);
+        },
+      },
+    ];
+  })();
+
+  const presenterLibraryTabs: Array<{ id: PresenterLibraryTab; label: string }> = [
+    { id: 'songs', label: 'Songs' },
+    { id: 'scripture', label: 'Scripture' },
+    { id: 'media', label: 'Media' },
+    { id: 'presentations', label: 'Presentations' },
+  ];
+
+  const renderPresenterBetaLibraryContent = () => {
+    if (presenterLibraryTab === 'songs') {
+      return (
+        <div className="h-full min-h-0">
+          <HymnLibrary
+            schedule={schedule}
+            selectedItemId={selectedItemId}
+            onApplyInsertion={handleApplyHymnInsertion}
+            compact={true}
+          />
+        </div>
+      );
+    }
+
+    if (presenterLibraryTab === 'scripture') {
+      return (
+        <div className="h-full min-h-0 overflow-hidden p-2.5">
+          <BibleBrowser
+            onProjectRequest={(item) => {
+              stageGeneratedItem({
+                ...item,
+                metadata: {
+                  ...item.metadata,
+                  source: item.metadata?.source || 'bible',
+                },
+              }, 'system', { goLive: true });
+            }}
+            onAddRequest={(item) => {
+              stageGeneratedItem({
+                ...item,
+                metadata: {
+                  ...item.metadata,
+                  source: item.metadata?.source || 'bible',
+                },
+              }, 'system', { select: false });
+            }}
+            onLiveStyleUpdate={handleBibleLiveUpdate}
+            speechLocaleMode={workspaceSettings.visionarySpeechLocaleMode}
+            onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
+            compact={true}
+            hasPptxItems={hasPptxImportedItems}
+            workspaceId={workspaceId}
+          />
+        </div>
+      );
+    }
+
+    if (presenterLibraryTab === 'media') {
+      return (
+        <div className="h-full overflow-y-auto custom-scrollbar p-3">
+          <input
+            ref={presenterMediaUploadInputRef}
+            type="file"
+            accept="image/*,video/*"
+            className="hidden"
+            onChange={insertMediaFileAsItem}
+          />
+          <div className="grid gap-2.5 lg:grid-cols-3">
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
+              <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Backgrounds</div>
+              <div className="mt-1.5 text-sm font-semibold text-white">Apply library media</div>
+              <p className="mt-1.5 text-[10px] leading-4 text-zinc-500">Use the media library on the selected preview item.</p>
+              <button
+                onClick={() => {
+                  setMotionLibraryMode('selected-item');
+                  setIsMotionLibOpen(true);
+                }}
+                disabled={!selectedItem}
+                className="mt-3 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-zinc-200 hover:border-zinc-500 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Open Library
+              </button>
+            </div>
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
+              <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">New Slide</div>
+              <div className="mt-1.5 text-sm font-semibold text-white">Insert still or video</div>
+              <p className="mt-1.5 text-[10px] leading-4 text-zinc-500">Create a media slide from a local file or saved asset.</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={() => presenterMediaUploadInputRef.current?.click()}
+                  className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-zinc-200 hover:border-zinc-500"
+                >
+                  Upload
+                </button>
+                <button
+                  onClick={() => {
+                    setMotionLibraryMode('new-item');
+                    setIsMotionLibOpen(true);
+                  }}
+                  className="rounded-lg border border-cyan-800/50 bg-cyan-950/30 px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-cyan-200 hover:bg-cyan-950/50"
+                >
+                  Library Asset
+                </button>
+              </div>
+            </div>
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
+              <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Selected Item</div>
+              <div className="mt-1.5 text-sm font-semibold text-white">{selectedItem?.title || 'Nothing selected'}</div>
+              <p className="mt-1.5 text-[10px] leading-4 text-zinc-500">
+                {selectedItem
+                  ? 'Ready for background updates from the media library.'
+                  : 'Select an item first to target background updates.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="h-full overflow-y-auto custom-scrollbar p-3 space-y-3">
+        <div className="grid gap-2.5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)]">
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3 space-y-3">
+            <div>
+              <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Archive</div>
+              <div className="mt-1.5 text-sm font-semibold text-white">Save current schedule</div>
+            </div>
+            <input
+              value={runSheetArchiveTitle}
+              onChange={(e) => setRunSheetArchiveTitle(e.target.value)}
+              placeholder="Archive title"
+              className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-[13px] text-zinc-200"
+            />
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => void handleArchiveRunSheet(false)} className="px-3 py-2 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-200 hover:border-zinc-500">Archive</button>
+              <button onClick={() => void handleArchiveRunSheet(true)} className="px-3 py-2 text-[9px] font-bold border border-blue-700/50 rounded bg-blue-900/30 text-blue-200 hover:border-blue-500">Archive + New</button>
+            </div>
+            <div className="border-t border-zinc-800 pt-3">
+              <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Import</div>
+              <div className="mt-2.5 grid gap-2">
+                <button onClick={() => setIsLyricsImportOpen(true)} className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-left text-[10px] font-bold text-zinc-200 hover:border-zinc-500">Lyrics / PPTX Studio</button>
+                <label className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-[10px] font-bold text-zinc-200 hover:border-zinc-500 cursor-pointer">
+                  Visual PPTX / PDF
+                  <input type="file" accept=".pptx,.ppt,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint" className="hidden" onChange={importPowerPointVisualAsItem} disabled={isImportingDeck} />
+                </label>
+                <label className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-[10px] font-bold text-zinc-200 hover:border-zinc-500 cursor-pointer">
+                  Import PPTX Text
+                  <input type="file" accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint" className="hidden" onChange={importPowerPointTextAsItem} disabled={isImportingDeck} />
+                </label>
+                <label className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-[10px] font-bold text-zinc-200 hover:border-zinc-500 cursor-pointer">
+                  EasyWorship (.ewsx)
+                  <input type="file" accept=".ewsx,.ewp" className="hidden" onChange={importEasyWorshipAsItem} disabled={isImportingDeck} />
+                </label>
+                <label className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-[10px] font-bold text-zinc-200 hover:border-zinc-500 cursor-pointer">
+                  ProPresenter (.pro6/.pro)
+                  <input type="file" accept=".pro6,.pro6x,.pro" className="hidden" onChange={importProPresenterAsItem} disabled={isImportingDeck} />
+                </label>
+                <label className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-[10px] font-bold text-zinc-200 hover:border-zinc-500 cursor-pointer">
+                  OpenSong (.ofs/.xml)
+                  <input type="file" accept=".ofs,.xml,.opensong" className="hidden" onChange={importOpenSongAsItem} disabled={isImportingDeck} />
+                </label>
+              </div>
+            </div>
+            {runSheetFilesError && (
+              <div className="text-[10px] text-rose-400 border border-rose-900/60 bg-rose-950/30 rounded px-2 py-1.5">
+                {runSheetFilesError}
+              </div>
+            )}
+          </div>
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3 min-h-0">
+            <div className="mb-2.5 flex items-center gap-2">
+              <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Archives</div>
+              {runSheetFilesLoading && <span className="text-[10px] text-zinc-600">Loading...</span>}
+            </div>
+            <div className="mb-2.5 flex items-center gap-2">
+              <input
+                value={runSheetFileQuery}
+                onChange={(e) => setRunSheetFileQuery(e.target.value)}
+                placeholder="Search archives..."
+                className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-[13px] text-zinc-200"
+              />
+              <button onClick={refreshRunSheetFiles} className="px-3 py-2 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300">Refresh</button>
+            </div>
+            <div className="space-y-2 max-h-[calc(100%-4rem)] overflow-y-auto custom-scrollbar pr-1">
+              {filteredRunSheetFiles.length === 0 && !runSheetFilesLoading && (
+                <div className="rounded-xl border border-dashed border-zinc-800 px-4 py-6 text-center text-[10px] uppercase tracking-[0.2em] text-zinc-600">
+                  No archived run sheets
+                </div>
+              )}
+              {filteredRunSheetFiles.map((file) => (
+                <div key={file.fileId} className="border border-zinc-800 rounded-xl p-2.5 bg-zinc-900/50">
+                  <div className="min-w-0">
+                    <div className="truncate text-[13px] font-bold text-zinc-200">{file.title}</div>
+                    <div className="mt-1 text-[10px] text-zinc-500">{new Date(file.updatedAt).toLocaleString()} • {(file.payload?.items || []).length} items</div>
+                  </div>
+                  <div className="mt-2.5 grid grid-cols-2 gap-2">
+                    <button onClick={() => void handleReuseRunSheet(file.fileId, 'replace')} className="px-2 py-1.5 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-200">Reuse</button>
+                    <button onClick={() => void handleReuseRunSheet(file.fileId, 'duplicate')} className="px-2 py-1.5 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300">Duplicate</button>
+                    <button onClick={() => void handleRenameRunSheet(file.fileId)} className="px-2 py-1.5 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300">Rename</button>
+                    <button onClick={() => void handleDeleteRunSheet(file.fileId)} className="px-2 py-1.5 text-[9px] font-bold border border-rose-900/70 rounded bg-rose-950/20 text-rose-300">Delete</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPresenterBetaSchedulePane = () => (
+    <SchedulePane
+      title="Run Sheet"
+      subtitle={`${schedule.length} item${schedule.length === 1 ? '' : 's'} ready`}
+      badge={<span className="rounded-full border border-cyan-800/50 bg-cyan-950/30 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300">Beta</span>}
+      actions={
+        <div className="flex items-center gap-1">
+          <button onClick={() => setIsTemplateOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">TPL</button>
+          <button onClick={() => setIsLyricsImportOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">LYR</button>
+          <button onClick={addEmptyItem} className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-sm transition-colors"><PlusIcon className="w-3.5 h-3.5" /></button>
+        </div>
+      }
+    >
+      <div
+        className="h-full overflow-y-auto bg-zinc-950 p-1.5 space-y-1.5 custom-scrollbar"
+        data-testid="presenter-beta-schedule"
+        onClick={() => setPresenterFocusArea('schedule')}
+      >
+        {schedule.map((item, idx) => {
+          const live = activeItemId === item.id;
+          const selected = selectedItemId === item.id;
+          const slideCount = item.slides.length;
+          const previewSelected = presenterPreviewItem?.id === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => selectPresenterPreviewItem(item.id)}
+              onDoubleClick={() => goLive(item, 0)}
+              onContextMenu={(event) => showPresenterContextMenu(event, {
+                type: 'schedule',
+                x: event.clientX,
+                y: event.clientY,
+                itemId: item.id,
+              })}
+              className={`w-full rounded-xl border px-2.5 py-2.5 text-left transition-all ${
+                live
+                  ? 'border-red-600/70 bg-red-950/20 shadow-[0_12px_24px_rgba(120,0,0,0.18)]'
+                  : selected
+                    ? 'border-blue-600/60 bg-blue-950/15'
+                    : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/65'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className={`truncate text-[13px] font-bold ${live ? 'text-red-300' : 'text-zinc-100'}`}>{item.title}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[9px] uppercase tracking-[0.14em] text-zinc-500">
+                    <span>{item.type}</span>
+                    <span>{slideCount} slide{slideCount === 1 ? '' : 's'}</span>
+                    {previewSelected && <span className="text-cyan-300">Selected</span>}
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  {live && <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />}
+                  <span className="text-[9px] font-black uppercase tracking-[0.16em] text-zinc-600">{idx + 1}</span>
+                </div>
+              </div>
+              <div className="mt-1.5 line-clamp-2 text-[10px] leading-4 text-zinc-500">
+                {(item.slides[0]?.content || item.slides[0]?.label || 'Ready to present').slice(0, 72)}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </SchedulePane>
+  );
+
+  const renderPresenterBetaPreviewPane = () => (
+    <PreviewPane
+      title={presenterPreviewItem?.title || 'Preview Ready'}
+      subtitle={
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-zinc-500">
+          <span>{presenterPreviewItem?.type || 'No item selected'}</span>
+          {presenterPreviewSlides.length > 0 && (
+            <span>{presenterPreviewSlideIndex + 1}/{presenterPreviewSlides.length} slides</span>
+          )}
+          {holdScreenMode !== 'none' && (
+            <span className="rounded-full border border-amber-700/40 bg-amber-950/20 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-amber-200">
+              {holdScreenMode}
+            </span>
+          )}
+        </div>
+      }
+      actions={
+        <button
+          onClick={goLiveSelectedPreview}
+          disabled={!presenterPreviewItem || presenterPreviewSlideIndex < 0}
+          className="rounded-lg border border-blue-500 bg-blue-600 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-white transition-all hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Go Live
+        </button>
+      }
+      stage={
+        <div className="h-full min-h-0 flex flex-col bg-black">
+          <div className="min-h-0 flex-1 p-3">
+            <div
+              className="h-full rounded-xl border border-zinc-800 bg-black shadow-2xl overflow-hidden"
+              onClick={() => setPresenterFocusArea('filmstrip')}
+            >
+              {renderPresenterHoldState() || (
+                presenterPreviewItem && presenterPreviewSlide
+                  ? (
+                    <SlideRenderer
+                      slide={presenterPreviewSlide}
+                      item={presenterPreviewItem}
+                      fitContainer={true}
+                      isPlaying={isPlaying}
+                      seekCommand={seekCommand}
+                      seekAmount={seekAmount}
+                      isMuted={isPreviewMuted}
+                      lowerThirds={previewLowerThirds}
+                      audienceOverlay={audienceDisplay}
+                      branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle, textOpacity: workspaceSettings.slideBrandingOpacity }}
+                    />
+                  )
+                  : (
+                    <div className="h-full w-full bg-black flex items-center justify-center text-zinc-600 text-xs font-mono uppercase tracking-[0.25em]">
+                      SELECT ITEM FOR PREVIEW
+                    </div>
+                  )
+              )}
+            </div>
+          </div>
+        </div>
+      }
+      footer={
+        <div className="bg-[#0a0a0e]">
+          <div className="grid gap-2 p-2.5 md:grid-cols-3">
+            <PresenterOpsBar title="Transport" badge="Live Flow">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button onClick={prevSlide} className="h-8 w-9 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 flex items-center justify-center border border-zinc-700 active:scale-95 transition-all">
+                  <ArrowLeftIcon className="w-4 h-4" />
+                </button>
+                <button onClick={goLiveSelectedPreview} className="h-8 px-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center font-black text-[9px] tracking-[0.16em] active:scale-95 transition-all shadow-[0_2px_8px_rgba(37,99,235,0.35)] uppercase gap-1.5">
+                  Send
+                </button>
+                <button onClick={nextSlide} className="h-8 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 flex items-center justify-center border border-zinc-700 active:scale-95 transition-all gap-1.5">
+                  NEXT <ArrowRightIcon className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </PresenterOpsBar>
+            <PresenterOpsBar title="Hold" badge="Safe">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <button onClick={resumeProgramOutput} className="h-8 px-3 rounded-lg border border-emerald-700/50 bg-emerald-950/30 text-[8px] font-black uppercase tracking-[0.16em] text-emerald-200 hover:bg-emerald-900/40">
+                  Live
+                </button>
+                <button onClick={() => setBlackout((prev) => !prev)} className={`h-8 px-3 rounded-lg border text-[8px] font-black uppercase tracking-[0.16em] ${blackout ? 'border-red-500 bg-red-600 text-white' : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500'}`}>
+                  Black
+                </button>
+                <button onClick={clearHold} className={`h-8 px-3 rounded-lg border text-[8px] font-black uppercase tracking-[0.16em] ${holdScreenMode === 'clear' ? 'border-amber-500 bg-amber-700/40 text-amber-50' : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500'}`}>
+                  Clear
+                </button>
+                <button onClick={logoHold} className={`h-8 px-3 rounded-lg border text-[8px] font-black uppercase tracking-[0.16em] ${holdScreenMode === 'logo' ? 'border-cyan-500 bg-cyan-950/45 text-cyan-100' : 'border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500'}`}>
+                  Logo
+                </button>
+              </div>
+            </PresenterOpsBar>
+            <PresenterOpsBar title="Output" badge="Route">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <label className="flex h-8 items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 cursor-pointer hover:border-zinc-700 transition-colors">
+                  <span className="text-[8px] uppercase tracking-wider text-zinc-500 font-black shrink-0">Route</span>
+                  <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} style={{ colorScheme: 'dark' }} className="bg-zinc-900 text-zinc-200 text-[9px] font-bold outline-none cursor-pointer">
+                    <option value="PROJECTOR">Projector</option>
+                    <option value="STREAM">Stream</option>
+                    <option value="LOBBY">Lobby</option>
+                  </select>
+                </label>
+                <button
+                  onClick={() => setLowerThirdsEnabled((prev) => !prev)}
+                  className={`h-8 px-3 rounded-lg font-black text-[8px] tracking-[0.16em] border transition-all uppercase ${lowerThirdsEnabled ? 'bg-blue-950/60 text-blue-300 border-blue-700/50' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300 hover:border-zinc-700'}`}
+                >
+                  Lower 3rds
+                </button>
+                <button onClick={() => void copyShareUrl(obsOutputUrl)} className="h-8 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[8px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-[0.16em]">OBS URL</button>
+                <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-8 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[8px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-[0.16em]">Stage URL</button>
+              </div>
+            </PresenterOpsBar>
+          </div>
+          <div className="border-t border-zinc-900 px-2.5 py-2.5">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-black">Preview Filmstrip</div>
+              <div className="text-[9px] text-zinc-600">Enter sends live</div>
+            </div>
+            <div
+              className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar"
+              onClick={() => setPresenterFocusArea('filmstrip')}
+              data-testid="presenter-beta-filmstrip"
+            >
+              {presenterPreviewSlides.map((slide, idx) => {
+                const selected = idx === presenterPreviewSlideIndex;
+                const live = presenterPreviewItem?.id === activeItemId && idx === activeSlideIndex;
+                return (
+                  <button
+                    key={slide.id}
+                    onClick={() => presenterPreviewItem && selectPresenterPreviewSlide(presenterPreviewItem.id, idx)}
+                    onDoubleClick={() => presenterPreviewItem && goLive(presenterPreviewItem, idx)}
+                    onContextMenu={(event) => presenterPreviewItem && showPresenterContextMenu(event, {
+                      type: 'preview-slide',
+                      x: event.clientX,
+                      y: event.clientY,
+                      itemId: presenterPreviewItem.id,
+                      slideIndex: idx,
+                    })}
+                    className={`shrink-0 w-44 rounded-xl overflow-hidden border text-left transition-all ${
+                      live
+                        ? 'border-red-500 bg-red-950/15'
+                        : selected
+                          ? 'border-cyan-500 bg-cyan-950/20'
+                          : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700'
+                    }`}
+                  >
+                    <div className="relative aspect-video bg-black">
+                      <div className="absolute inset-0 pointer-events-none">
+                        <SlideRenderer slide={slide} item={presenterPreviewItem} fitContainer={true} isThumbnail={true} />
+                      </div>
+                    </div>
+                    <div className="border-t border-zinc-800 px-2 py-1.5">
+                      <div className="truncate text-[10px] font-mono text-zinc-100">{idx + 1}. {slide.label || `Slide ${idx + 1}`}</div>
+                      <div className="mt-1 truncate text-[10px] text-zinc-500">{slide.content || presenterPreviewItem?.title}</div>
+                    </div>
+                  </button>
+                );
+              })}
+              {presenterPreviewSlides.length === 0 && (
+                <div className="rounded-xl border border-dashed border-zinc-800 px-4 py-6 text-[10px] uppercase tracking-[0.2em] text-zinc-600">
+                  Selected item has no slides
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      }
+    />
+  );
+
+  const renderPresenterBetaLivePane = () => (
+    <LivePane
+      title="Live Pane"
+      subtitle={activeItem ? `${activeItem.title} is active` : 'No item currently live'}
+      badge={activeItem ? <span className="rounded-full border border-red-900/50 bg-red-950/30 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] text-red-300">Live</span> : null}
+    >
+      <div
+        className="h-full overflow-y-auto px-2.5 py-2.5 custom-scrollbar"
+        onClick={() => setPresenterFocusArea('live')}
+        data-testid="presenter-beta-live-pane"
+      >
+        <div className="space-y-3">
+          <div className="sticky top-0 z-10 -mx-2.5 border-b border-zinc-900 bg-zinc-950/95 px-2.5 pb-3 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/80">
+            <div className="mb-2 text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-black">Live Now</div>
+            {activeItem && activeSlide ? (
+              <button
+                onClick={() => jumpToLiveSlide(activeItem.id, activeSlideIndex)}
+                className="w-full text-left rounded-xl overflow-hidden border border-red-500 bg-zinc-900 shadow-[0_12px_24px_rgba(120,0,0,0.12)]"
+              >
+                <div className="relative aspect-video">
+                  <div className="absolute inset-0 pointer-events-none">
+                    <SlideRenderer slide={activeSlide} item={activeItem} fitContainer={true} isThumbnail={true} />
+                  </div>
+                </div>
+                <div className="border-t border-zinc-800 px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="truncate text-[10px] font-mono text-zinc-100">{activeSlideIndex + 1}. {activeSlide.label || `Slide ${activeSlideIndex + 1}`}</div>
+                    <span className="text-[9px] uppercase tracking-[0.18em] text-red-300 font-black">Live</span>
+                  </div>
+                  <div className="mt-1 truncate text-[10px] text-zinc-500">{activeSlide.content || activeItem.title}</div>
+                </div>
+              </button>
+            ) : (
+              <div className="rounded-xl border border-dashed border-zinc-800 px-4 py-5 text-center text-[10px] uppercase tracking-[0.2em] text-zinc-600">
+                No active item
+              </div>
+            )}
+          </div>
+
+          {enabledTimerCues.length > 0 && (
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-2">
+              <div className="mb-2 text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-black">Rundown Cues</div>
+              <div className="flex gap-1 overflow-x-auto pb-1 custom-scrollbar">
+                {enabledTimerCues.map((cue, idx) => (
+                  <button
+                    key={cue.itemId}
+                    onClick={() => activateCueByItemId(cue.itemId, { autoStart: false, goLiveItem: true })}
+                    className={`shrink-0 px-2 py-1 rounded border text-[8px] font-bold ${cue.itemId === currentCueItemId ? 'border-cyan-500 bg-cyan-950/40 text-cyan-300' : 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:border-zinc-600'}`}
+                  >
+                    {idx + 1}. {cue.itemTitle}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeItem && activeSlide && (
+            <div className="space-y-2">
+              <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-black">Active Script</div>
+              <div className="space-y-2">
+                {activeItem.slides.map((slide, idx) => (
+                  <button
+                    key={slide.id}
+                    onClick={() => jumpToLiveSlide(activeItem.id, idx)}
+                    onContextMenu={(event) => showPresenterContextMenu(event, {
+                      type: 'live-slide',
+                      x: event.clientX,
+                      y: event.clientY,
+                      itemId: activeItem.id,
+                      slideIndex: idx,
+                    })}
+                    className={`w-full rounded-xl border px-2.5 py-2 text-left transition-all ${
+                      activeSlideIndex === idx
+                        ? 'border-red-500 bg-red-950/15'
+                        : 'border-zinc-800 bg-zinc-900/40 hover:border-zinc-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="truncate text-[10px] font-mono text-zinc-100">{idx + 1}. {slide.label || `Slide ${idx + 1}`}</div>
+                      {activeSlideIndex === idx && <span className="text-[8px] uppercase tracking-[0.16em] text-red-300 font-black">Live</span>}
+                    </div>
+                    <div className="mt-1 line-clamp-2 text-[10px] leading-4 text-zinc-500">{slide.content || activeItem.title}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-black">Queue</div>
+            <div className="space-y-2">
+              {presenterUpcomingItems.slice(0, 6).map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => selectPresenterPreviewItem(item.id)}
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900/30 px-2.5 py-2 text-left transition-all hover:border-zinc-700"
+                >
+                  <div className="truncate text-[11px] font-bold text-zinc-200">{item.title}</div>
+                  <div className="mt-1 truncate text-[10px] text-zinc-500">{item.slides[0]?.content || item.type}</div>
+                </button>
+              ))}
+              {presenterUpcomingItems.length === 0 && (
+                <div className="rounded-xl border border-dashed border-zinc-800 px-4 py-5 text-center text-[10px] uppercase tracking-[0.2em] text-zinc-600">
+                  Queue clear after current item
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </LivePane>
+  );
+
+  const presenterBetaWorkspace = isPresenterBeta ? (
+    <PresenterShell
+      variant="beta"
+      leftPane={renderPresenterBetaSchedulePane()}
+      centerPane={renderPresenterBetaPreviewPane()}
+      rightPane={renderPresenterBetaLivePane()}
+      bottomPane={
+        <LibraryTray
+          tabs={presenterLibraryTabs}
+          activeTab={presenterLibraryTab}
+          onTabChange={setPresenterLibraryTab}
+          headerActions={<div className="text-[9px] text-zinc-600">Search + add in presenter</div>}
+        >
+          <div className="h-full min-h-0">
+            {renderPresenterBetaLibraryContent()}
+          </div>
+        </LibraryTray>
+      }
+      leftWidth={presenterLayoutPrefs.leftPaneWidth}
+      rightWidth={presenterLayoutPrefs.rightPaneWidth}
+      bottomHeight={presenterLayoutPrefs.bottomTrayHeight}
+      onResizeLeft={(delta) => updatePresenterLayoutPref('leftPaneWidth', delta)}
+      onResizeRight={(delta) => updatePresenterLayoutPref('rightPaneWidth', delta)}
+      onResizeBottom={(delta) => updatePresenterLayoutPref('bottomTrayHeight', delta)}
+      hideRightPane={legacyMachineMode}
+    />
+  ) : null;
 
   return (
     <div className={`theme-${workspaceSettings.theme} flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] bg-zinc-950 text-zinc-200 font-sans selection:bg-blue-900 selection:text-white relative overflow-x-hidden`}>
@@ -5064,13 +7597,31 @@ function App() {
         </div>
       )}
 
+      {splitPanelPptxConflict && !splitPanelConflictDismissed && (
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-[90] flex items-start gap-3 px-4 py-3 bg-amber-950/95 border border-amber-700/70 rounded-b-lg shadow-2xl shadow-amber-900/30 backdrop-blur-md max-w-xl w-full mx-auto" style={{ minWidth: 320 }}>
+          <span className="text-amber-400 text-base font-black shrink-0 mt-0.5">!</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-bold text-amber-200 leading-snug">Split-panel Bible style + PowerPoint slides detected</p>
+            <p className="text-[10px] text-amber-300/70 mt-0.5 leading-snug">This combination may cause display instability. Switch the Bible style to Classic, or remove the imported PowerPoint item from your schedule.</p>
+          </div>
+          <button
+            onClick={() => setSplitPanelConflictDismissed(true)}
+            className="shrink-0 text-amber-500 hover:text-amber-200 transition-colors text-xs font-bold px-1.5 py-0.5 rounded hover:bg-amber-900/40"
+            title="Dismiss"
+          >✕</button>
+        </div>
+      )}
+
       <AppHeader
         isElectronShell={isElectronShell}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onHomeClick={() => setViewState(isElectronShell ? 'studio' : 'landing')}
+        isPresenterBeta={isPresenterBeta}
         liveSessionId={liveSessionId}
         syncPendingCount={syncPendingCount}
+        syncIssue={syncIssue}
+        onOpenSyncGuidance={() => { if (syncIssue) setDismissedSyncGuidance({}); }}
         activeTargetConnectionCount={activeTargetConnectionCount}
         targetConnectionRoleCount={targetConnectionRoles.length}
         connectionCountsByRole={connectionCountsByRole}
@@ -5114,6 +7665,10 @@ function App() {
           }
         }}
       >
+        {isPresenterBeta ? (
+          presenterBetaWorkspace
+        ) : (
+          <>
         {presenterSidebarDrawerVisible && (
           <button
             type="button"
@@ -5159,7 +7714,7 @@ function App() {
               <button onClick={() => handleSidebarTabSelect('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIO MIXER"><Volume2Icon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audio Mixer</span></button>
               <button onClick={() => handleSidebarTabSelect('BIBLE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'BIBLE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="BIBLE LIBRARY"><BibleIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Bible Hub</span></button>
               <button onClick={() => handleSidebarTabSelect('AUDIENCE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIENCE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIENCE STUDIO"><ChatIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audience</span></button>
-              <button onClick={() => handleSidebarTabSelect('MACROS')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'MACROS' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="MACROS"><span className="text-base leading-none shrink-0">⚡</span><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Macros</span></button>
+              <button onClick={() => handleSidebarTabSelect('MACROS')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'MACROS' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="MACROS"><SparklesIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Macros</span></button>
             </div>
             <div className="p-1 border-t border-zinc-800">
               <button onClick={() => setIsProfileOpen(true)} className="w-full p-2.5 rounded-sm flex items-center gap-3 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors" title="SETTINGS"><Settings className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Settings</span></button>
@@ -5200,75 +7755,234 @@ function App() {
           )}
           {activeSidebarTab === 'FILES' && (
             <div className="flex-1 overflow-hidden flex flex-col">
-              <div className="p-3 border-b border-zinc-900 shrink-0">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Run Sheet Files</h3>
+              {/* Header */}
+              <div className="px-3 py-2.5 border-b border-zinc-800 shrink-0 flex items-center justify-between">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Files</h3>
               </div>
-              <div className="p-3 border-b border-zinc-900 bg-zinc-900/20 space-y-2 shrink-0">
-                <input
-                  value={runSheetArchiveTitle}
-                  onChange={(e) => setRunSheetArchiveTitle(e.target.value)}
-                  placeholder="Archive title (optional)"
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-zinc-200"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => handleArchiveRunSheet(false)}
-                    className="px-2 py-1.5 text-[10px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-200 hover:border-zinc-500"
-                  >
-                    Archive Current
-                  </button>
-                  <button
-                    onClick={() => handleArchiveRunSheet(true)}
-                    className="px-2 py-1.5 text-[10px] font-bold border border-zinc-700 rounded bg-blue-900/40 text-blue-200 hover:border-blue-500"
-                  >
-                    Archive + New
-                  </button>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {/* ── IMPORT ── */}
+                <div className="px-3 pt-3 pb-2">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 mb-2">Import</p>
+                  <div className="space-y-1">
+                    <label className="flex items-center gap-2.5 px-2.5 py-2 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer transition-colors group">
+                      <span className="w-6 h-6 rounded flex items-center justify-center bg-purple-900/50 text-purple-300 text-[9px] font-black shrink-0">PP</span>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white">ProPresenter</div>
+                        <div className="text-[9px] text-zinc-500">.pro6 / .pro6x / .pro</div>
+                      </div>
+                      <input type="file" accept=".pro6,.pro6x,.pro" className="hidden" onChange={importProPresenterAsItem} disabled={isImportingDeck} />
+                    </label>
+                    <label className="flex items-center gap-2.5 px-2.5 py-2 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer transition-colors group">
+                      <span className="w-6 h-6 rounded flex items-center justify-center bg-emerald-900/50 text-emerald-300 text-[9px] font-black shrink-0">EW</span>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white">EasyWorship</div>
+                        <div className="text-[9px] text-zinc-500">.ewsx / .ewp</div>
+                      </div>
+                      <input type="file" accept=".ewsx,.ewp" className="hidden" onChange={importEasyWorshipAsItem} disabled={isImportingDeck} />
+                    </label>
+                    <label className="flex items-center gap-2.5 px-2.5 py-2 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer transition-colors group">
+                      <span className="w-6 h-6 rounded flex items-center justify-center bg-amber-900/50 text-amber-300 text-[9px] font-black shrink-0">OS</span>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white">OpenSong</div>
+                        <div className="text-[9px] text-zinc-500">.ofs / .xml</div>
+                      </div>
+                      <input type="file" accept=".ofs,.xml,.opensong" className="hidden" onChange={importOpenSongAsItem} disabled={isImportingDeck} />
+                    </label>
+                    <button
+                      onClick={() => setIsLyricsImportOpen(true)}
+                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer transition-colors group text-left"
+                    >
+                      <span className="w-6 h-6 rounded flex items-center justify-center bg-blue-900/50 text-blue-300 text-[9px] font-black shrink-0">PPT</span>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white">PowerPoint / PDF</div>
+                        <div className="text-[9px] text-zinc-500">.pptx / .pdf / lyrics</div>
+                      </div>
+                    </button>
+                  </div>
+                  {isImportingDeck && (
+                    <div className="mt-2 text-[10px] text-cyan-300 border border-cyan-900/40 bg-cyan-950/20 rounded px-2 py-1.5">
+                      {importDeckStatus || 'Importing…'}
+                    </div>
+                  )}
                 </div>
-                <div className="flex items-center gap-2">
+
+                <div className="mx-3 border-t border-zinc-800/60" />
+
+                {/* ── ARCHIVE ── */}
+                <div className="px-3 pt-3 pb-2">
+                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 mb-2">Archive Run Sheet</p>
+                  <input
+                    value={runSheetArchiveTitle}
+                    onChange={(e) => setRunSheetArchiveTitle(e.target.value)}
+                    placeholder="Title (optional)"
+                    className="w-full mb-2 bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
+                  />
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      onClick={() => handleArchiveRunSheet(false)}
+                      className="py-1.5 text-[10px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500 transition-colors"
+                    >
+                      Archive
+                    </button>
+                    <button
+                      onClick={() => handleArchiveRunSheet(true)}
+                      className="py-1.5 text-[10px] font-bold border border-blue-800/60 rounded bg-blue-950/40 text-blue-300 hover:bg-blue-900/40 hover:border-blue-600 transition-colors"
+                    >
+                      Archive + New
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mx-3 border-t border-zinc-800/60" />
+
+                {/* ── SAVED FILES ── */}
+                <div className="px-3 pt-3 pb-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 flex-1">Saved Files</p>
+                    <button onClick={refreshRunSheetFiles} className="text-[9px] text-zinc-500 hover:text-zinc-300 transition-colors font-bold uppercase tracking-wide">↻ Refresh</button>
+                  </div>
                   <input
                     value={runSheetFileQuery}
                     onChange={(e) => setRunSheetFileQuery(e.target.value)}
-                    placeholder="Search files..."
-                    className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-2 py-1.5 text-[11px] text-zinc-200"
+                    placeholder="Search files…"
+                    className="w-full mb-2 bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
                   />
-                  <button
-                    onClick={refreshRunSheetFiles}
-                    className="px-2 py-1.5 text-[10px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300"
-                  >
-                    Refresh
-                  </button>
+                  {runSheetFilesError && (
+                    <div className="mb-2 text-[10px] text-amber-400 border border-amber-900/50 bg-amber-950/20 rounded px-2 py-1.5 leading-snug">
+                      {runSheetFilesError}
+                    </div>
+                  )}
                 </div>
-                {runSheetFilesError && (
-                  <div className="text-[10px] text-rose-400 border border-rose-900/60 bg-rose-950/30 rounded px-2 py-1">
-                    {runSheetFilesError}
-                  </div>
-                )}
-              </div>
-              <div className="flex-1 overflow-y-auto p-3 custom-scrollbar space-y-2">
-                {runSheetFilesLoading && (
-                  <div className="text-[10px] text-zinc-500 uppercase tracking-wider">Loading files...</div>
-                )}
-                {!runSheetFilesLoading && filteredRunSheetFiles.length === 0 && (
-                  <div className="text-[10px] text-zinc-600 uppercase tracking-wider">No archived run sheets</div>
-                )}
-                {filteredRunSheetFiles.map((file) => (
-                  <div key={file.fileId} className="border border-zinc-800 rounded p-2 bg-zinc-900/40">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold text-zinc-200 truncate">{file.title}</div>
-                        <div className="text-[9px] text-zinc-500">
-                          {new Date(file.updatedAt).toLocaleString()} • {(file.payload?.items || []).length} items
+
+                <div className="px-3 pb-3 space-y-1">
+                  {runSheetFilesLoading && (
+                    <div className="text-[10px] text-zinc-600 py-2">Loading…</div>
+                  )}
+                  {!runSheetFilesLoading && filteredRunSheetFiles.length === 0 && (
+                    <div className="text-[10px] text-zinc-700 py-4 text-center">No saved run sheets</div>
+                  )}
+                  {filteredRunSheetFiles.map((file) => (
+                    <div key={file.fileId} className="rounded border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition-colors overflow-hidden">
+                      <div className="px-2.5 py-2">
+                        <div className="text-[11px] font-semibold text-zinc-200 truncate leading-tight">{file.title}</div>
+                        <div className="text-[9px] text-zinc-600 mt-0.5">
+                          {new Date(file.updatedAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                          {' · '}
+                          {(file.payload?.items || []).length} item{(file.payload?.items || []).length !== 1 ? 's' : ''}
                         </div>
                       </div>
+                      <div className="flex border-t border-zinc-800">
+                        <button
+                          onClick={() => handleReuseRunSheet(file.fileId, 'replace')}
+                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-blue-900/30 hover:text-blue-200 transition-colors border-r border-zinc-800"
+                        >
+                          Reuse
+                        </button>
+                        <button
+                          onClick={() => handleReuseRunSheet(file.fileId, 'duplicate')}
+                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-zinc-800 transition-colors border-r border-zinc-800"
+                        >
+                          Duplicate
+                        </button>
+                        <button
+                          onClick={() => handleRenameRunSheet(file.fileId)}
+                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-zinc-800 transition-colors border-r border-zinc-800"
+                        >
+                          Rename
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRunSheet(file.fileId)}
+                          className="flex-1 py-1.5 text-[9px] font-bold text-rose-500 hover:bg-rose-950/40 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                    <div className="mt-2 grid grid-cols-2 gap-1">
-                      <button onClick={() => handleReuseRunSheet(file.fileId, 'replace')} className="px-2 py-1 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-200">Reuse</button>
-                      <button onClick={() => handleReuseRunSheet(file.fileId, 'duplicate')} className="px-2 py-1 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300">Duplicate</button>
-                      <button onClick={() => handleRenameRunSheet(file.fileId)} className="px-2 py-1 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300">Rename</button>
-                      <button onClick={() => handleDeleteRunSheet(file.fileId)} className="px-2 py-1 text-[9px] font-bold border border-rose-900/70 rounded bg-rose-950/20 text-rose-300">Delete</button>
-                    </div>
+                  ))}
+                </div>
+
+                <div className="mx-3 border-t border-zinc-800/60" />
+
+                {/* ── SERMON ARCHIVE ── */}
+                <div className="px-3 pt-3 pb-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 flex-1">Sermon Archive</p>
+                    <button
+                      onClick={() => {
+                        setArchivedSermonsLoading(true);
+                        getArchivedSermons(workspaceId).then((items) => {
+                          setArchivedSermons(items);
+                          setArchivedSermonsLoading(false);
+                        });
+                      }}
+                      className="text-[9px] text-zinc-500 hover:text-zinc-300 transition-colors font-bold uppercase tracking-wide"
+                    >
+                      ↻ Refresh
+                    </button>
                   </div>
-                ))}
+                </div>
+
+                <div className="px-3 pb-3 space-y-1">
+                  {archivedSermonsLoading && (
+                    <div className="text-[10px] text-zinc-600 py-2">Loading…</div>
+                  )}
+                  {!archivedSermonsLoading && archivedSermons.length === 0 && (
+                    <div className="text-[10px] text-zinc-700 py-4 text-center">No saved sermon summaries</div>
+                  )}
+                  {archivedSermons.map((item) => (
+                    <div key={item.id} className="rounded border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition-colors overflow-hidden">
+                      <div className="px-2.5 py-2">
+                        <div className="text-[11px] font-semibold text-zinc-200 truncate leading-tight">{item.summary.title || 'Untitled Sermon'}</div>
+                        <div className="text-[9px] text-zinc-500 mt-0.5 leading-tight line-clamp-1">{item.summary.mainTheme}</div>
+                        <div className="text-[9px] text-zinc-600 mt-0.5">
+                          {new Date(item.savedAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                          {' · '}
+                          {item.wordCount.toLocaleString()} words
+                        </div>
+                      </div>
+                      <div className="flex border-t border-zinc-800">
+                        <button
+                          onClick={() => {
+                            const text = [
+                              `SERMON: ${item.summary.title}`,
+                              ``,
+                              `THEME: ${item.summary.mainTheme}`,
+                              ``,
+                              `KEY POINTS:`,
+                              ...item.summary.keyPoints.map((p, i) => `${i + 1}. ${p}`),
+                              ``,
+                              `SCRIPTURES: ${item.summary.scripturesReferenced.join(' · ') || 'None'}`,
+                              ``,
+                              `CALL TO ACTION: ${item.summary.callToAction}`,
+                            ].join('\n');
+                            navigator.clipboard.writeText(text).catch(() => {
+                              const ta = document.createElement('textarea');
+                              ta.value = text;
+                              ta.style.cssText = 'position:fixed;opacity:0';
+                              document.body.appendChild(ta);
+                              ta.select();
+                              document.execCommand('copy');
+                              document.body.removeChild(ta);
+                            });
+                          }}
+                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-zinc-800 transition-colors border-r border-zinc-800"
+                        >
+                          Copy
+                        </button>
+                        <button
+                          onClick={async () => {
+                            await deleteArchivedSermon(item.id, workspaceId);
+                            setArchivedSermons((prev) => prev.filter((s) => s.id !== item.id));
+                          }}
+                          className="flex-1 py-1.5 text-[9px] font-bold text-rose-500 hover:bg-rose-950/40 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -5283,14 +7997,34 @@ function App() {
           )}
           {activeSidebarTab === 'AUDIO' && <AudioLibrary currentTrackId={currentTrack?.id} isPlaying={isAudioPlaying} progress={audioProgress} onPlay={handlePlayTrack} onToggle={() => setIsAudioPlaying(!isAudioPlaying)} onStop={stopAudio} onVolumeChange={setAudioVolume} volume={audioVolume} />}
           {activeSidebarTab === 'BIBLE' && (
-            <div className="flex-1 overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-hidden flex flex-col min-h-0">
               <div className="p-3 border-b border-zinc-900 shrink-0"><h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Bible Hub</h3></div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-3">
+              <div className="flex-1 min-h-0 overflow-hidden p-3">
                 <BibleBrowser
-                  onProjectRequest={(item) => { addItem(item); setSelectedItemId(item.id); goLive(item); }}
-                  onAddRequest={addItem}
+                  onProjectRequest={(item) => {
+                    stageGeneratedItem({
+                      ...item,
+                      metadata: {
+                        ...item.metadata,
+                        source: item.metadata?.source || 'bible',
+                      },
+                    }, 'system', { goLive: true });
+                  }}
+                  onAddRequest={(item) => {
+                    stageGeneratedItem({
+                      ...item,
+                      metadata: {
+                        ...item.metadata,
+                        source: item.metadata?.source || 'bible',
+                      },
+                    }, 'system', { select: false });
+                  }}
+                  onLiveStyleUpdate={handleBibleLiveUpdate}
                   speechLocaleMode={workspaceSettings.visionarySpeechLocaleMode}
                   onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
+                  compact={true}
+                  hasPptxItems={hasPptxImportedItems}
+                  workspaceId={workspaceId}
                 />
               </div>
             </div>
@@ -5330,6 +8064,17 @@ function App() {
               />
             </div>
           )}
+          {activeSidebarTab === 'MACROS' && (
+            <MacroPanel
+              macros={macros}
+              schedule={schedule}
+              workspaceId={workspaceId}
+              executionContext={macroCtx}
+              auditLog={macroAuditLog}
+              onMacrosChange={setMacros}
+              onAppendAudit={appendMacroAudit}
+            />
+          )}
         </div>
       </div>
 
@@ -5358,7 +8103,7 @@ function App() {
                     </div>
                     <div className="absolute bottom-0 inset-x-0 p-1.5 flex items-center justify-between bg-gradient-to-t from-black/80 to-transparent">
                       <div className="flex-1 min-w-0">
-                        {inlineSlideRename?.slideId === slide.id ? (
+                        {inlineSlideRename?.slideId === slide.id && inlineSlideRename.source === 'thumbnail' ? (
                           <input
                             ref={inlineSlideRenameInputRef}
                             type="text"
@@ -5379,7 +8124,7 @@ function App() {
                     <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 z-10 transition-opacity">
                       <button 
                         type="button" 
-                        onClick={(e) => { e.stopPropagation(); startSlideLabelRename(selectedItem.id, slide.id, slide.label || `Slide ${idx + 1}`); }} 
+                        onClick={(e) => { e.stopPropagation(); startSlideLabelRename(selectedItem.id, slide.id, slide.label || `Slide ${idx + 1}`, 'thumbnail'); }}
                         className="p-1.5 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-cyan-300 text-zinc-400" 
                         title="Rename slide"
                       >
@@ -5421,9 +8166,7 @@ function App() {
               <div className="flex-1 flex flex-col relative min-w-0">
                 <div className={`flex-1 relative flex items-center bg-zinc-950 overflow-hidden border-r border-zinc-900 p-3 ${presenterPreviewAlignClass}`}>
                   <div className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group shadow-2xl overflow-hidden rounded-sm">
-                    {blackout ? (
-                      <div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em] animate-pulse">BLACKOUT</div>
-                    ) : (
+                    {renderPresenterHoldState() || (
                       <SlideRenderer
                         slide={activeSlide}
                         item={activeItem}
@@ -5433,6 +8176,7 @@ function App() {
                         isMuted={isPreviewMuted}
                         lowerThirds={lowerThirdsEnabled}
                         audienceOverlay={audienceDisplay}
+                        branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle, textOpacity: workspaceSettings.slideBrandingOpacity }}
                       />
                     )}
                     <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-400 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">
@@ -5471,9 +8215,9 @@ function App() {
                           </div>
                         )}
                         <button
-                          onClick={() => { if (routingMode !== 'PROJECTOR') setLowerThirdsEnabled((prev) => !prev); }}
-                          title={routingMode === 'PROJECTOR' ? 'Projector mode keeps full-screen text.' : 'Toggle lower thirds overlay'}
-                          className={`h-9 px-3 rounded-lg font-black text-[9px] tracking-wider border transition-all uppercase ${lowerThirdsEnabled ? 'bg-blue-950/60 text-blue-300 border-blue-700/50' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300 hover:border-zinc-700'} ${routingMode === 'PROJECTOR' ? 'opacity-30 cursor-not-allowed' : ''}`}
+                          onClick={() => setLowerThirdsEnabled((prev) => !prev)}
+                          title="Toggle lower thirds overlay"
+                          className={`h-9 px-3 rounded-lg font-black text-[9px] tracking-wider border transition-all uppercase ${lowerThirdsEnabled ? 'bg-blue-950/60 text-blue-300 border-blue-700/50' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300 hover:border-zinc-700'}`}
                         >Lower Thirds</button>
                         <label className="flex h-9 items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 cursor-pointer hover:border-zinc-700 transition-colors">
                           <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-black shrink-0">Route</span>
@@ -5545,7 +8289,7 @@ function App() {
                             ))}
                           </select>
                           <button onClick={applySelectedPresetToCurrentCue} disabled={!selectedSpeakerPresetId || !(currentCueItemId || selectedItemId)} className="text-[9px] px-2.5 py-0.5 bg-emerald-700 hover:bg-emerald-600 rounded text-white font-bold transition-colors disabled:opacity-30 uppercase">Apply</button>
-                          <button onClick={openSpeakerPresetStudio} className="h-6 w-6 flex items-center justify-center rounded border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all"><Settings className="w-3 h-3" /></button>
+                          <button onClick={openSpeakerPresetStudio} aria-label="Manage" data-testid="speaker-preset-studio-open" className="h-6 w-6 flex items-center justify-center rounded border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all"><Settings className="w-3 h-3" /></button>
                         </div>
                         <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-lg px-2 h-9">
                           <span className="text-[9px] text-zinc-500 font-black uppercase shrink-0 mr-0.5">Rundown</span>
@@ -5555,7 +8299,7 @@ function App() {
                         </div>
                         <div className="flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 rounded-lg px-2 h-9">
                           <span className="text-[9px] text-zinc-500 font-black uppercase shrink-0">Stage Grid</span>
-                          <select value={workspaceSettings.stageFlowLayout} onChange={(e) => { const next = e.target.value as StageFlowLayout; setWorkspaceSettings((prev) => ({ ...prev, stageFlowLayout: VALID_STAGE_FLOW_LAYOUTS.includes(next) ? next : 'balanced' })); }} style={{ colorScheme: 'dark' }} className="bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200 font-bold outline-none cursor-pointer min-w-[90px]">
+                          <select value={workspaceSettings.stageFlowLayout} onChange={(e) => { const next = e.target.value as StageFlowLayout; handleStageFlowLayoutChange(next); }} style={{ colorScheme: 'dark' }} className="bg-zinc-900 border border-zinc-700 rounded px-1 py-0.5 text-[10px] text-zinc-200 font-bold outline-none cursor-pointer min-w-[90px]">
                             <option value="balanced">Balanced</option>
                             <option value="speaker_focus">Speaker Focus</option>
                             <option value="preview_focus">Preview Focus</option>
@@ -5564,6 +8308,7 @@ function App() {
                         </div>
                         <button onClick={() => updateStageTimerFlash({ active: !stageTimerFlash.active })} className={`h-9 px-3 rounded-lg border font-black text-[9px] tracking-wider uppercase transition-all ${stageTimerFlash.active ? 'border-rose-600/60 bg-rose-950/40 text-rose-300 animate-pulse' : 'border-zinc-700 bg-zinc-900 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'}`}>Flash</button>
                         <button onClick={() => void copyShareUrl(obsOutputUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy OBS URL</button>
+                        <button onClick={() => void copyShareUrl(cleanFeedUrl, 'Clean feed URL copied!')} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-violet-300 hover:border-violet-600 transition-all uppercase tracking-wider" title="No branding or audience overlays — use for recording or streaming">Copy Clean Feed</button>
                         <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy Stage URL</button>
                         <button onClick={() => setBlackout(!blackout)} className={`h-9 px-5 rounded-lg border font-black text-[10px] tracking-widest uppercase active:scale-95 transition-all ml-auto shadow-lg ${blackout ? 'bg-zinc-900 text-red-400 border-red-600/80 animate-pulse shadow-red-950/20' : 'bg-red-600 border-red-500 text-white hover:bg-red-500 shadow-red-950/30'}`}>
                           {blackout ? 'Go Live' : 'BLACKOUT'}
@@ -5575,8 +8320,8 @@ function App() {
                 </div>
               </div>
               <div
-                className={`w-full bg-zinc-950 border-l border-zinc-900 flex flex-col h-72 lg:h-auto border-t lg:border-t-0 shrink-0 min-w-0 ${workspaceSettings.machineMode ? 'hidden' : (isElectronShell ? 'flex' : 'hidden md:flex')}`}
-                style={workspaceSettings.machineMode ? undefined : { width: presenterQueueWidth }}
+                className={`w-full bg-zinc-950 border-l border-zinc-900 flex flex-col h-72 lg:h-auto border-t lg:border-t-0 shrink-0 min-w-0 ${legacyMachineMode ? 'hidden' : (isElectronShell ? 'flex' : 'hidden md:flex')}`}
+                style={legacyMachineMode ? undefined : { width: presenterQueueWidth }}
               >
                 <div className="sticky top-0 z-20 h-10 px-3 border-b border-zinc-900 font-bold text-zinc-500 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950">
                   <span>Live Queue</span>
@@ -5621,6 +8366,68 @@ function App() {
                             <span className="text-[9px] uppercase tracking-widest text-red-400 font-bold shrink-0">LIVE</span>
                           </div>
                         </button>
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Stage Preview</div>
+                            <button
+                              onClick={() => setIsStagePreviewEditorOpen(true)}
+                              className="inline-flex items-center gap-1 rounded border border-purple-700/40 bg-purple-950/25 px-2 py-1 text-[8px] font-black uppercase tracking-[0.18em] text-purple-200 transition-colors hover:border-purple-500/60 hover:bg-purple-950/40"
+                            >
+                              <MaximizeIcon className="h-3 w-3" />
+                              Expand
+                            </button>
+                          </div>
+                          <div
+                            ref={stagePreviewFrameRef}
+                            className="relative aspect-video overflow-hidden rounded-sm border border-purple-700/40 bg-black shadow-[0_8px_22px_rgba(0,0,0,0.35)]"
+                          >
+                            {blackout ? (
+                              <HoldScreen view="blackout" compact />
+                            ) : holdScreenMode === 'clear' ? (
+                              <HoldScreen view="clear" compact />
+                            ) : holdScreenMode === 'logo' ? (
+                              <HoldScreen view="logo" churchName={workspaceSettings.churchName} compact />
+                            ) : (
+                              <StageDisplay
+                                currentSlide={activeSlide}
+                                nextSlide={nextSlidePreview}
+                                activeItem={activeItem}
+                                timerLabel={currentCueSpeaker ? `${currentCueSpeaker} Timer` : 'Pastor Timer'}
+                                timerDisplay={formatTimer(timerSeconds)}
+                                timerMode={timerMode}
+                                isTimerOvertime={isTimerOvertime}
+                                timerRemainingSec={timerSeconds}
+                                timerDurationSec={effectiveTimerDurationSec}
+                                timerAmberPercent={currentCueAmberPercent}
+                                timerRedPercent={currentCueRedPercent}
+                                timerFlashActive={stageTimerFlash.active}
+                                timerFlashColor={stageTimerFlash.color}
+                                timerLayout={workspaceSettings.stageTimerLayout}
+                                onTimerLayoutChange={handleStageTimerLayoutChange}
+                                stageAlertLayout={workspaceSettings.stageAlertLayout}
+                                onStageAlertLayoutChange={handleStageAlertLayoutChange}
+                                profile={workspaceSettings.stageProfile}
+                                flowLayout={workspaceSettings.stageFlowLayout}
+                                audienceOverlay={audienceDisplay}
+                                stageAlert={stageAlert}
+                                stageMessageCenter={stageMessageCenter}
+                                embedded
+                                viewportWidth={stagePreviewViewport.width}
+                                viewportHeight={stagePreviewViewport.height}
+                                className="select-none"
+                              />
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between gap-2 text-[10px] text-zinc-500">
+                            <span>Drag timer or alert here. Expand for a larger stage editor.</span>
+                            <button
+                              onClick={() => setIsStagePreviewEditorOpen(true)}
+                              className="rounded border border-zinc-800 px-2 py-1 text-[8px] font-black uppercase tracking-[0.16em] text-zinc-300 transition-colors hover:border-zinc-600"
+                            >
+                              Edit Stage
+                            </button>
+                          </div>
+                        </div>
                       </div>
                       {presenterQueueUpNext.length > 0 && (
                         <div className="space-y-2">
@@ -5682,18 +8489,22 @@ function App() {
               </div>
             </div>
       )}
-
+          </>
+        )}
         <RightDock
           isOpen={isRightDockOpen}
           machineMode={workspaceSettings.machineMode}
           onToggleMachineMode={() => setWorkspaceSettings(prev => ({ ...prev, machineMode: !prev.machineMode }))}
           onOpenConnect={(panel) => { setConnectPanel(panel); setIsConnectOpen(true); }}
           onOpenAI={() => setIsAIModalOpen(true)}
+          hasElectronDisplayControl={hasElectronDisplayControl}
+          onOpenDisplaySetup={handleOpenDisplaySetup}
+          desktopServiceState={desktopServiceState}
         />
       </div>
 
       {
-        isOutputLive && (
+        isOutputLive && !(hasElectronDisplayControl && desktopServiceState.outputOpen) && (
           <OutputWindow
             title="Lumina Output (Projector)"
             externalWindow={outputWin}
@@ -5708,34 +8519,38 @@ function App() {
             }}
           >
             <div className="h-screen w-screen bg-black overflow-hidden relative">
-              {blackout ? (
-                <div className="w-full h-full bg-black flex items-center justify-center text-red-900 font-mono text-xs font-bold tracking-[0.2em]">BLACKOUT</div>
-              ) : (!activeItem || !activeSlide) ? (
-                <div className="w-full h-full bg-black flex items-center justify-center text-zinc-500 font-mono text-xs font-bold tracking-[0.2em]">WAITING_FOR_LIVE_CONTENT</div>
-              ) : (
-                <SlideRenderer
-                  slide={activeSlide}
-                  item={activeItem}
-                  fitContainer={true}
-                  isPlaying={isPlaying}
-                  seekCommand={seekCommand}
-                  seekAmount={seekAmount}
-                  isMuted={outputMuted}
-                  isProjector={true}
-                  lowerThirds={routingMode !== 'PROJECTOR'}
-                  showSlideLabel={true}
-                  showProjectorHelper={false}
-                  audienceOverlay={audienceDisplay}
-                  projectedAudienceQr={audienceQrProjection}
-                />
-              )}
+              {(() => {
+                const holdState = renderPresenterHoldState();
+                if (holdState) return holdState;
+                if (!activeItem || !activeSlide) {
+                  return <div className="w-full h-full bg-black flex items-center justify-center text-zinc-500 font-mono text-xs font-bold tracking-[0.2em]">WAITING_FOR_LIVE_CONTENT</div>;
+                }
+                return (
+                  <SlideRenderer
+                    slide={activeSlide}
+                    item={activeItem}
+                    fitContainer={true}
+                    isPlaying={isPlaying}
+                    seekCommand={seekCommand}
+                    seekAmount={seekAmount}
+                    isMuted={outputMuted}
+                    isProjector={true}
+                    lowerThirds={lowerThirdsEnabled}
+                    showSlideLabel={true}
+                    showProjectorHelper={false}
+                    audienceOverlay={audienceDisplay}
+                    projectedAudienceQr={audienceQrProjection}
+                    branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle, textOpacity: workspaceSettings.slideBrandingOpacity }}
+                  />
+                );
+              })()}
             </div>
           </OutputWindow>
         )
       }
 
       {
-        isStageDisplayLive && (
+        isStageDisplayLive && !(hasElectronDisplayControl && desktopServiceState.stageOpen) && (
           <OutputWindow
             title="Lumina Stage Display"
             externalWindow={stageWin}
@@ -5749,34 +8564,33 @@ function App() {
               setStageWin(null);
             }}
           >
-            <StageDisplay
-              currentSlide={activeSlide}
-              nextSlide={nextSlidePreview}
-              activeItem={activeItem}
-              timerLabel={currentCueSpeaker ? `${currentCueSpeaker} Timer` : 'Pastor Timer'}
-              timerDisplay={formatTimer(timerSeconds)}
-              timerMode={timerMode}
-              isTimerOvertime={isTimerOvertime}
-              timerRemainingSec={timerSeconds}
-              timerDurationSec={effectiveTimerDurationSec}
-              timerAmberPercent={currentCueAmberPercent}
-              timerRedPercent={currentCueRedPercent}
-              timerFlashActive={stageTimerFlash.active}
-              timerFlashColor={stageTimerFlash.color}
-              timerLayout={workspaceSettings.stageTimerLayout}
-              onTimerLayoutChange={(layout) => {
-                setWorkspaceSettings((prev) => ({ ...prev, stageTimerLayout: layout }));
-              }}
-              stageAlertLayout={workspaceSettings.stageAlertLayout}
-              onStageAlertLayoutChange={(layout) => {
-                setWorkspaceSettings((prev) => ({ ...prev, stageAlertLayout: layout }));
-              }}
-              profile={workspaceSettings.stageProfile}
-              flowLayout={workspaceSettings.stageFlowLayout}
-              audienceOverlay={audienceDisplay}
-              stageAlert={stageAlert}
-              stageMessageCenter={stageMessageCenter}
-            />
+            {renderPresenterHoldState() || (
+              <StageDisplay
+                currentSlide={activeSlide}
+                nextSlide={nextSlidePreview}
+                activeItem={activeItem}
+                timerLabel={currentCueSpeaker ? `${currentCueSpeaker} Timer` : 'Pastor Timer'}
+                timerDisplay={formatTimer(timerSeconds)}
+                timerMode={timerMode}
+                isTimerOvertime={isTimerOvertime}
+                timerRemainingSec={timerSeconds}
+                timerDurationSec={effectiveTimerDurationSec}
+                timerAmberPercent={currentCueAmberPercent}
+                timerRedPercent={currentCueRedPercent}
+                timerFlashActive={stageTimerFlash.active}
+                timerFlashColor={stageTimerFlash.color}
+                timerLayout={workspaceSettings.stageTimerLayout}
+                onTimerLayoutChange={handleStageTimerLayoutChange}
+                stageAlertLayout={workspaceSettings.stageAlertLayout}
+                onStageAlertLayoutChange={handleStageAlertLayoutChange}
+                profile={workspaceSettings.stageProfile}
+                flowLayout={workspaceSettings.stageFlowLayout}
+                audienceOverlay={audienceDisplay}
+                stageAlert={stageAlert}
+                stageMessageCenter={stageMessageCenter}
+                branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle, textOpacity: workspaceSettings.slideBrandingOpacity }}
+              />
+            )}
           </OutputWindow>
         )
       }
@@ -5817,6 +8631,21 @@ function App() {
                   <span className="font-semibold">Use Lumina Theme (.pptx Text)</span>
                   <input type="file" accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint" className="hidden" onChange={importPowerPointTextAsItem} disabled={isImportingDeck} />
                   <div className="text-[10px] text-zinc-500 mt-1">Imports text/notes so you can style with Lumina backgrounds.</div>
+                </label>
+                <label className="block border border-zinc-800 rounded px-3 py-2 bg-zinc-950 text-xs text-zinc-300 cursor-pointer hover:border-zinc-600 transition-colors">
+                  <span className="font-semibold">EasyWorship (.ewsx)</span>
+                  <input type="file" accept=".ewsx,.ewp" className="hidden" onChange={importEasyWorshipAsItem} disabled={isImportingDeck} />
+                  <div className="text-[10px] text-zinc-500 mt-1">Import songs or presentations exported from EasyWorship.</div>
+                </label>
+                <label className="block border border-zinc-800 rounded px-3 py-2 bg-zinc-950 text-xs text-zinc-300 cursor-pointer hover:border-zinc-600 transition-colors">
+                  <span className="font-semibold">ProPresenter (.pro6 / .pro)</span>
+                  <input type="file" accept=".pro6,.pro6x,.pro" className="hidden" onChange={importProPresenterAsItem} disabled={isImportingDeck} />
+                  <div className="text-[10px] text-zinc-500 mt-1">ProPresenter 6 (.pro6) is fully supported. PP7 (.pro): export as .pro6 if text is missing.</div>
+                </label>
+                <label className="block border border-zinc-800 rounded px-3 py-2 bg-zinc-950 text-xs text-zinc-300 cursor-pointer hover:border-zinc-600 transition-colors">
+                  <span className="font-semibold">OpenSong (.ofs / .xml)</span>
+                  <input type="file" accept=".ofs,.xml,.opensong" className="hidden" onChange={importOpenSongAsItem} disabled={isImportingDeck} />
+                  <div className="text-[10px] text-zinc-500 mt-1">Import songs exported from OpenSong. Supports verse/chorus/bridge markers.</div>
                 </label>
               </div>
               {importDeckStatus && <div className="mb-2 text-[11px] text-cyan-300 border border-cyan-900/60 bg-cyan-950/20 rounded px-3 py-2">{importDeckStatus}</div>}
@@ -6264,6 +9093,7 @@ function App() {
                             {editingPresetId ? 'Update' : 'Save'}
                           </button>
                           <button
+                            data-testid="speaker-preset-new-draft"
                             onClick={openCreatePresetModal}
                             className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/10"
                           >
@@ -6363,6 +9193,110 @@ function App() {
         </div>
       )}
 
+      {isStagePreviewEditorOpen && (
+        <div className="fixed inset-0 z-[145] bg-black/85 backdrop-blur-sm p-4 md:p-6 flex items-center justify-center">
+          <div className="w-full max-w-[1680px] rounded-2xl border border-zinc-800 bg-zinc-950 shadow-[0_32px_120px_rgba(0,0,0,0.48)] overflow-hidden">
+            <div className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-zinc-900 bg-zinc-950/95 px-4 py-3 backdrop-blur">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="text-[10px] font-black uppercase tracking-[0.24em] text-purple-300">Stage Preview</div>
+                  <div className="rounded-full border border-cyan-700/40 bg-cyan-950/25 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.18em] text-cyan-200">
+                    Live Sync
+                  </div>
+                  <div className="rounded-full border border-zinc-800 bg-zinc-900 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.18em] text-zinc-400">
+                    Esc closes
+                  </div>
+                </div>
+                <div className="mt-1 text-sm font-semibold text-white">Edit pastor timer and alert from the control screen</div>
+                <div className="mt-1 text-[11px] text-zinc-500">Changes apply to the real stage layout immediately, so the operator can correct issues without turning to the stage TV.</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="rounded-full border border-zinc-800 bg-zinc-900 px-3 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-zinc-400">
+                  {Math.round(stageEditorViewport.width)}x{Math.round(stageEditorViewport.height)}
+                </div>
+                <button
+                  onClick={() => setIsStagePreviewEditorOpen(false)}
+                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/50 bg-emerald-600 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-emerald-500 shadow-[0_8px_24px_rgba(5,150,105,0.3)]"
+                >
+                  <CheckIcon className="h-3.5 w-3.5" />
+                  Done / Back To Presenter
+                </button>
+                <button
+                  onClick={() => setIsStagePreviewEditorOpen(false)}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 text-zinc-400 transition-colors hover:border-zinc-600 hover:text-white"
+                  aria-label="Close stage preview editor"
+                >
+                  <XIcon className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div className="p-4">
+              <div ref={stageEditorFrameRef} className="relative w-full aspect-[16/9] overflow-hidden rounded-2xl border border-zinc-800 bg-black">
+                {blackout ? (
+                  <HoldScreen view="blackout" />
+                ) : holdScreenMode === 'clear' ? (
+                  <HoldScreen view="clear" />
+                ) : holdScreenMode === 'logo' ? (
+                  <HoldScreen view="logo" churchName={workspaceSettings.churchName} />
+                ) : (
+                  <StageDisplay
+                    currentSlide={activeSlide}
+                    nextSlide={nextSlidePreview}
+                    activeItem={activeItem}
+                    timerLabel={currentCueSpeaker ? `${currentCueSpeaker} Timer` : 'Pastor Timer'}
+                    timerDisplay={formatTimer(timerSeconds)}
+                    timerMode={timerMode}
+                    isTimerOvertime={isTimerOvertime}
+                    timerRemainingSec={timerSeconds}
+                    timerDurationSec={effectiveTimerDurationSec}
+                    timerAmberPercent={currentCueAmberPercent}
+                    timerRedPercent={currentCueRedPercent}
+                    timerFlashActive={stageTimerFlash.active}
+                    timerFlashColor={stageTimerFlash.color}
+                    timerLayout={workspaceSettings.stageTimerLayout}
+                    onTimerLayoutChange={handleStageTimerLayoutChange}
+                    stageAlertLayout={workspaceSettings.stageAlertLayout}
+                    onStageAlertLayoutChange={handleStageAlertLayoutChange}
+                    profile={workspaceSettings.stageProfile}
+                    flowLayout={workspaceSettings.stageFlowLayout}
+                    audienceOverlay={audienceDisplay}
+                    stageAlert={stageAlert}
+                    stageMessageCenter={stageMessageCenter}
+                    embedded
+                    viewportWidth={stageEditorViewport.width}
+                    viewportHeight={stageEditorViewport.height}
+                  />
+                )}
+              </div>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-900 bg-zinc-950/75 px-3 py-3 text-[11px] text-zinc-500">
+                <span>Changes here write back to the stage layout used by the live stage screen.</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase tracking-[0.16em] text-zinc-600">Need to exit quickly?</span>
+                  <button
+                    onClick={() => setIsStagePreviewEditorOpen(false)}
+                    className="rounded-xl border border-emerald-500/40 bg-emerald-600 px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] text-white transition-colors hover:bg-emerald-500"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="pointer-events-none fixed bottom-6 right-6 z-[155] flex flex-col items-end gap-2">
+            <div className="rounded-full border border-zinc-700/80 bg-zinc-950/90 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-400 shadow-[0_8px_24px_rgba(0,0,0,0.28)]">
+              Need to exit stage editor?
+            </div>
+            <button
+              onClick={() => setIsStagePreviewEditorOpen(false)}
+              className="pointer-events-auto inline-flex items-center gap-2 rounded-2xl border border-emerald-400/70 bg-emerald-500 px-5 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-white shadow-[0_12px_32px_rgba(16,185,129,0.35)] transition-transform transition-colors hover:scale-[1.02] hover:bg-emerald-400"
+            >
+              <CheckIcon className="h-4 w-4" />
+              Done
+            </button>
+          </div>
+        </div>
+      )}
+
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <ConnectModal
         isOpen={isConnectOpen}
@@ -6393,20 +9327,133 @@ function App() {
         onAetherBridgePing={handleAetherBridgeTest}
         onAetherBridgeSyncNow={handleAetherBridgeSyncNow}
         onAetherSceneSwitch={handleAetherSceneSwitch}
+        onAetherStreamRequest={(action) => handleAetherStreamRequest(action, {
+          target: 'program',
+          sceneTarget: 'program',
+          sceneName: resolveAetherSceneName('program'),
+        }, {
+          successLabel: action === 'start' ? 'Aether live start sent' : 'Aether live stop sent',
+          failureLabel: action === 'start' ? 'Aether live start failed' : 'Aether live stop failed',
+        })}
         aetherBridgeStatusTone={aetherBridgeStatus.tone}
         aetherBridgeStatusText={aetherBridgeStatus.text}
       />
+      {hasElectronDisplayControl && (
+        <DisplaySetupModal
+          open={isDisplaySetupOpen}
+          displays={desktopDisplayCards}
+          detectedCount={desktopDisplays.length}
+          validationErrors={desktopDisplayValidationErrors}
+          statusText={desktopDisplayStatusText || (!desktopRoleAssignments.stage ? 'No stage screen assigned. Start Service will continue without stage.' : '')}
+          onClose={() => setIsDisplaySetupOpen(false)}
+          onRefresh={() => {
+            void refreshDesktopDisplays();
+          }}
+          onAutoAssign={handleDesktopAutoAssign}
+          onIdentifyAll={() => {
+            void electronMachineApi?.identifyAllDisplays?.();
+          }}
+          onRoleChange={handleDesktopRoleChange}
+          onTestDisplay={(displayId) => {
+            void electronMachineApi?.testDisplay?.(displayId);
+          }}
+          onSaveMapping={handleSaveDesktopDisplayMapping}
+          onStartService={() => {
+            void handleStartDesktopService();
+          }}
+          ndiWindowOpen={desktopServiceState.outputOpen && !desktopRoleAssignments.audience}
+          onLaunchNdiWindow={hasElectronDisplayControl ? () => {
+            if (desktopServiceState.outputOpen && !desktopRoleAssignments.audience) {
+              void electronMachineApi?.closeRoleWindow?.('audience').then((state) => {
+                if (state) setDesktopServiceState(state);
+              });
+              return;
+            }
+            const primaryDisplay = desktopDisplays[0];
+            if (!primaryDisplay) return;
+            void electronMachineApi?.openRoleWindow?.({
+              role: 'audience',
+              displayId: primaryDisplay.id,
+              windowed: true,
+              workspaceId,
+              sessionId: liveSessionId,
+            }).then((result) => {
+              if (result?.ok && result.state) {
+                setDesktopServiceState(result.state);
+                setIsOutputLive(true);
+              }
+            });
+          } : undefined}
+        />
+      )}
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
       {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={handleWorkspaceSettingsSave} onLogout={handleLogout} currentSettings={workspaceSettings} currentUser={user} />}
+      {presenterContextMenu && presenterContextMenuActions.length > 0 && (
+        <ContextMenu
+          x={presenterContextMenu.x}
+          y={presenterContextMenu.y}
+          title={
+            presenterContextMenu.type === 'schedule'
+              ? 'Schedule Actions'
+              : presenterContextMenu.type === 'preview-slide'
+                ? 'Preview Slide'
+                : 'Live Slide'
+          }
+          actions={presenterContextMenuActions}
+          onClose={closePresenterContextMenu}
+        />
+      )}
       {
         isMotionLibOpen && (
           <MotionLibrary
             onClose={() => setIsMotionLibOpen(false)}
-            onSelect={(url, mediaType = 'video') => {
-              if (selectedItem) {
-                updateItem({ ...selectedItem, theme: { ...selectedItem.theme, backgroundUrl: url, mediaType } });
-                logActivity(user?.uid, 'UPDATE_THEME', { type: 'MOTION_BG', itemId: selectedItem.id, mediaType });
+            onSelect={async (asset) => {
+              const url = asset.url;
+              const mediaType = asset.mediaType;
+              const resolvedMediaType: 'image' | 'video' = mediaType === 'image' ? 'image' : 'video';
+              const resolvedUrl = await persistRemoteMotionLibraryAsset(url, resolvedMediaType);
+              if (motionLibraryMode === 'new-item') {
+                const nextItem = finalizeGeneratedItemBackground({
+                  id: `item-${Date.now()}`,
+                  title: resolvedMediaType === 'image' ? 'Still Background' : 'Motion Background',
+                  type: ItemType.MEDIA,
+                  slides: [{
+                    id: `slide-${Date.now()}`,
+                    label: 'Media Slide',
+                    content: '',
+                  }],
+                  theme: {
+                    backgroundUrl: resolvedUrl,
+                    mediaType: resolvedMediaType,
+                    fontFamily: 'sans-serif',
+                    textColor: '#ffffff',
+                    shadow: true,
+                  },
+                  metadata: {
+                    source: 'manual',
+                    backgroundProvider: asset.provider,
+                    backgroundCategory: asset.category,
+                    backgroundTitle: asset.name,
+                    backgroundSourceUrl: asset.sourceUrl || asset.url,
+                  },
+                }, 'user');
+                addItem(nextItem);
+                setSelectedItemId(nextItem.id);
+              } else if (selectedItem) {
+                updateItem({
+                  ...selectedItem,
+                  theme: { ...selectedItem.theme, backgroundUrl: resolvedUrl, mediaType: resolvedMediaType },
+                  metadata: {
+                    ...selectedItem.metadata,
+                    backgroundProvider: asset.provider,
+                    backgroundCategory: asset.category,
+                    backgroundTitle: asset.name,
+                    backgroundSourceUrl: asset.sourceUrl || asset.url,
+                  },
+                });
+                logActivity(user?.uid, 'UPDATE_THEME', { type: 'MOTION_BG', itemId: selectedItem.id, mediaType: resolvedMediaType });
               }
+              setMotionLibraryMode('selected-item');
               setIsMotionLibOpen(false);
             }}
           />

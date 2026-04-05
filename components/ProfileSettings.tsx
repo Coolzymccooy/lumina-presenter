@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { UserIcon, Settings, X, Save, Church, ShieldCheck, ChevronDown, ChevronUp, CreditCard, Palette, Globe, Lock } from 'lucide-react';
+import { UserIcon, Settings, X, Save, Church, ShieldCheck, ChevronDown, ChevronUp, CreditCard, Palette, Globe, Lock, Tv2, Network } from 'lucide-react';
 
 interface ProfileSettingsProps {
   onClose: () => void;
@@ -34,6 +34,13 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
   const [stageProfile, setStageProfile] = useState(currentSettings?.stageProfile || 'classic');
   const [stageFlowLayout, setStageFlowLayout] = useState(currentSettings?.stageFlowLayout || 'balanced');
   const [machineMode, setMachineMode] = useState(!!currentSettings?.machineMode);
+  const [slideBrandingEnabled, setSlideBrandingEnabled] = useState(!!currentSettings?.slideBrandingEnabled);
+  const [slideBrandingSeriesLabel, setSlideBrandingSeriesLabel] = useState(currentSettings?.slideBrandingSeriesLabel || '');
+  const [slideBrandingStyle, setSlideBrandingStyle] = useState<'minimal' | 'bold' | 'frosted'>(currentSettings?.slideBrandingStyle || 'minimal');
+  const [slideBrandingOpacity, setSlideBrandingOpacity] = useState<number>(currentSettings?.slideBrandingOpacity ?? 0.82);
+  const [ndiSources, setNdiSources] = useState<Array<{ id: string; name: string; sceneId: string }>>(
+    Array.isArray(currentSettings?.ndiSources) ? currentSettings.ndiSources : []
+  );
 
   const [activeTab, setActiveTab] = useState<string | null>('account');
 
@@ -58,7 +65,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
 
   const handleSave = () => {
     const normalizedSessionId = String(sessionId || '').trim() || 'live';
-    onSave({ churchName, ccli, defaultVersion, theme, remoteAdminEmails, connectionTargetRoles, sessionId: normalizedSessionId, stageProfile, stageFlowLayout, machineMode });
+    onSave({ churchName, ccli, defaultVersion, theme, remoteAdminEmails, connectionTargetRoles, sessionId: normalizedSessionId, stageProfile, stageFlowLayout, machineMode, slideBrandingEnabled, slideBrandingSeriesLabel, slideBrandingStyle, slideBrandingOpacity, ndiSources });
     onClose();
   };
 
@@ -221,7 +228,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
                   </div>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-5 pt-2">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Stage Profile</label>
@@ -318,6 +324,141 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
               </div>
             </div>
           )}
+
+          {/* NDI Sources Section */}
+          <SectionHeader id="ndi" icon={Network} title="NDI Sources" description="Source → Aether scene mapping" />
+          {activeTab === 'ndi' && (
+            <div className="p-6 space-y-3 bg-zinc-950/30 animate-in slide-in-from-top-4 duration-300">
+              {ndiSources.length === 0 && (
+                <p className="text-[11px] text-zinc-500 text-center py-3">No NDI sources configured.</p>
+              )}
+              {ndiSources.map((src) => (
+                <div key={src.id} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                  <input
+                    type="text"
+                    value={src.name}
+                    onChange={(e) => setNdiSources((prev) => prev.map((s) => s.id === src.id ? { ...s, name: e.target.value } : s))}
+                    placeholder="NDI source name"
+                    className="bg-black border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-white focus:border-blue-500 focus:outline-none placeholder:text-zinc-700 transition-all"
+                  />
+                  <input
+                    type="text"
+                    value={src.sceneId}
+                    onChange={(e) => setNdiSources((prev) => prev.map((s) => s.id === src.id ? { ...s, sceneId: e.target.value } : s))}
+                    placeholder="Aether scene ID"
+                    className="bg-black border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-white focus:border-blue-500 focus:outline-none font-mono placeholder:text-zinc-700 transition-all"
+                  />
+                  <button
+                    onClick={() => setNdiSources((prev) => prev.filter((s) => s.id !== src.id))}
+                    className="p-2 text-zinc-600 hover:text-red-400 transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => setNdiSources((prev) => [...prev, { id: `ndi-${Date.now()}`, name: '', sceneId: '' }])}
+                className="w-full py-2 border border-dashed border-zinc-700 rounded-xl text-xs font-bold text-zinc-500 hover:border-zinc-500 hover:text-zinc-300 transition-all"
+              >
+                + ADD NDI SOURCE
+              </button>
+              <p className="text-[10px] text-zinc-600 px-1">Source name is the NDI output name. Scene ID maps to an Aether scene for <span className="font-mono">trigger_aether_scene</span> macro actions.</p>
+            </div>
+          )}
+        </div>
+
+        {/* ── Slide Branding ── */}
+        <div className="border-b border-zinc-800/50">
+          <SectionHeader id="branding" icon={Tv2} title="Slide Branding" description="Church name & series strips on slides" />
+          {activeTab === 'branding' && (
+            <div className="p-6 space-y-5 bg-zinc-950/30 animate-in slide-in-from-top-4 duration-300">
+              {/* Enable toggle */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-white">Show Branding Strips</p>
+                  <p className="text-[10px] text-zinc-500 mt-0.5">Vertical church name + series label on slide edges</p>
+                </div>
+                <button
+                  onClick={() => setSlideBrandingEnabled((v) => !v)}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${slideBrandingEnabled ? 'bg-blue-600' : 'bg-zinc-700'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${slideBrandingEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                </button>
+              </div>
+              {slideBrandingEnabled && (
+                <>
+                  {/* Live mini preview */}
+                  <div className="relative rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900" style={{ height: 72 }}>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-[10px] text-zinc-600 uppercase tracking-widest font-bold">Slide Preview Area</span>
+                    </div>
+                    {slideBrandingSeriesLabel && (
+                      <div className={`absolute left-0 top-0 bottom-0 flex items-center justify-center ${slideBrandingStyle === 'bold' ? 'bg-black/70' : 'bg-black/45'}`} style={{ width: 20 }}>
+                        <span style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: 7, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: `rgba(255,255,255,${slideBrandingOpacity})`, whiteSpace: 'nowrap' }}>
+                          {slideBrandingSeriesLabel}
+                        </span>
+                      </div>
+                    )}
+                    {churchName && (
+                      <div className={`absolute right-0 top-0 bottom-0 flex items-center justify-center ${slideBrandingStyle === 'bold' ? 'bg-black/70' : 'bg-black/45'}`} style={{ width: 20 }}>
+                        <span style={{ writingMode: 'vertical-rl', fontSize: 7, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: `rgba(255,255,255,${slideBrandingOpacity})`, whiteSpace: 'nowrap' }}>
+                          {churchName.toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Series label input */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Series / Date Label <span className="text-zinc-700 normal-case font-normal">(left strip)</span></label>
+                    <input
+                      type="text"
+                      value={slideBrandingSeriesLabel}
+                      onChange={(e) => setSlideBrandingSeriesLabel(e.target.value.slice(0, 60))}
+                      maxLength={60}
+                      placeholder="e.g. JAN – APR · Series 2 · Week 4"
+                      className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-all placeholder:text-zinc-700"
+                    />
+                    <p className="text-[9px] text-zinc-600 px-1">Church name (right strip) uses the Church Name field above.</p>
+                  </div>
+                  {/* Visibility slider */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Text Visibility</label>
+                      <span className="text-[10px] font-mono text-zinc-400">{Math.round(slideBrandingOpacity * 100)}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={20} max={100} step={5}
+                      value={Math.round(slideBrandingOpacity * 100)}
+                      onChange={(e) => setSlideBrandingOpacity(Number(e.target.value) / 100)}
+                      className="w-full accent-blue-600"
+                    />
+                    <div className="flex justify-between text-[9px] text-zinc-700">
+                      <span>Subtle</span><span>Vivid</span>
+                    </div>
+                  </div>
+                  {/* Style picker */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Strip Style</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([
+                        { id: 'minimal', label: 'Minimal', desc: 'Subtle, low contrast' },
+                        { id: 'bold',    label: 'Bold',    desc: 'Dark strip, clear edge' },
+                        { id: 'frosted', label: 'Frosted', desc: 'Deep semi-opaque' },
+                      ] as const).map(({ id, label, desc }) => (
+                        <button key={id} onClick={() => setSlideBrandingStyle(id)}
+                          className={`p-3 rounded-xl border text-left transition-all ${slideBrandingStyle === id ? 'border-blue-500 bg-blue-950/30' : 'border-zinc-800 bg-black/40 hover:border-zinc-600'}`}
+                        >
+                          <div className="text-[10px] font-black text-white uppercase tracking-wide">{label}</div>
+                          <div className="text-[9px] text-zinc-500 mt-0.5">{desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -335,7 +476,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
             </button>
             <button onClick={handleSave} className="px-8 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-black shadow-xl shadow-blue-900/40 transition-all transform active:scale-95 flex items-center gap-2 group">
               <Save size={16} className="group-hover:scale-110 transition-transform" />
-              SYNCHRONIZE WORKSPACE
+              SAVE SETTINGS
             </button>
           </div>
         </div>

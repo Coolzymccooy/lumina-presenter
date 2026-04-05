@@ -3,8 +3,10 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState } from '../services/firebase';
 import { fetchServerSessionState, getOrCreateConnectionClientId, heartbeatSessionConnection } from '../services/serverApi';
 import { AudienceDisplayState, AudienceMessage, AudienceQrProjectionState, ItemType, ServiceItem } from '../types';
+import { HoldScreen } from './presenter/HoldScreen';
 import { LoginScreen } from './LoginScreen';
 import { SlideRenderer } from './SlideRenderer';
+import type { SlideBrandingConfig } from './SlideBrandingOverlay';
 
 const STORAGE_KEY = 'lumina_session_v1';
 
@@ -14,6 +16,7 @@ type LocalPresenterState = {
   activeItemId?: string | null;
   activeSlideIndex?: number;
   blackout?: boolean;
+  holdScreenMode?: 'none' | 'clear' | 'logo';
   isPlaying?: boolean;
   outputMuted?: boolean;
   seekCommand?: number | null;
@@ -22,6 +25,13 @@ type LocalPresenterState = {
   routingMode?: RoutingMode;
   audienceDisplay?: AudienceDisplayState;
   audienceQrProjection?: AudienceQrProjectionState;
+  workspaceSettings?: {
+    churchName?: string;
+    slideBrandingEnabled?: boolean;
+    slideBrandingSeriesLabel?: string;
+    slideBrandingStyle?: 'minimal' | 'bold' | 'frosted';
+    slideBrandingOpacity?: number;
+  };
   updatedAt?: number;
 };
 
@@ -29,6 +39,8 @@ type EffectiveOutputState = {
   item: ServiceItem | null;
   slide: ServiceItem['slides'][number] | null;
   blackout: boolean;
+  holdScreenMode: 'none' | 'clear' | 'logo';
+  churchName: string;
   isPlaying: boolean;
   outputMuted: boolean;
   seekCommand: number | null;
@@ -36,6 +48,7 @@ type EffectiveOutputState = {
   lowerThirdsEnabled: boolean;
   audienceOverlay: AudienceDisplayState | null;
   projectedAudienceQr: AudienceQrProjectionState | null;
+  branding: SlideBrandingConfig;
   updatedAt: number;
   hasRenderable: boolean;
 };
@@ -101,33 +114,41 @@ const readLocalPresenterState = (): LocalPresenterState => {
   }
 };
 
+const sanitizeHoldScreenMode = (value: unknown): 'none' | 'clear' | 'logo' => (
+  value === 'clear' || value === 'logo' ? value : 'none'
+);
+
 export const OutputRoute: React.FC = () => {
   const getRouteParams = () => {
     const searchParams = new URLSearchParams(window.location.search);
     const fromSearch = (searchParams.get('session') || '').trim();
     const fromSearchWorkspace = (searchParams.get('workspace') || '').trim();
     const fromSearchFullscreen = (searchParams.get('fullscreen') || '').trim();
+    const fromSearchClean = (searchParams.get('clean') || '').trim();
 
     const hash = window.location.hash || '';
     const queryStart = hash.indexOf('?');
     let fromHash = '';
     let fromHashWorkspace = '';
     let fromHashFullscreen = '';
+    let fromHashClean = '';
     if (queryStart >= 0) {
       const hashParams = new URLSearchParams(hash.slice(queryStart + 1));
       fromHash = (hashParams.get('session') || '').trim();
       fromHashWorkspace = (hashParams.get('workspace') || '').trim();
       fromHashFullscreen = (hashParams.get('fullscreen') || '').trim();
+      fromHashClean = (hashParams.get('clean') || '').trim();
     }
 
     return {
       sessionId: fromSearch || fromHash || 'live',
       workspaceId: fromSearchWorkspace || fromHashWorkspace || 'default-workspace',
       fullscreen: fromSearchFullscreen || fromHashFullscreen,
+      clean: fromSearchClean || fromHashClean,
       hasExplicitWorkspace: !!(fromSearchWorkspace || fromHashWorkspace),
     };
   };
-  const [{ sessionId, workspaceId, fullscreen, hasExplicitWorkspace }] = useState(getRouteParams);
+  const [{ sessionId, workspaceId, fullscreen, clean, hasExplicitWorkspace }] = useState(getRouteParams);
   const outputClientId = useMemo(
     () => getOrCreateConnectionClientId(workspaceId, sessionId, 'output'),
     [workspaceId, sessionId]
@@ -242,15 +263,23 @@ export const OutputRoute: React.FC = () => {
     const activeSlideIndex = typeof rawSlideIndex === 'number' ? rawSlideIndex : 0;
     const routingMode = source?.routingMode as RoutingMode | undefined;
     const blackout = !!source?.blackout;
+    const holdScreenMode = sanitizeHoldScreenMode(source?.holdScreenMode);
     const isPlaying = typeof source?.isPlaying === 'boolean' ? source.isPlaying : true;
     const outputMuted = !!source?.outputMuted;
     const seekCommand = typeof source?.seekCommand === 'number' ? source.seekCommand : null;
     const seekAmount = typeof source?.seekAmount === 'number' ? source.seekAmount : 0;
     const lowerThirdsEnabled = !!source?.lowerThirdsEnabled;
-    const lowerThirdsForRoute = lowerThirdsEnabled && routingMode !== 'PROJECTOR';
     const audienceOverlay = sanitizeAudienceOverlay(source?.audienceDisplay);
     const projectedAudienceQr = sanitizeAudienceQrProjection(source?.audienceQrProjection);
     const updatedAt = typeof source?.updatedAt === 'number' ? source.updatedAt : 0;
+    const churchName = typeof source?.workspaceSettings?.churchName === 'string' ? source.workspaceSettings.churchName : '';
+    const branding: SlideBrandingConfig = {
+      enabled: !!source?.workspaceSettings?.slideBrandingEnabled,
+      churchName,
+      seriesLabel: typeof source?.workspaceSettings?.slideBrandingSeriesLabel === 'string' ? source.workspaceSettings.slideBrandingSeriesLabel : '',
+      style: (source?.workspaceSettings?.slideBrandingStyle === 'bold' || source?.workspaceSettings?.slideBrandingStyle === 'frosted') ? source.workspaceSettings.slideBrandingStyle : 'minimal',
+      textOpacity: typeof source?.workspaceSettings?.slideBrandingOpacity === 'number' ? source.workspaceSettings.slideBrandingOpacity : 0.82,
+    };
 
     const activeItem = activeItemId
       ? (schedule.find((item) => item.id === activeItemId) || null)
@@ -264,13 +293,16 @@ export const OutputRoute: React.FC = () => {
         item: lobbyItem || null,
         slide: lobbySlide,
         blackout,
+        holdScreenMode,
+        churchName,
         isPlaying,
         outputMuted,
         seekCommand,
         seekAmount,
-        lowerThirdsEnabled: lowerThirdsForRoute,
+        lowerThirdsEnabled,
         audienceOverlay,
         projectedAudienceQr,
+        branding,
         updatedAt,
         hasRenderable,
       };
@@ -281,13 +313,16 @@ export const OutputRoute: React.FC = () => {
       item: activeItem,
       slide: activeSlide,
       blackout,
+      holdScreenMode,
+      churchName,
       isPlaying,
       outputMuted,
       seekCommand,
       seekAmount,
-      lowerThirdsEnabled: lowerThirdsForRoute,
+      lowerThirdsEnabled,
       audienceOverlay,
       projectedAudienceQr,
+      branding,
       updatedAt,
       hasRenderable,
     };
@@ -300,19 +335,30 @@ export const OutputRoute: React.FC = () => {
       buildEffective(liveState, liveSchedule),
     ].sort((a, b) => b.updatedAt - a.updatedAt);
 
-    const firstRenderable = candidates.find((candidate) => candidate.blackout || candidate.hasRenderable);
+    const firstRenderable = candidates.find((candidate) => candidate.blackout || candidate.holdScreenMode !== 'none' || candidate.hasRenderable);
     return firstRenderable || candidates[0];
   }, [buildEffective, localState, localSchedule, serverState, serverSchedule, liveState, liveSchedule]);
 
   useEffect(() => {
-    if (effective.blackout || effective.hasRenderable) {
+    if (effective.blackout || effective.holdScreenMode !== 'none' || effective.hasRenderable) {
       setStableEffective(effective);
     }
   }, [effective]);
 
-  const display = (effective.blackout || effective.hasRenderable)
+  const rawDisplay = (effective.blackout || effective.holdScreenMode !== 'none' || effective.hasRenderable)
     ? effective
     : (stableEffective || effective);
+
+  // Clean feed: strip branding overlay and audience overlays for recording/streaming
+  const isClean = clean === '1';
+  const display: EffectiveOutputState = isClean
+    ? {
+        ...rawDisplay,
+        branding: { ...rawDisplay.branding, enabled: false },
+        audienceOverlay: null,
+        projectedAudienceQr: null,
+      }
+    : rawDisplay;
 
   if (authLoading && !hasLocalSchedule) {
     return <div className="h-screen w-screen bg-black text-zinc-500 flex items-center justify-center text-xs">Loading output...</div>;
@@ -325,7 +371,11 @@ export const OutputRoute: React.FC = () => {
   return (
     <div className="h-screen w-screen bg-black">
       {display.blackout ? (
-        <div className="w-full h-full bg-black flex items-center justify-center text-zinc-700 text-xs font-mono uppercase tracking-[0.25em]">BLACKOUT ACTIVE</div>
+        <HoldScreen view="blackout" />
+      ) : display.holdScreenMode === 'clear' ? (
+        <HoldScreen view="clear" />
+      ) : display.holdScreenMode === 'logo' ? (
+        <HoldScreen view="logo" churchName={display.churchName} />
       ) : !display.hasRenderable ? (
         <div className="w-full h-full bg-black flex items-center justify-center text-zinc-500 text-xs font-mono uppercase tracking-[0.25em]">WAITING FOR LIVE CONTENT</div>
       ) : (
@@ -339,10 +389,15 @@ export const OutputRoute: React.FC = () => {
           isMuted={display.outputMuted}
           isProjector={true}
           lowerThirds={display.lowerThirdsEnabled}
-          showSlideLabel={false}
+          showSlideLabel={
+            display.item?.type === ItemType.BIBLE
+            || display.item?.type === ItemType.SCRIPTURE
+            || display.slide?.layoutType === 'scripture_ref'
+          }
           showProjectorHelper={false}
           audienceOverlay={display.audienceOverlay || undefined}
           projectedAudienceQr={display.projectedAudienceQr || undefined}
+          branding={display.branding}
         />
       )}
     </div>

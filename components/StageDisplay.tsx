@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ServiceItem, Slide, StageAlertLayout, StageAlertState, StageFlowLayout, StageMessageCenterState, StageTimerFlashColor, StageTimerLayout, StageTimerVariant } from '../types';
 import { getCachedMedia, getMedia } from '../services/localMedia';
+import { SlideRenderer } from './SlideRenderer';
+import type { SlideBrandingConfig } from './SlideBrandingOverlay';
 
 interface StageDisplayProps {
   currentSlide: Slide | null;
@@ -25,6 +27,11 @@ interface StageDisplayProps {
   audienceOverlay?: any;
   stageAlert?: StageAlertState;
   stageMessageCenter?: StageMessageCenterState;
+  embedded?: boolean;
+  viewportWidth?: number;
+  viewportHeight?: number;
+  className?: string;
+  branding?: SlideBrandingConfig;
 }
 
 const DEFAULT_LAYOUT: StageTimerLayout = {
@@ -53,7 +60,18 @@ const isFlowLayout = (value: unknown): value is StageFlowLayout =>
   value === 'balanced' || value === 'speaker_focus' || value === 'preview_focus' || value === 'minimal_next';
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-const resolveViewport = (hostWindow?: Window | null) => {
+type StageViewportOverride = {
+  width: number;
+  height: number;
+};
+
+const resolveViewport = (hostWindow?: Window | null, viewportOverride?: StageViewportOverride | null) => {
+  if (viewportOverride && Number.isFinite(viewportOverride.width) && Number.isFinite(viewportOverride.height)) {
+    return {
+      vw: Math.max(320, Math.round(viewportOverride.width)),
+      vh: Math.max(180, Math.round(viewportOverride.height)),
+    };
+  }
   const target = hostWindow || (typeof window === 'undefined' ? null : window);
   return {
     vw: target?.innerWidth || 1280,
@@ -61,8 +79,13 @@ const resolveViewport = (hostWindow?: Window | null) => {
   };
 };
 
-const applyLayoutPreset = (variant: StageTimerVariant, baseLocked = false, hostWindow?: Window | null): StageTimerLayout => {
-  const { vw, vh } = resolveViewport(hostWindow);
+const applyLayoutPreset = (
+  variant: StageTimerVariant,
+  baseLocked = false,
+  hostWindow?: Window | null,
+  viewportOverride?: StageViewportOverride | null,
+): StageTimerLayout => {
+  const { vw, vh } = resolveViewport(hostWindow, viewportOverride);
   const margin = 24;
   if (variant === 'top-left') {
     return { ...DEFAULT_LAYOUT, variant, x: margin, y: margin, width: 360, height: 150, locked: baseLocked };
@@ -76,14 +99,18 @@ const applyLayoutPreset = (variant: StageTimerVariant, baseLocked = false, hostW
   return { ...DEFAULT_LAYOUT, variant, x: Math.max(margin, vw - 360 - margin), y: margin, width: 360, height: 150, locked: baseLocked };
 };
 
-const normalizeLayout = (value: StageTimerLayout | undefined | null, hostWindow?: Window | null): StageTimerLayout => {
+const normalizeLayout = (
+  value: StageTimerLayout | undefined | null,
+  hostWindow?: Window | null,
+  viewportOverride?: StageViewportOverride | null,
+): StageTimerLayout => {
   const raw = value || DEFAULT_LAYOUT;
   const variant = isVariant(raw.variant) ? raw.variant : DEFAULT_LAYOUT.variant;
-  const preset = applyLayoutPreset(variant, !!raw.locked, hostWindow);
+  const preset = applyLayoutPreset(variant, !!raw.locked, hostWindow, viewportOverride);
   const width = Number.isFinite(raw.width) ? clamp(raw.width, 220, 1600) : preset.width;
   const height = Number.isFinite(raw.height) ? clamp(raw.height, 72, 900) : preset.height;
   const fontScale = Number.isFinite(raw.fontScale) ? clamp(raw.fontScale, 0.6, 3.4) : preset.fontScale;
-  const { vw, vh } = resolveViewport(hostWindow);
+  const { vw, vh } = resolveViewport(hostWindow, viewportOverride);
   return {
     x: Number.isFinite(raw.x) ? clamp(raw.x, 0, Math.max(0, vw - width)) : preset.x,
     y: Number.isFinite(raw.y) ? clamp(raw.y, 0, Math.max(0, vh - height)) : preset.y,
@@ -95,9 +122,13 @@ const normalizeLayout = (value: StageTimerLayout | undefined | null, hostWindow?
   };
 };
 
-const normalizeAlertLayout = (value: StageAlertLayout | undefined | null, hostWindow?: Window | null): StageAlertLayout => {
+const normalizeAlertLayout = (
+  value: StageAlertLayout | undefined | null,
+  hostWindow?: Window | null,
+  viewportOverride?: StageViewportOverride | null,
+): StageAlertLayout => {
   const raw = value || DEFAULT_ALERT_LAYOUT;
-  const { vw, vh } = resolveViewport(hostWindow);
+  const { vw, vh } = resolveViewport(hostWindow, viewportOverride);
   const width = Number.isFinite(raw.width) ? clamp(raw.width, 320, 1800) : DEFAULT_ALERT_LAYOUT.width;
   const height = Number.isFinite(raw.height) ? clamp(raw.height, 88, 640) : DEFAULT_ALERT_LAYOUT.height;
   return {
@@ -152,10 +183,27 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
   audienceOverlay,
   stageAlert,
   stageMessageCenter,
+  embedded = false,
+  viewportWidth,
+  viewportHeight,
+  className = '',
+  branding,
 }) => {
+  const viewportOverride = useMemo<StageViewportOverride | null>(() => (
+    embedded
+      && Number.isFinite(viewportWidth)
+      && Number.isFinite(viewportHeight)
+      ? {
+        width: Math.max(320, Number(viewportWidth)),
+        height: Math.max(180, Number(viewportHeight)),
+      }
+      : null
+  ), [embedded, viewportHeight, viewportWidth]);
   const [time, setTime] = useState(new Date());
-  const [layout, setLayout] = useState<StageTimerLayout>(() => normalizeLayout(timerLayout));
-  const [alertLayout, setAlertLayout] = useState<StageAlertLayout>(() => normalizeAlertLayout(stageAlertLayout));
+  const [layout, setLayout] = useState<StageTimerLayout>(() => normalizeLayout(timerLayout, undefined, viewportOverride));
+  const [alertLayout, setAlertLayout] = useState<StageAlertLayout>(() => normalizeAlertLayout(stageAlertLayout, undefined, viewportOverride));
+  const lastExternalTimerLayoutRef = useRef<StageTimerLayout>(normalizeLayout(timerLayout, undefined, viewportOverride));
+  const lastExternalAlertLayoutRef = useRef<StageAlertLayout>(normalizeAlertLayout(stageAlertLayout, undefined, viewportOverride));
   const [dragMode, setDragMode] = useState<'move' | 'resize' | null>(null);
   const [alertDragMode, setAlertDragMode] = useState<'move' | 'resize' | null>(null);
   const dragStartRef = useRef<{ x: number; y: number; layout: StageTimerLayout } | null>(null);
@@ -197,37 +245,46 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
   }, [onStageAlertLayoutChange]);
 
   useEffect(() => {
-    const normalized = normalizeLayout(timerLayout, getHostWindow());
-    if (!layoutsEqual(normalized, layout)) {
-      setLayout(normalized);
+    const normalized = normalizeLayout(timerLayout, getHostWindow(), viewportOverride);
+    if (!layoutsEqual(normalized, lastExternalTimerLayoutRef.current)) {
+      lastExternalTimerLayoutRef.current = normalized;
+      if (!layoutsEqual(normalized, layout)) {
+        setLayout(normalized);
+      }
     }
-  }, [timerLayout, getHostWindow]);
+  }, [timerLayout, layout, getHostWindow, viewportOverride]);
 
   useEffect(() => {
-    const normalized = normalizeAlertLayout(stageAlertLayout, getHostWindow());
-    if (!alertLayoutsEqual(normalized, alertLayout)) {
-      setAlertLayout(normalized);
+    const normalized = normalizeAlertLayout(stageAlertLayout, getHostWindow(), viewportOverride);
+    if (!alertLayoutsEqual(normalized, lastExternalAlertLayoutRef.current)) {
+      lastExternalAlertLayoutRef.current = normalized;
+      if (!alertLayoutsEqual(normalized, alertLayout)) {
+        setAlertLayout(normalized);
+      }
     }
-  }, [stageAlertLayout, getHostWindow]);
+  }, [stageAlertLayout, alertLayout, getHostWindow, viewportOverride]);
 
   useEffect(() => {
     const hostWindow = getHostWindow();
-    if (!hostWindow) return;
+    if (!hostWindow && !viewportOverride) return;
     const onResize = () => {
-      const normalized = normalizeLayout(layout, hostWindow);
+      const normalized = normalizeLayout(layout, hostWindow, viewportOverride);
       if (!layoutsEqual(normalized, layout)) publishLayout(normalized);
-      const normalizedAlert = normalizeAlertLayout(alertLayout, hostWindow);
+      const normalizedAlert = normalizeAlertLayout(alertLayout, hostWindow, viewportOverride);
       if (!alertLayoutsEqual(normalizedAlert, alertLayout)) publishAlertLayout(normalizedAlert);
     };
-    hostWindow.addEventListener('resize', onResize);
-    return () => hostWindow.removeEventListener('resize', onResize);
-  }, [layout, alertLayout, publishLayout, publishAlertLayout, getHostWindow]);
+    if (hostWindow) {
+      hostWindow.addEventListener('resize', onResize);
+      return () => hostWindow.removeEventListener('resize', onResize);
+    }
+    return undefined;
+  }, [layout, alertLayout, publishLayout, publishAlertLayout, getHostWindow, viewportOverride]);
 
   useEffect(() => {
     const node = timerWidgetRef.current;
     if (!node || typeof ResizeObserver === 'undefined') return;
     const hostWindow = node.ownerDocument?.defaultView || null;
-    const normalized = normalizeLayout(layout, hostWindow);
+    const normalized = normalizeLayout(layout, hostWindow, viewportOverride);
     if (!layoutsEqual(normalized, layout)) {
       publishLayout(normalized);
     }
@@ -244,13 +301,13 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
     });
     observer.observe(node);
     return () => observer.disconnect();
-  }, [layout, publishLayout]);
+  }, [layout, publishLayout, viewportOverride]);
 
   useEffect(() => {
     const node = alertWidgetRef.current;
     if (!node || typeof ResizeObserver === 'undefined') return;
     const hostWindow = node.ownerDocument?.defaultView || null;
-    const normalized = normalizeAlertLayout(alertLayout, hostWindow);
+    const normalized = normalizeAlertLayout(alertLayout, hostWindow, viewportOverride);
     if (!alertLayoutsEqual(normalized, alertLayout)) {
       publishAlertLayout(normalized);
     }
@@ -267,7 +324,7 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
     });
     observer.observe(node);
     return () => observer.disconnect();
-  }, [alertLayout, publishAlertLayout]);
+  }, [alertLayout, publishAlertLayout, viewportOverride]);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -342,7 +399,7 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
       if (!start) return;
       const dx = event.clientX - start.x;
       const dy = event.clientY - start.y;
-      const { vw, vh } = resolveViewport(hostWindow);
+      const { vw, vh } = resolveViewport(hostWindow, viewportOverride);
 
       if (dragMode === 'move') {
         const next = {
@@ -395,7 +452,7 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
       hostDocument.removeEventListener('pointerup', onUp);
       hostDocument.removeEventListener('pointercancel', onUp);
     };
-  }, [dragMode, publishLayout, getHostWindow]);
+  }, [dragMode, publishLayout, getHostWindow, viewportOverride]);
 
   useEffect(() => {
     if (!alertDragMode) return;
@@ -409,7 +466,7 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
       if (!start) return;
       const dx = event.clientX - start.x;
       const dy = event.clientY - start.y;
-      const { vw, vh } = resolveViewport(hostWindow);
+      const { vw, vh } = resolveViewport(hostWindow, viewportOverride);
 
       if (alertDragMode === 'move') {
         const next = {
@@ -461,7 +518,7 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
       hostDocument.removeEventListener('pointerup', onUp);
       hostDocument.removeEventListener('pointercancel', onUp);
     };
-  }, [alertDragMode, publishAlertLayout, getHostWindow]);
+  }, [alertDragMode, publishAlertLayout, getHostWindow, viewportOverride]);
 
   const compact = profile === 'compact';
   const highContrast = profile === 'high_contrast';
@@ -470,6 +527,13 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
   const nextText = typeof nextSlide?.content === 'string' && nextSlide.content.trim() ? nextSlide.content : '';
   const currentHasText = currentText.length > 0;
   const nextHasText = nextText.length > 0;
+  const currentReferenceLabel = currentHasText && (
+    activeItem?.type === 'BIBLE'
+    || activeItem?.type === 'SCRIPTURE'
+    || currentSlide?.layoutType === 'scripture_ref'
+  )
+    ? String(currentSlide?.label || '').trim()
+    : '';
   const looksLikeVideo = (url: string) => {
     const normalized = url.split('?')[0].toLowerCase();
     return normalized.endsWith('.mp4') || normalized.endsWith('.webm') || normalized.endsWith('.mov') || normalized.includes('/video/');
@@ -481,7 +545,18 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
   const activeAudienceId = audienceOverlay?.pinnedMessageId || audienceOverlay?.activeMessageId;
   const activeAudienceMessage = audienceQueue.find((entry: any) => entry?.id === activeAudienceId) || null;
   const tickerItems = audienceQueue;
-  const tickerDuration = Math.max(18, audienceQueue.length * 8);
+  const tickerLoopItems = tickerItems.length ? [...tickerItems, ...tickerItems] : [];
+  const tickerCharacterCount = tickerItems.reduce((sum: number, entry: any) => (
+    sum
+    + String(entry?.submitter_name || 'AUDIENCE').length
+    + String(entry?.text || '').length
+  ), 0);
+  const tickerDuration = Math.max(20, Math.min(90, tickerCharacterCount * 0.22));
+  const tickerBandHeight = embedded ? 54 : 64;
+  const tickerLabelWidth = embedded ? 132 : 170;
+  const tickerTextSize = embedded ? 16 : 18;
+  const tickerNameSize = embedded ? 10 : 11;
+  const tickerGap = embedded ? 28 : 40;
   const showTicker = !!audienceOverlay?.tickerEnabled && audienceQueue.length > 0;
   const showPinned = !!activeAudienceMessage && !showTicker;
   const showAudienceBadge = showTicker || showPinned;
@@ -576,13 +651,13 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
   };
 
   const applyPreset = (variant: StageTimerVariant) => {
-    const next = applyLayoutPreset(variant, layout.locked, getHostWindow());
+    const next = applyLayoutPreset(variant, layout.locked, getHostWindow(), viewportOverride);
     publishLayout(next);
   };
 
   const applyAlertPreset = (preset: 'top-center' | 'top-left' | 'bottom-center') => {
     const hostWindow = getHostWindow();
-    const { vw, vh } = resolveViewport(hostWindow);
+    const { vw, vh } = resolveViewport(hostWindow, viewportOverride);
     const margin = 24;
     const width = clamp(alertLayout.width, 320, 1800);
     const height = clamp(alertLayout.height, 88, 640);
@@ -684,7 +759,7 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
 
   return (
     <div
-      className={`relative h-screen w-screen text-white p-8 grid gap-8 font-sans ${highContrast ? 'bg-black' : 'bg-black'}`}
+      className={`relative ${embedded ? 'h-full w-full' : 'h-screen w-screen'} overflow-hidden text-white p-8 grid gap-8 font-sans ${highContrast ? 'bg-black' : 'bg-black'} ${className}`}
       style={{ gridTemplateRows: flowGridRows }}
     >
       <div className="flex justify-between items-start border-b border-gray-800 pb-4 gap-6">
@@ -709,28 +784,46 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-col justify-center">
-        <span className="text-sm font-bold text-green-500 uppercase tracking-widest mb-2">CURRENT</span>
-        {currentHasText ? (
-          <div className={`${currentTextClass} font-bold leading-tight text-white whitespace-pre-wrap`}>
-            {currentText}
-          </div>
-        ) : currentMediaUrl ? (
-          <div className="rounded-xl border border-zinc-700/60 bg-black/35 overflow-hidden max-h-[40vh]">
-            {currentMediaIsVideo ? (
-              <video src={currentMediaUrl} className="w-full h-full object-contain" muted autoPlay loop playsInline />
-            ) : (
-              <img src={currentMediaUrl} alt="Current visual slide" className="w-full h-full object-contain" />
-            )}
+      <div className="flex flex-col min-h-0 overflow-hidden">
+        <span className="text-sm font-bold text-green-500 uppercase tracking-widest mb-2 shrink-0">CURRENT</span>
+        {currentSlide ? (
+          <div className="flex gap-4 min-h-0 flex-1 overflow-hidden">
+            {/* Scaled replica of the projected output */}
+            <div className="shrink-0 rounded-xl overflow-hidden border border-zinc-700/50 shadow-xl" style={{ width: compact ? 320 : 480, aspectRatio: '16/9' }}>
+              <SlideRenderer
+                slide={currentSlide}
+                item={activeItem}
+                fitContainer={true}
+                isThumbnail={false}
+                isMuted={true}
+                isPlaying={true}
+                branding={branding}
+              />
+            </div>
+            {/* Speaker reading text — large, clear, never overflows */}
+            <div className="flex-1 min-w-0 flex flex-col justify-center overflow-hidden">
+              {currentHasText ? (
+                <div className={`${currentTextClass} font-bold leading-snug text-white overflow-hidden`} style={{ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 6, overflow: 'hidden' }}>
+                  {currentText}
+                </div>
+              ) : (
+                <div className={`${compact ? 'text-3xl' : 'text-4xl'} font-bold leading-tight text-zinc-500`}>
+                  Visual slide active
+                </div>
+              )}
+              {currentReferenceLabel && (
+                <div className="mt-3 shrink-0">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/25 bg-slate-950/80 px-4 py-2 shadow-[0_10px_35px_rgba(0,0,0,0.32)] backdrop-blur-md">
+                    <span className="text-[10px] uppercase tracking-[0.22em] font-black text-cyan-300/80">Ref</span>
+                    <span className="text-sm font-bold uppercase tracking-[0.08em] text-white/95">{currentReferenceLabel}</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <div className={`${compact ? 'text-4xl' : 'text-5xl'} font-bold leading-tight text-zinc-500`}>
             Waiting for active slide
-          </div>
-        )}
-        {!currentHasText && (
-          <div className="mt-2 text-[11px] uppercase tracking-wider text-cyan-300 font-bold">
-            {currentSlide?.label || 'Visual Slide Active'}
           </div>
         )}
       </div>
@@ -842,28 +935,41 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
           )}
         </div>
       )}
-      <div className={`flex flex-col justify-start ${nextPanelOpacityClass} ${highContrast ? 'bg-black border-white/30' : 'bg-gray-900/50 border-gray-800'} p-6 rounded-xl border`}>
-        <span className="text-sm font-bold text-blue-500 uppercase tracking-widest mb-2">NEXT</span>
-        {nextHasText ? (
-          <div className={`${nextTextClass} font-medium ${highContrast ? 'text-white' : 'text-gray-400'} leading-snug whitespace-pre-wrap opacity-70`}>
-            {nextText}
-          </div>
-        ) : nextMediaUrl ? (
-          <div className="rounded-xl border border-zinc-700/60 bg-black/30 overflow-hidden max-h-[26vh]">
-            {nextMediaIsVideo ? (
-              <video src={nextMediaUrl} className="w-full h-full object-contain opacity-80" muted autoPlay loop playsInline />
-            ) : (
-              <img src={nextMediaUrl} alt="Next visual slide" className="w-full h-full object-contain opacity-80" />
-            )}
+      <div className={`flex flex-col min-h-0 overflow-hidden ${nextPanelOpacityClass} ${highContrast ? 'bg-black border-white/30' : 'bg-gray-900/50 border-gray-800'} p-6 rounded-xl border`}>
+        <span className="text-sm font-bold text-blue-500 uppercase tracking-widest mb-2 shrink-0">NEXT</span>
+        {nextSlide ? (
+          <div className="flex gap-4 min-h-0 flex-1 overflow-hidden">
+            <div className="shrink-0 rounded-lg overflow-hidden border border-zinc-700/40 opacity-80" style={{ width: compact ? 200 : 280, aspectRatio: '16/9' }}>
+              <SlideRenderer
+                slide={nextSlide}
+                item={activeItem}
+                fitContainer={true}
+                isThumbnail={false}
+                isMuted={true}
+                isPlaying={false}
+                branding={branding}
+              />
+            </div>
+            <div className="flex-1 min-w-0 flex flex-col justify-center overflow-hidden">
+              {nextHasText ? (
+                <div className={`${nextTextClass} font-medium ${highContrast ? 'text-white' : 'text-gray-400'} leading-snug opacity-70 overflow-hidden`} style={{ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 5, overflow: 'hidden' }}>
+                  {nextText}
+                </div>
+              ) : (
+                <div className={`${nextTextClass} font-medium ${highContrast ? 'text-white' : 'text-gray-500'} leading-snug opacity-60`}>
+                  Visual slide
+                </div>
+              )}
+              {!nextHasText && (
+                <div className="mt-2 text-[10px] uppercase tracking-wider text-blue-300 font-bold opacity-80">
+                  {nextSlide?.label || (nextMediaUrl ? 'Visual Slide Preview' : 'End of Item')}
+                </div>
+              )}
+            </div>
           </div>
         ) : (
-          <div className={`${nextTextClass} font-medium ${highContrast ? 'text-white' : 'text-gray-500'} leading-snug whitespace-pre-wrap opacity-60`}>
+          <div className={`${nextTextClass} font-medium ${highContrast ? 'text-white' : 'text-gray-500'} leading-snug opacity-60`}>
             End of Item
-          </div>
-        )}
-        {!nextHasText && (
-          <div className="mt-2 text-[10px] uppercase tracking-wider text-blue-300 font-bold opacity-80">
-            {nextSlide?.label || (nextMediaUrl ? 'Visual Slide Preview' : 'End of Item')}
           </div>
         )}
       </div>
@@ -1018,29 +1124,75 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
       )}
 
       {showTicker && (
-        <div className="absolute left-0 right-0 bottom-0 h-14 bg-black/85 border-t border-white/15 backdrop-blur-sm overflow-hidden">
+        <div
+          className="absolute left-0 right-0 bottom-0 border-t border-white/15 overflow-hidden"
+          style={{
+            height: tickerBandHeight,
+            background: 'linear-gradient(180deg, rgba(2,6,23,0.78), rgba(2,6,23,0.94))',
+            backdropFilter: 'blur(14px)',
+            display: 'grid',
+            gridTemplateColumns: `${tickerLabelWidth}px minmax(0, 1fr)`,
+          }}
+        >
           <div
-            key={`stage-ticker-${audienceQueue.map((entry: any) => entry.id).join('-')}-${audienceQueue.length}`}
-            className="h-full flex items-center gap-10 whitespace-nowrap px-8"
-            style={{ transform: 'translateX(100vw)', animation: `stageTicker ${tickerDuration}s linear infinite` }}
+            className="relative z-[2] flex items-center justify-center gap-2 border-r border-blue-300/15"
+            style={{ background: 'linear-gradient(90deg, rgba(30,64,175,0.18), rgba(2,6,23,0.08))' }}
           >
-            {tickerItems.map((entry: any, idx: number) => (
-              <div key={`${entry.id}-${idx}`} className="flex items-center gap-3">
-                <span className="text-blue-400 text-sm">-</span>
-                <span className="text-base text-white font-medium">
-                  <span className="text-blue-300 font-bold mr-2">{entry.submitter_name || 'AUDIENCE'}:</span>
-                  {entry.text}
-                </span>
-              </div>
-            ))}
+            <span className="h-2 w-2 rounded-full bg-sky-400 shadow-[0_0_14px_rgba(56,189,248,0.45)]" />
+            <span
+              className="font-black uppercase text-blue-100"
+              style={{ fontSize: tickerNameSize, letterSpacing: '0.18em' }}
+            >
+              Audience Feed
+            </span>
+          </div>
+          <div className="relative overflow-hidden">
+            <div
+              className="pointer-events-none absolute inset-0 z-[2]"
+              style={{ background: 'linear-gradient(90deg, rgba(2,6,23,0.98) 0%, rgba(2,6,23,0) 8%, rgba(2,6,23,0) 92%, rgba(2,6,23,0.98) 100%)' }}
+            />
+            <div
+              key={`stage-ticker-${audienceQueue.map((entry: any) => entry.id).join('-')}-${audienceQueue.length}`}
+              className="flex h-full min-w-[200%] items-center whitespace-nowrap"
+              style={{
+                gap: tickerGap,
+                padding: `0 ${tickerGap}px`,
+                willChange: 'transform',
+                transform: 'translate3d(0,0,0)',
+                animation: `stageTickerLoop ${tickerDuration}s linear infinite`,
+                WebkitFontSmoothing: 'antialiased',
+                textRendering: 'geometricPrecision',
+              }}
+            >
+              {tickerLoopItems.map((entry: any, idx: number) => (
+                <div key={`${entry.id || 'msg'}-${idx}`} className="flex shrink-0 items-center gap-3">
+                  <span style={{ color: '#38bdf8', fontWeight: 900, fontSize: tickerNameSize + 2 }}>&bull;</span>
+                  <span style={{ color: '#f8fafc', fontSize: tickerTextSize, fontWeight: 650, letterSpacing: '0.01em' }}>
+                    <span
+                      style={{
+                        color: '#93c5fd',
+                        fontWeight: 900,
+                        marginRight: 8,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        fontSize: tickerNameSize + 1,
+                      }}
+                    >
+                      {entry.submitter_name || 'Audience'}
+                    </span>
+                    {entry.text}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
       <style>{`
-        @keyframes stageTicker {
-          from { transform: translateX(100%); }
-          to { transform: translateX(-100%); }
+        @keyframes stageTickerLoop {
+          0% { transform: translate3d(0, 0, 0); }
+          100% { transform: translate3d(-50%, 0, 0); }
         }
         @keyframes luminaStageTimerFlash {
           0%, 42%, 100% { opacity: 1; filter: brightness(1); }

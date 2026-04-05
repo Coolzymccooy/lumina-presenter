@@ -27,9 +27,14 @@ export interface AppHeaderProps {
   onViewModeChange: (mode: ViewMode) => void;
   onHomeClick: () => void;
 
+  // Presenter beta badge
+  isPresenterBeta?: boolean;
+
   // Telemetry
   liveSessionId: string;
   syncPendingCount: number;
+  syncIssue?: string | null;
+  onOpenSyncGuidance?: () => void;
   activeTargetConnectionCount: number;
   targetConnectionRoleCount: number;
   connectionCountsByRole: Record<string, number>;
@@ -75,8 +80,11 @@ export function AppHeader({
   viewMode,
   onViewModeChange,
   onHomeClick,
+  isPresenterBeta,
   liveSessionId,
   syncPendingCount,
+  syncIssue,
+  onOpenSyncGuidance,
   activeTargetConnectionCount,
   targetConnectionRoleCount,
   connectionCountsByRole,
@@ -141,6 +149,12 @@ export function AppHeader({
               </button>
             ))}
           </div>
+
+          {isPresenterBeta && (
+            <div className="hidden xl:flex items-center rounded-full border border-cyan-800/50 bg-cyan-950/25 px-3 py-1 text-[9px] font-black uppercase tracking-[0.22em] text-cyan-200">
+              Presenter Beta
+            </div>
+          )}
         </div>
 
         {/* CENTRE: TELEMETRY STRIP */}
@@ -169,6 +183,19 @@ export function AppHeader({
               </span>
             </>
           )}
+
+          <div className="h-4 w-px bg-zinc-800" />
+
+          <div
+            className="flex items-center gap-1.5 cursor-pointer"
+            title={syncIssue || 'Cloud sync healthy'}
+            onClick={() => { if (syncIssue && onOpenSyncGuidance) onOpenSyncGuidance(); }}
+          >
+            <div className={`w-1.5 h-1.5 rounded-full ${syncIssue ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
+            <span className={`text-[9px] font-black tracking-widest ${syncIssue ? 'text-red-400/80' : 'text-emerald-500/80'}`}>
+              {syncIssue ? 'SYNC ISSUE' : 'CLOUD SYNC'}
+            </span>
+          </div>
 
           <div className="h-4 w-px bg-zinc-800" />
 
