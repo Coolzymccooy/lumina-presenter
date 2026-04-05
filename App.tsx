@@ -82,6 +82,8 @@ import { parseOpenSongFile } from './services/openSongImport';
 import { copyTextToClipboard } from './services/clipboardService';
 import { dispatchAetherBridgeEvent, type AetherBridgeEvent } from './services/aetherBridge';
 import { MacroPanel } from './components/MacroPanel';
+import { BuilderPreviewPanel } from './components/builder/BuilderPreviewPanel';
+import { StageWorkspace } from './components/builder/StageWorkspace';
 import { subscribeMacros, seedStarterMacrosIfEmpty } from './services/macroRegistry';
 import { getArchivedSermons, deleteArchivedSermon, type ArchivedSermon } from './services/sermonArchive';
 import type { MacroDefinition, MacroAuditEntry } from './types/macros';
@@ -8082,85 +8084,45 @@ function App() {
       <div className="flex-1 flex flex-col bg-zinc-950 min-w-0 overflow-hidden">
         {selectedItem ? (
           <>
-            <ItemEditorPanel 
-              item={selectedItem} 
-              onUpdate={updateItem} 
+            <ItemEditorPanel
+              item={selectedItem}
+              onUpdate={updateItem}
               onOpenLibrary={() => setIsMotionLibOpen(true)}
               speakerPresets={workspaceSettings.speakerTimerPresets}
             />
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-                {selectedItem.slides.map((slide, idx) => (
-                  <div 
-                    key={slide.id} 
-                    onClick={() => handleEditSlide(slide)} 
-                    className="group relative aspect-video bg-zinc-900 border border-zinc-800 rounded-sm overflow-hidden cursor-pointer hover:border-blue-500 transition-colors shadow-lg"
-                  >
-                    <div className="absolute inset-0 flex items-center justify-center p-4">
-                      <div className="text-[10px] text-zinc-400 text-center line-clamp-4 leading-relaxed font-medium">
-                        {slide.content || <span className="italic opacity-30 tracking-tight">Empty Slide</span>}
-                      </div>
-                    </div>
-                    <div className="absolute bottom-0 inset-x-0 p-1.5 flex items-center justify-between bg-gradient-to-t from-black/80 to-transparent">
-                      <div className="flex-1 min-w-0">
-                        {inlineSlideRename?.slideId === slide.id && inlineSlideRename.source === 'thumbnail' ? (
-                          <input
-                            ref={inlineSlideRenameInputRef}
-                            type="text"
-                            value={inlineSlideRename.value}
-                            onChange={(e) => setInlineSlideRename({ ...inlineSlideRename, value: e.target.value })}
-                            onBlur={() => handleRenameSlideLabel(selectedItem.id, slide.id, inlineSlideRename.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleRenameSlideLabel(selectedItem.id, slide.id, inlineSlideRename.value)}
-                            className="w-full bg-zinc-800 text-[9px] font-mono text-white px-1 rounded outline-none border border-blue-500"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        ) : (
-                          <div className="px-1.5 py-0.5 bg-black/75 border border-zinc-700 rounded text-[9px] font-mono text-zinc-300 truncate shadow-md">
-                            {slide.label || `Slide ${idx + 1}`}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 flex gap-1 z-10 transition-opacity">
-                      <button 
-                        type="button" 
-                        onClick={(e) => { e.stopPropagation(); startSlideLabelRename(selectedItem.id, slide.id, slide.label || `Slide ${idx + 1}`, 'thumbnail'); }}
-                        className="p-1.5 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-cyan-300 text-zinc-400" 
-                        title="Rename slide"
-                      >
-                        <EditIcon className="w-3 h-3" />
-                      </button>
-                      <button 
-                        onClick={() => handleEditSlide(slide)} 
-                        className="p-1.5 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-blue-400 text-zinc-400" 
-                        title="Edit content"
-                      >
-                        <EditIcon className="w-3 h-3" />
-                      </button>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); handleDeleteSlide(slide.id, e); }} 
-                        className="p-1.5 bg-zinc-900 border border-zinc-700 rounded-sm hover:text-red-400 text-zinc-400" 
-                        title="Delete slide"
-                      >
-                        <TrashIcon className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                <button 
-                  onClick={() => { setEditingSlide(null); setIsSlideEditorOpen(true); }} 
-                  className="aspect-video border border-dashed border-zinc-800 rounded-sm flex flex-col items-center justify-center text-zinc-600 hover:text-zinc-400 bg-zinc-900/10 hover:bg-zinc-900/30 transition-colors"
-                >
-                  <PlusIcon className="w-6 h-6 mb-2" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Add Slide</span>
-                </button>
-              </div>
-            </div>
+            <BuilderPreviewPanel
+              item={selectedItem}
+              onUpdate={updateItem}
+              onOpenSlideEditor={(slide) => handleEditSlide(slide)}
+              onDeleteSlide={handleDeleteSlide}
+              onAddSlide={() => { setEditingSlide(null); setIsSlideEditorOpen(true); }}
+              onStartLabelRename={startSlideLabelRename}
+              inlineSlideRename={inlineSlideRename}
+              inlineSlideRenameInputRef={inlineSlideRenameInputRef}
+              onInlineRenameChange={(value) => inlineSlideRename && setInlineSlideRename({ ...inlineSlideRename, value })}
+              onInlineRenameCommit={handleRenameSlideLabel}
+            />
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center text-zinc-800 font-black text-xl uppercase tracking-[0.5em] opacity-20 pointer-events-none">Select item to edit</div>
         )}
       </div>
+    ) : viewMode === 'STAGE' ? (
+      <StageWorkspace
+        activeItem={activeItem}
+        activeSlide={activeSlide}
+        activeSlideIndex={activeSlideIndex}
+        nextSlide={nextSlidePreview}
+        nextItem={schedule[schedule.findIndex(i => i.id === activeItem?.id) + 1] || null}
+        schedule={schedule}
+        isOutputLive={isOutputLive}
+        isStageDisplayLive={isStageDisplayLive}
+        blackout={blackout}
+        onGoLive={(item, idx) => goLive(item, idx ?? 0)}
+        onPrevSlide={prevSlide}
+        onNextSlide={nextSlide}
+        onToggleBlackout={() => setBlackout(prev => !prev)}
+      />
     ) : (
             <div className="flex-1 flex flex-col lg:flex-row bg-black min-w-0 overflow-hidden">
               <div className="flex-1 flex flex-col relative min-w-0">
