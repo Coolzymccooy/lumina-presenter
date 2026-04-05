@@ -69,6 +69,8 @@ import { copyTextToClipboard } from './services/clipboardService';
 import { dispatchAetherBridgeEvent } from './services/aetherBridge';
 import type { RunSheetInsertionResult } from './services/runSheetInsertion';
 import { PlayIcon, PauseIcon, RewindIcon, ForwardIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon, ArrowDownIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon, CheckIcon, XIcon, PinIcon, MinimizeIcon, MaximizeIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon, RewindIcon, ForwardIcon, PauseIcon
+import { AppHeader } from './components/layout/AppHeader';
+import { RightDock } from './components/layout/RightDock';
 
 // --- CONSTANTS ---
 const STORAGE_KEY = 'lumina_session_v1';
@@ -755,7 +757,7 @@ function App() {
     const hasSeen = localStorage.getItem('lumina_onboarding_v2.2.0');
     return !hasSeen;
   });
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES'>('SCHEDULE');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES' | 'MACROS'>('SCHEDULE');
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1440));
   const isSettingsHydratedRef = useRef(false);
   const studioShellRef = useRef<HTMLDivElement | null>(null);
@@ -845,10 +847,11 @@ function App() {
     return saved?.selectedItemId || savedSchedule[0]?.id || '';
   });
 
-  const [viewMode, setViewMode] = useState<'BUILDER' | 'PRESENTER'>(() => {
+  const [viewMode, setViewMode] = useState<'BUILDER' | 'PRESENTER' | 'STAGE'>(() => {
     const saved = initialSavedState;
     return saved?.viewMode || 'BUILDER';
   });
+  const [isRightDockOpen, setIsRightDockOpen] = useState(false);
   const [sidebarPinned, setSidebarPinned] = useState<boolean>(() => {
     const saved = initialSavedState;
     return !!saved?.sidebarPinned;
@@ -4536,7 +4539,7 @@ function App() {
     setSidebarPinned((prev) => !prev);
   };
 
-  const handleSidebarTabSelect = (tab: 'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES') => {
+  const handleSidebarTabSelect = (tab: 'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES' | 'MACROS') => {
     setActiveSidebarTab(tab);
     if (presenterSidebarCompact) {
       setPresenterSidebarDrawerOpen(true);
@@ -5061,200 +5064,36 @@ function App() {
         </div>
       )}
 
-      <header className="h-14 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800 flex items-center justify-between px-6 shrink-0 z-[100] shadow-xl">
-        {/* LEFT: BRAND & MODES */}
-        <div className="flex items-center gap-6">
-          <div
-            onClick={() => setViewState(isElectronShell ? 'studio' : 'landing')}
-            className="flex items-center gap-3 cursor-pointer hover:opacity-100 transition-all group"
-          >
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/40 group-hover:scale-110 transition-transform">
-              <span className="text-white font-black text-xs">L</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-black text-white tracking-[0.2em] leading-tight">LUMINA</span>
-              <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-widest">Studio v2.1</span>
-            </div>
-          </div>
-
-          <div className="h-6 w-px bg-zinc-800"></div>
-
-          <div className="flex bg-black/40 p-1 rounded-xl border border-zinc-800/50">
-            <button
-              onClick={() => setViewMode('BUILDER')}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all ${viewMode === 'BUILDER' ? 'bg-zinc-800 text-white shadow-inner' : 'text-zinc-600 hover:text-zinc-400'}`}
-            >
-              BUILDER
-            </button>
-            <button
-              onClick={() => setViewMode('PRESENTER')}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all ${viewMode === 'PRESENTER' ? 'bg-zinc-800 text-white shadow-inner' : 'text-zinc-600 hover:text-zinc-400'}`}
-            >
-              PRESENTER
-            </button>
-          </div>
-        </div>
-
-        {/* MIDDLE: STATUS TELEMETRY */}
-        <div className="hidden lg:flex items-center gap-4 bg-zinc-900/20 px-4 py-1.5 rounded-full border border-zinc-800/30">
-          <div className="flex flex-col items-center">
-            <span className="text-[8px] text-zinc-600 font-black uppercase tracking-widest">Session ID</span>
-            <span className="text-[10px] font-mono text-zinc-400" data-testid="studio-session-id">{liveSessionId}</span>
-          </div>
-          <div className="h-4 w-px bg-zinc-800"></div>
-          <div className="flex items-center gap-2">
-            <div className={`w-1.5 h-1.5 rounded-full ${navigator.onLine ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-            <span className={`text-[9px] font-black tracking-widest ${navigator.onLine ? 'text-emerald-500/80' : 'text-amber-500/80'}`}>
-              {navigator.onLine ? 'SYSTEM ONLINE' : 'OFFLINE MODE'}
-            </span>
-          </div>
-          {syncPendingCount > 0 && (
-            <>
-              <div className="h-4 w-px bg-zinc-800"></div>
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] font-black text-amber-500 animate-pulse tracking-widest">SYNCING {syncPendingCount}</span>
-              </div>
-            </>
-          )}
-          <div className="h-4 w-px bg-zinc-800"></div>
-          <div className="flex items-center gap-2" title={`controller:${connectionCountsByRole.controller || 0} output:${connectionCountsByRole.output || 0} stage:${connectionCountsByRole.stage || 0} remote:${connectionCountsByRole.remote || 0}`}>
-            <span className={`text-[9px] font-black tracking-widest ${activeTargetConnectionCount >= targetConnectionRoles.length ? 'text-emerald-400' : 'text-amber-400'}`}>
-              LIVE CONNECTIONS {activeTargetConnectionCount}/{targetConnectionRoles.length}
-            </span>
-          </div>
-        </div>
-
-        {/* RIGHT: COMMAND CENTER */}
-        <div className="flex items-center gap-2">
-          {isElectronShell && desktopUpdateStatus.state === 'downloaded' && (
-            <button
-              onClick={handleDesktopUpdateInstallNow}
-              className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl border border-emerald-600/60 bg-emerald-950/30 text-emerald-300 text-[10px] font-black tracking-widest hover:bg-emerald-950/50 transition-all"
-              title={desktopUpdateStatus.message || 'Update ready to install'}
-            >
-              <CheckIcon className="w-3.5 h-3.5" /> UPDATE READY
-            </button>
-          )}
-          <div className="flex items-center bg-black/30 p-1 rounded-xl border border-zinc-800/40 gap-1 mr-2">
-            <button
-              onClick={() => {
-                setConnectPanel('audience');
-                setIsConnectOpen(true);
-              }}
-              className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 rounded-lg text-[10px] font-black tracking-widest transition-all active:scale-95"
-            >
-              <QrCodeIcon className="w-3.5 h-3.5" /> CONNECT
-            </button>
-            <button
-              onClick={() => {
-                setConnectPanel('aether');
-                setIsConnectOpen(true);
-              }}
-              className="flex items-center gap-2 px-3 py-1.5 bg-cyan-600/10 text-cyan-300 hover:bg-cyan-600/20 rounded-lg text-[10px] font-black tracking-widest transition-all active:scale-95"
-            >
-              <MonitorIcon className="w-3.5 h-3.5" /> AETHER
-            </button>
-            <button onClick={() => setIsAIModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 text-zinc-300 hover:text-white rounded-lg text-[10px] font-black tracking-widest transition-all">
-              <SparklesIcon className="w-3 h-3 text-purple-400" /> AI ASSIST
-            </button>
-            <button
-              onClick={() => setWorkspaceSettings(prev => ({ ...prev, machineMode: !prev.machineMode }))}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all ${workspaceSettings.machineMode ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-950/50' : 'text-zinc-500 hover:bg-zinc-800'}`}
-            >
-              MACHINE
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1">
-            <button
-              onClick={handleToggleOutput}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all border shadow-lg ${isOutputLive ? 'bg-emerald-600 border-emerald-500 text-white shadow-emerald-950/50' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600'}`}
-            >
-              <MonitorIcon className="w-3.5 h-3.5" /> {isOutputLive ? 'PROJECTION ON' : 'LAUNCH LIVE'}
-            </button>
-            <button
-              onClick={handleToggleStageDisplay}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all border shadow-lg ${isStageDisplayLive ? 'bg-purple-600 border-purple-500 text-white shadow-purple-950/50' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600'}`}
-            >
-              STAGE
-            </button>
-
-            <button
-              onClick={() => void copyShareUrl(remoteControlUrl, 'Remote Control URL copied!')}
-              className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all border border-transparent hover:border-zinc-700"
-              title="Copy Remote URL"
-            >
-              <CopyIcon className="w-4.5 h-4.5" />
-            </button>
-            <button
-              onClick={() => void copyShareUrl(stageDisplayUrl, 'Stage URL copied!')}
-              className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all border border-transparent hover:border-zinc-700"
-              title="Copy Stage URL"
-            >
-              <MonitorIcon className="w-4.5 h-4.5" />
-            </button>
-
-            <button onClick={() => setIsProfileOpen(true)} className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all border border-transparent hover:border-zinc-700">
-              <Settings className="w-4.5 h-4.5" />
-            </button>
-
-            <button onClick={() => setIsHelpOpen(true)} className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all mr-2">
-              <HelpIcon className="w-4.5 h-4.5" />
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {showDesktopUpdateBanner && (
-        <div className="mx-4 mt-3 rounded-2xl border border-cyan-900/60 bg-zinc-950/95 shadow-2xl shadow-black/30">
-          <div className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
-            <div className="min-w-0">
-              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Desktop Update</div>
-              <div className="mt-1 text-sm font-semibold text-zinc-100">
-                {desktopUpdateStatus.state === 'downloaded'
-                  ? `Version ${desktopUpdateStatus.version || 'update'} is ready to install.`
-                  : desktopUpdateStatus.state === 'downloading'
-                    ? `Downloading ${desktopUpdateStatus.version || 'update'}${desktopUpdateStatus.progress ? ` (${desktopUpdateStatus.progress}%)` : ''}.`
-                    : desktopUpdateStatus.state === 'available'
-                      ? `New version ${desktopUpdateStatus.version || ''} found.`
-                      : 'Desktop update check failed.'}
-              </div>
-              <div className="mt-1 text-xs text-zinc-400 truncate">
-                {desktopUpdateStatus.message || 'Lumina will prompt you when the update is ready.'}
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {desktopUpdateStatus.state === 'downloaded' ? (
-                <button
-                  onClick={handleDesktopUpdateInstallNow}
-                  className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-[10px] font-black tracking-widest hover:bg-emerald-500 transition-all"
-                >
-                  RESTART & INSTALL
-                </button>
-              ) : (
-                <button
-                  onClick={handleDesktopUpdateCheckNow}
-                  className="px-3 py-2 rounded-lg border border-zinc-700 text-zinc-200 text-[10px] font-black tracking-widest hover:border-zinc-500 transition-all"
-                >
-                  CHECK NOW
-                </button>
-              )}
-              <button
-                onClick={handleDesktopUpdateOpenReleases}
-                className="px-3 py-2 rounded-lg border border-zinc-700 text-zinc-300 text-[10px] font-black tracking-widest hover:border-zinc-500 transition-all"
-              >
-                RELEASE NOTES
-              </button>
-              <button
-                onClick={() => setDismissedUpdateKey(currentUpdateKey)}
-                className="px-3 py-2 rounded-lg border border-zinc-800 text-zinc-500 text-[10px] font-black tracking-widest hover:text-zinc-300 hover:border-zinc-600 transition-all"
-              >
-                LATER
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AppHeader
+        isElectronShell={isElectronShell}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        onHomeClick={() => setViewState(isElectronShell ? 'studio' : 'landing')}
+        liveSessionId={liveSessionId}
+        syncPendingCount={syncPendingCount}
+        activeTargetConnectionCount={activeTargetConnectionCount}
+        targetConnectionRoleCount={targetConnectionRoles.length}
+        connectionCountsByRole={connectionCountsByRole}
+        isOutputLive={isOutputLive}
+        onToggleOutput={handleToggleOutput}
+        isStageDisplayLive={isStageDisplayLive}
+        onToggleStageDisplay={handleToggleStageDisplay}
+        blackout={blackout}
+        onToggleBlackout={() => setBlackout(prev => !prev)}
+        isRightDockOpen={isRightDockOpen}
+        onToggleRightDock={() => setIsRightDockOpen(prev => !prev)}
+        remoteControlUrl={remoteControlUrl}
+        stageDisplayUrl={stageDisplayUrl}
+        onCopyUrl={(url, msg) => void copyShareUrl(url, msg)}
+        desktopUpdateStatus={desktopUpdateStatus}
+        showDesktopUpdateBanner={showDesktopUpdateBanner}
+        onUpdateCheckNow={handleDesktopUpdateCheckNow}
+        onUpdateInstallNow={handleDesktopUpdateInstallNow}
+        onUpdateOpenReleases={handleDesktopUpdateOpenReleases}
+        onUpdateDismiss={() => setDismissedUpdateKey(currentUpdateKey)}
+        onOpenSettings={() => setIsProfileOpen(true)}
+        onOpenHelp={() => setIsHelpOpen(true)}
+      />
 
       {/* MOBILE NAV BAR (Visible only on small screens) */}
       {!isElectronShell && (
@@ -5320,6 +5159,7 @@ function App() {
               <button onClick={() => handleSidebarTabSelect('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIO MIXER"><Volume2Icon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audio Mixer</span></button>
               <button onClick={() => handleSidebarTabSelect('BIBLE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'BIBLE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="BIBLE LIBRARY"><BibleIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Bible Hub</span></button>
               <button onClick={() => handleSidebarTabSelect('AUDIENCE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIENCE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIENCE STUDIO"><ChatIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audience</span></button>
+              <button onClick={() => handleSidebarTabSelect('MACROS')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'MACROS' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="MACROS"><span className="text-base leading-none shrink-0">⚡</span><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Macros</span></button>
             </div>
             <div className="p-1 border-t border-zinc-800">
               <button onClick={() => setIsProfileOpen(true)} className="w-full p-2.5 rounded-sm flex items-center gap-3 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors" title="SETTINGS"><Settings className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Settings</span></button>
@@ -5452,6 +5292,18 @@ function App() {
                   speechLocaleMode={workspaceSettings.visionarySpeechLocaleMode}
                   onSpeechLocaleModeChange={(mode) => setWorkspaceSettings((prev) => ({ ...prev, visionarySpeechLocaleMode: mode }))}
                 />
+              </div>
+            </div>
+          )}
+          {activeSidebarTab === 'MACROS' && (
+            <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+              <div className="p-3 border-b border-zinc-900 shrink-0 flex items-center justify-between">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">⚡ Macros</h3>
+              </div>
+              <div className="flex-1 flex items-center justify-center p-6 text-center">
+                <div className="text-zinc-600 text-xs font-semibold leading-relaxed">
+                  Macro panel coming soon.<br />Trigger sequences, cues, and automations here.
+                </div>
               </div>
             </div>
           )}
@@ -5830,6 +5682,14 @@ function App() {
               </div>
             </div>
       )}
+
+        <RightDock
+          isOpen={isRightDockOpen}
+          machineMode={workspaceSettings.machineMode}
+          onToggleMachineMode={() => setWorkspaceSettings(prev => ({ ...prev, machineMode: !prev.machineMode }))}
+          onOpenConnect={(panel) => { setConnectPanel(panel); setIsConnectOpen(true); }}
+          onOpenAI={() => setIsAIModalOpen(true)}
+        />
       </div>
 
       {
