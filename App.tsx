@@ -9513,6 +9513,29 @@ function App() {
           onStartService={() => {
             void handleStartDesktopService();
           }}
+          ndiWindowOpen={desktopServiceState.outputOpen && !desktopRoleAssignments.audience}
+          onLaunchNdiWindow={hasElectronDisplayControl ? () => {
+            if (desktopServiceState.outputOpen && !desktopRoleAssignments.audience) {
+              void electronMachineApi?.closeRoleWindow?.('audience').then((state) => {
+                if (state) setDesktopServiceState(state);
+              });
+              return;
+            }
+            const primaryDisplay = desktopDisplays[0];
+            if (!primaryDisplay) return;
+            void electronMachineApi?.openRoleWindow?.({
+              role: 'audience',
+              displayId: primaryDisplay.id,
+              windowed: true,
+              workspaceId,
+              sessionId: liveSessionId,
+            }).then((result) => {
+              if (result?.ok && result.state) {
+                setDesktopServiceState(result.state);
+                setIsOutputLive(true);
+              }
+            });
+          } : undefined}
         />
       )}
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />

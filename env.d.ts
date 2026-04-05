@@ -49,6 +49,7 @@ interface Window {
         displayId: number;
         workspaceId: string;
         sessionId: string;
+        windowed?: boolean;
       }) => Promise<{
         ok: boolean;
         error?: string;

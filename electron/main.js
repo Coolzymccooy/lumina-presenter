@@ -210,8 +210,15 @@ function attachManagedWindowLifecycle(kind, targetWindow) {
 }
 
 async function createManagedRoleWindow(kind, displayId, payload = {}) {
+  const isWindowed = !!payload?.windowed;
   const targetDisplay = findDisplayById(displayId) || screen.getPrimaryDisplay();
-  const bounds = targetDisplay?.bounds || targetDisplay?.workArea || { x: 0, y: 0, width: 1280, height: 720 };
+  const displayBounds = targetDisplay?.bounds || targetDisplay?.workArea || { x: 0, y: 0, width: 1280, height: 720 };
+
+  // Windowed (NDI/stream capture) mode: fixed 1920×1080 window on the primary display, not fullscreen.
+  const bounds = isWindowed
+    ? { x: displayBounds.x + 40, y: displayBounds.y + 40, width: 1920, height: 1080 }
+    : displayBounds;
+
   const isAudience = kind === 'audience';
   let targetWindow = isAudience ? outputWindowRef : stageWindowRef;
 
@@ -224,9 +231,10 @@ async function createManagedRoleWindow(kind, displayId, payload = {}) {
       show: false,
       backgroundColor: '#000000',
       autoHideMenuBar: true,
-      fullscreenable: true,
+      fullscreenable: !isWindowed,
       frame: false,
-      skipTaskbar: true,
+      skipTaskbar: isWindowed ? false : true,
+      resizable: isWindowed,
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
         nodeIntegration: false,
@@ -265,7 +273,9 @@ async function createManagedRoleWindow(kind, displayId, payload = {}) {
     if (!targetWindow.isVisible()) {
       targetWindow.show();
     }
-    targetWindow.setFullScreen(true);
+    if (!isWindowed) {
+      targetWindow.setFullScreen(true);
+    }
     targetWindow.focus();
   } catch {
     // ignore
@@ -403,11 +413,13 @@ function installMachineIpcHandlers() {
   });
   ipcMain.handle('machine:open-role-window', async (_event, payload) => {
     const role = payload?.role === 'stage' ? 'stage' : 'audience';
+    const isWindowed = !!payload?.windowed;
     const displayId = Number(payload?.displayId || 0);
-    if (!Number.isFinite(displayId) || displayId <= 0) {
+    // Windowed (NDI) mode does not require a display assignment — uses primary display.
+    if (!isWindowed && (!Number.isFinite(displayId) || displayId <= 0)) {
       return { ok: false, error: 'DISPLAY_REQUIRED', state: machineServiceState };
     }
-    const state = await createManagedRoleWindow(role, displayId, payload);
+    const state = await createManagedRoleWindow(role, displayId || 0, payload);
     return { ok: true, state };
   });
   ipcMain.handle('machine:start-service', async (_event, payload) => {

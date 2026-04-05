@@ -30,6 +30,8 @@ type DisplaySetupModalProps = {
   onTestDisplay: (displayId: number) => void;
   onSaveMapping: () => void;
   onStartService: () => void;
+  onLaunchNdiWindow?: () => void;
+  ndiWindowOpen?: boolean;
 };
 
 const ROLE_META: Record<DesktopDisplayCard['role'], { label: string; badge: string; tint: string }> = {
@@ -58,11 +60,13 @@ export const DisplaySetupModal: React.FC<DisplaySetupModalProps> = ({
   onTestDisplay,
   onSaveMapping,
   onStartService,
+  onLaunchNdiWindow,
+  ndiWindowOpen,
 }) => {
-  const [busyAction, setBusyAction] = useState<'refresh' | 'auto' | 'identify' | 'save' | 'start' | null>(null);
+  const [busyAction, setBusyAction] = useState<'refresh' | 'auto' | 'identify' | 'save' | 'start' | 'ndi' | null>(null);
 
   const runBusyAction = async (
-    action: 'refresh' | 'auto' | 'identify' | 'save' | 'start',
+    action: 'refresh' | 'auto' | 'identify' | 'save' | 'start' | 'ndi',
     callback: () => Promise<void> | void,
   ) => {
     if (busyAction) return;
@@ -250,6 +254,29 @@ export const DisplaySetupModal: React.FC<DisplaySetupModalProps> = ({
                   <div>Open stage display fullscreen on the assigned stage screen.</div>
                 </div>
               </div>
+
+              {onLaunchNdiWindow && (
+                <div className="rounded-2xl border border-violet-800/40 bg-violet-950/20 p-4">
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-400">NDI / vMix Capture</div>
+                  <div className="mt-2 text-xs text-zinc-400">
+                    Opens the audience output as a 1920×1080 window named <span className="font-mono text-zinc-300">Lumina Output (Projector)</span> — select it by name in NDI Tools Screen Capture or vMix Window Capture. No display assignment needed.
+                  </div>
+                  <button
+                    onClick={() => {
+                      void runBusyAction('ndi', () => { onLaunchNdiWindow(); });
+                    }}
+                    disabled={busyAction !== null}
+                    className={`mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.18em] transition-colors ${
+                      ndiWindowOpen
+                        ? 'border-violet-500/60 bg-violet-600 text-white hover:bg-violet-500'
+                        : 'border-violet-700/50 bg-violet-950/40 text-violet-300 hover:border-violet-500 hover:bg-violet-900/40'
+                    }`}
+                  >
+                    <MonitorIcon className="h-3.5 w-3.5" />
+                    {ndiWindowOpen ? 'Close NDI Window' : 'Launch for NDI Capture'}
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-zinc-900 px-5 py-4">
