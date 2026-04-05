@@ -11,6 +11,7 @@ import {
 } from '../services/bibleStyleEngine.ts';
 import { semanticBibleSearch, transcribeSermonChunk, type TranscribeSermonChunkResult } from '../services/geminiService';
 import { summarizeSermon, canSummarize, type SermonSummary } from '../services/sermonSummaryService';
+import { archiveSermon } from '../services/sermonArchive';
 import { SermonSummaryPanel } from './SermonSummaryPanel';
 import { createBundledTopicBibleMemoryProvider, type BibleMemoryQueryOrigin } from '../services/bibleMemory.ts';
 import { resolveBibleIntent } from '../services/bibleIntentResolver.ts';
@@ -292,10 +293,13 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const [sermonSummary, setSermonSummary] = useState<SermonSummary | null>(null);
   const [sermonSummaryOpen, setSermonSummaryOpen] = useState(false);
   const [sermonSummaryError, setSermonSummaryError] = useState<string | null>(null);
+  const [sermonMicWarning, setSermonMicWarning] = useState<string | null>(null);
+  const [sermonArchived, setSermonArchived] = useState(false);
   const sermonTranscriptRef = useRef('');
   const sermonRecordingRef = useRef(false);
   const sermonStartedAtRef = useRef<number | null>(null);
   const sermonAutoEnabledVisionaryRef = useRef(false);
+  const sermonRestartAttemptRef = useRef(0);
 
   const resolveSemanticReference = useCallback(async (
     rawQuery: string,
@@ -736,6 +740,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       if (result.ok && result.summary) {
         setSermonSummary({ ...result.summary });
         setSermonSummaryOpen(true);
+        setSermonArchived(false);
       } else {
         setSermonSummaryError(result.error || 'Summarization failed. Please try again.');
       }
@@ -744,10 +749,13 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       sermonTranscriptRef.current = '';
       sermonRecordingRef.current = true;
       sermonStartedAtRef.current = Date.now();
+      sermonRestartAttemptRef.current = 0;
       setSermonWordCount(0);
       setSermonElapsed(0);
       setSermonSummary(null);
       setSermonSummaryError(null);
+      setSermonMicWarning(null);
+      setSermonArchived(false);
       setSermonRecording(true);
       // Auto-enable Auto Visionary if not already on so the mic activates
       if (!autoEnabledRef.current) {
@@ -767,6 +775,58 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     }, 1000);
     return () => window.clearInterval(id);
   }, [sermonRecording]);
+
+  // Auto-restart STT if it dies while sermon is recording (up to 3 attempts)
+  useEffect(() => {
+    if (!sermonRecording) return;
+    if (autoVisionaryEnabled) {
+      sermonRestartAttemptRef.current = 0;
+      setSermonMicWarning(null);
+      return;
+    }
+    sermonRestartAttemptRef.current += 1;
+    if (sermonRestartAttemptRef.current <= 3) {
+      setSermonMicWarning('Mic interrupted — restarting capture...');
+      const id = window.setTimeout(() => {
+        if (sermonRecordingRef.current) {
+          setAutoVisionaryEnabled(true);
+        }
+      }, 3000);
+      return () => window.clearTimeout(id);
+    }
+    setSermonMicWarning('Mic unavailable after 3 retries. Words captured so far will still be summarized.');
+  }, [sermonRecording, autoVisionaryEnabled]);
+
+  // Create a service item from sermon key points for projection
+  const createSermonRecapItem = useCallback((summary: SermonSummary): ServiceItem => {
+    const ts = Date.now();
+    const slides: ServiceItem['slides'] = [
+      { id: `sr-title-${ts}`, label: 'Sermon Title', content: summary.title },
+      { id: `sr-theme-${ts}`, label: 'Main Theme', content: summary.mainTheme },
+      ...summary.keyPoints.map((point, i) => ({
+        id: `sr-kp-${i}-${ts}`,
+        label: `Key Point ${i + 1}`,
+        content: point,
+      })),
+      ...(summary.callToAction
+        ? [{ id: `sr-cta-${ts}`, label: 'Call to Action', content: summary.callToAction }]
+        : []),
+    ];
+    return {
+      id: `sermon-recap-${ts}`,
+      title: summary.title || 'Sermon Recap',
+      type: ItemType.ANNOUNCEMENT,
+      theme: {
+        backgroundUrl: DEFAULT_BACKGROUNDS[1],
+        mediaType: 'image',
+        fontFamily: 'sans-serif',
+        textColor: '#ffffff',
+        shadow: true,
+        fontSize: 'medium',
+      },
+      slides,
+    };
+  }, []);
 
   const processCloudQueue = useCallback(async () => {
     if (!autoEnabledRef.current || transcriptionEngineRef.current !== 'cloud_fallback') return;
@@ -1408,11 +1468,16 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                 </button>
               </div>
               {sermonRecording && (
-                <div className="flex items-center gap-2 text-[9px] font-mono">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse flex-shrink-0" />
-                  <span className="text-rose-300">
-                    {Math.floor(sermonElapsed / 60)}:{String(sermonElapsed % 60).padStart(2, '0')} · {sermonWordCount.toLocaleString()} words
-                  </span>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-[9px] font-mono">
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sermonMicWarning ? 'bg-amber-400 animate-pulse' : 'bg-rose-500 animate-pulse'}`} />
+                    <span className={sermonMicWarning ? 'text-amber-300' : 'text-rose-300'}>
+                      {Math.floor(sermonElapsed / 60)}:{String(sermonElapsed % 60).padStart(2, '0')} · {sermonWordCount.toLocaleString()} words
+                    </span>
+                  </div>
+                  {sermonMicWarning && (
+                    <div className="text-[9px] text-amber-300 font-mono">{sermonMicWarning}</div>
+                  )}
                 </div>
               )}
               {sermonSummaryError && !sermonRecording && (
@@ -1679,7 +1744,21 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
           <SermonSummaryPanel
             summary={sermonSummary}
             wordCount={sermonWordCount}
+            archived={sermonArchived}
             onClose={() => setSermonSummaryOpen(false)}
+            onArchive={() => {
+              archiveSermon(sermonSummary, sermonWordCount);
+              setSermonArchived(true);
+            }}
+            onProjectRecap={() => {
+              const item = createSermonRecapItem(sermonSummary);
+              onProjectRequest(item);
+            }}
+            onAddToSchedule={(text) => {
+              const item = createSermonRecapItem(sermonSummary);
+              onAddRequest(item);
+              void navigator.clipboard.writeText(text);
+            }}
           />
         </div>
       )}

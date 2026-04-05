@@ -7,6 +7,9 @@ interface SermonSummaryPanelProps {
   durationMs?: number;
   onClose: () => void;
   onAddToSchedule?: (text: string) => void;
+  onProjectRecap?: () => void;
+  onArchive?: () => void;
+  archived?: boolean;
 }
 
 const Section: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
@@ -40,6 +43,9 @@ export const SermonSummaryPanel: React.FC<SermonSummaryPanelProps> = ({
   durationMs,
   onClose,
   onAddToSchedule,
+  onProjectRecap,
+  onArchive,
+  archived,
 }) => {
   const [activeTab, setActiveTab] = useState<"summary" | "quotes">("summary");
 
@@ -163,23 +169,45 @@ export const SermonSummaryPanel: React.FC<SermonSummaryPanelProps> = ({
       </div>
 
       {/* Footer actions */}
-      <div className="border-t border-zinc-800 px-3 py-2 flex gap-2">
-        <button
-          onClick={async () => {
-            await navigator.clipboard.writeText(fullText);
-          }}
-          className="flex-1 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold transition-colors"
-        >
-          Copy All
-        </button>
-        {onAddToSchedule && (
+      <div className="border-t border-zinc-800 px-3 py-2 space-y-1.5">
+        <div className="flex gap-2">
           <button
-            onClick={() => onAddToSchedule(fullText)}
-            className="flex-1 py-1.5 rounded-lg bg-purple-900/50 hover:bg-purple-900/80 border border-purple-700/50 text-purple-200 text-[10px] font-bold transition-colors"
+            onClick={async () => { await navigator.clipboard.writeText(fullText); }}
+            className="flex-1 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold transition-colors"
           >
-            Add to Schedule
+            Copy All
           </button>
-        )}
+          {onArchive && (
+            <button
+              onClick={onArchive}
+              className={`flex-1 py-1.5 rounded-lg border text-[10px] font-bold transition-colors ${
+                archived
+                  ? 'bg-emerald-900/30 border-emerald-700/50 text-emerald-300'
+                  : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-700 text-zinc-300'
+              }`}
+            >
+              {archived ? 'Saved ✓' : 'Save to Archive'}
+            </button>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {onProjectRecap && (
+            <button
+              onClick={onProjectRecap}
+              className="flex-1 py-1.5 rounded-lg bg-red-900/40 hover:bg-red-700/60 border border-red-700/50 text-red-200 text-[10px] font-bold transition-colors"
+            >
+              Project Recap to Screen
+            </button>
+          )}
+          {onAddToSchedule && (
+            <button
+              onClick={() => onAddToSchedule(fullText)}
+              className="flex-1 py-1.5 rounded-lg bg-purple-900/50 hover:bg-purple-900/80 border border-purple-700/50 text-purple-200 text-[10px] font-bold transition-colors"
+            >
+              Add to Schedule
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
