@@ -8101,6 +8101,7 @@ function App() {
               inlineSlideRenameInputRef={inlineSlideRenameInputRef}
               onInlineRenameChange={(value) => inlineSlideRename && setInlineSlideRename({ ...inlineSlideRename, value })}
               onInlineRenameCommit={handleRenameSlideLabel}
+              onGoLive={(liveItem, slideIdx) => goLive(liveItem, slideIdx)}
             />
           </>
         ) : (
