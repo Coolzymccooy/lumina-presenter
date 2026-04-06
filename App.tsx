@@ -1130,6 +1130,12 @@ function App() {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [userPlan, setUserPlan] = useState<string | null>(null);
+  // True when running inside the NDI capture window (ndi=1 URL param).
+  // In this mode, audience-facing overlays (QR projection) are suppressed.
+  const isNdiCapture = useMemo(() => {
+    const params = new URLSearchParams(window.location.search || window.location.hash.split('?')[1] || '');
+    return params.get('ndi') === '1';
+  }, []);
   const [viewState, setViewState] = useState<'landing' | 'studio' | 'audience' | 'output' | 'stage' | 'remote'>(() => {
     const hash = window.location.hash;
     if (hash.startsWith('#/audience')) return 'audience';
@@ -1544,7 +1550,10 @@ function App() {
   });
   const [audienceQrProjection, setAudienceQrProjection] = useState<AudienceQrProjectionState>(() => {
     const saved = initialSavedState;
-    return sanitizeAudienceQrProjectionState(saved?.audienceQrProjection);
+    const state = sanitizeAudienceQrProjectionState(saved?.audienceQrProjection);
+    // Always start hidden — QR must be explicitly shown each session.
+    // The URL is preserved so the user doesn't need to re-enter it.
+    return { ...state, visible: false };
   });
   const [stageTimerFlash, setStageTimerFlash] = useState<StageTimerFlashState>(() => {
     const saved = initialSavedState;
@@ -6715,7 +6724,7 @@ function App() {
             lowerThirds={lowerThirdsEnabled}
             showSlideLabel={true}
             audienceOverlay={audienceDisplay}
-            projectedAudienceQr={audienceQrProjection}
+            projectedAudienceQr={isNdiCapture ? undefined : audienceQrProjection}
             branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle, textOpacity: workspaceSettings.slideBrandingOpacity }}
           />
         )}
@@ -7798,35 +7807,21 @@ function App() {
       {saveError && <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-red-900/90 border border-red-500 text-white px-4 py-2 rounded-sm shadow-xl z-50 flex items-center gap-3 text-xs font-bold animate-pulse"><span>⚠ STORAGE FULL: Changes are NOT saving.</span><button onClick={() => setSaveError(false)} className="hover:text-zinc-300">✕</button></div>}
       
       {showSyncGuidance && syncIssueDisplay && (
-        <div className="fixed left-1/2 top-[4.35rem] z-50 w-[min(calc(100vw-1rem),28rem)] -translate-x-1/2 sm:left-auto sm:right-4 sm:top-20 sm:w-[min(calc(100vw-2rem),28rem)] sm:translate-x-0">
-          <div className="rounded-2xl border border-amber-600/45 bg-[linear-gradient(180deg,rgba(69,26,3,0.96),rgba(17,10,3,0.98))] p-3.5 text-amber-100 shadow-[0_24px_64px_rgba(0,0,0,0.34)] backdrop-blur-xl">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-[0.26em] text-amber-200/80">Sync guidance</div>
-                <div className="mt-1 text-sm font-semibold text-amber-50">{syncIssueDisplay.title}</div>
-              </div>
-              <button
-                onClick={dismissSyncGuidance}
-                className="rounded-full border border-amber-500/25 bg-amber-500/10 p-1 text-amber-100 transition hover:border-amber-300/40 hover:bg-amber-500/15"
-                aria-label="Dismiss sync guidance"
-              >
-                <XIcon className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <p className="mt-2 text-[12px] leading-5 text-amber-50/90">{syncIssueDisplay.summary}</p>
-            <div className="mt-3 space-y-2">
-              {syncIssueDisplay.steps.map((step) => (
-                <div key={step} className="rounded-xl border border-amber-500/20 bg-black/18 px-3 py-2 text-[11px] leading-5 text-amber-50/85">
-                  {step}
-                </div>
-              ))}
-            </div>
-             {syncIssueDisplay.detail && (
-              <div className="mt-3 text-[10px] leading-4 text-amber-200/65">
-                {syncIssueDisplay.detail}
-              </div>
-            )}
-          </div>
+        <div className="fixed top-14 left-0 right-0 z-40 flex items-center gap-3 px-4 py-2 bg-amber-950/95 border-b border-amber-700/50 backdrop-blur-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span className="text-[11px] font-semibold text-amber-200 shrink-0">{syncIssueDisplay.title}</span>
+          {syncIssueDisplay.detail && (
+            <span className="text-[10px] text-amber-300/65 truncate hidden sm:block">{syncIssueDisplay.detail}</span>
+          )}
+          <button
+            onClick={dismissSyncGuidance}
+            className="ml-auto shrink-0 text-amber-500 hover:text-amber-200 transition-colors p-1 rounded hover:bg-amber-900/40"
+            aria-label="Dismiss sync guidance"
+          >
+            <XIcon className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
 

@@ -191,22 +191,32 @@ async function ndiCaptureLoop() {
   const captureStart = Date.now();
   try {
     const image = await outputWindowRef.webContents.capturePage();
-    const buffer = image.getBitmap();
     const { width, height } = image.getSize();
 
-    // macOS: NativeImage.getBitmap() returns RGBA — swap R and B for NDI BGRA.
-    if (process.platform === 'darwin') {
-      for (let i = 0; i < buffer.length; i += 4) {
-        const r = buffer[i];
-        buffer[i] = buffer[i + 2];
-        buffer[i + 2] = r;
-      }
-    }
+    // Skip empty frames — capturePage() can return 0×0 if the window hasn't
+    // finished rendering yet. Passing a zero-size buffer to the NDI SDK throws.
+    if (width === 0 || height === 0) {
+      ndiDroppedFrames++;
+    } else {
+      // toBitmap() returns BGRA on Windows/Linux; RGBA on macOS.
+      const buffer = image.toBitmap();
 
-    await ndiSender.sendFrame(buffer, width, height);
-  } catch {
-    // Swallow — window may be closing or NDI sender overloaded.
+      if (process.platform === 'darwin') {
+        for (let i = 0; i < buffer.length; i += 4) {
+          const r = buffer[i];
+          buffer[i] = buffer[i + 2];
+          buffer[i + 2] = r;
+        }
+      }
+
+      await ndiSender.sendFrame(buffer, width, height);
+    }
+  } catch (err) {
     ndiDroppedFrames++;
+    // Log the first few errors so we can diagnose persistent failures.
+    if (ndiDroppedFrames <= 3) {
+      console.error('[NDI] capture/send error:', err?.message || String(err));
+    }
   }
 
   // Log dropped frames every 10 seconds (non-blocking).
@@ -274,9 +284,11 @@ async function createManagedRoleWindow(kind, displayId, payload = {}) {
   const targetDisplay = findDisplayById(displayId) || screen.getPrimaryDisplay();
   const displayBounds = targetDisplay?.bounds || targetDisplay?.workArea || { x: 0, y: 0, width: 1280, height: 720 };
 
-  // Windowed (NDI/stream capture) mode: fixed 1920×1080 window on the primary display, not fullscreen.
+  // Windowed (NDI/stream capture) mode: 1920×1080 window placed just off the right edge of the
+  // display. This keeps the window fully rendered by the GPU (so capturePage() works) without
+  // covering the user's workspace or triggering Windows shell snap/maximize behaviour.
   const bounds = isWindowed
-    ? { x: displayBounds.x + 40, y: displayBounds.y + 40, width: 1920, height: 1080 }
+    ? { x: displayBounds.x + displayBounds.width, y: displayBounds.y, width: 1920, height: 1080 }
     : displayBounds;
 
   const isAudience = kind === 'audience';
@@ -325,6 +337,7 @@ async function createManagedRoleWindow(kind, displayId, payload = {}) {
     session: payload.sessionId || 'live',
     workspace: payload.workspaceId || 'default-workspace',
     fullscreen: isAudience ? '1' : undefined,
+    ndi: isWindowed ? '1' : undefined,
   });
   if (isAudience) {
     targetWindow.webContents.insertCSS('html,body,*{cursor:none !important;}').catch(() => {});
@@ -485,12 +498,23 @@ function installMachineIpcHandlers() {
   // ── NDI outbound send ──────────────────────────────────────────────────────
   ipcMain.handle('ndi:start', async (_event, payload) => {
     try {
-      // Ensure a windowed output window exists for capturePage().
+      // Ensure the output window exists and is loaded with ndi=1 so the
+      // renderer suppresses audience-facing overlays (QR code, etc.).
+      // If a projector window is already open it was loaded without ndi=1,
+      // so reload it with the param before capturing.
       if (!outputWindowRef || outputWindowRef.isDestroyed()) {
         await createManagedRoleWindow('audience', 0, {
           windowed: true,
           workspaceId: payload?.workspaceId || 'default-workspace',
           sessionId: payload?.sessionId || 'live',
+        });
+      } else {
+        // Reload the existing window with ndi=1 to suppress overlays.
+        await loadRendererRoute(outputWindowRef, 'output', {
+          session: payload?.sessionId || 'live',
+          workspace: payload?.workspaceId || 'default-workspace',
+          fullscreen: '1',
+          ndi: '1',
         });
       }
       const bounds = outputWindowRef.getBounds();

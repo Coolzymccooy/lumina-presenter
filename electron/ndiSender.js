@@ -100,6 +100,7 @@ export async function sendFrame(bgraBuffer, width, height) {
     yres: height,
     frameRateN: 30000,
     frameRateD: 1001,   // 29.97 fps drop-frame
+    pictureAspectRatio: width / height,
     fourCC: grandiose.FOURCC_BGRA,
     data: bgraBuffer,
   });

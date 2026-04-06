@@ -50,32 +50,36 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
       const isFirestoreError = this.state.error ? this.isFirestoreInternalError(this.state.error) : false;
 
+      if (isFirestoreError) {
+        // Firestore internal errors require a full reload. Show a minimal top banner
+        // rather than replacing the whole screen — less jarring for the operator.
+        return (
+          <div className="fixed inset-0 bg-zinc-950 z-50 flex flex-col">
+            <div className="w-full flex items-center gap-3 px-4 py-2.5 bg-amber-950/95 border-b border-amber-700/60 text-amber-100 text-sm backdrop-blur-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span className="font-medium">Sync connection dropped — reloading automatically…</span>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div className="w-full h-full flex flex-col items-center justify-center bg-gray-900 text-white p-6 text-center border-2 border-red-900/50 m-2 rounded-lg">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-red-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          {isFirestoreError ? (
-            <>
-              <h2 className="text-xl font-bold mb-2">Connection lost — restarting…</h2>
-              <p className="text-gray-400 text-sm mb-4 max-w-md">
-                The sync connection dropped unexpectedly. The app will reload automatically.
-              </p>
-            </>
-          ) : (
-            <>
-              <h2 className="text-xl font-bold mb-2">Something went wrong</h2>
-              <p className="text-gray-400 text-sm mb-4 max-w-md break-words">
-                {this.state.error?.message || "An unexpected error occurred while rendering this component."}
-              </p>
-              <button
-                onClick={() => this.setState({ hasError: false, error: null })}
-                className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded text-sm transition-colors border border-gray-700"
-              >
-                Try Again
-              </button>
-            </>
-          )}
+          <h2 className="text-xl font-bold mb-2">Something went wrong</h2>
+          <p className="text-gray-400 text-sm mb-4 max-w-md break-words">
+            {this.state.error?.message || "An unexpected error occurred while rendering this component."}
+          </p>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded text-sm transition-colors border border-gray-700"
+          >
+            Try Again
+          </button>
         </div>
       );
     }

@@ -12,17 +12,17 @@
     "preview": "vite preview",
     "electron:dev": "node scripts/electron-dev.mjs",
     "electron:dev:raw": "electron .",
-    "dist:win": "npm run build && electron-builder --win --publish never",
-    "dist:win:ci": "npm run build && electron-builder --win --publish never --config.directories.output=release",
-    "dist:win:publish": "npm run build && electron-builder --win --publish always",
-    "dist:mac": "npm run build && electron-builder --mac --universal --publish never",
-    "dist:mac:ci": "npm run build && electron-builder --mac --universal --publish never --config.directories.output=release",
+    "dist:win": "npm run build && electron-rebuild -f -w better-sqlite3 && electron-builder --win --publish never",
+    "dist:win:ci": "npm run build && electron-rebuild -f -w better-sqlite3 && electron-builder --win --publish never --config.directories.output=release",
+    "dist:win:publish": "npm run build && electron-rebuild -f -w better-sqlite3 && electron-builder --win --publish always",
+    "dist:mac": "npm run build && electron-rebuild -f -w better-sqlite3 && electron-builder --mac --universal --publish never",
+    "dist:mac:ci": "npm run build && electron-rebuild -f -w better-sqlite3 && electron-builder --mac --universal --publish never --config.directories.output=release",
     "test:e2e": "node scripts/run-e2e.mjs",
     "test:e2e:smoke": "node scripts/run-e2e.mjs --grep @smoke",
     "test:e2e:headed": "node scripts/run-e2e.mjs --headed",
     "test:e2e:ui": "node scripts/run-e2e.mjs --ui",
     "test:e2e:install": "playwright install chromium",
-    "postinstall": "electron-rebuild -f -w @stagetimerio/grandiose,better-sqlite3"
+    "postinstall": "electron-rebuild -f -w @stagetimerio/grandiose"
   },
   "dependencies": {
     "@google/genai": "^1.33.0",
