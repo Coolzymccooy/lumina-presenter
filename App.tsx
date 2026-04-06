@@ -84,6 +84,7 @@ import { dispatchAetherBridgeEvent, type AetherBridgeEvent } from './services/ae
 import { MacroPanel } from './components/MacroPanel';
 import { BuilderPreviewPanel } from './components/builder/BuilderPreviewPanel';
 import { StageWorkspace } from './components/builder/StageWorkspace';
+import { FilesPanel } from './components/builder/FilesPanel';
 import { subscribeMacros, seedStarterMacrosIfEmpty } from './services/macroRegistry';
 import { getArchivedSermons, deleteArchivedSermon, type ArchivedSermon } from './services/sermonArchive';
 import type { MacroDefinition, MacroAuditEntry } from './types/macros';
@@ -4717,6 +4718,38 @@ function App() {
     setRunSheetFilesError('Deleted from local archive backup (API unavailable or not signed in).');
   };
 
+  const handleRefreshSermons = () => {
+    setArchivedSermonsLoading(true);
+    getArchivedSermons(workspaceId).then((items) => {
+      setArchivedSermons(items);
+      setArchivedSermonsLoading(false);
+    });
+  };
+
+  const handleCopySermon = (item: ArchivedSermon) => {
+    const text = [
+      `SERMON: ${item.summary.title}`,
+      ``,
+      `THEME: ${item.summary.mainTheme}`,
+      ``,
+      `KEY POINTS:`,
+      ...item.summary.keyPoints.map((p, i) => `${i + 1}. ${p}`),
+      ``,
+      `SCRIPTURES: ${item.summary.scripturesReferenced.join(' · ') || 'None'}`,
+      ``,
+      `CALL TO ACTION: ${item.summary.callToAction}`,
+    ].join('\n');
+    navigator.clipboard.writeText(text).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    });
+  };
+
   const openCreatePresetModal = () => {
     setEditingPresetId(null);
     setPresetDraft(createSpeakerPresetDraft());
@@ -7775,235 +7808,34 @@ function App() {
           )}
           {activeSidebarTab === 'FILES' && (
             <div className="flex-1 overflow-hidden flex flex-col">
-              {/* Header */}
-              <div className="px-3 py-2.5 border-b border-zinc-800 shrink-0 flex items-center justify-between">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Files</h3>
-              </div>
-
-              <div className="flex-1 overflow-y-auto custom-scrollbar">
-                {/* ── IMPORT ── */}
-                <div className="px-3 pt-3 pb-2">
-                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 mb-2">Import</p>
-                  <div className="space-y-1">
-                    <label className="flex items-center gap-2.5 px-2.5 py-2 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer transition-colors group">
-                      <span className="w-6 h-6 rounded flex items-center justify-center bg-purple-900/50 text-purple-300 text-[9px] font-black shrink-0">PP</span>
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white">ProPresenter</div>
-                        <div className="text-[9px] text-zinc-500">.pro6 / .pro6x / .pro</div>
-                      </div>
-                      <input type="file" accept=".pro6,.pro6x,.pro" className="hidden" onChange={importProPresenterAsItem} disabled={isImportingDeck} />
-                    </label>
-                    <label className="flex items-center gap-2.5 px-2.5 py-2 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer transition-colors group">
-                      <span className="w-6 h-6 rounded flex items-center justify-center bg-emerald-900/50 text-emerald-300 text-[9px] font-black shrink-0">EW</span>
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white">EasyWorship</div>
-                        <div className="text-[9px] text-zinc-500">.ewsx / .ewp</div>
-                      </div>
-                      <input type="file" accept=".ewsx,.ewp" className="hidden" onChange={importEasyWorshipAsItem} disabled={isImportingDeck} />
-                    </label>
-                    <label className="flex items-center gap-2.5 px-2.5 py-2 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer transition-colors group">
-                      <span className="w-6 h-6 rounded flex items-center justify-center bg-amber-900/50 text-amber-300 text-[9px] font-black shrink-0">OS</span>
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white">OpenSong</div>
-                        <div className="text-[9px] text-zinc-500">.ofs / .xml</div>
-                      </div>
-                      <input type="file" accept=".ofs,.xml,.opensong" className="hidden" onChange={importOpenSongAsItem} disabled={isImportingDeck} />
-                    </label>
-                    <button
-                      onClick={() => setIsLyricsImportOpen(true)}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer transition-colors group text-left"
-                    >
-                      <span className="w-6 h-6 rounded flex items-center justify-center bg-blue-900/50 text-blue-300 text-[9px] font-black shrink-0">PPT</span>
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white">PowerPoint / PDF</div>
-                        <div className="text-[9px] text-zinc-500">.pptx / .pdf / lyrics</div>
-                      </div>
-                    </button>
-                  </div>
-                  {isImportingDeck && (
-                    <div className="mt-2 text-[10px] text-cyan-300 border border-cyan-900/40 bg-cyan-950/20 rounded px-2 py-1.5">
-                      {importDeckStatus || 'Importing…'}
-                    </div>
-                  )}
-                </div>
-
-                <div className="mx-3 border-t border-zinc-800/60" />
-
-                {/* ── ARCHIVE ── */}
-                <div className="px-3 pt-3 pb-2">
-                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 mb-2">Archive Run Sheet</p>
-                  <input
-                    value={runSheetArchiveTitle}
-                    onChange={(e) => setRunSheetArchiveTitle(e.target.value)}
-                    placeholder="Title (optional)"
-                    className="w-full mb-2 bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
-                  />
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      onClick={() => handleArchiveRunSheet(false)}
-                      className="py-1.5 text-[10px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500 transition-colors"
-                    >
-                      Archive
-                    </button>
-                    <button
-                      onClick={() => handleArchiveRunSheet(true)}
-                      className="py-1.5 text-[10px] font-bold border border-blue-800/60 rounded bg-blue-950/40 text-blue-300 hover:bg-blue-900/40 hover:border-blue-600 transition-colors"
-                    >
-                      Archive + New
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mx-3 border-t border-zinc-800/60" />
-
-                {/* ── SAVED FILES ── */}
-                <div className="px-3 pt-3 pb-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 flex-1">Saved Files</p>
-                    <button onClick={refreshRunSheetFiles} className="text-[9px] text-zinc-500 hover:text-zinc-300 transition-colors font-bold uppercase tracking-wide">↻ Refresh</button>
-                  </div>
-                  <input
-                    value={runSheetFileQuery}
-                    onChange={(e) => setRunSheetFileQuery(e.target.value)}
-                    placeholder="Search files…"
-                    className="w-full mb-2 bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
-                  />
-                  {runSheetFilesError && (
-                    <div className="mb-2 text-[10px] text-amber-400 border border-amber-900/50 bg-amber-950/20 rounded px-2 py-1.5 leading-snug">
-                      {runSheetFilesError}
-                    </div>
-                  )}
-                </div>
-
-                <div className="px-3 pb-3 space-y-1">
-                  {runSheetFilesLoading && (
-                    <div className="text-[10px] text-zinc-600 py-2">Loading…</div>
-                  )}
-                  {!runSheetFilesLoading && filteredRunSheetFiles.length === 0 && (
-                    <div className="text-[10px] text-zinc-700 py-4 text-center">No saved run sheets</div>
-                  )}
-                  {filteredRunSheetFiles.map((file) => (
-                    <div key={file.fileId} className="rounded border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition-colors overflow-hidden">
-                      <div className="px-2.5 py-2">
-                        <div className="text-[11px] font-semibold text-zinc-200 truncate leading-tight">{file.title}</div>
-                        <div className="text-[9px] text-zinc-600 mt-0.5">
-                          {new Date(file.updatedAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
-                          {' · '}
-                          {(file.payload?.items || []).length} item{(file.payload?.items || []).length !== 1 ? 's' : ''}
-                        </div>
-                      </div>
-                      <div className="flex border-t border-zinc-800">
-                        <button
-                          onClick={() => handleReuseRunSheet(file.fileId, 'replace')}
-                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-blue-900/30 hover:text-blue-200 transition-colors border-r border-zinc-800"
-                        >
-                          Reuse
-                        </button>
-                        <button
-                          onClick={() => handleReuseRunSheet(file.fileId, 'duplicate')}
-                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-zinc-800 transition-colors border-r border-zinc-800"
-                        >
-                          Duplicate
-                        </button>
-                        <button
-                          onClick={() => handleRenameRunSheet(file.fileId)}
-                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-zinc-800 transition-colors border-r border-zinc-800"
-                        >
-                          Rename
-                        </button>
-                        <button
-                          onClick={() => handleDeleteRunSheet(file.fileId)}
-                          className="flex-1 py-1.5 text-[9px] font-bold text-rose-500 hover:bg-rose-950/40 transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mx-3 border-t border-zinc-800/60" />
-
-                {/* ── SERMON ARCHIVE ── */}
-                <div className="px-3 pt-3 pb-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 flex-1">Sermon Archive</p>
-                    <button
-                      onClick={() => {
-                        setArchivedSermonsLoading(true);
-                        getArchivedSermons(workspaceId).then((items) => {
-                          setArchivedSermons(items);
-                          setArchivedSermonsLoading(false);
-                        });
-                      }}
-                      className="text-[9px] text-zinc-500 hover:text-zinc-300 transition-colors font-bold uppercase tracking-wide"
-                    >
-                      ↻ Refresh
-                    </button>
-                  </div>
-                </div>
-
-                <div className="px-3 pb-3 space-y-1">
-                  {archivedSermonsLoading && (
-                    <div className="text-[10px] text-zinc-600 py-2">Loading…</div>
-                  )}
-                  {!archivedSermonsLoading && archivedSermons.length === 0 && (
-                    <div className="text-[10px] text-zinc-700 py-4 text-center">No saved sermon summaries</div>
-                  )}
-                  {archivedSermons.map((item) => (
-                    <div key={item.id} className="rounded border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition-colors overflow-hidden">
-                      <div className="px-2.5 py-2">
-                        <div className="text-[11px] font-semibold text-zinc-200 truncate leading-tight">{item.summary.title || 'Untitled Sermon'}</div>
-                        <div className="text-[9px] text-zinc-500 mt-0.5 leading-tight line-clamp-1">{item.summary.mainTheme}</div>
-                        <div className="text-[9px] text-zinc-600 mt-0.5">
-                          {new Date(item.savedAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
-                          {' · '}
-                          {item.wordCount.toLocaleString()} words
-                        </div>
-                      </div>
-                      <div className="flex border-t border-zinc-800">
-                        <button
-                          onClick={() => {
-                            const text = [
-                              `SERMON: ${item.summary.title}`,
-                              ``,
-                              `THEME: ${item.summary.mainTheme}`,
-                              ``,
-                              `KEY POINTS:`,
-                              ...item.summary.keyPoints.map((p, i) => `${i + 1}. ${p}`),
-                              ``,
-                              `SCRIPTURES: ${item.summary.scripturesReferenced.join(' · ') || 'None'}`,
-                              ``,
-                              `CALL TO ACTION: ${item.summary.callToAction}`,
-                            ].join('\n');
-                            navigator.clipboard.writeText(text).catch(() => {
-                              const ta = document.createElement('textarea');
-                              ta.value = text;
-                              ta.style.cssText = 'position:fixed;opacity:0';
-                              document.body.appendChild(ta);
-                              ta.select();
-                              document.execCommand('copy');
-                              document.body.removeChild(ta);
-                            });
-                          }}
-                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-zinc-800 transition-colors border-r border-zinc-800"
-                        >
-                          Copy
-                        </button>
-                        <button
-                          onClick={async () => {
-                            await deleteArchivedSermon(item.id, workspaceId);
-                            setArchivedSermons((prev) => prev.filter((s) => s.id !== item.id));
-                          }}
-                          className="flex-1 py-1.5 text-[9px] font-bold text-rose-500 hover:bg-rose-950/40 transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <FilesPanel
+                runSheetFiles={filteredRunSheetFiles}
+                runSheetFilesLoading={runSheetFilesLoading}
+                runSheetFilesError={runSheetFilesError}
+                runSheetFileQuery={runSheetFileQuery}
+                onRunSheetFileQueryChange={setRunSheetFileQuery}
+                onRefreshFiles={refreshRunSheetFiles}
+                onReuseRunSheet={handleReuseRunSheet}
+                onRenameRunSheet={handleRenameRunSheet}
+                onDeleteRunSheet={handleDeleteRunSheet}
+                runSheetArchiveTitle={runSheetArchiveTitle}
+                onRunSheetArchiveTitleChange={setRunSheetArchiveTitle}
+                onArchiveRunSheet={handleArchiveRunSheet}
+                archivedSermons={archivedSermons}
+                archivedSermonsLoading={archivedSermonsLoading}
+                onRefreshSermons={handleRefreshSermons}
+                onCopySermon={handleCopySermon}
+                onDeleteSermon={async (id) => {
+                  await deleteArchivedSermon(id, workspaceId);
+                  setArchivedSermons((prev) => prev.filter((s) => s.id !== id));
+                }}
+                isImportingDeck={isImportingDeck}
+                importDeckStatus={importDeckStatus}
+                onImportProPresenter={importProPresenterAsItem}
+                onImportEasyWorship={importEasyWorshipAsItem}
+                onImportOpenSong={importOpenSongAsItem}
+                onOpenLyricsImport={() => setIsLyricsImportOpen(true)}
+              />
             </div>
           )}
           {activeSidebarTab === 'HYMNS' && (
