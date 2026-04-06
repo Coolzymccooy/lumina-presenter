@@ -915,6 +915,126 @@ app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "lumina-server-api", db: DB_PATH, now: now() });
 });
 
+// ── Paystack payment routes ────────────────────────────────────────────────────
+
+const PAYSTACK_SECRET_KEY = String(process.env.PAYSTACK_SECRET_KEY || "").trim();
+
+// Map Paystack plan codes → plan/period keys so we can identify what was purchased.
+const PAYSTACK_PLAN_MAP = {
+  [String(process.env.VITE_PAYSTACK_PLAN_PRO_MONTHLY    || "")]: { plan: "pro",    period: "monthly"   },
+  [String(process.env.VITE_PAYSTACK_PLAN_PRO_QUARTERLY  || "")]: { plan: "pro",    period: "quarterly" },
+  [String(process.env.VITE_PAYSTACK_PLAN_PRO_ANNUAL     || "")]: { plan: "pro",    period: "annual"    },
+  [String(process.env.VITE_PAYSTACK_PLAN_CHURCH_MONTHLY    || "")]: { plan: "church", period: "monthly"   },
+  [String(process.env.VITE_PAYSTACK_PLAN_CHURCH_QUARTERLY  || "")]: { plan: "church", period: "quarterly" },
+  [String(process.env.VITE_PAYSTACK_PLAN_CHURCH_ANNUAL     || "")]: { plan: "church", period: "annual"    },
+};
+
+// Ensure subscriptions table exists
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_subscriptions (
+    uid TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    plan TEXT NOT NULL DEFAULT 'free',
+    period TEXT,
+    paystack_customer_code TEXT,
+    paystack_subscription_code TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    expires_at INTEGER,
+    updated_at INTEGER NOT NULL
+  );
+`);
+
+// GET /api/payments/verify/:reference — called by browser after successful checkout
+app.get("/api/payments/verify/:reference", requireActor, async (req, res) => {
+  if (!PAYSTACK_SECRET_KEY) {
+    return res.status(503).json({ ok: false, message: "Payment service not configured." });
+  }
+  const reference = String(req.params.reference || "").trim();
+  if (!reference) return res.status(400).json({ ok: false, message: "Missing reference." });
+
+  try {
+    const psRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+      headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
+    });
+    const psData = await psRes.json();
+    if (!psData.status || psData.data?.status !== "success") {
+      return res.status(402).json({ ok: false, message: "Transaction not successful." });
+    }
+
+    const { metadata, plan, customer } = psData.data;
+    const planKey   = metadata?.lumina_plan   || (PAYSTACK_PLAN_MAP[plan?.plan_code]?.plan   ?? "pro");
+    const periodKey = metadata?.lumina_period || (PAYSTACK_PLAN_MAP[plan?.plan_code]?.period ?? "monthly");
+    const uid  = String(metadata?.lumina_uid || req.actor?.uid || "").trim();
+    const email = String(customer?.email || "").trim().toLowerCase();
+
+    if (uid) {
+      db.prepare(`
+        INSERT INTO user_subscriptions (uid, email, plan, period, paystack_customer_code, status, updated_at)
+        VALUES (?, ?, ?, ?, ?, 'active', ?)
+        ON CONFLICT(uid) DO UPDATE SET
+          plan = excluded.plan,
+          period = excluded.period,
+          paystack_customer_code = excluded.paystack_customer_code,
+          status = 'active',
+          updated_at = excluded.updated_at
+      `).run(uid, email, planKey, periodKey, customer?.customer_code || null, now());
+    }
+
+    return res.json({ ok: true, subscription: { plan: planKey, period: periodKey, status: "active" } });
+  } catch (err) {
+    return res.status(500).json({ ok: false, message: "Verification request failed." });
+  }
+});
+
+// GET /api/payments/subscription — return current user's plan
+app.get("/api/payments/subscription", requireActor, (req, res) => {
+  const uid = req.actor?.uid;
+  const row = db.prepare("SELECT plan, period, status, expires_at FROM user_subscriptions WHERE uid = ?").get(uid);
+  if (!row) return res.json({ ok: true, subscription: { plan: "free", period: null, status: "active" } });
+  // Check expiry if set
+  if (row.expires_at && row.expires_at < now()) {
+    db.prepare("UPDATE user_subscriptions SET status = 'expired', updated_at = ? WHERE uid = ?").run(now(), uid);
+    return res.json({ ok: true, subscription: { plan: "free", period: null, status: "expired" } });
+  }
+  return res.json({ ok: true, subscription: { plan: row.plan, period: row.period, status: row.status } });
+});
+
+// POST /api/payments/paystack/webhook — Paystack event push (subscription cancel, charge failure, etc.)
+// Must be raw body for signature verification — mount before express.json() processes it.
+app.post("/api/payments/paystack/webhook", express.raw({ type: "application/json" }), (req, res) => {
+  if (!PAYSTACK_SECRET_KEY) return res.sendStatus(200);
+
+  const sig  = String(req.headers["x-paystack-signature"] || "");
+  const hash = createHash("sha512").update(req.body).update(PAYSTACK_SECRET_KEY).digest("hex");
+  if (hash !== sig) return res.sendStatus(401);
+
+  let event;
+  try { event = JSON.parse(req.body.toString()); } catch { return res.sendStatus(400); }
+
+  const data = event?.data ?? {};
+  const customerCode = String(data?.customer?.customer_code || "").trim();
+  const planCode     = String(data?.plan?.plan_code || "").trim();
+  const planMeta     = PAYSTACK_PLAN_MAP[planCode];
+
+  if (event.event === "subscription.disable" || event.event === "subscription.not_renew") {
+    if (customerCode) {
+      db.prepare(`
+        UPDATE user_subscriptions SET plan = 'free', period = NULL, status = 'cancelled', updated_at = ?
+        WHERE paystack_customer_code = ?
+      `).run(now(), customerCode);
+    }
+  }
+
+  if (event.event === "charge.success" && planMeta && customerCode) {
+    db.prepare(`
+      UPDATE user_subscriptions SET plan = ?, period = ?, status = 'active', updated_at = ?
+      WHERE paystack_customer_code = ?
+    `).run(planMeta.plan, planMeta.period, now(), customerCode);
+  }
+
+  res.sendStatus(200);
+});
+
 app.get("/api/media/pexels/videos", async (req, res) => {
   if (!PEXELS_API_KEY) {
     return res.status(503).json({
@@ -2499,6 +2619,21 @@ app.get("/api/workspaces/:workspaceId/reports/audit", requireActor, (req, res) =
     if (error?.code === 403) return res.status(403).json({ ok: false, error: "FORBIDDEN" });
     return res.status(500).json({ ok: false, error: "AUDIT_REPORT_FAILED", message: String(error?.message || error) });
   }
+});
+
+// Global error handler — catches body-parser 413, JSON parse errors, etc.
+// Must have 4 params for Express to treat it as an error middleware.
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, _next) => {
+  if (err.type === "entity.too.large" || err.status === 413) {
+    console.warn(
+      `[lumina-server-api] 413 payload too large on ${req.method} ${req.path} ` +
+      `(limit=${JSON_LIMIT}) — client should strip base64 data before syncing`
+    );
+    return res.status(413).json({ ok: false, error: "PAYLOAD_TOO_LARGE", message: `Request body exceeds ${JSON_LIMIT} limit.` });
+  }
+  console.error("[lumina-server-api] unhandled error:", err?.message || err);
+  return res.status(500).json({ ok: false, error: "INTERNAL_ERROR", message: String(err?.message || err) });
 });
 
 app.listen(PORT, () => {

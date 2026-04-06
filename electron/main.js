@@ -2,6 +2,7 @@ import { app, BrowserWindow, screen, session, Menu, shell, ipcMain, clipboard, d
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import * as ndiSender from './ndiSender.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,6 +31,17 @@ let outputWindowRef = null;
 let stageWindowRef = null;
 let displayTestTimers = new Map();
 let displayTestWindows = new Map();
+
+// ─── NDI outbound sender state ────────────────────────────────────────────────
+let ndiActive = false;
+let ndiCaptureTimer = null;
+let ndiStatus = { active: false, sourceName: '' };
+let ndiDroppedFrames = 0;
+let ndiDropLogTimer = null;
+const NDI_TARGET_FPS = 30;
+const NDI_FRAME_INTERVAL_MS = 1000 / NDI_TARGET_FPS;
+// ─────────────────────────────────────────────────────────────────────────────
+
 let machineServiceState = {
   controlDisplayId: null,
   audienceDisplayId: null,
@@ -163,6 +175,54 @@ function emitMachineServiceState() {
   };
   if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
   mainWindowRef.webContents.send('machine:service-state', machineServiceState);
+}
+
+function emitNdiState() {
+  ndiStatus = { active: ndiActive, sourceName: ndiSender.getSourceName() };
+  if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
+  mainWindowRef.webContents.send('ndi:state', ndiStatus);
+}
+
+async function ndiCaptureLoop() {
+  if (!ndiActive || !outputWindowRef || outputWindowRef.isDestroyed()) {
+    ndiCaptureTimer = null;
+    return;
+  }
+  const captureStart = Date.now();
+  try {
+    const image = await outputWindowRef.webContents.capturePage();
+    const buffer = image.getBitmap();
+    const { width, height } = image.getSize();
+
+    // macOS: NativeImage.getBitmap() returns RGBA — swap R and B for NDI BGRA.
+    if (process.platform === 'darwin') {
+      for (let i = 0; i < buffer.length; i += 4) {
+        const r = buffer[i];
+        buffer[i] = buffer[i + 2];
+        buffer[i + 2] = r;
+      }
+    }
+
+    await ndiSender.sendFrame(buffer, width, height);
+  } catch {
+    // Swallow — window may be closing or NDI sender overloaded.
+    ndiDroppedFrames++;
+  }
+
+  // Log dropped frames every 10 seconds (non-blocking).
+  if (!ndiDropLogTimer) {
+    ndiDropLogTimer = setInterval(() => {
+      if (ndiDroppedFrames > 0) {
+        console.warn(`[NDI] Dropped ${ndiDroppedFrames} frames in last 10s`);
+        ndiDroppedFrames = 0;
+      }
+    }, 10000);
+  }
+
+  // Adaptive delay: subtract actual capture time to maintain target fps.
+  const elapsed = Date.now() - captureStart;
+  const nextDelay = Math.max(0, NDI_FRAME_INTERVAL_MS - elapsed);
+  ndiCaptureTimer = setTimeout(ndiCaptureLoop, nextDelay);
 }
 
 function emitMachineDisplaysChanged() {
@@ -422,6 +482,70 @@ function installMachineIpcHandlers() {
     const state = await createManagedRoleWindow(role, displayId || 0, payload);
     return { ok: true, state };
   });
+  // ── NDI outbound send ──────────────────────────────────────────────────────
+  ipcMain.handle('ndi:start', async (_event, payload) => {
+    try {
+      // Ensure a windowed output window exists for capturePage().
+      if (!outputWindowRef || outputWindowRef.isDestroyed()) {
+        await createManagedRoleWindow('audience', 0, {
+          windowed: true,
+          workspaceId: payload?.workspaceId || 'default-workspace',
+          sessionId: payload?.sessionId || 'live',
+        });
+      }
+      const bounds = outputWindowRef.getBounds();
+      const result = await ndiSender.startNdiSend(
+        payload?.sourceName || 'Lumina Presenter',
+        bounds.width,
+        bounds.height,
+      );
+      if (!result.ok) return result;
+
+      ndiActive = true;
+
+      // Listen for window resize so we can restart the sender at the new res.
+      outputWindowRef.removeAllListeners('resize');
+      outputWindowRef.on('resize', () => {
+        if (!ndiActive) return;
+        const newBounds = outputWindowRef.getBounds();
+        ndiSender.startNdiSend(
+          ndiSender.getSourceName(),
+          newBounds.width,
+          newBounds.height,
+        ).catch((err) => console.warn('[NDI] resize restart failed:', err?.message));
+      });
+
+      // Stop NDI cleanly if the output window is closed while active.
+      outputWindowRef.once('closed', () => {
+        if (!ndiActive) return;
+        ndiActive = false;
+        if (ndiCaptureTimer) { clearTimeout(ndiCaptureTimer); ndiCaptureTimer = null; }
+        if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
+        ndiSender.stopNdiSend().catch(() => {});
+        emitNdiState();
+      });
+
+      void ndiCaptureLoop();
+      emitNdiState();
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err?.message || String(err) };
+    }
+  });
+
+  ipcMain.handle('ndi:stop', async () => {
+    ndiActive = false;
+    if (ndiCaptureTimer) { clearTimeout(ndiCaptureTimer); ndiCaptureTimer = null; }
+    if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
+    ndiDroppedFrames = 0;
+    await ndiSender.stopNdiSend();
+    emitNdiState();
+    return { ok: true };
+  });
+
+  ipcMain.handle('ndi:get-status', () => ndiStatus);
+  // ──────────────────────────────────────────────────────────────────────────
+
   ipcMain.handle('machine:start-service', async (_event, payload) => {
     const controlDisplayId = Number(payload?.controlDisplayId || 0) || null;
     const audienceDisplayId = Number(payload?.audienceDisplayId || 0) || null;
@@ -573,6 +697,7 @@ function createWindow() {
   });
 
   mainWindow.once('ready-to-show', () => {
+    mainWindow.maximize();
     mainWindow.show();
     // Check for updates on launch
     if (isProd) {

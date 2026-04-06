@@ -21,6 +21,10 @@ interface SlideRendererProps {
   isPlaying?: boolean;
   seekCommand?: number | null;
   seekAmount?: number;
+  /** Absolute playback position (seconds) to seek to — takes priority over relative seekAmount for YouTube. */
+  seekTarget?: number | null;
+  /** Wall-clock sync anchor: when epochMs was set, video was at offsetSec. Used to sync late-loading iframes. */
+  videoSyncEpoch?: { epochMs: number; offsetSec: number } | null;
 
   /** Mute audio (recommended true for preview). */
   isMuted?: boolean;
@@ -122,6 +126,8 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   isPlaying = true,
   seekCommand = null,
   seekAmount = 0,
+  seekTarget = null,
+  videoSyncEpoch = null,
   isMuted = false,
   isProjector = false,
   lowerThirds = false,
@@ -400,12 +406,14 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   useEffect(() => {
     if (!hasBackground || !isYoutube || !isYoutubeReady || isLoading || mediaError) return;
     if (seekCommand === null) return;
-    if (!seekAmount || !Number.isFinite(seekAmount)) return;
-    if (seekAmount <= -3600) {
+    // Prefer absolute seekTarget; fall back to restart sentinel
+    if (seekTarget !== null && Number.isFinite(seekTarget)) {
+      postYoutubeCommand("seekTo", [Math.max(0, seekTarget), true]);
+    } else if (seekAmount <= -3600) {
       postYoutubeCommand("seekTo", [0, true]);
       postYoutubeCommand("pauseVideo");
     }
-  }, [hasBackground, isYoutube, isYoutubeReady, isLoading, mediaError, seekCommand, seekAmount, postYoutubeCommand]);
+  }, [hasBackground, isYoutube, isYoutubeReady, isLoading, mediaError, seekCommand, seekTarget, seekAmount, postYoutubeCommand]);
 
   const hasStructuredElements = Array.isArray(slide?.elements) && slide.elements.length > 0;
   // Guardrail: data-URI backgrounds (SVG split-panel, gradient SVG) always load — never
@@ -634,6 +642,18 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
               window.setTimeout(() => {
                 if (isMuted || isThumbnail) postYoutubeCommand("mute");
                 else postYoutubeCommand("unMute");
+                // Seek to correct position so late-loading iframes stay in sync with the live output
+                const syncPos = (() => {
+                  if (seekTarget !== null && Number.isFinite(seekTarget)) return Math.max(0, seekTarget);
+                  if (videoSyncEpoch) {
+                    const elapsed = (Date.now() - videoSyncEpoch.epochMs) / 1000;
+                    return Math.max(0, videoSyncEpoch.offsetSec + elapsed);
+                  }
+                  return null;
+                })();
+                if (syncPos !== null && syncPos > 1) {
+                  postYoutubeCommand("seekTo", [syncPos, true]);
+                }
                 if (isPlaying && !isThumbnail) postYoutubeCommand("playVideo");
                 else postYoutubeCommand("pauseVideo");
               }, 180);

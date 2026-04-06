@@ -342,6 +342,10 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
   return btoa(binary);
 };
 
+// ~75 MB binary → ~100 MB base64 which is the server's JSON_LIMIT.
+// Reject before encoding to give a clear error rather than a 413.
+const MEDIA_UPLOAD_MAX_BYTES = 75 * 1024 * 1024;
+
 export const uploadWorkspaceMedia = async (
   workspaceId: string,
   user: ActorLike,
@@ -354,6 +358,16 @@ export const uploadWorkspaceMedia = async (
   const mimeType = media instanceof File
     ? (media.type || 'application/octet-stream')
     : (String(media.mimeType || '').trim() || 'application/octet-stream');
+
+  const sizeBytes = media instanceof File ? media.size : media.buffer.byteLength;
+  if (sizeBytes > MEDIA_UPLOAD_MAX_BYTES) {
+    return {
+      ok: false,
+      error: 'FILE_TOO_LARGE',
+      message: `File is ${Math.round(sizeBytes / 1024 / 1024)} MB — maximum upload size is 75 MB. Use a URL reference for large video files instead.`,
+    };
+  }
+
   const base64 = media instanceof File
     ? await fileToBase64(media)
     : arrayBufferToBase64(media.buffer);
