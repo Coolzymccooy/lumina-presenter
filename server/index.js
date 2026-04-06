@@ -1642,18 +1642,21 @@ app.post("/api/ai/transcribe-sermon-chunk", async (req, res) => {
       : "Transcribe this church speech audio in American English. Return plain transcript text only.";
 
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
-      contents: {
-        parts: [
-          { text: speechPrompt },
-          {
-            inlineData: {
-              mimeType: geminiMimeType,
-              data: audioBuffer.toString("base64"),
+      model: "gemini-2.5-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: speechPrompt },
+            {
+              inlineData: {
+                mimeType: geminiMimeType,
+                data: audioBuffer.toString("base64"),
+              },
             },
-          },
-        ],
-      },
+          ],
+        },
+      ],
     });
 
     const transcript = String(response?.text || "").trim();
@@ -1717,12 +1720,15 @@ app.post("/api/ai/transcribe-sermon-audio", sermonAudioUpload.single("audio"), a
       const fileBuffer = fs.readFileSync(audioFile.path);
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
-        contents: {
-          parts: [
-            { inlineData: { data: fileBuffer.toString("base64"), mimeType: geminiMimeType } },
-            { text: speechPrompt },
-          ],
-        },
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { inlineData: { data: fileBuffer.toString("base64"), mimeType: geminiMimeType } },
+              { text: speechPrompt },
+            ],
+          },
+        ],
       });
       transcript = String(response?.text || "").trim();
     } else {
@@ -1740,12 +1746,15 @@ app.post("/api/ai/transcribe-sermon-audio", sermonAudioUpload.single("audio"), a
         if (fileState.state === "FAILED") throw new Error("Gemini File processing failed.");
         const response = await ai.models.generateContent({
           model: "gemini-2.5-flash",
-          contents: {
-            parts: [
-              { fileData: { fileUri: uploadResult.uri, mimeType: geminiMimeType } },
-              { text: speechPrompt },
-            ],
-          },
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { fileData: { fileUri: uploadResult.uri, mimeType: geminiMimeType } },
+                { text: speechPrompt },
+              ],
+            },
+          ],
         });
         transcript = String(response?.text || "").trim();
       } finally {
