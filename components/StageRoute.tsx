@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState } from '../services/firebase';
-import { fetchServerSessionState, getOrCreateConnectionClientId, heartbeatSessionConnection, saveWorkspaceSettings } from '../services/serverApi';
-import { AudienceDisplayState, ServiceItem, StageAlertLayout, StageAlertState, StageFlowLayout, StageMessageCategory, StageMessageCenterState, StageTimerFlashColor, StageTimerFlashState, StageTimerLayout } from '../types';
+import { fetchServerSessionState, fetchSessionConnections, getOrCreateConnectionClientId, heartbeatSessionConnection, saveServerSessionState, saveWorkspaceSettings } from '../services/serverApi';
+import { AudienceDisplayState, ServiceItem, StageAlertLayout, StageAlertState, StageAutoAdvanceConfig, StageFlowLayout, StageMessageCategory, StageMessageCenterState, StageSttState, StageTimerFlashColor, StageTimerFlashState, StageTimerLayout } from '../types';
 import { HoldScreen } from './presenter/HoldScreen';
 import { LoginScreen } from './LoginScreen';
 import { StageDisplay } from './StageDisplay';
@@ -187,6 +187,18 @@ export const StageRoute: React.FC = () => {
   const localStateRawRef = useRef<string | null>(null);
   const pendingWorkspaceLayoutRef = useRef<Partial<NonNullable<LocalStageState['workspaceSettings']>>>({});
   const workspaceLayoutSaveTimeoutRef = useRef<number | null>(null);
+
+  // ── Tier 2+3 state ────────────────────────────────────────────────────────
+  const [operatorCount, setOperatorCount] = useState(1);
+  const [autoAdvance, setAutoAdvance] = useState<StageAutoAdvanceConfig>({ enabled: false, delaySeconds: 10 });
+  const [showSttPanel, setShowSttPanel] = useState(false);
+  const [sttState, setSttState] = useState<StageSttState>({
+    isRecording: false,
+    transcript: '',
+    interimText: '',
+    lastUpdatedAt: 0,
+  });
+  const sttRecognitionRef = useRef<any>(null);
   const canUseServerWorkspace = useMemo(
     () => !!workspaceId && (hasExplicitWorkspace || !!user?.uid),
     [workspaceId, hasExplicitWorkspace, user?.uid]
@@ -230,6 +242,152 @@ export const StageRoute: React.FC = () => {
       }
     }, 420);
   }, [canUseServerWorkspace, user, workspaceId]);
+
+  // ── Navigation helpers ────────────────────────────────────────────────────
+  const getActiveSlideIndex = useCallback(() => {
+    const src = serverState || liveState || {};
+    const idx = typeof src?.activeSlideIndex === 'number' ? src.activeSlideIndex : 0;
+    return Math.max(0, idx);
+  }, [serverState, liveState]);
+
+  const getActiveItemSlideCount = useCallback(() => {
+    const src = serverState || liveState || {};
+    const schedule: ServiceItem[] = Array.isArray(src?.scheduleSnapshot)
+      ? src.scheduleSnapshot
+      : (Array.isArray(src?.schedule) ? src.schedule : []);
+    const activeItemId = typeof src?.activeItemId === 'string' ? src.activeItemId : null;
+    const item = activeItemId ? schedule.find((s) => s.id === activeItemId) : null;
+    return item?.slides?.length ?? 0;
+  }, [serverState, liveState]);
+
+  const handleNextSlide = useCallback(async () => {
+    if (!user || !canUseServerWorkspace) return;
+    const current = getActiveSlideIndex();
+    const total = getActiveItemSlideCount();
+    if (current + 1 >= total) return;
+    try {
+      await saveServerSessionState(workspaceId, sessionId, user, { activeSlideIndex: current + 1, updatedAt: Date.now() });
+    } catch (err) {
+      console.warn('Stage: failed to advance slide', err);
+    }
+  }, [user, canUseServerWorkspace, workspaceId, sessionId, getActiveSlideIndex, getActiveItemSlideCount]);
+
+  const handlePrevSlide = useCallback(async () => {
+    if (!user || !canUseServerWorkspace) return;
+    const current = getActiveSlideIndex();
+    if (current <= 0) return;
+    try {
+      await saveServerSessionState(workspaceId, sessionId, user, { activeSlideIndex: current - 1, updatedAt: Date.now() });
+    } catch (err) {
+      console.warn('Stage: failed to go back slide', err);
+    }
+  }, [user, canUseServerWorkspace, workspaceId, sessionId, getActiveSlideIndex]);
+
+  const handleItemSelect = useCallback(async (itemId: string) => {
+    if (!user || !canUseServerWorkspace) return;
+    try {
+      await saveServerSessionState(workspaceId, sessionId, user, {
+        activeItemId: itemId,
+        activeSlideIndex: 0,
+        updatedAt: Date.now(),
+      });
+    } catch (err) {
+      console.warn('Stage: failed to select item', err);
+    }
+  }, [user, canUseServerWorkspace, workspaceId, sessionId]);
+
+  // ── STT helpers ───────────────────────────────────────────────────────────
+  const handleSttToggleRecording = useCallback(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.warn('Stage: SpeechRecognition API not available in this browser.');
+      return;
+    }
+    if (sttState.isRecording) {
+      sttRecognitionRef.current?.stop();
+      setSttState((prev) => ({ ...prev, isRecording: false, interimText: '', lastUpdatedAt: Date.now() }));
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    recognition.onresult = (event: any) => {
+      let interim = '';
+      let final = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          final += result[0].transcript;
+        } else {
+          interim += result[0].transcript;
+        }
+      }
+      setSttState((prev) => ({
+        ...prev,
+        transcript: prev.transcript + final,
+        interimText: interim,
+        lastUpdatedAt: Date.now(),
+      }));
+    };
+    recognition.onerror = () => {
+      setSttState((prev) => ({ ...prev, isRecording: false, interimText: '' }));
+    };
+    recognition.onend = () => {
+      setSttState((prev) => ({ ...prev, isRecording: false, interimText: '' }));
+    };
+    sttRecognitionRef.current = recognition;
+    recognition.start();
+    setSttState((prev) => ({ ...prev, isRecording: true, lastUpdatedAt: Date.now() }));
+  }, [sttState.isRecording]);
+
+  // ── Keyboard shortcuts handler — Tier 2 ──────────────────────────────────
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Ignore if focus is in an input/textarea
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+      if (e.key === ' ' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleNextSlide();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handlePrevSlide();
+      } else if (e.key.toLowerCase() === 'b') {
+        // Blackout is managed by the presenter; stage view can show it but not toggle
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleNextSlide, handlePrevSlide]);
+
+  // Cleanup STT on unmount
+  useEffect(() => () => {
+    sttRecognitionRef.current?.stop();
+  }, []);
+
+  // ── Operator count polling — Tier 3 ──────────────────────────────────────
+  useEffect(() => {
+    if (!canUseServerWorkspace) return;
+    let active = true;
+    const poll = async () => {
+      try {
+        const res = await fetchSessionConnections(workspaceId, sessionId);
+        if (!active || !res?.ok) return;
+        const stageCount = (res.counts?.byRole?.['stage'] || 0) + (res.counts?.byRole?.['controller'] || 0);
+        setOperatorCount(Math.max(1, stageCount));
+      } catch {
+        // non-fatal
+      }
+    };
+    poll();
+    const id = window.setInterval(poll, 8000);
+    return () => {
+      active = false;
+      window.clearInterval(id);
+    };
+  }, [workspaceId, sessionId, canUseServerWorkspace]);
 
   useEffect(() => {
     if (!auth) {
@@ -429,6 +587,19 @@ export const StageRoute: React.FC = () => {
     return <HoldScreen view="logo" churchName={display.churchName} />;
   }
 
+  // Derive the live schedule from whichever state source has it
+  const liveSchedule: ServiceItem[] = useMemo(() => {
+    const src = serverState || liveState || {};
+    return Array.isArray(src?.scheduleSnapshot)
+      ? src.scheduleSnapshot
+      : (Array.isArray(src?.schedule) ? src.schedule : []);
+  }, [serverState, liveState]);
+
+  const liveActiveItemId: string | null = useMemo(() => {
+    const src = serverState || liveState || {};
+    return typeof src?.activeItemId === 'string' ? src.activeItemId : null;
+  }, [serverState, liveState]);
+
   return (
     <StageDisplay
       currentSlide={display.slide || null}
@@ -467,6 +638,24 @@ export const StageRoute: React.FC = () => {
       stageAlert={display.stageAlert}
       stageMessageCenter={display.stageMessageCenter}
       branding={display.branding}
+      // ── Tier 2 ─────────────────────────────────────────────────────────────
+      schedule={liveSchedule}
+      activeItemId={liveActiveItemId}
+      onItemSelect={handleItemSelect}
+      onNextSlide={handleNextSlide}
+      onPrevSlide={handlePrevSlide}
+      // ── Tier 3 ─────────────────────────────────────────────────────────────
+      operatorCount={operatorCount}
+      autoAdvanceEnabled={autoAdvance.enabled}
+      autoAdvanceSec={autoAdvance.delaySeconds}
+      onAutoAdvanceToggle={() => setAutoAdvance((prev) => ({ ...prev, enabled: !prev.enabled }))}
+      onAutoAdvanceSecsChange={(secs) => setAutoAdvance((prev) => ({ ...prev, delaySeconds: secs }))}
+      showSttPanel={showSttPanel}
+      sttIsRecording={sttState.isRecording}
+      sttTranscript={sttState.transcript}
+      sttInterimText={sttState.interimText}
+      onSttToggleRecording={handleSttToggleRecording}
+      onSttClose={() => setShowSttPanel(false)}
     />
   );
 };
