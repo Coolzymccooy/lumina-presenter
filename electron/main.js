@@ -573,6 +573,7 @@ function createWindow() {
   });
 
   mainWindow.once('ready-to-show', () => {
+    mainWindow.maximize();
     mainWindow.show();
     // Check for updates on launch
     if (isProd) {

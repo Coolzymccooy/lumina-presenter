@@ -2028,6 +2028,14 @@ function App() {
     const saved = initialSavedState;
     return typeof saved?.seekAmount === 'number' ? saved.seekAmount : 0;
   });
+  // Absolute seek target (seconds) — used instead of relative seekAmount for YouTube sync
+  const [seekTarget, setSeekTarget] = useState<number | null>(null);
+  // Wall-clock ms when video play started (reset on goLive + on play toggle)
+  const videoPlayStartEpochRef = useRef<number | null>(null);
+  // Accumulated play seconds before the last pause
+  const videoPausedOffsetRef = useRef<number>(0);
+  // Shared epoch broadcast to all renderers for sync-on-load
+  const [videoSyncEpoch, setVideoSyncEpoch] = useState<{ epochMs: number; offsetSec: number } | null>(null);
 
   // --- AUDIO SOUNDTRACK STATE ---
   const [currentTrack, setCurrentTrack] = useState<GospelTrack | null>(null);
@@ -2194,16 +2202,39 @@ function App() {
 
   // Strip inline data: URLs (e.g. SVG backgrounds on Bible slides) before syncing to server.
   // These can be hundreds of KB each and cause PayloadTooLargeError.
+  // Flatten a rich-text array (per-word objects) to a plain string so the sync
+  // payload stays compact. Remote output always re-loads full slide data from
+  // the saved runsheet; the live-state snapshot only needs plain text for
+  // fallback display and hydration metadata.
+  const flattenRichText = (value: unknown): unknown => {
+    if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null && 'text' in value[0]) {
+      return (value as Array<{ text?: string }>).map(w => w.text ?? '').join('');
+    }
+    return value;
+  };
+
+  const stripDataUrl = (v: unknown): unknown =>
+    typeof v === 'string' && v.startsWith('data:') ? '' : v;
+
   const stripScheduleDataUrls = useCallback((items: any[]): any[] =>
     items.map(item => ({
       ...item,
+      // Strip item-level data URL backgrounds (PPTX imports store each slide
+      // background as a base64 data URL here — a single image is 1–5 MB).
+      theme: item.theme
+        ? {
+            ...item.theme,
+            backgroundUrl: stripDataUrl(item.theme.backgroundUrl),
+          }
+        : item.theme,
       slides: Array.isArray(item.slides)
         ? item.slides.map((slide: any) => ({
             ...slide,
-            backgroundUrl: typeof slide.backgroundUrl === 'string' && slide.backgroundUrl.startsWith('data:')
-              ? '' : slide.backgroundUrl,
-            mediaUrl: typeof slide.mediaUrl === 'string' && slide.mediaUrl.startsWith('data:')
-              ? '' : slide.mediaUrl,
+            backgroundUrl: stripDataUrl(slide.backgroundUrl),
+            mediaUrl: stripDataUrl(slide.mediaUrl),
+            // Flatten per-word rich-text to plain strings to keep payload small
+            content: flattenRichText(slide.content),
+            speakerNotes: flattenRichText(slide.speakerNotes),
           }))
         : item.slides,
     }))
@@ -2801,6 +2832,10 @@ function App() {
 
 
 
+  // Sync the schedule snapshot only when the schedule itself changes — NOT on
+  // every slide navigation. Slide navigation is synced separately via the live
+  // state effect below. This prevents re-uploading the entire (potentially
+  // large) schedule JSON every time the presenter taps the next slide.
   useEffect(() => {
     if (!user?.uid || !cloudBootstrapComplete) return;
     const updatedAt = Date.now();
@@ -2819,6 +2854,29 @@ function App() {
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
+  }, [
+    schedule,
+    workspaceSettings,
+    holdScreenMode,
+    audienceQrProjection,
+    stageTimerFlash,
+    stageMessageCenter,
+    user?.uid,
+    user?.email,
+    allowedAdminEmails,
+    syncLiveState,
+    stripScheduleDataUrls,
+    cloudBootstrapComplete,
+    user,
+  ]);
+
+  // Persist the full playlist + workspace snapshot (includes navigation state).
+  // This is separate from the live-state sync above so schedule re-uploads are
+  // not triggered by slide navigation.
+  useEffect(() => {
+    if (!user?.uid || !cloudBootstrapComplete) return;
+    const updatedAt = Date.now();
+    const settingsUpdatedAt = workspaceSettingsUpdatedAtRef.current || updatedAt;
     (async () => {
       try {
         await upsertTeamPlaylist(user.uid, cloudPlaylistId, {
@@ -2836,7 +2894,7 @@ function App() {
           updatedAt,
         });
         await saveWorkspaceSnapshot(workspaceId, user, {
-          schedule,
+          schedule: stripScheduleDataUrls(schedule),
           selectedItemId,
           activeItemId,
           activeSlideIndex,
@@ -2863,15 +2921,12 @@ function App() {
     stageTimerFlash,
     stageMessageCenter,
     user?.uid,
-    user?.email,
-    allowedAdminEmails,
-    syncLiveState,
-    stripScheduleDataUrls,
     reportSyncFailure,
     cloudBootstrapComplete,
     cloudPlaylistId,
     workspaceId,
     user,
+    stripScheduleDataUrls,
   ]);
 
   useEffect(() => {
@@ -2892,9 +2947,16 @@ function App() {
   const activeItem = schedule.find(i => i.id === activeItemId) || null;
   const activeSlide = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex] : null;
 
-  // Detect PPTX visual items in the schedule (imported as MEDIA with source 'import')
+  // Detect PPTX visual items in the schedule (imported MEDIA, excluding video-url items)
   const hasPptxImportedItems = useMemo(() =>
-    schedule.some(item => item.type === ItemType.MEDIA && item.metadata?.source === 'import'),
+    schedule.some(item =>
+      item.type === ItemType.MEDIA &&
+      item.metadata?.source === 'import' &&
+      // Exclude video URL items: they share source='import' in legacy data but
+      // are never PPTX decks. PPTX slides never carry mediaType='video'.
+      item.theme?.mediaType !== 'video' &&
+      !item.slides.some(s => s.mediaType === 'video'),
+    ),
     [schedule],
   );
   // Detect Bible items using the split-panel style (SVG data URI background)
@@ -2935,6 +2997,26 @@ function App() {
     || (!activeSlide.mediaType && activeItem?.theme.mediaType === 'video')
     || looksLikeVideoUrl(activeBackgroundUrl)
   );
+
+  // Keep epoch refs in sync with play/pause so triggerSeek has accurate time estimates
+  useEffect(() => {
+    if (!isActiveVideo) return;
+    if (isPlaying) {
+      const now = Date.now();
+      const offset = videoPausedOffsetRef.current;
+      videoPlayStartEpochRef.current = now;
+      // Broadcast sync epoch so late-loading renderers can catch up
+      setVideoSyncEpoch({ epochMs: now, offsetSec: offset });
+    } else {
+      // Freeze the accumulated offset
+      const epoch = videoPlayStartEpochRef.current;
+      if (epoch !== null) {
+        videoPausedOffsetRef.current = videoPausedOffsetRef.current + (Date.now() - epoch) / 1000;
+      }
+      videoPlayStartEpochRef.current = null;
+    }
+  }, [isPlaying, isActiveVideo]);
+
   const presenterSidebarCompact = isElectronShell && viewMode === 'PRESENTER' && viewportWidth < 1500;
   const presenterShellTight = viewMode === 'PRESENTER' && viewportWidth < 1720;
   const presenterShellVeryTight = viewMode === 'PRESENTER' && viewportWidth < 1540;
@@ -3840,8 +3922,22 @@ function App() {
 
   const toggleBlackout = () => setBlackout(!blackout);
 
+  const estimateVideoTime = () => {
+    const epoch = videoPlayStartEpochRef.current;
+    const offset = videoPausedOffsetRef.current;
+    if (epoch === null) return offset;
+    return offset + (Date.now() - epoch) / 1000;
+  };
+
   const triggerSeek = (seconds: number) => {
-    setSeekCommand(Date.now());
+    const target = Math.max(0, estimateVideoTime() + seconds);
+    const now = Date.now();
+    // Update the anchor so subsequent seeks stay accurate
+    videoPlayStartEpochRef.current = now;
+    videoPausedOffsetRef.current = target;
+    setSeekTarget(target);
+    setVideoSyncEpoch({ epochMs: now, offsetSec: target });
+    setSeekCommand(now);
     setSeekAmount(seconds);
   };
 
@@ -4990,6 +5086,12 @@ function App() {
     setBlackout(false);
     setHoldScreenMode('none');
     setIsPlaying(true);
+    // Reset video playback tracking whenever a new item goes live
+    const now = Date.now();
+    videoPlayStartEpochRef.current = now;
+    videoPausedOffsetRef.current = 0;
+    setSeekTarget(null);
+    setVideoSyncEpoch({ epochMs: now, offsetSec: 0 });
     logActivity(user?.uid, 'PRESENTATION_START', { itemTitle: nextLiveItem.title });
     // Fire item_start macro triggers
     const itemStartMatches = matchTriggers(
@@ -5611,8 +5713,8 @@ function App() {
     }
   };
 
-  const insertVideoUrlAsItem = () => {
-    const url = videoUrlDraft.trim();
+  const insertVideoUrlAsItem = (urlOverride?: string) => {
+    const url = (urlOverride ?? videoUrlDraft).trim();
     if (!url) return;
     const youtubeId = getYoutubeId(url);
     const isVideo = youtubeId || looksLikeVideoUrl(url);
@@ -5638,11 +5740,11 @@ function App() {
         shadow: false,
         fontSize: 'medium',
       },
-      metadata: { source: 'import' },
+      metadata: { source: 'video-url' },
     }, 'user');
     addItem(mediaItem);
     setSelectedItemId(mediaItem.id);
-    setVideoUrlDraft('');
+    if (!urlOverride) setVideoUrlDraft('');
   };
 
   const importPowerPointVisualSlidesForSlideEditor = async (file: File): Promise<Slide[]> => {
@@ -6093,6 +6195,8 @@ function App() {
       outputMuted,
       seekCommand,
       seekAmount,
+      seekTarget,
+      videoSyncEpoch,
       lowerThirdsEnabled,
       routingMode,
       timerMode,
@@ -6113,7 +6217,7 @@ function App() {
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
-  }, [activeItemId, activeSlideIndex, blackout, holdScreenMode, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerSeconds, effectiveTimerDurationSec, currentCueSpeaker, currentCueAmberPercent, currentCueRedPercent, stageTimerFlash, currentCueItemId, audienceDisplay, audienceQrProjection, stageMessageCenter, workspaceSettings, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
+  }, [activeItemId, activeSlideIndex, blackout, holdScreenMode, isPlaying, outputMuted, seekCommand, seekAmount, seekTarget, videoSyncEpoch, lowerThirdsEnabled, routingMode, timerMode, timerSeconds, effectiveTimerDurationSec, currentCueSpeaker, currentCueAmberPercent, currentCueRedPercent, stageTimerFlash, currentCueItemId, audienceDisplay, audienceQrProjection, stageMessageCenter, workspaceSettings, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
 
   useEffect(() => {
     if (hasElectronDisplayControl) return;
@@ -6573,6 +6677,8 @@ function App() {
             isPlaying={isPlaying}
             seekCommand={seekCommand}
             seekAmount={seekAmount}
+            seekTarget={seekTarget}
+            videoSyncEpoch={videoSyncEpoch}
             isMuted={outputMuted}
             isProjector={true}
             lowerThirds={lowerThirdsEnabled}
@@ -7165,7 +7271,7 @@ function App() {
                   className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
                 />
                 <button
-                  onClick={insertVideoUrlAsItem}
+                  onClick={() => insertVideoUrlAsItem()}
                   disabled={!videoUrlDraft.trim()}
                   className="shrink-0 px-3 py-1.5 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black uppercase tracking-[0.14em] text-zinc-200 hover:border-zinc-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
@@ -7386,6 +7492,8 @@ function App() {
                       isPlaying={isPlaying}
                       seekCommand={seekCommand}
                       seekAmount={seekAmount}
+                      seekTarget={seekTarget}
+                      videoSyncEpoch={videoSyncEpoch}
                       isMuted={isPreviewMuted}
                       lowerThirds={previewLowerThirds}
                       audienceOverlay={audienceDisplay}
@@ -7887,6 +7995,7 @@ function App() {
                 onImportEasyWorship={importEasyWorshipAsItem}
                 onImportOpenSong={importOpenSongAsItem}
                 onOpenLyricsImport={() => setIsLyricsImportOpen(true)}
+                onAddVideoUrl={(url) => insertVideoUrlAsItem(url)}
               />
             </div>
           )}
@@ -8025,6 +8134,17 @@ function App() {
         onPrevSlide={prevSlide}
         onNextSlide={nextSlide}
         onToggleBlackout={() => setBlackout(prev => !prev)}
+        isPlaying={isPlaying}
+        isActiveVideo={isActiveVideo}
+        seekTarget={seekTarget}
+        videoSyncEpoch={videoSyncEpoch}
+        seekCommand={seekCommand}
+        seekAmount={seekAmount}
+        outputMuted={outputMuted}
+        onTogglePlay={() => setIsPlaying(prev => !prev)}
+        onSeekForward={() => triggerSeek(10)}
+        onSeekBackward={() => triggerSeek(-10)}
+        onToggleMute={() => setOutputMuted(prev => !prev)}
       />
     ) : (
             <div className="flex-1 flex flex-col lg:flex-row bg-black min-w-0 overflow-hidden">
@@ -8038,6 +8158,8 @@ function App() {
                         isPlaying={isPlaying}
                         seekCommand={seekCommand}
                         seekAmount={seekAmount}
+                        seekTarget={seekTarget}
+                        videoSyncEpoch={videoSyncEpoch}
                         isMuted={isPreviewMuted}
                         lowerThirds={lowerThirdsEnabled}
                         audienceOverlay={audienceDisplay}
@@ -8398,6 +8520,8 @@ function App() {
                     isPlaying={isPlaying}
                     seekCommand={seekCommand}
                     seekAmount={seekAmount}
+                    seekTarget={seekTarget}
+                    videoSyncEpoch={videoSyncEpoch}
                     isMuted={outputMuted}
                     isProjector={true}
                     lowerThirds={lowerThirdsEnabled}

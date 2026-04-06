@@ -16,6 +16,18 @@ interface StageWorkspaceProps {
   onPrevSlide: () => void;
   onNextSlide: () => void;
   onToggleBlackout: () => void;
+  // Video transport
+  isPlaying: boolean;
+  isActiveVideo: boolean;
+  seekTarget: number | null;
+  videoSyncEpoch: { epochMs: number; offsetSec: number } | null;
+  seekCommand: number | null;
+  seekAmount: number;
+  outputMuted: boolean;
+  onTogglePlay: () => void;
+  onSeekForward: () => void;
+  onSeekBackward: () => void;
+  onToggleMute: () => void;
 }
 
 export function StageWorkspace({
@@ -32,6 +44,17 @@ export function StageWorkspace({
   onPrevSlide,
   onNextSlide,
   onToggleBlackout,
+  isPlaying,
+  isActiveVideo,
+  seekTarget,
+  videoSyncEpoch,
+  seekCommand,
+  seekAmount,
+  outputMuted,
+  onTogglePlay,
+  onSeekForward,
+  onSeekBackward,
+  onToggleMute,
 }: StageWorkspaceProps) {
   const speakerNotes = activeSlide?.notes || activeItem?.slides?.find(s => s.notes)?.notes || '';
   const currentItemIdx = schedule.findIndex(i => i.id === activeItem?.id);
@@ -107,19 +130,61 @@ export function StageWorkspace({
         </div>
 
         {/* Transport controls */}
-        <div className="p-3 flex gap-2">
-          <button
-            onClick={onPrevSlide}
-            className="flex-1 py-2 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-black tracking-widest transition-colors border border-zinc-700"
-          >
-            ← PREV
-          </button>
-          <button
-            onClick={onNextSlide}
-            className="flex-1 py-2 rounded-sm bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black tracking-widest transition-colors"
-          >
-            NEXT →
-          </button>
+        <div className="p-3 flex flex-col gap-2">
+          <div className="flex gap-2">
+            <button
+              onClick={onPrevSlide}
+              className="flex-1 py-2 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-black tracking-widest transition-colors border border-zinc-700"
+            >
+              ← PREV
+            </button>
+            <button
+              onClick={onNextSlide}
+              className="flex-1 py-2 rounded-sm bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black tracking-widest transition-colors"
+            >
+              NEXT →
+            </button>
+          </div>
+          {isActiveVideo && (
+            <div className="flex items-center gap-1.5 rounded-sm border border-zinc-700 bg-zinc-900 p-1.5">
+              <button
+                onClick={onSeekBackward}
+                title="Rewind 10s"
+                className="flex-1 py-1.5 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-black tracking-widest transition-colors"
+              >
+                ⏮ -10s
+              </button>
+              <button
+                onClick={onTogglePlay}
+                title={isPlaying ? 'Pause' : 'Play'}
+                className={`flex-1 py-1.5 rounded-sm text-[10px] font-black tracking-widest transition-colors ${
+                  isPlaying
+                    ? 'bg-zinc-700 text-white hover:bg-zinc-600'
+                    : 'bg-emerald-700 text-white hover:bg-emerald-600'
+                }`}
+              >
+                {isPlaying ? '⏸ PAUSE' : '▶ PLAY'}
+              </button>
+              <button
+                onClick={onSeekForward}
+                title="Forward 10s"
+                className="flex-1 py-1.5 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-black tracking-widest transition-colors"
+              >
+                +10s ⏭
+              </button>
+              <button
+                onClick={onToggleMute}
+                title={outputMuted ? 'Unmute' : 'Mute'}
+                className={`px-2 py-1.5 rounded-sm text-[10px] font-black tracking-widest transition-colors border ${
+                  outputMuted
+                    ? 'bg-red-900/50 border-red-700 text-red-300'
+                    : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
+                }`}
+              >
+                {outputMuted ? '🔇' : '🔊'}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="px-3 pb-3">
@@ -148,7 +213,17 @@ export function StageWorkspace({
                 <span className="text-red-500 font-black text-xl tracking-[0.5em] opacity-60">BLACKOUT</span>
               </div>
             ) : activeSlide && activeItem ? (
-              <SlideRenderer slide={activeSlide} item={activeItem} fitContainer={true} />
+              <SlideRenderer
+                slide={activeSlide}
+                item={activeItem}
+                fitContainer={true}
+                isPlaying={isPlaying}
+                seekCommand={seekCommand}
+                seekAmount={seekAmount}
+                seekTarget={seekTarget}
+                videoSyncEpoch={videoSyncEpoch}
+                isMuted={true}
+              />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-zinc-700 font-black text-sm tracking-widest">
                 NO ACTIVE SLIDE
