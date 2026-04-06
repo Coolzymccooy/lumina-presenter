@@ -8,6 +8,7 @@ import {
   HelpIcon,
   CopyIcon,
 } from '../Icons';
+import { Tooltip } from '../ui';
 
 type DesktopUpdateState = 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'not-available' | 'error';
 
@@ -239,74 +240,97 @@ export function AppHeader({
           </button>
 
           {/* BLACKOUT */}
-          <button
-            onClick={onToggleBlackout}
-            className={`px-3 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all border ${
-              blackout
-                ? 'bg-red-900 border-red-700 text-red-200'
-                : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'
-            }`}
-            title="Toggle Blackout"
+          <Tooltip
+            content="Blackout all projection outputs"
+            variant="warning"
+            shortcut="B"
+            placement="bottom"
           >
-            BLACKOUT
-          </button>
+            <button
+              onClick={onToggleBlackout}
+              className={`px-3 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all border ${
+                blackout
+                  ? 'bg-red-900 border-red-700 text-red-200'
+                  : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'
+              }`}
+            >
+              BLACKOUT
+            </button>
+          </Tooltip>
 
           {/* STAGE display */}
-          <button
-            onClick={onToggleStageDisplay}
-            className={`px-3 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all border ${
-              isStageDisplayLive
-                ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-950/50'
-                : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600'
-            }`}
+          <Tooltip
+            content="Stage Display — shows speaker notes, timers, and run order on the operator screen"
+            variant="info"
+            placement="bottom"
           >
-            STAGE
-          </button>
+            <button
+              onClick={onToggleStageDisplay}
+              className={`px-3 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all border ${
+                isStageDisplayLive
+                  ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-950/50'
+                  : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600'
+              }`}
+            >
+              STAGE
+            </button>
+          </Tooltip>
 
           <div className="h-6 w-px bg-zinc-800 mx-1" />
 
           {/* URL copy helpers */}
-          <button
-            onClick={() => onCopyUrl(remoteControlUrl, 'Remote Control URL copied!')}
-            className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all border border-transparent hover:border-zinc-700"
-            title="Copy Remote URL"
-          >
-            <CopyIcon className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => onCopyUrl(stageDisplayUrl, 'Stage URL copied!')}
-            className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all border border-transparent hover:border-zinc-700"
-            title="Copy Stage URL"
-          >
-            <MonitorIcon className="w-4 h-4" />
-          </button>
+          <Tooltip content="Copy Remote Control URL" placement="bottom">
+            <button
+              onClick={() => onCopyUrl(remoteControlUrl, 'Remote Control URL copied!')}
+              className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all border border-transparent hover:border-zinc-700"
+            >
+              <CopyIcon className="w-4 h-4" />
+            </button>
+          </Tooltip>
+          <Tooltip content="Copy Stage Display URL" placement="bottom">
+            <button
+              onClick={() => onCopyUrl(stageDisplayUrl, 'Stage URL copied!')}
+              className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all border border-transparent hover:border-zinc-700"
+            >
+              <MonitorIcon className="w-4 h-4" />
+            </button>
+          </Tooltip>
 
           {/* Settings + Help */}
-          <button
-            onClick={onOpenSettings}
-            className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all border border-transparent hover:border-zinc-700"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-          <button
-            onClick={onOpenHelp}
-            className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all"
-          >
-            <HelpIcon className="w-4 h-4" />
-          </button>
+          <Tooltip content="Settings" placement="bottom">
+            <button
+              onClick={onOpenSettings}
+              className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all border border-transparent hover:border-zinc-700"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+          </Tooltip>
+          <Tooltip content="Help & documentation" placement="bottom">
+            <button
+              onClick={onOpenHelp}
+              className="p-2.5 text-zinc-500 hover:text-white hover:bg-zinc-800 rounded-xl transition-all"
+            >
+              <HelpIcon className="w-4 h-4" />
+            </button>
+          </Tooltip>
 
           {/* Right Dock toggle */}
-          <button
-            onClick={onToggleRightDock}
-            className={`ml-1 p-2.5 rounded-xl text-[10px] font-black tracking-widest transition-all border ${
-              isRightDockOpen
-                ? 'bg-zinc-800 border-zinc-700 text-white'
-                : 'border-zinc-800 text-zinc-500 hover:bg-zinc-800 hover:text-white'
-            }`}
-            title="Toggle right panel (AI / Connect / Aether)"
+          <Tooltip
+            content="AI assistant, connections & Aether cast"
+            variant="ai"
+            placement="bottom"
           >
-            <SparklesIcon className="w-4 h-4 text-purple-400" />
-          </button>
+            <button
+              onClick={onToggleRightDock}
+              className={`ml-1 p-2.5 rounded-xl text-[10px] font-black tracking-widest transition-all border ${
+                isRightDockOpen
+                  ? 'bg-zinc-800 border-zinc-700 text-white'
+                  : 'border-zinc-800 text-zinc-500 hover:bg-zinc-800 hover:text-white'
+              }`}
+            >
+              <SparklesIcon className="w-4 h-4 text-purple-400" />
+            </button>
+          </Tooltip>
         </div>
       </header>
 
