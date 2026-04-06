@@ -1,5 +1,26 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 
+const FONT_FAMILIES: { label: string; value: string }[] = [
+  { label: 'Sans', value: 'Inter, ui-sans-serif, system-ui, sans-serif' },
+  { label: 'Serif', value: 'Georgia, ui-serif, serif' },
+  { label: 'Mono', value: 'ui-monospace, Menlo, monospace' },
+  { label: 'Impact', value: 'Impact, Haettenschweiler, Arial Narrow Bold, sans-serif' },
+  { label: 'Cursive', value: 'Brush Script MT, cursive' },
+];
+
+const FONT_SIZES: { label: string; em: number }[] = [
+  { label: 'XS',  em: 0.5  },
+  { label: 'S',   em: 0.75 },
+  { label: 'M',   em: 1.0  },
+  { label: 'L',   em: 1.25 },
+  { label: 'XL',  em: 1.5  },
+  { label: '2×',  em: 2.0  },
+  { label: '3×',  em: 3.0  },
+  { label: '4×',  em: 4.0  },
+  { label: '6×',  em: 6.0  },
+  { label: '8×',  em: 8.0  },
+];
+
 const PRESET_TEXT_COLORS = [
   '#ffffff', '#e2e8f0', '#fbbf24', '#f59e0b',
   '#34d399', '#10b981', '#60a5fa', '#3b82f6',
@@ -64,6 +85,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [underline, setUnderline] = useState(false);
   const [foreColor, setForeColor] = useState('');
   const [showColors, setShowColors] = useState<'text' | 'highlight' | null>(null);
+  const [showFontFamily, setShowFontFamily] = useState(false);
+  const [showFontSize, setShowFontSize] = useState(false);
 
   // Reset editor when the active slide changes (resetKey changes)
   useEffect(() => {
@@ -72,16 +95,18 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
-  // Close color picker on outside click
+  // Close all pickers on outside click
   useEffect(() => {
-    if (!showColors) return;
+    if (!showColors && !showFontFamily && !showFontSize) return;
     const handler = (e: MouseEvent) => {
       const target = e.target as Element;
       if (!target.closest('[data-color-picker]')) setShowColors(null);
+      if (!target.closest('[data-font-family-picker]')) setShowFontFamily(false);
+      if (!target.closest('[data-font-size-picker]')) setShowFontSize(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [showColors]);
+  }, [showColors, showFontFamily, showFontSize]);
 
   const updateFormatState = useCallback(() => {
     try {
@@ -115,6 +140,28 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
     setShowColors(null);
   }, [exec]);
+
+  const applyFontFamily = useCallback((family: string) => {
+    exec('fontName', family);
+    setShowFontFamily(false);
+  }, [exec]);
+
+  // Font size: use execCommand('fontSize', '7') as marker, then replace <font size="7"> with <span style="font-size:Xem">
+  // em values scale relative to the slide's base textPx, so the size looks proportional on both editor and canvas.
+  const applyFontSize = useCallback((em: number) => {
+    const el = editorRef.current;
+    if (!el) return;
+    el.focus();
+    document.execCommand('fontSize', false, '7');
+    el.querySelectorAll('font[size="7"]').forEach(node => {
+      const span = document.createElement('span');
+      span.style.fontSize = `${em}em`;
+      span.innerHTML = (node as HTMLElement).innerHTML;
+      node.replaceWith(span);
+    });
+    handleInput();
+    setShowFontSize(false);
+  }, [handleInput]);
 
   // Resolve foreColor for the A indicator (browser returns rgb(...))
   const fgCss = foreColor && foreColor !== 'rgb(0, 0, 0)' && foreColor !== '#000000'
@@ -225,6 +272,67 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
                     }
                     title={c === 'transparent' ? 'None' : c}
                   />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="w-px h-4 bg-zinc-700 mx-0.5 shrink-0" />
+
+        {/* Font family */}
+        <div className="relative shrink-0" data-font-family-picker>
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); setShowFontFamily(p => !p); setShowFontSize(false); setShowColors(null); }}
+            title="Font family"
+            className="h-6 px-1.5 rounded flex items-center gap-0.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors text-[10px] font-semibold"
+          >
+            Aa
+            <svg className="w-2 h-2 text-zinc-600" viewBox="0 0 8 8" fill="currentColor"><path d="M0 2l4 4 4-4H0z"/></svg>
+          </button>
+          {showFontFamily && (
+            <div className="absolute top-8 left-0 z-50 bg-zinc-900 border border-zinc-700 rounded-xl p-1.5 shadow-2xl flex flex-col gap-0.5 min-w-[110px]" data-font-family-picker>
+              <div className="text-[8px] font-black uppercase tracking-widest text-zinc-500 px-1.5 pb-1">Font</div>
+              {FONT_FAMILIES.map(f => (
+                <button
+                  key={f.value}
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); applyFontFamily(f.value); }}
+                  className="text-left px-2 py-1 rounded-lg hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors text-[11px]"
+                  style={{ fontFamily: f.value }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Font size */}
+        <div className="relative shrink-0" data-font-size-picker>
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); setShowFontSize(p => !p); setShowFontFamily(false); setShowColors(null); }}
+            title="Font size"
+            className="h-6 px-1.5 rounded flex items-center gap-0.5 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors text-[10px] font-mono"
+          >
+            <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><text x="1" y="12" fontSize="11" fontWeight="800" fontFamily="monospace">T</text><text x="7" y="10" fontSize="7" fontWeight="600" fontFamily="monospace">T</text></svg>
+            <svg className="w-2 h-2 text-zinc-600" viewBox="0 0 8 8" fill="currentColor"><path d="M0 2l4 4 4-4H0z"/></svg>
+          </button>
+          {showFontSize && (
+            <div className="absolute top-8 left-0 z-50 bg-zinc-900 border border-zinc-700 rounded-xl p-1.5 shadow-2xl min-w-[72px]" data-font-size-picker>
+              <div className="text-[8px] font-black uppercase tracking-widest text-zinc-500 px-1.5 pb-1">Size</div>
+              <div className="flex flex-col gap-px">
+                {FONT_SIZES.map(sz => (
+                  <button
+                    key={sz.em}
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); applyFontSize(sz.em); }}
+                    className="text-left px-2 py-0.5 rounded-lg hover:bg-zinc-800 text-zinc-300 hover:text-white transition-colors text-[11px] font-mono"
+                  >
+                    {sz.label}
+                  </button>
                 ))}
               </div>
             </div>

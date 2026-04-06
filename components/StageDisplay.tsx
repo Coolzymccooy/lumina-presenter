@@ -525,6 +525,8 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
   const currentTitle = typeof activeItem?.title === 'string' && activeItem.title.trim() ? activeItem.title : 'Waiting for Service...';
   const currentText = typeof currentSlide?.content === 'string' && currentSlide.content.trim() ? currentSlide.content : '';
   const nextText = typeof nextSlide?.content === 'string' && nextSlide.content.trim() ? nextSlide.content : '';
+  const currentTextIsHtml = /<[a-zA-Z][^>]*>/.test(currentText);
+  const nextTextIsHtml = /<[a-zA-Z][^>]*>/.test(nextText);
   const currentHasText = currentText.length > 0;
   const nextHasText = nextText.length > 0;
   const currentReferenceLabel = currentHasText && (
@@ -804,7 +806,7 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
             <div className="flex-1 min-w-0 flex flex-col justify-center overflow-hidden">
               {currentHasText ? (
                 <div className={`${currentTextClass} font-bold leading-snug text-white overflow-hidden`} style={{ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 6, overflow: 'hidden' }}>
-                  {currentText}
+                  {currentTextIsHtml ? <span dangerouslySetInnerHTML={{ __html: currentText }} /> : currentText}
                 </div>
               ) : (
                 <div className={`${compact ? 'text-3xl' : 'text-4xl'} font-bold leading-tight text-zinc-500`}>
@@ -953,7 +955,7 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
             <div className="flex-1 min-w-0 flex flex-col justify-center overflow-hidden">
               {nextHasText ? (
                 <div className={`${nextTextClass} font-medium ${highContrast ? 'text-white' : 'text-gray-400'} leading-snug opacity-70 overflow-hidden`} style={{ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 5, overflow: 'hidden' }}>
-                  {nextText}
+                  {nextTextIsHtml ? <span dangerouslySetInnerHTML={{ __html: nextText }} /> : nextText}
                 </div>
               ) : (
                 <div className={`${nextTextClass} font-medium ${highContrast ? 'text-white' : 'text-gray-500'} leading-snug opacity-60`}>

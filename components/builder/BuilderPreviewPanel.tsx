@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { SlideRenderer } from '../SlideRenderer';
 import { RichTextEditor } from '../RichTextEditor';
 import { hydrateLegacySlideElements } from '../slide-layout/utils/slideHydration';
@@ -62,6 +62,13 @@ function getEditorContent(slide: Slide): string {
   return bodyEl?.content ?? slide.content ?? '';
 }
 
+function NotesPreview({ text }: { text: string }) {
+  const plain = text.trim();
+  if (!plain) return null;
+  const words = plain.split(/\s+/).slice(0, 8).join(' ');
+  return <span className="truncate text-amber-400/70 italic">{words}{plain.split(/\s+/).length > 8 ? '…' : ''}</span>;
+}
+
 export function BuilderPreviewPanel({
   item,
   onUpdate,
@@ -76,9 +83,20 @@ export function BuilderPreviewPanel({
   onGoLive,
 }: BuilderPreviewPanelProps) {
   const [focusedIdx, setFocusedIdx] = useState<number>(0);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
 
   const focusedSlide = item.slides[focusedIdx] ?? item.slides[0] ?? null;
   const bodyStyle = focusedSlide ? getBodyStyle(focusedSlide) : {};
+
+  // Stable refs so debounced callback always sees latest values without recreating
+  const focusedSlideRef = useRef(focusedSlide);
+  const itemRef = useRef(item);
+  const focusedIdxRef = useRef(focusedIdx);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  focusedSlideRef.current = focusedSlide;
+  itemRef.current = item;
+  focusedIdxRef.current = focusedIdx;
 
   // Quick-add a blank slide inline (stays in Builder, no modal)
   const handleQuickAddSlide = useCallback(() => {
@@ -92,11 +110,18 @@ export function BuilderPreviewPanel({
     setFocusedIdx(item.slides.length);
   }, [item, onUpdate]);
 
+  // Debounced — thumbnails only re-render 200ms after typing stops, not on every keystroke
   const handleContentChange = useCallback((html: string) => {
-    if (!focusedSlide) return;
-    const updated = applyContentChange(focusedSlide, html);
-    onUpdate({ ...item, slides: item.slides.map((s, i) => i === focusedIdx ? updated : s) });
-  }, [focusedSlide, focusedIdx, item, onUpdate]);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      const slide = focusedSlideRef.current;
+      const cur = itemRef.current;
+      const idx = focusedIdxRef.current;
+      if (!slide) return;
+      const updated = applyContentChange(slide, html);
+      onUpdate({ ...cur, slides: cur.slides.map((s, i) => i === idx ? updated : s) });
+    }, 200);
+  }, [onUpdate]);
 
   const applyStyle = useCallback((patch: Partial<TextElementStyle>) => {
     if (!focusedSlide) return;
@@ -106,6 +131,18 @@ export function BuilderPreviewPanel({
 
   const setAlign = (a: 'left' | 'center' | 'right') => applyStyle({ textAlign: a });
   const align = (bodyStyle.textAlign ?? 'center') as 'left' | 'center' | 'right';
+
+  // Focus textarea when notes panel opens
+  useEffect(() => {
+    if (notesOpen && notesRef.current) {
+      notesRef.current.focus();
+    }
+  }, [notesOpen]);
+
+  // Reset notes panel when switching slides
+  useEffect(() => {
+    setNotesOpen(false);
+  }, [focusedSlide?.id]);
 
   return (
     <div className="flex-1 flex overflow-hidden min-w-0">
@@ -238,28 +275,74 @@ export function BuilderPreviewPanel({
               />
             </div>
 
-            {/* Divider */}
-            <div className="border-t border-zinc-800/60" />
+            {/* Speaker Notes toggle */}
+            <div className="rounded-sm overflow-hidden border border-zinc-800/70">
+              <button
+                type="button"
+                onClick={() => setNotesOpen(o => !o)}
+                className={`w-full flex items-center gap-2 px-3 py-2 transition-colors ${
+                  notesOpen
+                    ? 'bg-amber-950/30 border-b border-amber-900/40'
+                    : 'bg-zinc-900/40 hover:bg-zinc-800/40'
+                }`}
+              >
+                {/* Mic / notes icon */}
+                <svg className={`w-3 h-3 shrink-0 transition-colors ${notesOpen ? 'text-amber-400' : 'text-zinc-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 1 3 3v8a3 3 0 0 1-6 0V4a3 3 0 0 1 3-3z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v4M8 23h8" />
+                </svg>
 
-            {/* Speaker Notes */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-600">
-                Speaker Notes
-              </label>
-              <textarea
-                className="w-full bg-zinc-900/60 border border-zinc-800 rounded-sm text-xs text-zinc-400 p-2.5 resize-none focus:outline-none focus:border-zinc-600 transition-colors leading-relaxed"
-                rows={4}
-                value={focusedSlide.notes ?? ''}
-                onChange={(e) => {
-                  onUpdate({
-                    ...item,
-                    slides: item.slides.map((s, i) =>
-                      i === focusedIdx ? { ...s, notes: e.target.value } : s
-                    ),
-                  });
-                }}
-                placeholder="Speaker notes — only visible to the operator on Stage view"
-              />
+                <span className={`text-[9px] font-black uppercase tracking-[0.22em] transition-colors ${notesOpen ? 'text-amber-400' : 'text-zinc-500'}`}>
+                  Speaker Notes
+                </span>
+
+                {/* Notes preview / dot indicator when collapsed */}
+                {!notesOpen && (
+                  <span className="flex-1 flex items-center gap-1.5 min-w-0 overflow-hidden">
+                    {focusedSlide.notes?.trim() ? (
+                      <>
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500/70 shrink-0" />
+                        <NotesPreview text={focusedSlide.notes} />
+                      </>
+                    ) : (
+                      <span className="text-[9px] text-zinc-700 italic">tap to add notes</span>
+                    )}
+                  </span>
+                )}
+
+                {/* Chevron */}
+                <svg
+                  className={`w-3 h-3 shrink-0 text-zinc-600 transition-transform ${notesOpen ? 'rotate-180' : ''}`}
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {notesOpen && (
+                <div className="bg-amber-950/10 p-2.5">
+                  <textarea
+                    ref={notesRef}
+                    className="w-full bg-zinc-900/70 border border-amber-900/30 rounded-sm text-xs text-zinc-300 p-2.5 resize-none focus:outline-none focus:border-amber-700/60 transition-colors leading-relaxed placeholder:text-zinc-600"
+                    rows={5}
+                    value={focusedSlide.notes ?? ''}
+                    onChange={(e) => {
+                      onUpdate({
+                        ...item,
+                        slides: item.slides.map((s, i) =>
+                          i === focusedIdx ? { ...s, notes: e.target.value } : s
+                        ),
+                      });
+                    }}
+                    placeholder="Write your speaker notes here — only visible to you on Stage view…"
+                  />
+                  {focusedSlide.notes?.trim() && (
+                    <div className="mt-1 text-right text-[9px] text-zinc-600 font-mono">
+                      {focusedSlide.notes.trim().split(/\s+/).length} words
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

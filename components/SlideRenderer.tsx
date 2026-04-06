@@ -805,6 +805,12 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
+  // Legacy text path: render HTML if the content contains markup (from rich-text editor)
+  const contentIsHtml = /<[a-zA-Z][^>]*>/.test(contentText);
+  const renderText = contentIsHtml
+    ? <span dangerouslySetInnerHTML={{ __html: contentText }} />
+    : contentText;
+
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
@@ -919,7 +925,7 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
               {/* Centered verse text */}
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", padding: `${CANVAS_H * 0.06}px ${CANVAS_W * 0.06}px ${CANVAS_H * 0.22}px` }}>
                 <div style={{ width: "100%", maxWidth: "92%", fontSize: textPx, lineHeight: 1.35, whiteSpace: "pre-wrap", wordBreak: "break-word", textAlign: "center", overflow: "hidden" }}>
-                  {contentText}
+                  {renderText}
                 </div>
               </div>
               {/* Ticker band at bottom */}
@@ -932,7 +938,7 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
                 )}
                 <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>
                   <div style={{ display: "inline-block", whiteSpace: "nowrap", animation: `lumina-ticker ${Math.max(12, contentText.length * 0.18)}s linear infinite`, fontSize: Math.round(CANVAS_H * 0.032), fontFamily: '"Georgia", "Times New Roman", serif', fontStyle: "italic", fontWeight: 400, color: "rgba(255,255,255,0.92)", textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
-                    {contentText}
+                    {renderText}
                   </div>
                 </div>
               </div>
@@ -975,7 +981,7 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
                         wordBreak: "break-word",
                       }}
                     >
-                      {contentText}
+                      {renderText}
                     </div>
                   </div>
                 </div>
@@ -1013,7 +1019,7 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
                           overflow: "hidden",
                         }}
                       >
-                        {contentText}
+                        {renderText}
                       </div>
                     </div>
                   ) : (
@@ -1029,7 +1035,7 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
                         overflow: "hidden",
                       }}
                     >
-                      {contentText}
+                      {renderText}
                     </div>
                   )}
                 </div>

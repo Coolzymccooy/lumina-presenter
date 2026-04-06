@@ -2190,6 +2190,23 @@ function App() {
     }
   }, [liveSessionId, workspaceId, user, reportSyncFailure, applySyncBackoff, resetSyncBackoff, buildSyncPausedMessage]);
 
+  // Strip inline data: URLs (e.g. SVG backgrounds on Bible slides) before syncing to server.
+  // These can be hundreds of KB each and cause PayloadTooLargeError.
+  const stripScheduleDataUrls = useCallback((items: any[]): any[] =>
+    items.map(item => ({
+      ...item,
+      slides: Array.isArray(item.slides)
+        ? item.slides.map((slide: any) => ({
+            ...slide,
+            backgroundUrl: typeof slide.backgroundUrl === 'string' && slide.backgroundUrl.startsWith('data:')
+              ? '' : slide.backgroundUrl,
+            mediaUrl: typeof slide.mediaUrl === 'string' && slide.mediaUrl.startsWith('data:')
+              ? '' : slide.mediaUrl,
+          }))
+        : item.slides,
+    }))
+  , []);
+
   const syncLiveState = useCallback(async (payload: any) => {
     if (!user?.uid) return;
     if (!navigator.onLine) {
@@ -2787,7 +2804,7 @@ function App() {
     const updatedAt = Date.now();
     const settingsUpdatedAt = workspaceSettingsUpdatedAtRef.current || updatedAt;
     syncLiveState({
-      scheduleSnapshot: schedule,
+      scheduleSnapshot: stripScheduleDataUrls(schedule),
       scheduleSnapshotAt: updatedAt,
       workspaceSettings,
       workspaceSettingsUpdatedAt: settingsUpdatedAt,
@@ -2847,6 +2864,7 @@ function App() {
     user?.email,
     allowedAdminEmails,
     syncLiveState,
+    stripScheduleDataUrls,
     reportSyncFailure,
     cloudBootstrapComplete,
     cloudPlaylistId,
@@ -3848,7 +3866,7 @@ function App() {
   }, [blackout, routingMode]);
 
   const buildAetherStatePayload = useCallback((origin: 'auto' | 'manual') => {
-    const activeSlideContent = String(activeSlide?.content || '').replace(/\s+/g, ' ').trim();
+    const activeSlideContent = String(activeSlide?.content || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
     const activeSlidePreview = activeSlideContent.length > 220
       ? `${activeSlideContent.slice(0, 217)}...`
       : activeSlideContent;
@@ -6810,7 +6828,7 @@ function App() {
                       {activeItemId === item.id && activeSlideIndex === sIdx && <span className="text-[9px] uppercase tracking-widest text-red-600 font-bold">LIVE</span>}
                     </div>
                   </div>
-                  <div className="truncate opacity-70 mt-0.5 font-sans">{slide.content.substring(0, 40)}</div>
+                  <div className="truncate opacity-70 mt-0.5 font-sans">{slide.content.replace(/<[^>]*>/g, '').substring(0, 40)}</div>
                 </div>
               ))}
             </div>
