@@ -238,28 +238,24 @@ export function BuilderPreviewPanel({
               />
             </div>
 
-            {/* Notes field */}
-            {focusedSlide.notes !== undefined && (
-              <>
-                <label className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-600 shrink-0">
-                  Speaker Notes
-                </label>
-                <textarea
-                  className="w-full bg-zinc-900/60 border border-zinc-800 rounded-sm text-xs text-zinc-400 p-2 resize-none focus:outline-none focus:border-zinc-600 transition-colors leading-relaxed shrink-0"
-                  rows={3}
-                  value={focusedSlide.notes ?? ''}
-                  onChange={(e) => {
-                    onUpdate({
-                      ...item,
-                      slides: item.slides.map((s, i) =>
-                        i === focusedIdx ? { ...s, notes: e.target.value } : s
-                      ),
-                    });
-                  }}
-                  placeholder="Speaker notes (visible on stage display only)"
-                />
-              </>
-            )}
+            {/* Speaker Notes — always editable */}
+            <label className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-600 shrink-0">
+              Speaker Notes
+            </label>
+            <textarea
+              className="w-full bg-zinc-900/60 border border-zinc-800 rounded-sm text-xs text-zinc-400 p-2 resize-none focus:outline-none focus:border-zinc-600 transition-colors leading-relaxed shrink-0"
+              rows={3}
+              value={focusedSlide.notes ?? ''}
+              onChange={(e) => {
+                onUpdate({
+                  ...item,
+                  slides: item.slides.map((s, i) =>
+                    i === focusedIdx ? { ...s, notes: e.target.value } : s
+                  ),
+                });
+              }}
+              placeholder="Speaker notes — only visible to the operator on Stage view"
+            />
 
             {/* Action buttons row */}
             <div className="flex gap-1.5 shrink-0">
