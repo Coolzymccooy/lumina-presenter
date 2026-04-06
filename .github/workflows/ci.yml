@@ -29,6 +29,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Rebuild better-sqlite3 for system Node
+        # postinstall runs electron-rebuild which compiles better-sqlite3 against
+        # Electron's Node ABI. The server process runs on system Node, so we must
+        # recompile for the correct ABI before starting the server.
+        run: npm rebuild better-sqlite3
+
       - name: Install Playwright browser
         run: npm run test:e2e:install
 
@@ -66,6 +72,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Rebuild better-sqlite3 for system Node
+        run: npm rebuild better-sqlite3
 
       - name: Install Playwright browser
         run: npm run test:e2e:install
