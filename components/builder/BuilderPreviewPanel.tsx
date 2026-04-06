@@ -221,61 +221,66 @@ export function BuilderPreviewPanel({
             </div>
           </div>
 
-          {/* Inline text editor */}
-          <div className="flex-1 flex flex-col px-3 pb-3 min-h-0 gap-1.5">
-            <label className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-500 shrink-0">
-              Slide Content
-            </label>
-
-            <div className="flex-1 min-h-0 flex flex-col">
+          {/* Scrollable editor area */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-3 flex flex-col gap-3 min-h-0">
+            {/* Slide Content */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-500">
+                Slide Content
+              </label>
               <RichTextEditor
                 value={getEditorContent(focusedSlide)}
                 onChange={handleContentChange}
                 resetKey={focusedSlide.id}
                 align={align}
                 onAlignChange={setAlign}
-                contentClassName="flex-1 min-h-[80px]"
+                contentClassName="min-h-[100px] max-h-[200px] overflow-y-auto"
               />
             </div>
 
-            {/* Speaker Notes — always editable */}
-            <label className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-600 shrink-0">
-              Speaker Notes
-            </label>
-            <textarea
-              className="w-full bg-zinc-900/60 border border-zinc-800 rounded-sm text-xs text-zinc-400 p-2 resize-none focus:outline-none focus:border-zinc-600 transition-colors leading-relaxed shrink-0"
-              rows={3}
-              value={focusedSlide.notes ?? ''}
-              onChange={(e) => {
-                onUpdate({
-                  ...item,
-                  slides: item.slides.map((s, i) =>
-                    i === focusedIdx ? { ...s, notes: e.target.value } : s
-                  ),
-                });
-              }}
-              placeholder="Speaker notes — only visible to the operator on Stage view"
-            />
+            {/* Divider */}
+            <div className="border-t border-zinc-800/60" />
 
-            {/* Action buttons row */}
-            <div className="flex gap-1.5 shrink-0">
-              {onGoLive && (
-                <button
-                  onClick={() => onGoLive(item, focusedIdx)}
-                  className="flex-1 py-2 rounded-sm border border-emerald-700/60 bg-emerald-950/20 text-emerald-300 text-[10px] font-black tracking-widest hover:bg-emerald-950/40 hover:border-emerald-600 transition-colors flex items-center justify-center gap-1"
-                  title="Project this slide to the live output now"
-                >
-                  <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-                  PROJECT
-                </button>
-              )}
-              <button
-                onClick={() => onOpenSlideEditor(focusedSlide)}
-                className={`py-2 rounded-sm border border-zinc-700 text-zinc-400 text-[10px] font-black tracking-widest hover:text-white hover:border-zinc-500 transition-colors ${onGoLive ? 'flex-1' : 'w-full'}`}
-              >
-                FULL EDITOR
-              </button>
+            {/* Speaker Notes */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-600">
+                Speaker Notes
+              </label>
+              <textarea
+                className="w-full bg-zinc-900/60 border border-zinc-800 rounded-sm text-xs text-zinc-400 p-2.5 resize-none focus:outline-none focus:border-zinc-600 transition-colors leading-relaxed"
+                rows={4}
+                value={focusedSlide.notes ?? ''}
+                onChange={(e) => {
+                  onUpdate({
+                    ...item,
+                    slides: item.slides.map((s, i) =>
+                      i === focusedIdx ? { ...s, notes: e.target.value } : s
+                    ),
+                  });
+                }}
+                placeholder="Speaker notes — only visible to the operator on Stage view"
+              />
             </div>
+          </div>
+
+          {/* Action buttons — pinned at bottom */}
+          <div className="shrink-0 border-t border-zinc-800 px-3 py-2.5 flex gap-1.5">
+            {onGoLive && (
+              <button
+                onClick={() => onGoLive(item, focusedIdx)}
+                className="flex-1 py-2 rounded-sm border border-emerald-700/60 bg-emerald-950/20 text-emerald-300 text-[10px] font-black tracking-widest hover:bg-emerald-950/40 hover:border-emerald-600 transition-colors flex items-center justify-center gap-1"
+                title="Project this slide to the live output now"
+              >
+                <svg className="w-3 h-3 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                PROJECT
+              </button>
+            )}
+            <button
+              onClick={() => onOpenSlideEditor(focusedSlide)}
+              className={`py-2 rounded-sm border border-zinc-700 text-zinc-400 text-[10px] font-black tracking-widest hover:text-white hover:border-zinc-500 transition-colors ${onGoLive ? 'flex-1' : 'w-full'}`}
+            >
+              FULL EDITOR
+            </button>
           </div>
         </div>
       )}
