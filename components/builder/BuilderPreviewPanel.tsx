@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { SlideRenderer } from '../SlideRenderer';
+import { RichTextEditor } from '../RichTextEditor';
 import { hydrateLegacySlideElements } from '../slide-layout/utils/slideHydration';
 import type { ServiceItem, Slide, TextElementStyle } from '../../types';
 
@@ -53,6 +54,14 @@ function applyContentChange(slide: Slide, newContent: string): Slide {
 
 const makeSlideId = () => `slide-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
+/** Returns the HTML/text content to show in the editor for this slide */
+function getEditorContent(slide: Slide): string {
+  const bodyEl = slide.elements?.find(
+    el => el.type === 'text' && (el.role === 'body' || el.name === 'Body'),
+  );
+  return bodyEl?.content ?? slide.content ?? '';
+}
+
 export function BuilderPreviewPanel({
   item,
   onUpdate,
@@ -83,9 +92,9 @@ export function BuilderPreviewPanel({
     setFocusedIdx(item.slides.length);
   }, [item, onUpdate]);
 
-  const handleContentChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleContentChange = useCallback((html: string) => {
     if (!focusedSlide) return;
-    const updated = applyContentChange(focusedSlide, e.target.value);
+    const updated = applyContentChange(focusedSlide, html);
     onUpdate({ ...item, slides: item.slides.map((s, i) => i === focusedIdx ? updated : s) });
   }, [focusedSlide, focusedIdx, item, onUpdate]);
 
@@ -95,15 +104,8 @@ export function BuilderPreviewPanel({
     onUpdate({ ...item, slides: item.slides.map((s, i) => i === focusedIdx ? updated : s) });
   }, [focusedSlide, focusedIdx, item, onUpdate]);
 
-  const toggleBold = () => applyStyle({ fontWeight: Number(bodyStyle.fontWeight ?? 700) >= 700 ? 400 : 700 });
-  const toggleItalic = () => applyStyle({ fontStyle: bodyStyle.fontStyle === 'italic' ? 'normal' : 'italic' });
-  const toggleUnderline = () => applyStyle({ textDecoration: bodyStyle.textDecoration === 'underline' ? 'none' : 'underline' });
-  const setAlign = (align: 'left' | 'center' | 'right') => applyStyle({ textAlign: align });
-
-  const isBold = Number(bodyStyle.fontWeight ?? 700) >= 700;
-  const isItalic = bodyStyle.fontStyle === 'italic';
-  const isUnderline = bodyStyle.textDecoration === 'underline';
-  const align = bodyStyle.textAlign ?? 'center';
+  const setAlign = (a: 'left' | 'center' | 'right') => applyStyle({ textAlign: a });
+  const align = (bodyStyle.textAlign ?? 'center') as 'left' | 'center' | 'right';
 
   return (
     <div className="flex-1 flex overflow-hidden min-w-0">
@@ -221,54 +223,20 @@ export function BuilderPreviewPanel({
 
           {/* Inline text editor */}
           <div className="flex-1 flex flex-col px-3 pb-3 min-h-0 gap-1.5">
-            {/* Label + formatting toolbar on one row */}
-            <div className="flex items-center justify-between shrink-0">
-              <label className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-500">
-                Slide Content
-              </label>
-              {/* Compact formatting toolbar */}
-              <div className="flex items-center gap-px bg-zinc-900 border border-zinc-800 rounded p-0.5 shrink-0">
-                <button type="button" onClick={toggleBold} title="Bold"
-                  className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-black transition-colors ${isBold ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'}`}>
-                  B
-                </button>
-                <button type="button" onClick={toggleItalic} title="Italic"
-                  className={`w-5 h-5 rounded flex items-center justify-center text-[10px] italic font-semibold transition-colors ${isItalic ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'}`}>
-                  I
-                </button>
-                <button type="button" onClick={toggleUnderline} title="Underline"
-                  className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-semibold underline transition-colors ${isUnderline ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'}`}>
-                  U
-                </button>
-                <div className="w-px h-3.5 bg-zinc-700 mx-0.5" />
-                <button type="button" onClick={() => setAlign('left')} title="Align left"
-                  className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${align === 'left' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'}`}>
-                  <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
-                    <rect x="1" y="3" width="14" height="1.5" rx="0.5"/><rect x="1" y="7" width="9" height="1.5" rx="0.5"/><rect x="1" y="11" width="11" height="1.5" rx="0.5"/>
-                  </svg>
-                </button>
-                <button type="button" onClick={() => setAlign('center')} title="Align center"
-                  className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${align === 'center' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'}`}>
-                  <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
-                    <rect x="1" y="3" width="14" height="1.5" rx="0.5"/><rect x="3.5" y="7" width="9" height="1.5" rx="0.5"/><rect x="2.5" y="11" width="11" height="1.5" rx="0.5"/>
-                  </svg>
-                </button>
-                <button type="button" onClick={() => setAlign('right')} title="Align right"
-                  className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${align === 'right' ? 'bg-zinc-700 text-white' : 'text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800'}`}>
-                  <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
-                    <rect x="1" y="3" width="14" height="1.5" rx="0.5"/><rect x="6" y="7" width="9" height="1.5" rx="0.5"/><rect x="4" y="11" width="11" height="1.5" rx="0.5"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
+            <label className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-500 shrink-0">
+              Slide Content
+            </label>
 
-            <textarea
-              className="flex-1 w-full bg-zinc-900 border border-zinc-700 rounded-sm text-sm text-zinc-100 p-3 resize-none focus:outline-none focus:border-blue-500 transition-colors custom-scrollbar leading-relaxed min-h-[80px]"
-              value={focusedSlide.content}
-              onChange={handleContentChange}
-              placeholder="Type slide content here..."
-              spellCheck={false}
-            />
+            <div className="flex-1 min-h-0 flex flex-col">
+              <RichTextEditor
+                value={getEditorContent(focusedSlide)}
+                onChange={handleContentChange}
+                resetKey={focusedSlide.id}
+                align={align}
+                onAlignChange={setAlign}
+                contentClassName="flex-1 min-h-[80px]"
+              />
+            </div>
 
             {/* Notes field */}
             {focusedSlide.notes !== undefined && (

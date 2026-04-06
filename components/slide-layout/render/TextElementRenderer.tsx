@@ -27,12 +27,14 @@ export const TextElementRenderer: React.FC<TextElementRendererProps> = ({ elemen
   const [renderScale, setRenderScale] = React.useState(1);
   const [fittedFontSize, setFittedFontSize] = React.useState(baseFontSize);
   const listStyleType = style.listStyleType || 'none';
-  const listItems = String(element.content || '')
+  const contentStr = String(element.content || '');
+  const isHtmlContent = /<[a-zA-Z][^>]*>/.test(contentStr);
+  const listItems = contentStr
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean)
     .map((line) => line.replace(/^([•*\-]\s+|\d+[.)]\s+)/, ''));
-  const isList = listStyleType !== 'none' && listItems.length > 0;
+  const isList = !isHtmlContent && listStyleType !== 'none' && listItems.length > 0;
   const justifyContent = style.verticalAlign === 'top' ? 'flex-start' : style.verticalAlign === 'bottom' ? 'flex-end' : 'center';
   const styleSignature = [
     element.content,
@@ -217,6 +219,8 @@ export const TextElementRenderer: React.FC<TextElementRendererProps> = ({ elemen
               ))}
             </ul>
           )
+        ) : isHtmlContent ? (
+          <span dangerouslySetInnerHTML={{ __html: contentStr }} />
         ) : (
           element.content
         )}

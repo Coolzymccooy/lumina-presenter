@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Slide, MediaType } from '../types';
 import { DEFAULT_BACKGROUNDS, VIDEO_BACKGROUNDS, SOLID_COLORS } from '../constants';
 import { saveMedia, getMedia } from '../services/localMedia';
+import { RichTextEditor } from './RichTextEditor';
 import { uploadWorkspaceMedia, type ActorLike } from '../services/serverApi';
 
 interface SlideEditorModalProps {
@@ -312,14 +313,16 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
 
               <div>
                 <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-wider mb-1.5">Slide Content</label>
-                <textarea
-                  className="w-full h-40 min-h-[12rem] lg:h-[22rem] bg-zinc-900 border border-zinc-700 rounded-sm px-3 py-2 text-white focus:border-blue-600 focus:outline-none resize-none font-sans text-base leading-relaxed"
-                  placeholder="..."
+                <RichTextEditor
                   value={content}
-                  onChange={e => setContent(e.target.value)}
-                  maxLength={1000}
+                  onChange={setContent}
+                  resetKey={slide?.id ?? 'new'}
+                  placeholder="..."
+                  contentClassName="min-h-[10rem] lg:min-h-[18rem]"
                 />
-                <div className="text-[9px] text-zinc-600 text-right mt-1">{content.length}/1000</div>
+                <div className="text-[9px] text-zinc-600 text-right mt-1">
+                  {content.replace(/<[^>]+>/g, '').length}/1000
+                </div>
               </div>
             </div>
 
