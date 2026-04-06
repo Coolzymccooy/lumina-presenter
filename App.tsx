@@ -1573,6 +1573,7 @@ function App() {
   const [runSheetArchiveTitle, setRunSheetArchiveTitle] = useState('');
   const [archivedSermons, setArchivedSermons] = useState<ArchivedSermon[]>([]);
   const [archivedSermonsLoading, setArchivedSermonsLoading] = useState(false);
+  const [videoUrlDraft, setVideoUrlDraft] = useState('');
   const [draggedScheduleItemId, setDraggedScheduleItemId] = useState<string | null>(null);
   const [scheduleDropIndicator, setScheduleDropIndicator] = useState<{ itemId: string; after: boolean } | null>(null);
   const [draggedRunSheetSlide, setDraggedRunSheetSlide] = useState<{ itemId: string; slideId: string } | null>(null);
@@ -5610,6 +5611,40 @@ function App() {
     }
   };
 
+  const insertVideoUrlAsItem = () => {
+    const url = videoUrlDraft.trim();
+    if (!url) return;
+    const youtubeId = getYoutubeId(url);
+    const isVideo = youtubeId || looksLikeVideoUrl(url);
+    if (!youtubeId && !isVideo) return;
+    const now = Date.now();
+    const title = youtubeId ? `YouTube — ${youtubeId}` : (url.split('/').pop() || 'Video');
+    const mediaItem = finalizeGeneratedItemBackground({
+      id: `${now}-video-url-item`,
+      title,
+      type: ItemType.MEDIA,
+      slides: [{
+        id: `${now}-video-url-slide`,
+        label: 'Video',
+        content: '',
+        backgroundUrl: url,
+        mediaType: 'video',
+      }],
+      theme: {
+        backgroundUrl: url,
+        mediaType: 'video',
+        fontFamily: 'sans-serif',
+        textColor: '#ffffff',
+        shadow: false,
+        fontSize: 'medium',
+      },
+      metadata: { source: 'import' },
+    }, 'user');
+    addItem(mediaItem);
+    setSelectedItemId(mediaItem.id);
+    setVideoUrlDraft('');
+  };
+
   const importPowerPointVisualSlidesForSlideEditor = async (file: File): Promise<Slide[]> => {
     try {
       const visual = await buildVisualSlidesFromPptx(file);
@@ -7102,7 +7137,7 @@ function App() {
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
               <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">New Slide</div>
               <div className="mt-1.5 text-sm font-semibold text-white">Insert still or video</div>
-              <p className="mt-1.5 text-[10px] leading-4 text-zinc-500">Create a media slide from a local file or saved asset.</p>
+              <p className="mt-1.5 text-[10px] leading-4 text-zinc-500">Create a media slide from a local file, saved asset, or YouTube URL.</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   onClick={() => presenterMediaUploadInputRef.current?.click()}
@@ -7118,6 +7153,23 @@ function App() {
                   className="rounded-lg border border-cyan-800/50 bg-cyan-950/30 px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-cyan-200 hover:bg-cyan-950/50"
                 >
                   Library Asset
+                </button>
+              </div>
+              <div className="mt-3 flex gap-1.5">
+                <input
+                  type="url"
+                  value={videoUrlDraft}
+                  onChange={(e) => setVideoUrlDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') insertVideoUrlAsItem(); }}
+                  placeholder="Paste YouTube or video URL…"
+                  className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
+                />
+                <button
+                  onClick={insertVideoUrlAsItem}
+                  disabled={!videoUrlDraft.trim()}
+                  className="shrink-0 px-3 py-1.5 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black uppercase tracking-[0.14em] text-zinc-200 hover:border-zinc-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Add
                 </button>
               </div>
             </div>
