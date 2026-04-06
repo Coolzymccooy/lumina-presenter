@@ -21,10 +21,12 @@
     "test:e2e:smoke": "node scripts/run-e2e.mjs --grep @smoke",
     "test:e2e:headed": "node scripts/run-e2e.mjs --headed",
     "test:e2e:ui": "node scripts/run-e2e.mjs --ui",
-    "test:e2e:install": "playwright install chromium"
+    "test:e2e:install": "playwright install chromium",
+    "postinstall": "electron-rebuild -f -w @stagetimerio/grandiose,better-sqlite3"
   },
   "dependencies": {
     "@google/genai": "^1.33.0",
+    "@stagetimerio/grandiose": "^0.1.1",
     "better-sqlite3": "^12.6.2",
     "cors": "^2.8.6",
     "electron-updater": "^6.8.3",
@@ -39,6 +41,7 @@
     "react-player": "^3.4.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.7.1",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "^4.2.1",
     "@types/node": "^22.19.3",
@@ -58,6 +61,7 @@
   "build": {
     "appId": "com.luminapresenter.app",
     "productName": "Lumina Presenter",
+    "npmRebuild": true,
     "directories": {
       "output": "C:\\lumina-build"
     },
@@ -66,6 +70,10 @@
       "electron/**/*",
       "node_modules/**/*",
       "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/@stagetimerio/grandiose/dist/**",
+      "node_modules/better-sqlite3/**"
     ],
     "win": {
       "target": [

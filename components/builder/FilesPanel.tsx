@@ -65,6 +65,7 @@ export interface FilesPanelProps {
   onImportEasyWorship: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImportOpenSong: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onOpenLyricsImport: () => void;
+  onAddVideoUrl: (url: string) => void;
 }
 
 // ─── Date grouping ─────────────────────────────────────────────────────────────
@@ -288,9 +289,11 @@ export const FilesPanel: React.FC<FilesPanelProps> = ({
   onImportEasyWorship,
   onImportOpenSong,
   onOpenLyricsImport,
+  onAddVideoUrl,
 }) => {
   const [tab, setTab] = useState<Tab>('runsheets');
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [videoUrlDraft, setVideoUrlDraft] = useState('');
 
   const grouped = groupFiles(runSheetFiles);
 
@@ -547,6 +550,42 @@ export const FilesPanel: React.FC<FilesPanelProps> = ({
                 {importDeckStatus || 'Importing…'}
               </div>
             )}
+          </div>
+
+          {/* ── YouTube / Video URL ── */}
+          <div className="px-3 pt-1 pb-4">
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-2">Video URL</p>
+            <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
+              <p className="text-[9px] text-zinc-500 leading-relaxed mb-2.5">
+                Paste a YouTube link or direct video URL to add it as a media item in your run sheet.
+              </p>
+              <div className="flex gap-1.5">
+                <input
+                  type="url"
+                  value={videoUrlDraft}
+                  onChange={(e) => setVideoUrlDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && videoUrlDraft.trim()) {
+                      onAddVideoUrl(videoUrlDraft.trim());
+                      setVideoUrlDraft('');
+                    }
+                  }}
+                  placeholder="youtube.com/watch?v=… or video URL"
+                  className="flex-1 min-w-0 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
+                />
+                <button
+                  onClick={() => {
+                    if (!videoUrlDraft.trim()) return;
+                    onAddVideoUrl(videoUrlDraft.trim());
+                    setVideoUrlDraft('');
+                  }}
+                  disabled={!videoUrlDraft.trim()}
+                  className="shrink-0 px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-950 text-[9px] font-black uppercase tracking-[0.14em] text-zinc-200 hover:border-zinc-500 hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

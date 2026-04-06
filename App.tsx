@@ -1129,6 +1129,7 @@ function App() {
   const isElectronShell = !!window.electron?.isElectron;
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [userPlan, setUserPlan] = useState<string | null>(null);
   const [viewState, setViewState] = useState<'landing' | 'studio' | 'audience' | 'output' | 'stage' | 'remote'>(() => {
     const hash = window.location.hash;
     if (hash.startsWith('#/audience')) return 'audience';
@@ -1494,6 +1495,8 @@ function App() {
   const presenterMediaUploadInputRef = useRef<HTMLInputElement | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
   const [isStageDisplayLive, setIsStageDisplayLive] = useState(false);
+  const [ndiActive, setNdiActive] = useState(false);
+  const [ndiError, setNdiError] = useState<string | null>(null);
   const [lowerThirdsEnabled, setLowerThirdsEnabled] = useState(false);
   const [routingMode, setRoutingMode] = useState<'PROJECTOR' | 'STREAM' | 'LOBBY'>('PROJECTOR');
   const [teamPlaylists, setTeamPlaylists] = useState<CloudPlaylistRecord[]>([]);
@@ -2320,6 +2323,17 @@ function App() {
       const unsub = onAuthStateChanged(auth, (u) => {
         setUser(u);
         setAuthLoading(false);
+        if (u) {
+          // Fetch the user's subscription plan from the server
+          fetch('/api/payments/subscription', {
+            headers: { 'x-user-uid': u.uid, 'x-user-email': u.email ?? '' },
+          })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data?.ok) setUserPlan(data.subscription?.plan ?? 'free'); })
+            .catch(() => { /* keep plan as null = free */ });
+        } else {
+          setUserPlan(null);
+        }
         // Auto-enter workspace if authenticated, but stay in audience if scanning
         if (u) {
           setViewState(prev => prev === 'audience' ? 'audience' : 'studio');
@@ -3893,6 +3907,15 @@ function App() {
       offService?.();
     };
   }, [electronMachineApi, hasElectronDisplayControl, refreshDesktopDisplays]);
+
+  // Subscribe to NDI sender state pushed from main process.
+  useEffect(() => {
+    if (!isElectronShell) return;
+    const off = window.electron?.ndi?.onState?.((state: { active: boolean; sourceName: string }) => {
+      setNdiActive(state.active);
+    });
+    return () => off?.();
+  }, [isElectronShell]);
 
   useEffect(() => {
     if (!hasElectronDisplayControl) return;
@@ -6655,7 +6678,15 @@ function App() {
     if (isElectronShell) {
       return null;
     }
-    return <LandingPage onEnter={() => setViewState('studio')} onLogout={user ? handleLogout : undefined} isAuthenticated={!!user} hasSavedSession={hasSavedSession} />;
+    return <LandingPage
+      onEnter={() => setViewState('studio')}
+      onLogout={user ? handleLogout : undefined}
+      isAuthenticated={!!user}
+      hasSavedSession={hasSavedSession}
+      user={user ? { uid: user.uid, email: user.email } : null}
+      userPlan={userPlan}
+      onPlanActivated={(plan) => setUserPlan(plan)}
+    />;
   }
 
   // ROUTING: AUDIENCE SUBMISSION PAGE
@@ -8297,6 +8328,36 @@ function App() {
                         <button onClick={() => void copyShareUrl(obsOutputUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy OBS URL</button>
                         <button onClick={() => void copyShareUrl(cleanFeedUrl, 'Clean feed URL copied!')} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-violet-300 hover:border-violet-600 transition-all uppercase tracking-wider" title="No branding or audience overlays — use for recording or streaming">Copy Clean Feed</button>
                         <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy Stage URL</button>
+                        {isElectronShell && hasElectronDisplayControl && (
+                          <button
+                            onClick={async () => {
+                              setNdiError(null);
+                              if (ndiActive) {
+                                await window.electron.ndi.stop();
+                              } else {
+                                const result = await window.electron.ndi.start({
+                                  sourceName: `Lumina \u2013 ${workspaceSettings.churchName || 'Presenter'}`,
+                                  workspaceId,
+                                  sessionId: liveSessionId,
+                                });
+                                if (!result.ok) setNdiError(result.error ?? 'NDI failed to start.');
+                              }
+                            }}
+                            title={ndiActive ? 'Stop NDI broadcast' : 'Broadcast slide output as an NDI source on the local network'}
+                            className={`h-9 px-3 rounded-lg border font-black text-[9px] tracking-wider uppercase transition-all ${ndiActive ? 'border-violet-500/70 bg-violet-950/50 text-violet-300 animate-pulse' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-violet-300 hover:border-violet-600'}`}
+                          >
+                            {ndiActive ? '● NDI LIVE' : 'Send NDI'}
+                          </button>
+                        )}
+                        {ndiError && (
+                          <span
+                            className="h-9 flex items-center px-3 rounded-lg border border-rose-700/60 bg-rose-950/30 text-[9px] font-bold text-rose-300 cursor-pointer"
+                            title="Click to dismiss"
+                            onClick={() => setNdiError(null)}
+                          >
+                            {ndiError}
+                          </span>
+                        )}
                         <button onClick={() => setBlackout(!blackout)} className={`h-9 px-5 rounded-lg border font-black text-[10px] tracking-widest uppercase active:scale-95 transition-all ml-auto shadow-lg ${blackout ? 'bg-zinc-900 text-red-400 border-red-600/80 animate-pulse shadow-red-950/20' : 'bg-red-600 border-red-500 text-white hover:bg-red-500 shadow-red-950/30'}`}>
                           {blackout ? 'Go Live' : 'BLACKOUT'}
                         </button>

@@ -80,7 +80,7 @@ export interface SlideMetadata {
 
 export interface ServiceItemMetadata {
   createdAt?: number;
-  source?: 'manual' | 'ai' | 'bible' | 'hymn-library' | 'import' | 'audience';
+  source?: 'manual' | 'ai' | 'bible' | 'hymn-library' | 'import' | 'audience' | 'video-url';
   backgroundSource?: ServiceItemBackgroundSource;
   backgroundFallbackUrl?: string;
   backgroundFallbackMediaType?: MediaType;
