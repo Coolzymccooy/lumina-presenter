@@ -55,63 +55,16 @@ const seedElectronShell = async (page: Page) => {
   });
 };
 
-const waitForStudioEntryStep = async (page: Page) => {
-  const startButton = page.getByRole('button', { name: /start your journey/i });
-  const emailInput = page.locator('input[type="email"]');
-  const runSheet = page.getByText('RUN SHEET');
-  try {
-    await Promise.race([
-      startButton.waitFor({ state: 'visible', timeout: 8000 }),
-      emailInput.waitFor({ state: 'visible', timeout: 8000 }),
-      runSheet.waitFor({ state: 'visible', timeout: 8000 }),
-    ]);
-  } catch {
-    // fall through and let the next explicit locator surface the failure
-  }
-};
-
 const enterStudio = async (page: Page, key: string) => {
+  // Inject Electron shell so the auth gate is skipped (App.tsx bypasses the
+  // !user guard when window.electron.isElectron is true) and viewState starts
+  // as 'studio' directly without going through the LandingPage.
+  await page.addInitScript(() => {
+    (window as any).electron = { isElectron: true };
+  });
+  void key; // key retained for call-site compatibility
   await page.goto('/');
-
-  await waitForStudioEntryStep(page);
-
-  if (await page.getByText('RUN SHEET').isVisible().catch(() => false)) {
-    return;
-  }
-
-  const resumeButton = page.getByRole('button', { name: /^Use in Browser$|^Resume Session$/i }).first();
-  if (await resumeButton.isVisible().catch(() => false)) {
-    await resumeButton.click();
-    await waitForStudioEntryStep(page);
-  }
-
-  const startButton = page.getByRole('button', { name: /start your journey/i });
-  if (await startButton.isVisible().catch(() => false)) {
-    await startButton.first().click();
-    await waitForStudioEntryStep(page);
-  }
-
-  if (await page.getByText('RUN SHEET').isVisible().catch(() => false)) {
-    return;
-  }
-
-  const email = `playwright-${key}@lumina-e2e.local`;
-  const password = 'LuminaE2E!234';
-
-  if (await page.getByText(/no account\? initialize setup/i).isVisible()) {
-    await page.getByText(/no account\? initialize setup/i).click();
-  }
-
-  await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(password);
-  await page.getByRole('button', { name: /create account/i }).click();
-
-  await waitForStudioEntryStep(page);
-
-  if (await startButton.isVisible().catch(() => false)) {
-    await startButton.first().click();
-  }
-  await expect(page.getByText('RUN SHEET')).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('[data-testid="runsheet-list"]')).toBeVisible({ timeout: 30_000 });
 };
 
 test('uploaded local PNG renders as an image in builder', async ({ page }) => {

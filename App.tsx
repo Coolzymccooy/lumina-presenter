@@ -6771,7 +6771,8 @@ function App() {
   }
 
   // ROUTING: LOGIN (If not authenticated, force login for studio)
-  if (!user && viewState === 'studio') {
+  // @ts-ignore
+  if (!user && viewState === 'studio' && !window.electron?.isElectron) {
     if (showOnboarding) {
       return (
         <WelcomeAnimation
