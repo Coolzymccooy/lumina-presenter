@@ -723,9 +723,9 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.maximize();
     mainWindow.show();
-    // Check for updates on launch
+    // Check for updates on launch — delay 20s to let network settle after startup
     if (isProd) {
-      void checkForUpdatesSafely();
+      setTimeout(() => void checkForUpdatesSafely(), 20_000);
       scheduleUpdateChecks();
     }
   });
