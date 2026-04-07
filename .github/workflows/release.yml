@@ -93,7 +93,7 @@ jobs:
         run: npm ci
 
       - name: Restore distutils for Python 3.12+
-        run: pip3 install setuptools
+        run: pip3 install --break-system-packages setuptools
 
       - name: Build macOS artifacts (unsigned)
         env:
