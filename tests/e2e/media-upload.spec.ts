@@ -427,10 +427,10 @@ test('workspace identity fields stay stable through blank hydration until explic
   await enterStudio(page, key);
 
   await page.getByTitle('SETTINGS').click();
-  await page.getByText('Studio Preferences').click();
+  await page.getByRole('heading', { name: 'Studio Preferences' }).click();
   await page.getByTestId('profile-settings-session-id').fill(customSession);
-  await page.getByText('Studio Preferences').click();
-  await page.getByText('Remote Intelligence').click();
+  await page.getByRole('heading', { name: 'Studio Preferences' }).click();
+  await page.getByRole('heading', { name: 'Remote Intelligence' }).click();
   await page.getByTestId('profile-settings-remote-admin-emails').fill(customEmails);
   await page.getByRole('button', { name: /save settings/i }).click();
 
@@ -441,16 +441,16 @@ test('workspace identity fields stay stable through blank hydration until explic
   await expect(page.getByTestId('studio-session-id')).toHaveText(customSession);
 
   await page.getByTitle('SETTINGS').click();
-  await page.getByText('Studio Preferences').click();
+  await page.getByRole('heading', { name: 'Studio Preferences' }).click();
   await expect(page.getByTestId('profile-settings-session-id')).toHaveValue(customSession);
-  await page.getByText('Studio Preferences').click();
-  await page.getByText('Remote Intelligence').click();
+  await page.getByRole('heading', { name: 'Studio Preferences' }).click();
+  await page.getByRole('heading', { name: 'Remote Intelligence' }).click();
   await expect(page.getByTestId('profile-settings-remote-admin-emails')).toHaveValue(customEmails);
 
-  await page.getByText('Studio Preferences').click();
+  await page.getByRole('heading', { name: 'Studio Preferences' }).click();
   await page.getByTestId('profile-settings-session-id').fill('live');
-  await page.getByText('Studio Preferences').click();
-  await page.getByText('Remote Intelligence').click();
+  await page.getByRole('heading', { name: 'Studio Preferences' }).click();
+  await page.getByRole('heading', { name: 'Remote Intelligence' }).click();
   await page.getByTestId('profile-settings-remote-admin-emails').fill('');
   await page.getByRole('button', { name: /save settings/i }).click();
 
@@ -461,10 +461,10 @@ test('workspace identity fields stay stable through blank hydration until explic
   await expect(page.getByTestId('studio-session-id')).toHaveText('live');
 
   await page.getByTitle('SETTINGS').click();
-  await page.getByText('Studio Preferences').click();
+  await page.getByRole('heading', { name: 'Studio Preferences' }).click();
   await expect(page.getByTestId('profile-settings-session-id')).toHaveValue('live');
-  await page.getByText('Studio Preferences').click();
-  await page.getByText('Remote Intelligence').click();
+  await page.getByRole('heading', { name: 'Studio Preferences' }).click();
+  await page.getByRole('heading', { name: 'Remote Intelligence' }).click();
   await expect(page.getByTestId('profile-settings-remote-admin-emails')).toHaveValue('');
 });
 
@@ -637,10 +637,9 @@ test('present mode can launch a queued item without tripping React hook order', 
       mediaType: 'image',
     },
   ]);
-  state.viewMode = 'PRESENTER';
-
   await seedState(page, state);
   await enterStudio(page, key);
+  await page.getByRole('button', { name: 'PRESENTER' }).click();
 
   await page.locator(`[data-testid="schedule-item-${itemId}"]`).click();
   await expect(page.getByRole('button', { name: /Welcome to service 1\. Intro/i })).toBeVisible();
@@ -677,7 +676,6 @@ test('present mode preserves runsheet scroll while hydration settles', async ({ 
   const state = {
     schedule,
     selectedItemId: schedule[0].id,
-    viewMode: 'PRESENTER',
     activeItemId: schedule[0].id,
     activeSlideIndex: 0,
     blackout: false,
@@ -689,6 +687,7 @@ test('present mode preserves runsheet scroll while hydration settles', async ({ 
 
   await seedState(page, state);
   await enterStudio(page, key);
+  await page.getByRole('button', { name: 'PRESENTER' }).click();
 
   const runsheet = page.getByTestId('runsheet-list');
   const runsheetMetrics = await runsheet.evaluate((node) => ({
