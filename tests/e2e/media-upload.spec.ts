@@ -613,6 +613,7 @@ test('speaker timer studio stays open after save, drags freely, and leaves the s
 
 test('present mode can launch a queued item without tripping React hook order', async ({ page }) => {
   test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1536, height: 900 });
   const key = uniqueKey();
   const hookErrors: string[] = [];
   const captureHookError = (text: string) => {
@@ -649,7 +650,7 @@ test('present mode can launch a queued item without tripping React hook order', 
 
 test('present mode preserves runsheet scroll while hydration settles', async ({ page }) => {
   test.setTimeout(120_000);
-  await page.setViewportSize({ width: 1440, height: 800 });
+  await page.setViewportSize({ width: 1536, height: 900 });
   const key = uniqueKey();
   const schedule = Array.from({ length: 24 }, (_, idx) => ({
     id: `item-${key}-${idx}`,
