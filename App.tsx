@@ -6792,6 +6792,7 @@ function App() {
       {schedule.map((item, idx) => (
         <React.Fragment key={item.id}>
           <div
+            data-testid={`schedule-item-${item.id}`}
             draggable={viewMode === 'BUILDER'}
             onDragStart={(e) => {
               if (viewMode !== 'BUILDER') return;

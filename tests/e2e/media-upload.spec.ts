@@ -32,7 +32,7 @@ const buildBuilderState = (key: string, slides: Array<Record<string, unknown>> =
       ],
       selectedItemId: itemId,
       viewMode: 'BUILDER',
-      activeItemId: null,
+      activeItemId: null as string | null,
       activeSlideIndex: 0,
       blackout: false,
       isPlaying: true,
@@ -75,7 +75,7 @@ test('uploaded local PNG renders as an image in builder', async ({ page }) => {
   await seedState(page, state);
   await enterStudio(page, key);
 
-  await page.getByRole('button', { name: /add slide/i }).click();
+  await page.getByRole('button', { name: /full editor/i }).click();
   await expect(page.getByText('Add New Slide')).toBeVisible();
 
   await page.getByTestId('slide-editor-upload-input').setInputFiles({
@@ -106,7 +106,7 @@ test('multi-image upload inserts multiple image slides with labels', async ({ pa
   await seedState(page, state);
   await enterStudio(page, key);
 
-  await page.getByRole('button', { name: /add slide/i }).click();
+  await page.getByRole('button', { name: /full editor/i }).click();
   await expect(page.getByText('Add New Slide')).toBeVisible();
 
   await page.getByTestId('slide-editor-upload-input').setInputFiles([
@@ -440,7 +440,7 @@ test('workspace identity fields stay stable through blank hydration until explic
   await page.getByTestId('profile-settings-session-id').fill(customSession);
   await page.getByRole('heading', { name: 'Remote Intelligence' }).click();
   await page.getByTestId('profile-settings-remote-admin-emails').fill(customEmails);
-  await page.getByRole('button', { name: /synchronize workspace/i }).click();
+  await page.getByRole('button', { name: /save settings/i }).click();
 
   await expect(page.getByTestId('studio-session-id')).toHaveText(customSession);
 
@@ -458,7 +458,7 @@ test('workspace identity fields stay stable through blank hydration until explic
   await page.getByTestId('profile-settings-session-id').fill('live');
   await page.getByRole('heading', { name: 'Remote Intelligence' }).click();
   await page.getByTestId('profile-settings-remote-admin-emails').fill('');
-  await page.getByRole('button', { name: /synchronize workspace/i }).click();
+  await page.getByRole('button', { name: /save settings/i }).click();
 
   await expect(page.getByTestId('studio-session-id')).toHaveText('live');
 
@@ -633,7 +633,7 @@ test('present mode can launch a queued item without tripping React hook order', 
     }
   });
 
-  const { state } = buildBuilderState(key, [
+  const { state, itemId } = buildBuilderState(key, [
     {
       id: `slide-${key}`,
       label: 'Intro',
@@ -649,7 +649,7 @@ test('present mode can launch a queued item without tripping React hook order', 
   await page.getByRole('button', { name: 'PRESENT' }).click();
   await expect(page.getByText('Live Queue')).toBeVisible();
 
-  await page.getByText('Media Item').first().click();
+  await page.locator(`[data-testid="schedule-item-${itemId}"]`).click();
   await expect(page.getByRole('button', { name: /Welcome to service 1\. Intro/i })).toBeVisible();
   await expect(page.getByText('Something went wrong')).toHaveCount(0);
   expect(hookErrors).toEqual([]);
@@ -725,7 +725,7 @@ test('smart slide editor supports preset selection, typing into inspector, and s
   await seedState(page, state);
   await enterStudio(page, key);
 
-  await page.getByRole('button', { name: /add slide/i }).click();
+  await page.getByRole('button', { name: /full editor/i }).click();
   await expect(page.getByText('Smart Layout Slide Editor')).toBeVisible();
 
   await page.getByTestId('smart-preset-title-body').click();
@@ -763,7 +763,7 @@ test('smart slide editor supports multiple bullet points and numbered lists', as
   await seedState(page, state);
   await enterStudio(page, key);
 
-  await page.getByRole('button', { name: /add slide/i }).click();
+  await page.getByRole('button', { name: /full editor/i }).click();
   await expect(page.getByText('Smart Layout Slide Editor')).toBeVisible();
 
   await page.getByTestId('smart-preset-title-body').click();
@@ -791,7 +791,7 @@ test('smart slide editor keeps uploaded media slides free of auto text blocks', 
   await seedState(page, state);
   await enterStudio(page, key);
 
-  await page.getByRole('button', { name: /add slide/i }).click();
+  await page.getByRole('button', { name: /full editor/i }).click();
   await expect(page.getByText('Smart Layout Slide Editor')).toBeVisible();
 
   await page.getByTestId('slide-editor-upload-input').setInputFiles({
@@ -826,7 +826,7 @@ test('smart slide editor stacked layout keeps inspector visible and editable on 
   await seedState(page, state);
   await enterStudio(page, key);
 
-  await page.getByRole('button', { name: /add slide/i }).click();
+  await page.getByRole('button', { name: /full editor/i }).click();
   await expect(page.getByText('Smart Layout Slide Editor')).toBeVisible();
   await page.getByTestId('smart-preset-title-body').click();
   await expect(page.getByTestId('smart-slide-label')).toBeVisible();
