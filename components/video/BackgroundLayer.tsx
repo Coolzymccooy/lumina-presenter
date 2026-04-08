@@ -125,6 +125,12 @@ const CrossfadeBackground: React.FC<CrossfadeBackgroundProps> = ({
     if (url === prevUrlRef.current) return;
     prevUrlRef.current = url;
 
+    // Cancel any in-flight crossfade before starting a new one.
+    if (crossfadeTimeoutRef.current !== null) {
+      window.clearTimeout(crossfadeTimeoutRef.current);
+      crossfadeTimeoutRef.current = null;
+    }
+
     // Load new asset into the hidden slot, then crossfade
     const nextSlot: 0 | 1 = primarySlot === 0 ? 1 : 0;
     const nextState: SlotState = { url, mediaType, imageFit, youtubeId };

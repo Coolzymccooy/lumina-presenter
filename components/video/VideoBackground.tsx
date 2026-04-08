@@ -16,9 +16,12 @@ export interface VideoBackgroundProps {
  * Seamless-loop video background using a double-buffer technique.
  *
  * Two <video> elements (A and B) are stacked. Slot A plays first. ~0.5 s before
- * it ends, slot B seeks to 0, starts playing, and cross-fades in over 400 ms.
- * After the transition, slot A resets for the next cycle. This removes the
- * 1-3 frame black-flash caused by the browser seeking back to 0 with native `loop`.
+ * it ends, slot B seeks to 0, waits until it has a decoded frame ready
+ * (readyState >= HAVE_FUTURE_DATA), then cross-fades in over 400 ms.
+ * After the transition slot A resets for the next cycle.
+ *
+ * The canplay-gate in the swap logic prevents the brief blank that could appear
+ * if the secondary slot hadn't buffered its first frame before the fade began.
  *
  * State diagram (primarySlot):
  *   A plays (slot 0)  →  crossfade A→B  →  B plays (slot 1)
@@ -41,14 +44,22 @@ export const VideoBackground: React.FC<VideoBackgroundProps> = ({
   const videoBRef = useRef<HTMLVideoElement>(null);
   const swapPendingRef = useRef(false);
   const swapTimeoutRef = useRef<number | null>(null);
+  // Holds the canplay listener so it can be removed on cleanup.
+  const canplayCleanupRef = useRef<(() => void) | null>(null);
 
   // ── Reset when src changes ────────────────────────────────────────────────
   useEffect(() => {
     swapPendingRef.current = false;
+
     if (swapTimeoutRef.current !== null) {
       window.clearTimeout(swapTimeoutRef.current);
       swapTimeoutRef.current = null;
     }
+    if (canplayCleanupRef.current) {
+      canplayCleanupRef.current();
+      canplayCleanupRef.current = null;
+    }
+
     setIsCrossfading(false);
     setPrimarySlot(0);
 
@@ -72,18 +83,7 @@ export const VideoBackground: React.FC<VideoBackgroundProps> = ({
       return;
     }
 
-    const p = primary.play();
-    p?.catch((err: unknown) => {
-      if (
-        err instanceof Error &&
-        err.name === 'NotAllowedError' &&
-        primary &&
-        !primary.muted
-      ) {
-        primary.muted = true;
-        primary.play().catch(() => { /* ignore */ });
-      }
-    });
+    playWhenReady(primary);
   }, [isPlaying, active, muted, primarySlot, isThumbnail]);
 
   // ── Double-buffer swap ───────────────────────────────────────────────────
@@ -109,32 +109,38 @@ export const VideoBackground: React.FC<VideoBackgroundProps> = ({
 
       nextVideo.muted = muted;
       nextVideo.currentTime = 0;
-      setIsCrossfading(true);
 
-      const play = nextVideo.play();
-      play?.catch((err: unknown) => {
-        if (
-          err instanceof Error &&
-          err.name === 'NotAllowedError' &&
-          nextVideo &&
-          !nextVideo.muted
-        ) {
-          nextVideo.muted = true;
-          nextVideo.play().catch(() => { /* ignore */ });
-        }
-      });
+      // Only begin the visual crossfade once the secondary slot has a decoded
+      // frame ready. For local Electron assets this fires almost instantly
+      // (preload="auto" keeps the buffer hot). For network assets it prevents
+      // a blank frame appearing during the fade.
+      const beginCrossfade = () => {
+        canplayCleanupRef.current = null;
+        setIsCrossfading(true);
 
-      swapTimeoutRef.current = window.setTimeout(() => {
-        swapTimeoutRef.current = null;
-        const outgoing = primarySlot === 0 ? videoARef.current : videoBRef.current;
-        if (outgoing) {
-          outgoing.pause();
-          outgoing.currentTime = 0;
-        }
-        setPrimarySlot(nextSlot);
-        setIsCrossfading(false);
-        swapPendingRef.current = false;
-      }, 420);
+        playWhenReady(nextVideo, muted);
+
+        swapTimeoutRef.current = window.setTimeout(() => {
+          swapTimeoutRef.current = null;
+          const outgoing = primarySlot === 0 ? videoARef.current : videoBRef.current;
+          if (outgoing) {
+            outgoing.pause();
+            outgoing.currentTime = 0;
+          }
+          setPrimarySlot(nextSlot);
+          setIsCrossfading(false);
+          swapPendingRef.current = false;
+        }, 420);
+      };
+
+      if (nextVideo.readyState >= 3 /* HAVE_FUTURE_DATA */) {
+        beginCrossfade();
+      } else {
+        const onCanPlay = () => beginCrossfade();
+        nextVideo.addEventListener('canplay', onCanPlay, { once: true });
+        canplayCleanupRef.current = () =>
+          nextVideo.removeEventListener('canplay', onCanPlay);
+      }
     };
 
     primaryVideo.addEventListener('timeupdate', handleTimeUpdate);
@@ -143,11 +149,14 @@ export const VideoBackground: React.FC<VideoBackgroundProps> = ({
     };
   }, [primarySlot, isThumbnail, active, muted]);
 
-  // ── Cleanup pending timeout on unmount ───────────────────────────────────
+  // ── Cleanup on unmount ───────────────────────────────────────────────────
   useEffect(() => {
     return () => {
       if (swapTimeoutRef.current !== null) {
         window.clearTimeout(swapTimeoutRef.current);
+      }
+      if (canplayCleanupRef.current) {
+        canplayCleanupRef.current();
       }
     };
   }, []);
@@ -177,15 +186,15 @@ export const VideoBackground: React.FC<VideoBackgroundProps> = ({
   };
 
   // Opacity logic:
-  //   primary=0 (A active): A=1, B=0  →  during crossfade: A fades 1→0, B fades 0→1
-  //   primary=1 (B active): B=1, A=0  →  during crossfade: B fades 1→0, A fades 0→1
+  //   primary=0 (A active): A=1, B=0  →  during crossfade: A fades out, B fades in
+  //   primary=1 (B active): B=1, A=0  →  during crossfade: B fades out, A fades in
   const slotAOpacity: number = primarySlot === 0
-    ? (isCrossfading ? 0 : 1)  // A is outgoing: fade out
-    : (isCrossfading ? 1 : 0); // A is incoming: fade in
+    ? (isCrossfading ? 0 : 1)
+    : (isCrossfading ? 1 : 0);
 
   const slotBOpacity: number = primarySlot === 1
-    ? (isCrossfading ? 0 : 1)  // B is outgoing: fade out
-    : (isCrossfading ? 1 : 0); // B is incoming: fade in
+    ? (isCrossfading ? 0 : 1)
+    : (isCrossfading ? 1 : 0);
 
   const sharedStyle: React.CSSProperties = {
     position: 'absolute',
@@ -222,3 +231,33 @@ export const VideoBackground: React.FC<VideoBackgroundProps> = ({
     </div>
   );
 };
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Play a video element, auto-muting as a fallback if the browser blocks
+ * unmuted autoplay (should not happen in Electron but is a safe backstop).
+ */
+function playWhenReady(video: HTMLVideoElement, forceMuted?: boolean): void {
+  if (forceMuted !== undefined) video.muted = forceMuted;
+
+  const doPlay = () => {
+    const p = video.play();
+    p?.catch((err: unknown) => {
+      if (
+        err instanceof Error &&
+        err.name === 'NotAllowedError' &&
+        !video.muted
+      ) {
+        video.muted = true;
+        video.play().catch(() => { /* give up */ });
+      }
+    });
+  };
+
+  if (video.readyState >= 3 /* HAVE_FUTURE_DATA */) {
+    doPlay();
+  } else {
+    video.addEventListener('canplay', doPlay, { once: true });
+  }
+}
