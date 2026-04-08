@@ -6020,12 +6020,10 @@ function App() {
 
   const handleSaveCcliApiCredentials = async (
     licenseNumber: string,
-    clientId: string,
-    clientSecret: string,
   ): Promise<void> => {
     if (!workspaceId) throw new Error('No workspace loaded.');
     setCcliActor(user?.uid ?? workspaceId, user?.email ?? null);
-    await storeCcliCredentials(workspaceId, licenseNumber, clientId, clientSecret);
+    await storeCcliCredentials(workspaceId, licenseNumber);
     // Sentinel — actual secret lives only on the server.
     initCcliProvider(
       { licenseNumber: '', clientId: '', clientSecret: '', connectedAt: Date.now() },
@@ -8147,6 +8145,7 @@ function App() {
                 }}
                 isImportingDeck={isImportingDeck}
                 importDeckStatus={importDeckStatus}
+                importModalError={importModalError}
                 onImportProPresenter={importProPresenterAsItem}
                 onImportEasyWorship={importEasyWorshipAsItem}
                 onImportOpenSong={importOpenSongAsItem}

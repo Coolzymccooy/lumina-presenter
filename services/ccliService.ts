@@ -92,13 +92,11 @@ const authHeaders = async (extra: Record<string, string> = {}): Promise<Record<s
 export const storeCcliCredentials = async (
   workspaceId: string,
   licenseNumber: string,
-  clientId: string,
-  clientSecret: string,
 ): Promise<void> => {
   const resp = await fetch('/api/ccli/credentials', {
     method: 'POST',
     headers: await authHeaders(),
-    body: JSON.stringify({ workspaceId, licenseNumber, clientId, clientSecret }),
+    body: JSON.stringify({ workspaceId, licenseNumber }),
   });
   if (!resp.ok) {
     const data = await resp.json().catch(() => ({}));

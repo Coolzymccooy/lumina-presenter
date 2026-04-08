@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState } from '../services/firebase';
-import { fetchServerSessionState, fetchSessionConnections, getOrCreateConnectionClientId, heartbeatSessionConnection, saveServerSessionState, saveWorkspaceSettings } from '../services/serverApi';
+import { fetchServerSessionState, fetchSessionConnections, getOrCreateConnectionClientId, heartbeatSessionConnection, saveServerSessionState, saveWorkspaceSettings, submitAudienceMessage } from '../services/serverApi';
 import { AudienceDisplayState, ServiceItem, StageAlertLayout, StageAlertState, StageAutoAdvanceConfig, StageFlowLayout, StageMessageCategory, StageMessageCenterState, StageSttState, StageTimerFlashColor, StageTimerFlashState, StageTimerLayout } from '../types';
+import type { SermonSummary } from '../services/sermonSummaryService';
 import { HoldScreen } from './presenter/HoldScreen';
 import { LoginScreen } from './LoginScreen';
 import { StageDisplay } from './StageDisplay';
@@ -192,6 +193,7 @@ export const StageRoute: React.FC = () => {
   const [operatorCount, setOperatorCount] = useState(1);
   const [autoAdvance, setAutoAdvance] = useState<StageAutoAdvanceConfig>({ enabled: false, delaySeconds: 10 });
   const [showSttPanel, setShowSttPanel] = useState(false);
+  const [showSermonRecorder, setShowSermonRecorder] = useState(false);
   const [sttState, setSttState] = useState<StageSttState>({
     isRecording: false,
     transcript: '',
@@ -340,6 +342,33 @@ export const StageRoute: React.FC = () => {
     recognition.start();
     setSttState((prev) => ({ ...prev, isRecording: true, lastUpdatedAt: Date.now() }));
   }, [sttState.isRecording]);
+
+  // ── Sermon flash-to-screen handler ───────────────────────────────────────
+  const handleSermonFlashToScreen = useCallback(async (content: { transcript: string; summary?: SermonSummary }) => {
+    if (!workspaceId) return;
+    const lines: string[] = [];
+    if (content.summary) {
+      lines.push(`SERMON: ${content.summary.title}`);
+      lines.push(`THEME: ${content.summary.mainTheme}`);
+      lines.push('');
+      content.summary.keyPoints.forEach((p, i) => lines.push(`${i + 1}. ${p}`));
+      if (content.summary.callToAction) {
+        lines.push('');
+        lines.push(`ACTION: ${content.summary.callToAction}`);
+      }
+    } else {
+      lines.push(content.transcript);
+    }
+    try {
+      await submitAudienceMessage(workspaceId, {
+        category: 'testimony',
+        text: lines.join('\n'),
+        name: 'Sermon Recap',
+      });
+    } catch (err) {
+      console.warn('Stage: failed to flash sermon to screen', err);
+    }
+  }, [workspaceId]);
 
   // ── Keyboard shortcuts handler — Tier 2 ──────────────────────────────────
   useEffect(() => {
@@ -656,6 +685,9 @@ export const StageRoute: React.FC = () => {
       sttInterimText={sttState.interimText}
       onSttToggleRecording={handleSttToggleRecording}
       onSttClose={() => setShowSttPanel(false)}
+      showSermonRecorder={showSermonRecorder}
+      onSermonRecorderToggle={() => setShowSermonRecorder((v) => !v)}
+      onSermonFlashToScreen={handleSermonFlashToScreen}
     />
   );
 };

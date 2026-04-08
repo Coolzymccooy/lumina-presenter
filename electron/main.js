@@ -11,7 +11,7 @@ const DEV_SERVER_URL = process.env.ELECTRON_RENDERER_URL || 'http://localhost:51
 const SHOULD_OPEN_DEVTOOLS = process.env.LUMINA_OPEN_DEVTOOLS === '1';
 const RELEASES_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases';
 const TRUSTED_DEV_ORIGINS = new Set(['http://localhost:5173', 'http://127.0.0.1:5173']);
-const MEDIA_PERMISSIONS = new Set(['media', 'microphone', 'camera']);
+const MEDIA_PERMISSIONS = new Set(['media', 'microphone', 'camera', 'speech']);
 const UPDATE_CHECK_INTERVAL_MS = 1000 * 60 * 60 * 4;
 
 let mainWindowRef = null;
@@ -994,8 +994,17 @@ function verifyCriticalFiles() {
   return true;
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   if (!verifyCriticalFiles()) return;
+  // macOS requires explicit OS-level permission before getUserMedia can succeed.
+  // On Windows/Linux this is handled automatically by Chromium.
+  if (process.platform === 'darwin') {
+    const { systemPreferences } = await import('electron');
+    const micStatus = systemPreferences.getMediaAccessStatus('microphone');
+    if (micStatus !== 'granted') {
+      await systemPreferences.askForMediaAccess('microphone');
+    }
+  }
   installApplicationMenu();
   installMediaPermissionHandlers();
   installClipboardHandlers();

@@ -9,6 +9,8 @@ import { StageLyricsConfidence } from './stage/StageLyricsConfidence';
 import { StageAutoAdvance } from './stage/StageAutoAdvance';
 import { StageSttPanel } from './stage/StageSttPanel';
 import { StageOperatorBadge } from './stage/StageOperatorBadge';
+import { SermonRecorderPanel } from './SermonRecorderPanel';
+import type { SermonSummary } from '../services/sermonSummaryService';
 
 interface StageDisplayProps {
   currentSlide: Slide | null;
@@ -74,6 +76,14 @@ interface StageDisplayProps {
   onSttToggleRecording?: () => void;
   /** Close the STT panel */
   onSttClose?: () => void;
+  /** Whether the full sermon recorder panel is open */
+  showSermonRecorder?: boolean;
+  /** Toggle the sermon recorder panel open/closed */
+  onSermonRecorderToggle?: () => void;
+  /** Flash transcript/summary to the stage screen */
+  onSermonFlashToScreen?: (content: { transcript: string; summary?: SermonSummary }) => void;
+  /** Add sermon content to the run schedule */
+  onSermonAddToSchedule?: (text: string) => void;
 }
 
 const DEFAULT_LAYOUT: StageTimerLayout = {
@@ -248,6 +258,10 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
   sttInterimText = '',
   onSttToggleRecording,
   onSttClose,
+  showSermonRecorder = false,
+  onSermonRecorderToggle,
+  onSermonFlashToScreen,
+  onSermonAddToSchedule,
 }) => {
   const viewportOverride = useMemo<StageViewportOverride | null>(() => (
     embedded
@@ -879,6 +893,15 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
             >
               Keys
             </button>
+            {onSermonFlashToScreen && (
+              <button
+                onClick={() => onSermonRecorderToggle?.()}
+                className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border transition-colors ${showSermonRecorder ? 'border-red-600 text-red-300 bg-red-950/40' : 'border-zinc-700 text-zinc-400 hover:border-red-600 hover:text-red-400'}`}
+                title="Sermon recorder — record, transcribe & flash to screen"
+              >
+                {showSermonRecorder ? '● Rec' : 'Sermon'}
+              </button>
+            )}
           </div>
           {showAudienceBadge && (
             <div className="bg-blue-600/15 border border-blue-500/40 rounded-lg px-3 py-2 max-w-[260px] backdrop-blur-sm">
@@ -1345,7 +1368,7 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
         />
       )}
 
-      {/* Sermon recording / STT panel — Tier 3 */}
+      {/* Basic STT panel — Tier 3 */}
       {showSttPanel && !embedded && (
         <StageSttPanel
           isRecording={sttIsRecording}
@@ -1355,6 +1378,17 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
           onClose={() => onSttClose?.()}
           compact={compact}
         />
+      )}
+
+      {/* Full sermon recorder panel — MediaRecorder + live STT + Gemini transcription */}
+      {showSermonRecorder && !embedded && (
+        <div className="absolute top-4 right-4 z-50 w-96 max-h-[80vh] overflow-hidden rounded-2xl shadow-2xl">
+          <SermonRecorderPanel
+            onClose={() => onSermonRecorderToggle?.()}
+            onFlashToScreen={(content) => onSermonFlashToScreen?.(content)}
+            onAddToSchedule={onSermonAddToSchedule}
+          />
+        </div>
       )}
 
       <style>{`

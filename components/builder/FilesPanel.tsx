@@ -61,6 +61,7 @@ export interface FilesPanelProps {
   // Import
   isImportingDeck: boolean;
   importDeckStatus: string;
+  importModalError?: string | null;
   onImportProPresenter: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImportEasyWorship: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImportOpenSong: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -286,6 +287,7 @@ export const FilesPanel: React.FC<FilesPanelProps> = ({
   onDeleteSermon,
   isImportingDeck,
   importDeckStatus,
+  importModalError,
   onImportProPresenter,
   onImportEasyWorship,
   onImportOpenSong,
@@ -560,6 +562,11 @@ export const FilesPanel: React.FC<FilesPanelProps> = ({
               <div className="mt-1 text-[10px] text-cyan-300 border border-cyan-900/40 bg-cyan-950/20 rounded-xl px-3 py-2.5 leading-snug flex items-center gap-2">
                 <span className="animate-spin text-[12px]">⟳</span>
                 {importDeckStatus || 'Importing…'}
+              </div>
+            )}
+            {!isImportingDeck && importModalError && (
+              <div className="mt-1 text-[10px] text-red-400 border border-red-900/50 bg-red-950/20 rounded-xl px-3 py-2.5 leading-snug">
+                {importModalError}
               </div>
             )}
           </div>

@@ -145,6 +145,8 @@ export type TranscribeSermonChunkRequest = {
   audioBase64: string;
   mimeType: 'audio/webm' | 'audio/webm;codecs=opus' | 'audio/mp4';
   locale: 'en-GB' | 'en-US';
+  /** Church-specific accent hint for improved Gemini accuracy */
+  accentHint?: string;
   workspaceId?: string;
   sessionId?: string;
   clientId?: string;
@@ -225,7 +227,8 @@ export const transcribeSermonChunk = async (
 export const transcribeSermonAudio = async (
   audioBlob: Blob,
   mimeType: string,
-  locale: 'en-GB' | 'en-US'
+  locale: 'en-GB' | 'en-US',
+  accentHint?: string
 ): Promise<{ ok: true; transcript: string } | { ok: false; error: string }> => {
   const apiBase = getServerApiBaseUrl();
   const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('wav') ? 'wav' : 'webm';
@@ -233,6 +236,7 @@ export const transcribeSermonAudio = async (
   form.append('audio', audioBlob, `sermon.${ext}`);
   form.append('mimeType', mimeType);
   form.append('locale', locale);
+  form.append('accentHint', accentHint || 'standard');
   try {
     const res = await fetch(`${apiBase}/api/ai/transcribe-sermon-audio`, {
       method: 'POST',
