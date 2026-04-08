@@ -2282,14 +2282,16 @@ function App() {
   }, [user?.uid, user, workspaceId, liveSessionId, enqueueLiveState, applySyncBackoff, resetSyncBackoff, buildSyncPausedMessage]);
 
   const refreshRunSheetFiles = useCallback(async () => {
-    if (!workspaceId) {
+    // Wait for Firebase auth and workspace ID to resolve — workspaceId defaults to
+    // 'default-workspace' before auth completes, which could hit a foreign workspace
+    if (!workspaceId || !user?.uid) {
       setRunSheetFiles([]);
       return;
     }
     setRunSheetFilesLoading(true);
     setRunSheetFilesError(null);
     try {
-      const response = user?.uid ? await fetchRunSheetFiles(workspaceId, user) : null;
+      const response = await fetchRunSheetFiles(workspaceId, user);
       if (response?.ok && Array.isArray(response.files)) {
         const next = response.files as RunSheetFileRecord[];
         setRunSheetFiles(next);
@@ -2297,8 +2299,9 @@ function App() {
       } else {
         const localFiles = readLocalRunSheetFiles(workspaceId);
         setRunSheetFiles(localFiles);
-        if (!localFiles.length && user?.uid) {
-          setRunSheetFilesError(`Archive API unavailable at ${getServerApiBaseUrl()} (server offline or auth missing). Using local backup.`);
+        if (!localFiles.length) {
+          const statusHint = (response as any)?.status ? ` (HTTP ${(response as any).status})` : '';
+          setRunSheetFilesError(`Archive API unavailable at ${getServerApiBaseUrl()}${statusHint}. Using local backup.`);
         }
       }
     } catch (error) {

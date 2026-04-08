@@ -284,34 +284,37 @@ async function createManagedRoleWindow(kind, displayId, payload = {}) {
   const targetDisplay = findDisplayById(displayId) || screen.getPrimaryDisplay();
   const displayBounds = targetDisplay?.bounds || targetDisplay?.workArea || { x: 0, y: 0, width: 1280, height: 720 };
 
-  // Windowed (NDI/stream capture) mode: 1920×1080 window placed just off the right edge of the
-  // display. This keeps the window fully rendered by the GPU (so capturePage() works) without
-  // covering the user's workspace or triggering Windows shell snap/maximize behaviour.
+  // Windowed (NDI/stream capture) mode: offscreen rendering is used, so the position doesn't
+  // affect compositing. We still set 1920×1080 so the page layout matches the NDI output size.
   const bounds = isWindowed
-    ? { x: displayBounds.x + displayBounds.width, y: displayBounds.y, width: 1920, height: 1080 }
+    ? { x: displayBounds.x, y: displayBounds.y, width: 1920, height: 1080 }
     : displayBounds;
 
   const isAudience = kind === 'audience';
   let targetWindow = isAudience ? outputWindowRef : stageWindowRef;
 
   if (!targetWindow || targetWindow.isDestroyed()) {
+    // Windowed/NDI mode uses offscreen rendering so capturePage() works regardless
+    // of window position or GPU compositing state. Normal projector/stage windows
+    // use the regular on-screen pipeline.
     targetWindow = new BrowserWindow({
       x: bounds.x,
       y: bounds.y,
       width: bounds.width,
       height: bounds.height,
-      show: false,
+      show: !isWindowed,
       backgroundColor: '#000000',
       autoHideMenuBar: true,
       fullscreenable: !isWindowed,
       frame: false,
-      skipTaskbar: isWindowed ? false : true,
+      skipTaskbar: true,
       resizable: isWindowed,
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
         nodeIntegration: false,
         contextIsolation: true,
-        sandbox: true,
+        sandbox: !isWindowed,   // offscreen + sandbox conflicts in some Electron builds
+        offscreen: isWindowed,  // render to buffer — invisible, GPU-independent
       },
       title: isAudience ? 'Lumina Output (Projector)' : 'Lumina Stage Display',
     });
@@ -323,15 +326,16 @@ async function createManagedRoleWindow(kind, displayId, payload = {}) {
     }
   }
 
-  try {
-    if (targetWindow.isFullScreen()) {
-      targetWindow.setFullScreen(false);
+  if (!isWindowed) {
+    try {
+      if (targetWindow.isFullScreen()) {
+        targetWindow.setFullScreen(false);
+      }
+    } catch {
+      // ignore
     }
-  } catch {
-    // ignore
+    targetWindow.setBounds(bounds);
   }
-
-  targetWindow.setBounds(bounds);
   targetWindow.setMenuBarVisibility(false);
   await loadRendererRoute(targetWindow, isAudience ? 'output' : 'stage', {
     session: payload.sessionId || 'live',
@@ -342,16 +346,16 @@ async function createManagedRoleWindow(kind, displayId, payload = {}) {
   if (isAudience) {
     targetWindow.webContents.insertCSS('html,body,*{cursor:none !important;}').catch(() => {});
   }
-  try {
-    if (!targetWindow.isVisible()) {
-      targetWindow.show();
-    }
-    if (!isWindowed) {
+  if (!isWindowed) {
+    try {
+      if (!targetWindow.isVisible()) {
+        targetWindow.show();
+      }
       targetWindow.setFullScreen(true);
+      targetWindow.focus();
+    } catch {
+      // ignore
     }
-    targetWindow.focus();
-  } catch {
-    // ignore
   }
 
   machineServiceState = {
