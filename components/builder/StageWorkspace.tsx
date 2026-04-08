@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { SlideRenderer } from '../SlideRenderer';
+import { SermonRecorderPanel } from '../SermonRecorderPanel';
+import { submitAudienceMessage } from '../../services/serverApi';
+import type { SermonSummary } from '../../services/sermonSummaryService';
 import type { ServiceItem, Slide } from '../../types';
 
 interface StageWorkspaceProps {
@@ -9,6 +12,7 @@ interface StageWorkspaceProps {
   nextSlide: Slide | null;
   nextItem: ServiceItem | null;
   schedule: ServiceItem[];
+  workspaceId: string;
   isOutputLive: boolean;
   isStageDisplayLive: boolean;
   blackout: boolean;
@@ -37,6 +41,7 @@ export function StageWorkspace({
   nextSlide,
   nextItem,
   schedule,
+  workspaceId,
   isOutputLive,
   isStageDisplayLive,
   blackout,
@@ -60,8 +65,36 @@ export function StageWorkspace({
   const currentItemIdx = schedule.findIndex(i => i.id === activeItem?.id);
   const upcomingItems = schedule.slice(currentItemIdx + 1, currentItemIdx + 4);
 
+  const [showSermonRecorder, setShowSermonRecorder] = useState(false);
+
+  const handleSermonFlashToScreen = useCallback(async (content: { transcript: string; summary?: SermonSummary }) => {
+    if (!workspaceId) return;
+    const lines: string[] = [];
+    if (content.summary) {
+      lines.push(`SERMON: ${content.summary.title}`);
+      lines.push(`THEME: ${content.summary.mainTheme}`);
+      lines.push('');
+      content.summary.keyPoints.forEach((p, i) => lines.push(`${i + 1}. ${p}`));
+      if (content.summary.callToAction) {
+        lines.push('');
+        lines.push(`ACTION: ${content.summary.callToAction}`);
+      }
+    } else {
+      lines.push(content.transcript);
+    }
+    try {
+      await submitAudienceMessage(workspaceId, {
+        category: 'testimony',
+        text: lines.join('\n'),
+        name: 'Sermon Recap',
+      });
+    } catch {
+      // non-fatal — sermon can still be viewed in the panel
+    }
+  }, [workspaceId]);
+
   return (
-    <div className="flex-1 flex bg-zinc-950 min-w-0 overflow-hidden">
+    <div className="flex-1 flex bg-zinc-950 min-w-0 overflow-hidden relative">
 
       {/* LEFT: Stage info panel */}
       <div className="w-72 shrink-0 border-r border-zinc-800 flex flex-col">
@@ -70,6 +103,17 @@ export function StageWorkspace({
         <div className="px-3 py-2.5 border-b border-zinc-800 flex items-center justify-between">
           <span className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-500">STAGE VIEW</span>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowSermonRecorder(v => !v)}
+              className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border transition-colors ${
+                showSermonRecorder
+                  ? 'border-red-600 text-red-300 bg-red-950/40'
+                  : 'border-zinc-700 text-zinc-400 hover:border-red-600 hover:text-red-400'
+              }`}
+              title="Sermon recorder — record, transcribe & flash to screen"
+            >
+              {showSermonRecorder ? '● Rec' : 'Sermon'}
+            </button>
             <div className={`w-1.5 h-1.5 rounded-full ${isOutputLive ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`} />
             <span className={`text-[9px] font-black tracking-widest ${isOutputLive ? 'text-emerald-400' : 'text-zinc-600'}`}>
               {isOutputLive ? 'OUTPUT ON' : 'OUTPUT OFF'}
@@ -320,6 +364,16 @@ export function StageWorkspace({
           </div>
         </div>
       </div>
+
+      {/* Sermon recorder panel — floats top-right over the centre area */}
+      {showSermonRecorder && (
+        <div className="absolute top-4 right-72 xl:right-80 z-50 w-96 max-h-[85vh] overflow-hidden rounded-2xl shadow-2xl">
+          <SermonRecorderPanel
+            onClose={() => setShowSermonRecorder(false)}
+            onFlashToScreen={handleSermonFlashToScreen}
+          />
+        </div>
+      )}
     </div>
   );
 }

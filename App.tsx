@@ -8283,6 +8283,7 @@ function App() {
         nextSlide={nextSlidePreview}
         nextItem={schedule[schedule.findIndex(i => i.id === activeItem?.id) + 1] || null}
         schedule={schedule}
+        workspaceId={workspaceId}
         isOutputLive={isOutputLive}
         isStageDisplayLive={isStageDisplayLive}
         blackout={blackout}
