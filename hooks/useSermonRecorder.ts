@@ -47,6 +47,10 @@ export interface SermonRecorderState {
   micLevel: number;
   /** Last error message if phase === 'error' */
   error: string | null;
+  /** Web Speech API status — 'idle' before start, 'active' when receiving results,
+   *  'unavailable' if the browser doesn't support it,
+   *  or an error code string (e.g. 'network', 'not-allowed') */
+  sttStatus: 'idle' | 'active' | 'unavailable' | string;
 }
 
 export interface SermonRecorderActions {
@@ -101,6 +105,7 @@ export const useSermonRecorder = (
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [micLevel, setMicLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [sttStatus, setSttStatus] = useState<SermonRecorderState['sttStatus']>('idle');
 
   // refs — stable across renders
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -142,7 +147,10 @@ export const useSermonRecorder = (
   // ── Web Speech API ───────────────────────────────────────────────────────
   const startSpeechRecognition = useCallback(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) return;
+    if (!SR) {
+      setSttStatus('unavailable');
+      return;
+    }
 
     const rec = new SR();
     rec.continuous = true;
@@ -151,6 +159,7 @@ export const useSermonRecorder = (
     rec.lang = locale;
 
     rec.onresult = (e: any) => {
+      setSttStatus('active');
       let interim = '';
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const text = e.results[i][0].transcript;
@@ -167,7 +176,13 @@ export const useSermonRecorder = (
       setInterimText(interim);
     };
 
-    rec.onerror = () => { /* non-fatal — mic captured separately */ };
+    rec.onerror = (e: any) => {
+      const code: string = e?.error || 'unknown';
+      // 'no-speech' is non-fatal and expected during pauses — don't surface it
+      if (code !== 'no-speech') {
+        setSttStatus(code);
+      }
+    };
     rec.onend = () => {
       // Auto-restart while still recording (browser kills after ~60s silence)
       if (speechRecRef.current === rec && phaseRef.current === 'recording') {
@@ -245,6 +260,7 @@ export const useSermonRecorder = (
   // ── Actions ──────────────────────────────────────────────────────────────
   const start = useCallback(async () => {
     setError(null);
+    setSttStatus('idle');
     setPhase('recording');
     setLiveTranscript('');
     setCloudTranscript('');
@@ -435,6 +451,7 @@ export const useSermonRecorder = (
     elapsedSeconds,
     micLevel,
     error,
+    sttStatus,
   };
 
   const actions: SermonRecorderActions = {

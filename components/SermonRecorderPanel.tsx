@@ -173,7 +173,15 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   }, []);
 
   const [recState, recActions] = useSermonRecorder({ locale, accentHint, audioDeviceId });
-  const { phase, liveTranscript, interimText, transcript, elapsedSeconds, micLevel, error } = recState;
+  const { phase, liveTranscript, interimText, transcript, elapsedSeconds, micLevel, error, sttStatus } = recState;
+
+  const sttWarning = (() => {
+    if (sttStatus === 'idle' || sttStatus === 'active') return null;
+    if (sttStatus === 'unavailable') return 'Live captions not supported in this browser. Audio is still being recorded — Gemini will transcribe on Stop.';
+    if (sttStatus === 'network') return 'Live captions need HTTPS. Audio is still being recorded — Gemini will transcribe on Stop.';
+    if (sttStatus === 'not-allowed' || sttStatus === 'service-not-allowed') return 'Speech recognition was blocked. Audio is still being recorded — Gemini will transcribe on Stop.';
+    return `Live captions unavailable (${sttStatus}). Audio is still being recorded — Gemini will transcribe on Stop.`;
+  })();
 
   const [editableTranscript, setEditableTranscript] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -399,8 +407,15 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
           </div>
         )}
 
+        {/* STT warning banner */}
+        {sttWarning && isActive && (
+          <div className="rounded-lg bg-amber-950/40 border border-amber-700/50 px-3 py-2 text-[10px] text-amber-300 leading-relaxed">
+            {sttWarning}
+          </div>
+        )}
+
         {/* Live transcript (during recording/paused) */}
-        {(isActive || phase === 'transcribing') && (
+        {(isActive || phase === 'transcribing') && !sttWarning && (
           <div
             ref={transcriptScrollRef}
             className="rounded-xl bg-zinc-900/60 border border-zinc-800 px-3 py-2.5 max-h-32 overflow-y-auto text-sm leading-relaxed"
