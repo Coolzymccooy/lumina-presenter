@@ -38,6 +38,7 @@ let ndiCaptureTimer = null;
 let ndiStatus = { active: false, sourceName: '' };
 let ndiDroppedFrames = 0;
 let ndiDropLogTimer = null;
+let ndiWindowRef = null;  // dedicated offscreen capture window — separate from projector
 const NDI_TARGET_FPS = 30;
 const NDI_FRAME_INTERVAL_MS = 1000 / NDI_TARGET_FPS;
 // ─────────────────────────────────────────────────────────────────────────────
@@ -184,13 +185,13 @@ function emitNdiState() {
 }
 
 async function ndiCaptureLoop() {
-  if (!ndiActive || !outputWindowRef || outputWindowRef.isDestroyed()) {
+  if (!ndiActive || !ndiWindowRef || ndiWindowRef.isDestroyed()) {
     ndiCaptureTimer = null;
     return;
   }
   const captureStart = Date.now();
   try {
-    const image = await outputWindowRef.webContents.capturePage();
+    const image = await ndiWindowRef.webContents.capturePage();
     const { width, height } = image.getSize();
 
     // Skip empty frames — capturePage() can return 0×0 if the window hasn't
@@ -502,51 +503,62 @@ function installMachineIpcHandlers() {
   // ── NDI outbound send ──────────────────────────────────────────────────────
   ipcMain.handle('ndi:start', async (_event, payload) => {
     try {
-      // Ensure the output window exists and is loaded with ndi=1 so the
-      // renderer suppresses audience-facing overlays (QR code, etc.).
-      // If a projector window is already open it was loaded without ndi=1,
-      // so reload it with the param before capturing.
-      if (!outputWindowRef || outputWindowRef.isDestroyed()) {
-        await createManagedRoleWindow('audience', 0, {
-          windowed: true,
-          workspaceId: payload?.workspaceId || 'default-workspace',
-          sessionId: payload?.sessionId || 'live',
-        });
-      } else {
-        // Reload the existing window with ndi=1 to suppress overlays.
-        await loadRendererRoute(outputWindowRef, 'output', {
-          session: payload?.sessionId || 'live',
-          workspace: payload?.workspaceId || 'default-workspace',
-          fullscreen: '1',
-          ndi: '1',
-        });
+      // Destroy any previous NDI capture window.
+      if (ndiWindowRef && !ndiWindowRef.isDestroyed()) {
+        ndiWindowRef.destroy();
+        ndiWindowRef = null;
       }
-      const bounds = outputWindowRef.getBounds();
+
+      // Always create a dedicated offscreen window for NDI capture.
+      // This is completely separate from the projector window so the user
+      // can have PROJECTION ON at the same time. Offscreen rendering means
+      // capturePage() reads from an in-memory buffer — GPU compositing,
+      // monitor bounds, and DWM state are irrelevant.
+      ndiWindowRef = new BrowserWindow({
+        width: 1920,
+        height: 1080,
+        show: false,
+        webPreferences: {
+          preload: path.join(__dirname, 'preload.js'),
+          nodeIntegration: false,
+          contextIsolation: true,
+          sandbox: false,
+          offscreen: true,
+          backgroundThrottling: false,
+        },
+      });
+
+      await loadRendererRoute(ndiWindowRef, 'output', {
+        session: payload?.sessionId || 'live',
+        workspace: payload?.workspaceId || 'default-workspace',
+        ndi: '1',
+      });
+
+      // Wait for the page to load and receive live state before starting capture.
+      await new Promise((resolve) => {
+        ndiWindowRef.webContents.once('did-finish-load', () => setTimeout(resolve, 2500));
+        // Fallback: resolve after 6s if did-finish-load never fires.
+        setTimeout(resolve, 6000);
+      });
+
+      if (!ndiWindowRef || ndiWindowRef.isDestroyed()) {
+        return { ok: false, error: 'NDI capture window closed before capture started.' };
+      }
+
       const result = await ndiSender.startNdiSend(
         payload?.sourceName || 'Lumina Presenter',
-        bounds.width,
-        bounds.height,
+        1920,
+        1080,
       );
       if (!result.ok) return result;
 
       ndiActive = true;
 
-      // Listen for window resize so we can restart the sender at the new res.
-      outputWindowRef.removeAllListeners('resize');
-      outputWindowRef.on('resize', () => {
-        if (!ndiActive) return;
-        const newBounds = outputWindowRef.getBounds();
-        ndiSender.startNdiSend(
-          ndiSender.getSourceName(),
-          newBounds.width,
-          newBounds.height,
-        ).catch((err) => console.warn('[NDI] resize restart failed:', err?.message));
-      });
-
-      // Stop NDI cleanly if the output window is closed while active.
-      outputWindowRef.once('closed', () => {
+      // Stop NDI cleanly if the capture window is closed.
+      ndiWindowRef.once('closed', () => {
         if (!ndiActive) return;
         ndiActive = false;
+        ndiWindowRef = null;
         if (ndiCaptureTimer) { clearTimeout(ndiCaptureTimer); ndiCaptureTimer = null; }
         if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
         ndiSender.stopNdiSend().catch(() => {});
@@ -566,6 +578,10 @@ function installMachineIpcHandlers() {
     if (ndiCaptureTimer) { clearTimeout(ndiCaptureTimer); ndiCaptureTimer = null; }
     if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
     ndiDroppedFrames = 0;
+    if (ndiWindowRef && !ndiWindowRef.isDestroyed()) {
+      ndiWindowRef.destroy();
+      ndiWindowRef = null;
+    }
     await ndiSender.stopNdiSend();
     emitNdiState();
     return { ok: true };
