@@ -34,13 +34,11 @@ let displayTestWindows = new Map();
 
 // ─── NDI outbound sender state ────────────────────────────────────────────────
 let ndiActive = false;
-let ndiCaptureTimer = null;
 let ndiStatus = { active: false, sourceName: '' };
 let ndiDroppedFrames = 0;
 let ndiDropLogTimer = null;
 let ndiWindowRef = null;  // dedicated offscreen capture window — separate from projector
 const NDI_TARGET_FPS = 30;
-const NDI_FRAME_INTERVAL_MS = 1000 / NDI_TARGET_FPS;
 // ─────────────────────────────────────────────────────────────────────────────
 
 let machineServiceState = {
@@ -184,57 +182,6 @@ function emitNdiState() {
   mainWindowRef.webContents.send('ndi:state', ndiStatus);
 }
 
-async function ndiCaptureLoop() {
-  if (!ndiActive || !ndiWindowRef || ndiWindowRef.isDestroyed()) {
-    ndiCaptureTimer = null;
-    return;
-  }
-  const captureStart = Date.now();
-  try {
-    const image = await ndiWindowRef.webContents.capturePage();
-    const { width, height } = image.getSize();
-
-    // Skip empty frames — capturePage() can return 0×0 if the window hasn't
-    // finished rendering yet. Passing a zero-size buffer to the NDI SDK throws.
-    if (width === 0 || height === 0) {
-      ndiDroppedFrames++;
-    } else {
-      // toBitmap() returns BGRA on Windows/Linux; RGBA on macOS.
-      const buffer = image.toBitmap();
-
-      if (process.platform === 'darwin') {
-        for (let i = 0; i < buffer.length; i += 4) {
-          const r = buffer[i];
-          buffer[i] = buffer[i + 2];
-          buffer[i + 2] = r;
-        }
-      }
-
-      await ndiSender.sendFrame(buffer, width, height);
-    }
-  } catch (err) {
-    ndiDroppedFrames++;
-    // Log the first few errors so we can diagnose persistent failures.
-    if (ndiDroppedFrames <= 3) {
-      console.error('[NDI] capture/send error:', err?.message || String(err));
-    }
-  }
-
-  // Log dropped frames every 10 seconds (non-blocking).
-  if (!ndiDropLogTimer) {
-    ndiDropLogTimer = setInterval(() => {
-      if (ndiDroppedFrames > 0) {
-        console.warn(`[NDI] Dropped ${ndiDroppedFrames} frames in last 10s`);
-        ndiDroppedFrames = 0;
-      }
-    }, 10000);
-  }
-
-  // Adaptive delay: subtract actual capture time to maintain target fps.
-  const elapsed = Date.now() - captureStart;
-  const nextDelay = Math.max(0, NDI_FRAME_INTERVAL_MS - elapsed);
-  ndiCaptureTimer = setTimeout(ndiCaptureLoop, nextDelay);
-}
 
 function emitMachineDisplaysChanged() {
   if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
@@ -511,9 +458,8 @@ function installMachineIpcHandlers() {
 
       // Always create a dedicated offscreen window for NDI capture.
       // This is completely separate from the projector window so the user
-      // can have PROJECTION ON at the same time. Offscreen rendering means
-      // capturePage() reads from an in-memory buffer — GPU compositing,
-      // monitor bounds, and DWM state are irrelevant.
+      // can have PROJECTION ON at the same time. Offscreen rendering delivers
+      // frames via the 'paint' event — no GPU framebuffer needed.
       ndiWindowRef = new BrowserWindow({
         width: 1920,
         height: 1080,
@@ -559,13 +505,49 @@ function installMachineIpcHandlers() {
         if (!ndiActive) return;
         ndiActive = false;
         ndiWindowRef = null;
-        if (ndiCaptureTimer) { clearTimeout(ndiCaptureTimer); ndiCaptureTimer = null; }
         if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
         ndiSender.stopNdiSend().catch(() => {});
         emitNdiState();
       });
 
-      void ndiCaptureLoop();
+      // Subscribe to paint events — the correct capture API for offscreen windows.
+      // capturePage() reads from the GPU framebuffer which doesn't exist for offscreen
+      // windows; paint events deliver rendered frames directly from the software renderer.
+      ndiWindowRef.webContents.setFrameRate(NDI_TARGET_FPS);
+      let ndiSending = false;
+      ndiWindowRef.webContents.on('paint', async (_paintEvent, _dirty, image) => {
+        if (!ndiActive) return;
+        if (ndiSending) { ndiDroppedFrames++; return; }
+        const { width, height } = image.getSize();
+        if (width === 0 || height === 0) { ndiDroppedFrames++; return; }
+        // toBitmap() returns BGRA on Windows/Linux; RGBA on macOS.
+        const buffer = image.toBitmap();
+        if (process.platform === 'darwin') {
+          for (let i = 0; i < buffer.length; i += 4) {
+            const r = buffer[i]; buffer[i] = buffer[i + 2]; buffer[i + 2] = r;
+          }
+        }
+        ndiSending = true;
+        try {
+          await ndiSender.sendFrame(buffer, width, height);
+        } catch (err) {
+          ndiDroppedFrames++;
+          if (ndiDroppedFrames <= 3) console.error('[NDI] send error:', err?.message || String(err));
+        } finally {
+          ndiSending = false;
+        }
+      });
+
+      // Log dropped frames every 10 seconds (non-blocking).
+      if (!ndiDropLogTimer) {
+        ndiDropLogTimer = setInterval(() => {
+          if (ndiDroppedFrames > 0) {
+            console.warn(`[NDI] Dropped ${ndiDroppedFrames} frames in last 10s`);
+            ndiDroppedFrames = 0;
+          }
+        }, 10000);
+      }
+
       emitNdiState();
       return { ok: true };
     } catch (err) {
@@ -575,7 +557,6 @@ function installMachineIpcHandlers() {
 
   ipcMain.handle('ndi:stop', async () => {
     ndiActive = false;
-    if (ndiCaptureTimer) { clearTimeout(ndiCaptureTimer); ndiCaptureTimer = null; }
     if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
     ndiDroppedFrames = 0;
     if (ndiWindowRef && !ndiWindowRef.isDestroyed()) {
