@@ -1,6 +1,7 @@
 import { PUBLIC_DOMAIN_HYMNS } from '../seed/publicDomainHymns.ts';
 import type { Hymn, HymnLibrarySourceKind } from '../types/hymns.ts';
 import { filterHymnsByCatalogRules, searchHymns, type HymnSearchOptions, type HymnSearchResult } from './hymnSearch.ts';
+import { ccliCatalogProvider } from './ccliCatalogProvider';
 
 export type HymnCatalogProviderAvailability = 'active' | 'dark' | 'disabled';
 
@@ -58,29 +59,6 @@ const createStaticCatalogProvider = (
   getById: (hymnId) => hymns.find((hymn) => hymn.id === hymnId) || null,
 });
 
-const createDarkLicensedCatalogProvider = (
-  id: string,
-  label: string,
-  providerId: string,
-  providerName: string,
-): HymnCatalogProvider => ({
-  id,
-  label,
-  sourceKinds: ['licensed'],
-  availability: 'dark',
-  isVisibleInLibrary: false,
-  providerId,
-  providerName,
-  capabilities: {
-    search: false,
-    hydration: false,
-    entitlementCheck: false,
-  },
-  listHymns: () => [],
-  search: () => [],
-  getById: () => null,
-});
-
 export const bundledHymnCatalogProvider = createStaticCatalogProvider(
   {
     id: 'lumina-bundled-hymns',
@@ -94,16 +72,9 @@ export const bundledHymnCatalogProvider = createStaticCatalogProvider(
   PUBLIC_DOMAIN_HYMNS,
 );
 
-export const darkLicensedHymnCatalogProvider = createDarkLicensedCatalogProvider(
-  'licensed-hymn-provider-dark',
-  'Licensed Hymn Provider',
-  'future-licensed-provider',
-  'Future Licensed Provider',
-);
-
 export const HYMN_CATALOG_PROVIDERS: HymnCatalogProvider[] = [
   bundledHymnCatalogProvider,
-  darkLicensedHymnCatalogProvider,
+  ccliCatalogProvider,
 ];
 
 export const listAllHymnCatalogProviders = () => [...HYMN_CATALOG_PROVIDERS];

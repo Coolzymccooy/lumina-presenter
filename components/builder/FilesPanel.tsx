@@ -64,6 +64,7 @@ export interface FilesPanelProps {
   onImportProPresenter: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImportEasyWorship: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onImportOpenSong: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onImportOpenLyrics: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onOpenLyricsImport: () => void;
   onAddVideoUrl: (url: string) => void;
 }
@@ -288,6 +289,7 @@ export const FilesPanel: React.FC<FilesPanelProps> = ({
   onImportProPresenter,
   onImportEasyWorship,
   onImportOpenSong,
+  onImportOpenLyrics,
   onOpenLyricsImport,
   onAddVideoUrl,
 }) => {
@@ -529,6 +531,16 @@ export const FilesPanel: React.FC<FilesPanelProps> = ({
               </div>
               <span className="text-zinc-700 text-[10px] group-hover:text-zinc-400 transition-colors">↑</span>
               <input type="file" accept=".ofs,.xml,.opensong" className="hidden" onChange={onImportOpenSong} disabled={isImportingDeck} />
+            </label>
+
+            <label className={`flex items-center gap-3 px-3 py-3 rounded-xl border bg-zinc-900/60 transition-colors group ${isImportingDeck ? 'opacity-50 cursor-not-allowed border-zinc-800' : 'border-zinc-800 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer'}`}>
+              <span className="w-8 h-8 rounded-lg flex items-center justify-center bg-green-900/60 border border-green-800/40 text-green-300 text-[9px] font-black shrink-0">OL</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white leading-tight">OpenLyrics</div>
+                <div className="text-[9px] text-zinc-500 mt-0.5">.xml · OpenLP · WorshipAssistant</div>
+              </div>
+              <span className="text-zinc-700 text-[10px] group-hover:text-zinc-400 transition-colors">↑</span>
+              <input type="file" accept=".xml" className="hidden" onChange={onImportOpenLyrics} disabled={isImportingDeck} />
             </label>
 
             <button

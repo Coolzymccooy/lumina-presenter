@@ -32,6 +32,7 @@
     "electron-updater": "^6.8.3",
     "express": "^5.2.1",
     "firebase": "^12.6.0",
+    "firebase-admin": "^13.0.2",
     "jszip": "^3.10.1",
     "lucide-react": "^0.563.0",
     "multer": "^2.1.1",
@@ -62,6 +63,8 @@
     "appId": "com.luminapresenter.app",
     "productName": "Lumina Presenter",
     "npmRebuild": true,
+    "asar": true,
+    "electronUpdaterCompatibility": ">=2.16",
     "directories": {
       "output": "C:\\lumina-build"
     },

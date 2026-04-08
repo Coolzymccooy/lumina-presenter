@@ -3,6 +3,12 @@ import { ServiceItem, Slide, StageAlertLayout, StageAlertState, StageFlowLayout,
 import { getCachedMedia, getMedia } from '../services/localMedia';
 import { SlideRenderer } from './SlideRenderer';
 import type { SlideBrandingConfig } from './SlideBrandingOverlay';
+import { StageRunOrderPanel } from './stage/StageRunOrderPanel';
+import { StageKeyboardOverlay } from './stage/StageKeyboardOverlay';
+import { StageLyricsConfidence } from './stage/StageLyricsConfidence';
+import { StageAutoAdvance } from './stage/StageAutoAdvance';
+import { StageSttPanel } from './stage/StageSttPanel';
+import { StageOperatorBadge } from './stage/StageOperatorBadge';
 
 interface StageDisplayProps {
   currentSlide: Slide | null;
@@ -32,6 +38,42 @@ interface StageDisplayProps {
   viewportHeight?: number;
   className?: string;
   branding?: SlideBrandingConfig;
+
+  // ── Tier 2 — Near-term additions ─────────────────────────────────────────
+  /** Full service schedule — enables click-to-go run order panel */
+  schedule?: ServiceItem[];
+  /** Currently active item id, used to highlight in run order */
+  activeItemId?: string | null;
+  /** Called when operator clicks an item in the run order */
+  onItemSelect?: (itemId: string) => void;
+  /** Called when operator triggers next slide (keyboard / auto-advance) */
+  onNextSlide?: () => void;
+  /** Called when operator triggers previous slide */
+  onPrevSlide?: () => void;
+
+  // ── Tier 3 — Power features ───────────────────────────────────────────────
+  /** Number of connected stage/controller clients for multi-operator badge */
+  operatorCount?: number;
+  /** Whether auto-advance is enabled */
+  autoAdvanceEnabled?: boolean;
+  /** Auto-advance delay in seconds */
+  autoAdvanceSec?: number;
+  /** Toggle auto-advance on/off */
+  onAutoAdvanceToggle?: () => void;
+  /** Change auto-advance delay */
+  onAutoAdvanceSecsChange?: (secs: number) => void;
+  /** Whether the STT sermon recording panel is open */
+  showSttPanel?: boolean;
+  /** Whether speech recognition is actively recording */
+  sttIsRecording?: boolean;
+  /** Committed transcript text */
+  sttTranscript?: string;
+  /** Interim (in-flight) transcript */
+  sttInterimText?: string;
+  /** Toggle STT recording on/off */
+  onSttToggleRecording?: () => void;
+  /** Close the STT panel */
+  onSttClose?: () => void;
 }
 
 const DEFAULT_LAYOUT: StageTimerLayout = {
@@ -188,6 +230,24 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
   viewportHeight,
   className = '',
   branding,
+  // Tier 2
+  schedule = [],
+  activeItemId = null,
+  onItemSelect,
+  onNextSlide,
+  onPrevSlide,
+  // Tier 3
+  operatorCount = 1,
+  autoAdvanceEnabled = false,
+  autoAdvanceSec = 10,
+  onAutoAdvanceToggle,
+  onAutoAdvanceSecsChange,
+  showSttPanel = false,
+  sttIsRecording = false,
+  sttTranscript = '',
+  sttInterimText = '',
+  onSttToggleRecording,
+  onSttClose,
 }) => {
   const viewportOverride = useMemo<StageViewportOverride | null>(() => (
     embedded
@@ -217,6 +277,9 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
   const [timerBounds, setTimerBounds] = useState<{ width: number; height: number }>({ width: layout.width, height: layout.height });
   const [alertBounds, setAlertBounds] = useState<{ width: number; height: number }>({ width: alertLayout.width, height: alertLayout.height });
   const [controlsMenuOpen, setControlsMenuOpen] = useState(false);
+  const [showRunOrder, setShowRunOrder] = useState(false);
+  const [showKeyboardOverlay, setShowKeyboardOverlay] = useState(false);
+  const [showAutoAdvanceWidget, setShowAutoAdvanceWidget] = useState(false);
   const getHostWindow = useCallback(() => (
     timerWidgetRef.current?.ownerDocument?.defaultView
     || (typeof window === 'undefined' ? null : window)
@@ -523,6 +586,10 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
   const compact = profile === 'compact';
   const highContrast = profile === 'high_contrast';
   const currentTitle = typeof activeItem?.title === 'string' && activeItem.title.trim() ? activeItem.title : 'Waiting for Service...';
+  // Item-level sermon outline notes (Tier 2)
+  const itemNotes = typeof activeItem?.metadata?.notes === 'string' ? activeItem.metadata.notes.trim() : '';
+  // Per-slide speaker notes (Tier 2)
+  const slideNotes = typeof currentSlide?.notes === 'string' ? currentSlide.notes.trim() : '';
   const currentText = typeof currentSlide?.content === 'string' && currentSlide.content.trim() ? currentSlide.content : '';
   const nextText = typeof nextSlide?.content === 'string' && nextSlide.content.trim() ? nextSlide.content : '';
   const currentTextIsHtml = /<[a-zA-Z][^>]*>/.test(currentText);
@@ -765,15 +832,53 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
       style={{ gridTemplateRows: flowGridRows }}
     >
       <div className="flex justify-between items-start border-b border-gray-800 pb-4 gap-6">
-        <h1 className={`${compact ? 'text-2xl' : 'text-4xl'} font-bold ${highContrast ? 'text-white' : 'text-gray-400'} truncate max-w-2xl`}>
-          {currentTitle}
-        </h1>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col gap-1.5 min-w-0">
+          <h1 className={`${compact ? 'text-2xl' : 'text-4xl'} font-bold ${highContrast ? 'text-white' : 'text-gray-400'} truncate max-w-2xl`}>
+            {currentTitle}
+          </h1>
+          {/* Item-level sermon outline notes — Tier 2 */}
+          {itemNotes && (
+            <div className={`${compact ? 'text-xs' : 'text-sm'} text-amber-300/70 leading-snug max-w-2xl`}
+              style={{ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2, overflow: 'hidden' }}
+              title={itemNotes}
+            >
+              <span className="text-[9px] uppercase tracking-widest font-black text-amber-500/60 mr-1.5">Outline</span>
+              {itemNotes}
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col items-end gap-2 shrink-0">
           <div className={`${compact ? 'text-4xl' : 'text-6xl'} font-mono font-bold text-yellow-500`}>
             {clockFormatter.format(time)}
           </div>
-          <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold border border-zinc-700/70 rounded px-2 py-0.5 bg-black/30">
-            Flow {flowBadgeLabel}
+          {/* Header control buttons — Tier 2 */}
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold border border-zinc-700/70 rounded px-2 py-0.5 bg-black/30">
+              Flow {flowBadgeLabel}
+            </div>
+            {/* Multi-operator badge — Tier 3 */}
+            <StageOperatorBadge operatorCount={operatorCount} />
+            <button
+              onClick={() => setShowRunOrder((v) => !v)}
+              className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border transition-colors ${showRunOrder ? 'border-zinc-300 text-white bg-zinc-800' : 'border-zinc-700 text-zinc-400 hover:border-zinc-400'}`}
+              title="Toggle run order (R)"
+            >
+              Order
+            </button>
+            <button
+              onClick={() => setShowAutoAdvanceWidget((v) => !v)}
+              className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border transition-colors ${showAutoAdvanceWidget ? (autoAdvanceEnabled ? 'border-green-600 text-green-400' : 'border-zinc-300 text-white bg-zinc-800') : 'border-zinc-700 text-zinc-400 hover:border-zinc-400'}`}
+              title="Toggle auto-advance widget (A)"
+            >
+              Auto
+            </button>
+            <button
+              onClick={() => setShowKeyboardOverlay((v) => !v)}
+              className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border border-zinc-700 text-zinc-400 hover:border-zinc-400 transition-colors"
+              title="Keyboard shortcuts (?)"
+            >
+              Keys
+            </button>
           </div>
           {showAudienceBadge && (
             <div className="bg-blue-600/15 border border-blue-500/40 rounded-lg px-3 py-2 max-w-[260px] backdrop-blur-sm">
@@ -818,6 +923,18 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
                   <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/25 bg-slate-950/80 px-4 py-2 shadow-[0_10px_35px_rgba(0,0,0,0.32)] backdrop-blur-md">
                     <span className="text-[10px] uppercase tracking-[0.22em] font-black text-cyan-300/80">Ref</span>
                     <span className="text-sm font-bold uppercase tracking-[0.08em] text-white/95">{currentReferenceLabel}</span>
+                  </div>
+                </div>
+              )}
+              {/* Per-slide speaker notes — Tier 2 */}
+              {slideNotes && (
+                <div className="mt-3 shrink-0">
+                  <div className="text-[9px] uppercase tracking-[0.2em] font-black text-zinc-500 mb-1">Speaker Notes</div>
+                  <div
+                    className={`${compact ? 'text-xs' : 'text-sm'} text-zinc-400 leading-snug`}
+                    style={{ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 3, overflow: 'hidden' }}
+                  >
+                    {slideNotes}
                   </div>
                 </div>
               )}
@@ -966,6 +1083,13 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
                 <div className="mt-2 text-[10px] uppercase tracking-wider text-blue-300 font-bold opacity-80">
                   {nextSlide?.label || (nextMediaUrl ? 'Visual Slide Preview' : 'End of Item')}
                 </div>
+              )}
+              {/* Lyrics confidence monitor — Tier 3: dim first line of the slide after next */}
+              {nextHasText && (
+                <StageLyricsConfidence
+                  nextSlideContent={nextText}
+                  compact={compact}
+                />
               )}
             </div>
           </div>
@@ -1189,6 +1313,48 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Run order panel — Tier 2: click-to-go */}
+      {showRunOrder && !embedded && (
+        <StageRunOrderPanel
+          schedule={schedule}
+          activeItemId={activeItemId}
+          onItemSelect={(id) => {
+            onItemSelect?.(id);
+            setShowRunOrder(false);
+          }}
+          onClose={() => setShowRunOrder(false)}
+        />
+      )}
+
+      {/* Keyboard shortcuts overlay — Tier 2 */}
+      {showKeyboardOverlay && !embedded && (
+        <StageKeyboardOverlay onClose={() => setShowKeyboardOverlay(false)} />
+      )}
+
+      {/* Auto-advance widget — Tier 3 */}
+      {showAutoAdvanceWidget && !embedded && onNextSlide && (
+        <StageAutoAdvance
+          enabled={autoAdvanceEnabled}
+          delaySec={autoAdvanceSec}
+          onToggle={() => onAutoAdvanceToggle?.()}
+          onDelayChange={(s) => onAutoAdvanceSecsChange?.(s)}
+          onAdvance={() => onNextSlide()}
+          compact={compact}
+        />
+      )}
+
+      {/* Sermon recording / STT panel — Tier 3 */}
+      {showSttPanel && !embedded && (
+        <StageSttPanel
+          isRecording={sttIsRecording}
+          transcript={sttTranscript}
+          interimText={sttInterimText}
+          onToggleRecording={() => onSttToggleRecording?.()}
+          onClose={() => onSttClose?.()}
+          compact={compact}
+        />
       )}
 
       <style>{`

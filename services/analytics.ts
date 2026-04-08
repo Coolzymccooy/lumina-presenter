@@ -15,9 +15,11 @@ export type EventType =
   | 'IMPORT_EASYWORSHIP'
   | 'IMPORT_PROPRESENTER'
   | 'IMPORT_OPENSONG'
+  | 'IMPORT_OPENLYRICS'
   | 'PRESENTATION_START'
   | 'SLIDE_CHANGE'
   | 'ADD_HYMN'
+  | 'CCLI_CREDENTIALS_SAVED'
   | 'ERROR';
 
 interface EventData {

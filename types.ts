@@ -89,6 +89,20 @@ export interface ServiceItemMetadata {
   backgroundCategory?: string;
   backgroundTitle?: string;
   hymn?: HymnGeneratedItemMetadata;
+  /** Item-level sermon outline / speaker notes, shown in Stage view above per-slide notes */
+  notes?: string;
+}
+
+export interface StageAutoAdvanceConfig {
+  enabled: boolean;
+  delaySeconds: number;
+}
+
+export interface StageSttState {
+  isRecording: boolean;
+  transcript: string;
+  interimText: string;
+  lastUpdatedAt: number;
 }
 
 export interface LayoutPreset {
