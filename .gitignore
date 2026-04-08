@@ -89,3 +89,4 @@ docker-storage/
 docker-data/
 
 .env
+secrets/
