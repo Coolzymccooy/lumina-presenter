@@ -6,6 +6,8 @@ import { ElementRenderer } from "./slide-layout/render/ElementRenderer";
 import { PROGRAM_MEDIA_PRESENTATION_FILTER, shouldShowScriptureReferenceLabel, shouldUseScriptureReadingPanel, TEXT_CONTRAST_BACKGROUND_OVERLAY } from "./slide-layout/render/backgroundTone";
 import { getRenderableElements } from "./slide-layout/utils/slideHydration";
 import { SlideBrandingOverlay, type SlideBrandingConfig } from "./SlideBrandingOverlay";
+import { VideoBackground } from "./video/VideoBackground";
+import { AlphaOverlay } from "./video/AlphaOverlay";
 
 interface SlideRendererProps {
   slide: Slide | null;
@@ -137,7 +139,6 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   projectedAudienceQr,
   branding,
 }) => {
-  const htmlVideoRef = useRef<HTMLVideoElement>(null);
   const youtubeIframeRef = useRef<HTMLIFrameElement>(null);
   const lastStableBackgroundRef = useRef<RetainedBackgroundAsset | null>(null);
   const [mediaError, setMediaError] = useState(false);
@@ -336,50 +337,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     };
   }, [hasBackground, isLoading, mediaError, mediaType, rawBgUrl, resolvedUrl, imageFit, youtubeId]);
 
-  // HTML5 video control (for non-YouTube)
-  useEffect(() => {
-    if (!hasBackground) return;
-    if (!resolvedUrl) return;
-    if (mediaType !== "video" || isYoutube) return;
-    if (isLoading || mediaError) return;
-
-    const v = htmlVideoRef.current;
-    if (!v) return;
-
-    // Keep mute in sync
-    v.muted = isMuted || isThumbnail;
-
-    if (!isPlaying || isThumbnail) {
-      v.pause();
-      return;
-    }
-
-    const p = v.play();
-    p?.catch((err) => {
-      if (err?.name === "NotAllowedError" && v && !v.muted) {
-        v.muted = true;
-        v.play().catch(() => { });
-      }
-    });
-  }, [hasBackground, resolvedUrl, mediaType, isYoutube, isLoading, mediaError, isPlaying, isMuted, isThumbnail]);
-
-  // Seek control (HTML5 only)
-  useEffect(() => {
-    if (!hasBackground) return;
-    if (seekCommand === null) return;
-    if (!seekAmount || !Number.isFinite(seekAmount)) return;
-    if (mediaType !== "video" || isYoutube) return;
-    if (isLoading || mediaError) return;
-
-    const v = htmlVideoRef.current;
-    if (!v) return;
-
-    try {
-      v.currentTime = Math.max(0, (v.currentTime || 0) + seekAmount);
-    } catch {
-      // ignore
-    }
-  }, [hasBackground, seekCommand, seekAmount, mediaType, isYoutube, isLoading, mediaError]);
+  // HTML5 video play/pause and seek are now handled inside VideoBackground.
 
   const postYoutubeCommand = useCallback((func: string, args: any[] = []) => {
     const frameWindow = youtubeIframeRef.current?.contentWindow;
@@ -516,16 +474,14 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
           referrerPolicy="no-referrer-when-downgrade"
         />
       );
-    } else if (retained.mediaType === "video") {
+    } else if (retained.mediaType === "video" || retained.mediaType === "video-alpha") {
       content = (
-        <video
+        <VideoBackground
           src={retained.url}
-          className="w-full h-full object-cover"
-          loop
+          active
           muted
-          playsInline
-          autoPlay
-          preload="auto"
+          filter={undefined}
+          isThumbnail
         />
       );
     } else if (retained.imageFit === "contain") {
@@ -673,17 +629,13 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
 
     if (mediaType === "video" && resolvedUrl) {
       return (
-        <video
-          data-testid="slide-renderer-video"
-          key={resolvedUrl}
-          ref={htmlVideoRef}
+        <VideoBackground
           src={resolvedUrl}
-          className="w-full h-full object-cover"
-          style={!isThumbnail ? { filter: PROGRAM_MEDIA_PRESENTATION_FILTER } : undefined}
-          loop
+          active={!isLoading && !mediaError}
           muted={isThumbnail || isMuted}
-          playsInline
-          preload="auto"
+          filter={!isThumbnail ? PROGRAM_MEDIA_PRESENTATION_FILTER : undefined}
+          isThumbnail={isThumbnail}
+          isPlaying={!isThumbnail && isPlaying}
           onError={handleMediaError}
         />
       );
@@ -760,6 +712,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
         hasBackground={hasBackground}
         mediaError={mediaError}
         isLoading={isLoading}
+        isThumbnail={true}
       />
     );
   }
@@ -787,6 +740,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       audienceOverlay={audienceOverlay}
       projectedAudienceQr={projectedAudienceQr}
       branding={branding}
+      alphaOverlayUrl={slide.alphaOverlayUrl}
     />
   );
 };
@@ -815,12 +769,14 @@ interface ScaledCanvasProps {
   audienceOverlay?: AudienceDisplayState;
   projectedAudienceQr?: AudienceQrProjectionState;
   branding?: SlideBrandingConfig;
+  alphaOverlayUrl?: string;
+  isThumbnail?: boolean;
 }
 
 const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
   fitContainer, slide, item, contentText, hasReadableText, hasStructuredElements, structuredElements, hasTextOverlay, textPx, textLayerStyle, useReadingPanel,
   lowerThirds, showSlideLabel, renderMedia, mediaType, hasBackground, mediaError, isLoading,
-  audienceOverlay, projectedAudienceQr, branding,
+  audienceOverlay, projectedAudienceQr, branding, alphaOverlayUrl, isThumbnail = false,
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -917,10 +873,15 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
           transformOrigin: "center center",
         }}
       >
-        {/* Media layer */}
+        {/* Media layer — z-10 */}
         <div style={{ position: "absolute", inset: 0 }}>{renderMedia()}</div>
 
-        {/* Soft overlay */}
+        {/* Alpha-channel video overlay — z-20 (above background, below text) */}
+        {alphaOverlayUrl && (
+          <AlphaOverlay src={alphaOverlayUrl} isThumbnail={isThumbnail} />
+        )}
+
+        {/* Soft overlay — z-30 */}
         {hasTextOverlay && hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
           <div style={{ position: "absolute", inset: 0, background: TEXT_CONTRAST_BACKGROUND_OVERLAY }} />
         )}
