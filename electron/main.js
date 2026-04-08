@@ -682,11 +682,61 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
+      // Disable DevTools in production builds to prevent users from tampering
+      // with localStorage (e.g. forging lumina_demo_user) or inspecting creds.
+      devTools: !isProd,
     },
     title: 'Lumina Presenter',
     backgroundColor: '#000000',
     show: false,
   });
+
+  // Block DevTools keyboard shortcuts in production as a belt-and-braces guard
+  // (F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Cmd+Opt+I on macOS).
+  if (isProd) {
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.type !== 'keyDown') return;
+      const key = (input.key || '').toLowerCase();
+      const isDevToolsShortcut =
+        key === 'f12' ||
+        ((input.control || input.meta) && input.shift && (key === 'i' || key === 'j' || key === 'c')) ||
+        (input.meta && input.alt && key === 'i');
+      if (isDevToolsShortcut) {
+        event.preventDefault();
+      }
+    });
+    // Extra safety: if anything in the renderer calls openDevTools, close it immediately.
+    mainWindow.webContents.on('devtools-opened', () => {
+      try { mainWindow.webContents.closeDevTools(); } catch { /* noop */ }
+    });
+    // Block right-click "Inspect Element" context menu and any popup that might
+    // expose dev affordances. The renderer can still handle its own contextmenu
+    // events for in-app menus because this only suppresses the default Chromium menu.
+    mainWindow.webContents.on('context-menu', (event) => {
+      event.preventDefault();
+    });
+    // Refuse navigation to non-app origins to prevent XSS-style escapes.
+    mainWindow.webContents.on('will-navigate', (event, url) => {
+      try {
+        const parsed = new URL(url);
+        const isApp = parsed.protocol === 'file:' || parsed.origin === 'https://api.luminalive.co.uk';
+        if (!isApp) event.preventDefault();
+      } catch {
+        event.preventDefault();
+      }
+    });
+    // Refuse new windows except via setWindowOpenHandler below.
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+      try {
+        const parsed = new URL(url);
+        // Allow only https external links — they open in the default browser.
+        if (parsed.protocol === 'https:') {
+          shell.openExternal(url).catch(() => {});
+        }
+      } catch { /* noop */ }
+      return { action: 'deny' };
+    });
+  }
   mainWindowRef = mainWindow;
 
   // Desktop UX: pressing Esc restores a maximized/fullscreen window back to normal.
@@ -912,7 +962,40 @@ async function checkForUpdatesSafely(isManual = false) {
   }
 }
 
+// ── Runtime ASAR / critical-file integrity check ─────────────────────────────
+// In production, verify that the bundled renderer and preload script exist and
+// are non-empty before launching. This is not a substitute for code signing —
+// a determined attacker who repacks the ASAR can defeat this — but it catches
+// trivial tampering and accidental corruption (failed installs, AV quarantine).
+function verifyCriticalFiles() {
+  if (!app.isPackaged) return true;
+  const required = [
+    path.join(__dirname, 'preload.js'),
+    DIST_INDEX_PATH,
+  ];
+  for (const p of required) {
+    try {
+      const st = fs.statSync(p);
+      if (!st.isFile() || st.size === 0) {
+        throw new Error(`Critical file missing or empty: ${p}`);
+      }
+    } catch (err) {
+      console.error('[lumina-integrity] critical file check failed:', err?.message || err);
+      try {
+        dialog.showErrorBox(
+          'Lumina Presenter — integrity error',
+          'A required application file is missing or has been modified. Please reinstall Lumina Presenter from the official source.'
+        );
+      } catch { /* noop */ }
+      app.exit(1);
+      return false;
+    }
+  }
+  return true;
+}
+
 app.whenReady().then(() => {
+  if (!verifyCriticalFiles()) return;
   installApplicationMenu();
   installMediaPermissionHandlers();
   installClipboardHandlers();

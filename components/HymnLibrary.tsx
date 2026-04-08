@@ -1,12 +1,13 @@
-import React, { useDeferredValue, useMemo, useState } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import { HYMN_TYPOGRAPHY_PRESETS } from '../presets/hymnTypographyPresets';
 import { getCatalogHymnById, listCatalogHymns, searchCatalogHymns } from '../services/hymnCatalog';
+import { ccliCatalogProvider } from '../services/ccliCatalogProvider';
 import { generateSlidesFromHymn } from '../services/hymnGenerator';
 import { HYMN_THEME_BACKGROUND_MAPPINGS, getSuggestedBackgroundForHymn } from '../services/hymnThemeRouter';
 import { insertGeneratedHymnIntoRunSheet, type RunSheetInsertionResult } from '../services/runSheetInsertion';
 import { stampItemBackgroundSource } from '../services/backgroundPersistence';
 import type { ServiceItem } from '../types';
-import type { HymnChorusStrategy, HymnThemeCategory } from '../types/hymns';
+import type { Hymn, HymnChorusStrategy, HymnThemeCategory } from '../types/hymns';
 import { MusicIcon, PlayIcon, PlusIcon, SearchIcon } from './Icons';
 
 const DEFAULT_VISIBLE_HYMNS = listCatalogHymns();
@@ -39,19 +40,60 @@ export const HymnLibrary: React.FC<HymnLibraryProps> = ({
   const [chorusStrategy, setChorusStrategy] = useState<HymnChorusStrategy>('smart');
   const [themeOverride, setThemeOverride] = useState<HymnThemeCategory | ''>('');
   const [status, setStatus] = useState('');
+  const [ccliSearching, setCcliSearching] = useState(false);
+  const [ccliHymns, setCcliHymns] = useState<Hymn[]>([]);
 
-  const results = useMemo(() => (
+  // Async CCLI search — fires whenever the debounced query changes
+  useEffect(() => {
+    if (!deferredQuery.trim() || !ccliCatalogProvider.isVisibleInLibrary) {
+      setCcliHymns([]);
+      return;
+    }
+    let cancelled = false;
+    setCcliSearching(true);
+    ccliCatalogProvider.asyncSearch(deferredQuery, { limit: 25 }).then((results) => {
+      if (!cancelled) setCcliHymns(results.map((r) => r.hymn));
+    }).catch(() => {
+      if (!cancelled) setCcliHymns([]);
+    }).finally(() => {
+      if (!cancelled) setCcliSearching(false);
+    });
+    return () => { cancelled = true; };
+  }, [deferredQuery]);
+
+  const syncResults = useMemo(() => (
     deferredQuery.trim()
       ? searchCatalogHymns(deferredQuery, { limit: 25 }).map((entry) => entry.hymn)
       : [...DEFAULT_VISIBLE_HYMNS].sort((left, right) => left.title.localeCompare(right.title))
   ), [deferredQuery]);
 
-  const selectedHymn = useMemo(() => (
-    results.find((entry) => entry.id === selectedHymnId)
-    || getCatalogHymnById(selectedHymnId)
-    || results[0]
-    || DEFAULT_VISIBLE_HYMNS[0]
-  ), [results, selectedHymnId]);
+  // Merge sync catalog results with async CCLI results (CCLI results appended, deduplicated by id)
+  const results = useMemo(() => {
+    const seen = new Set(syncResults.map((h) => h.id));
+    const merged = [...syncResults];
+    for (const hymn of ccliHymns) {
+      if (!seen.has(hymn.id)) {
+        seen.add(hymn.id);
+        merged.push(hymn);
+      }
+    }
+    return merged;
+  }, [syncResults, ccliHymns]);
+
+  // Holds CCLI hymns hydrated with full lyrics after selection
+  const [hydratedCcliHymns, setHydratedCcliHymns] = useState<Map<string, Hymn>>(new Map());
+
+  const selectedHymn = useMemo(() => {
+    // Prefer a fully-hydrated CCLI hymn (with lyrics) over the stub from search
+    const hydrated = hydratedCcliHymns.get(selectedHymnId);
+    if (hydrated) return hydrated;
+    return (
+      results.find((entry) => entry.id === selectedHymnId)
+      || getCatalogHymnById(selectedHymnId)
+      || results[0]
+      || DEFAULT_VISIBLE_HYMNS[0]
+    );
+  }, [results, selectedHymnId, hydratedCcliHymns]);
 
   const suggestion = useMemo(() => (
     selectedHymn
@@ -72,6 +114,18 @@ export const HymnLibrary: React.FC<HymnLibraryProps> = ({
   ), [suggestion]);
 
   const [selectedBackgroundId, setSelectedBackgroundId] = useState('');
+
+  // When a CCLI stub hymn is selected, fetch full lyrics in the background
+  useEffect(() => {
+    if (!selectedHymnId.startsWith('ccli-')) return;
+    const already = hydratedCcliHymns.get(selectedHymnId);
+    if (already && already.sections.length > 0) return;
+    ccliCatalogProvider.asyncGetById(selectedHymnId).then((hymn) => {
+      if (hymn) {
+        setHydratedCcliHymns((prev) => new Map(prev).set(hymn.id, hymn));
+      }
+    }).catch(() => { /* best-effort */ });
+  }, [selectedHymnId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   React.useEffect(() => {
     if (!selectedHymn) return;
@@ -139,7 +193,12 @@ export const HymnLibrary: React.FC<HymnLibraryProps> = ({
               <div className="border-b border-zinc-800 px-3 py-2.5">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Library</div>
-                  <div className="text-[10px] text-zinc-600">{results.length}</div>
+                  <div className="flex items-center gap-2">
+                    {ccliSearching && (
+                      <span className="text-[9px] text-amber-400 animate-pulse">CCLI…</span>
+                    )}
+                    <div className="text-[10px] text-zinc-600">{results.length}</div>
+                  </div>
                 </div>
               </div>
               <div data-testid="hymn-results" className="max-h-[18rem] overflow-y-auto custom-scrollbar">
@@ -159,14 +218,22 @@ export const HymnLibrary: React.FC<HymnLibraryProps> = ({
                     <div className="flex min-w-0 items-start gap-2">
                       <MusicIcon className={`mt-0.5 h-4 w-4 shrink-0 ${selectedHymn?.id === hymn.id ? 'text-blue-300' : 'text-zinc-600'}`} />
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-[13px] font-semibold text-zinc-100">{hymn.title}</div>
+                        <div className="flex min-w-0 items-baseline gap-1.5">
+                          <span className="truncate text-[13px] font-semibold text-zinc-100">{hymn.title}</span>
+                          {hymn.librarySource?.providerId === 'ccli' && (
+                            <span className="shrink-0 rounded border border-amber-800/40 bg-amber-900/30 px-1 py-px text-[8px] font-black uppercase tracking-wide text-amber-300">CCLI</span>
+                          )}
+                        </div>
                         <div className="mt-1 line-clamp-2 text-[11px] leading-4 text-zinc-500">{hymn.firstLine}</div>
                       </div>
                     </div>
                   </button>
                 ))}
-                {results.length === 0 && (
+                {results.length === 0 && !ccliSearching && (
                   <div className="p-4 text-[11px] text-zinc-500">No hymns matched this search.</div>
+                )}
+                {results.length === 0 && ccliSearching && (
+                  <div className="p-4 text-[11px] text-zinc-500 animate-pulse">Searching CCLI SongSelect…</div>
                 )}
               </div>
             </section>
@@ -401,8 +468,15 @@ export const HymnLibrary: React.FC<HymnLibraryProps> = ({
           <div className="flex min-h-0 min-w-0 flex-col gap-4">
             <section className="min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900/60">
             <div className="border-b border-zinc-800 px-4 py-3">
-              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Bundled Library</div>
-              <div className="mt-1 text-xs text-zinc-400">Search by title, first line, tune, author, or theme.</div>
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Song Library</div>
+                  <div className="mt-1 text-xs text-zinc-400">Search by title, first line, tune, author, or theme.</div>
+                </div>
+                {ccliSearching && (
+                  <span className="shrink-0 text-[9px] font-semibold text-amber-400 animate-pulse">CCLI…</span>
+                )}
+              </div>
             </div>
             <div data-testid="hymn-results" className="max-h-80 overflow-y-auto custom-scrollbar">
               {results.map((hymn) => (
@@ -419,7 +493,12 @@ export const HymnLibrary: React.FC<HymnLibraryProps> = ({
                   <div className="flex min-w-0 items-start gap-2">
                     <MusicIcon className={`mt-0.5 h-4 w-4 shrink-0 ${selectedHymn?.id === hymn.id ? 'text-blue-300' : 'text-zinc-600'}`} />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold text-zinc-100">{hymn.title}</div>
+                      <div className="flex min-w-0 items-baseline gap-1.5">
+                        <span className="truncate text-sm font-semibold text-zinc-100">{hymn.title}</span>
+                        {hymn.librarySource?.providerId === 'ccli' && (
+                          <span className="shrink-0 rounded border border-amber-800/40 bg-amber-900/30 px-1 py-px text-[8px] font-black uppercase tracking-wide text-amber-300">CCLI</span>
+                        )}
+                      </div>
                       <div className="mt-1 truncate text-[11px] text-zinc-500">{hymn.firstLine}</div>
                       <div className="mt-2 flex flex-wrap gap-1">
                         {hymn.themes.slice(0, 3).map((theme) => (
@@ -432,8 +511,11 @@ export const HymnLibrary: React.FC<HymnLibraryProps> = ({
                   </div>
                 </button>
               ))}
-              {results.length === 0 && (
+              {results.length === 0 && !ccliSearching && (
                 <div className="p-4 text-xs text-zinc-500">No hymns matched this search.</div>
+              )}
+              {results.length === 0 && ccliSearching && (
+                <div className="p-4 text-xs text-zinc-500 animate-pulse">Searching CCLI SongSelect…</div>
               )}
             </div>
           </section>

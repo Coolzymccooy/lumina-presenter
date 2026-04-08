@@ -69,8 +69,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onClos
     setError('');
     setLoading(true);
 
-    // Demo mode fallback
+    // Demo mode fallback — DEV BUILDS ONLY.
+    // In production builds, Firebase MUST be configured. Failing closed here
+    // prevents cracked/redistributed builds from bypassing auth with any
+    // arbitrary credentials.
     if (!isFirebaseConfigured()) {
+      if (import.meta.env.PROD) {
+        setError('This build is not licensed. Firebase authentication is required. Please contact support.');
+        setLoading(false);
+        logActivity(undefined, 'ERROR', { type: 'AUTH_UNLICENSED_BUILD' });
+        return;
+      }
       setTimeout(() => {
         onLoginSuccess({ uid: 'demo-user', email: email || 'demo@lumina.app' });
       }, 800);
@@ -107,6 +116,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onClos
     setLoading(true);
 
     if (!isFirebaseConfigured()) {
+      if (import.meta.env.PROD) {
+        setError('This build is not licensed. Firebase authentication is required. Please contact support.');
+        setLoading(false);
+        logActivity(undefined, 'ERROR', { type: 'AUTH_UNLICENSED_BUILD' });
+        return;
+      }
       setTimeout(() => {
         onLoginSuccess({ uid: 'demo-google-user', email: 'demo-google@lumina.app' });
       }, 400);

@@ -79,6 +79,10 @@ import { parsePptxFile } from './services/pptxImport';
 import { parseEasyWorshipFile } from './services/easyWorshipImport';
 import { parseProPresenterFile } from './services/proPresenterImport';
 import { parseOpenSongFile } from './services/openSongImport';
+import { parseOpenLyricsFile } from './services/openLyricsImport';
+import { generateSlidesFromHymn } from './services/hymnGenerator';
+import { storeCcliCredentials, getCcliCredentials, setCcliActor } from './services/ccliService';
+import { initCcliProvider } from './services/ccliCatalogProvider';
 import { copyTextToClipboard } from './services/clipboardService';
 import { dispatchAetherBridgeEvent, type AetherBridgeEvent } from './services/aetherBridge';
 import { MacroPanel } from './components/MacroPanel';
@@ -1292,6 +1296,7 @@ function App() {
   const [isSlideEditorOpen, setIsSlideEditorOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false); // NEW
+  const [ccliConnected, setCcliConnected] = useState(false);
   const [isStagePreviewEditorOpen, setIsStagePreviewEditorOpen] = useState(false);
   const [workspaceSettings, setWorkspaceSettings] = useState<WorkspaceSettings>({
     churchName: 'My Church',
@@ -1852,6 +1857,69 @@ function App() {
     }
   }, [workspaceId]);
 
+  // ── CCLI credentials — load at startup ──────────────────────────────────────
+  // The actual client_secret lives only on the server. The renderer only learns
+  // whether the workspace is connected. We pass a getIdToken closure so the
+  // server can verify the user with firebase-admin.
+  useEffect(() => {
+    if (!workspaceId) return;
+    const getIdToken = user && typeof (user as any).getIdToken === 'function'
+      ? () => (user as any).getIdToken().catch(() => null)
+      : undefined;
+    setCcliActor(user?.uid ?? workspaceId, user?.email ?? null, getIdToken);
+    getCcliCredentials(workspaceId).then((creds) => {
+      initCcliProvider(creds, workspaceId);
+      setCcliConnected(!!creds);
+    }).catch(() => {
+      initCcliProvider(null, workspaceId);
+    });
+  }, [workspaceId, user?.uid, user?.email]);
+
+  // ── Server-side session validation — startup + periodic re-check ────────────
+  // Validates the user's session against the server. Honours the free plan
+  // (free users are valid). If the server marks the account as revoked, or the
+  // server is permanently unreachable on a hard reject, the client logs out.
+  useEffect(() => {
+    if (!user?.uid) return;
+    let cancelled = false;
+    const validate = async () => {
+      try {
+        const headers: Record<string, string> = {
+          'x-user-uid': user.uid,
+          'x-user-email': user.email ?? '',
+        };
+        if (typeof (user as any).getIdToken === 'function') {
+          try {
+            const token = await (user as any).getIdToken();
+            if (token) headers.Authorization = `Bearer ${token}`;
+          } catch { /* noop */ }
+        }
+        const resp = await fetch('/api/session/validate', { headers });
+        if (cancelled) return;
+        if (resp.status === 403) {
+          // Hard revocation — force logout
+          handleLogout();
+          return;
+        }
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data?.valid && data?.plan) {
+            setUserPlan(data.plan);
+          }
+        }
+        // Soft failures (network down, 5xx) are tolerated — the user keeps working
+      } catch {
+        // Network down — fail open. Free plan users still have a working app.
+      }
+    };
+    void validate();
+    const intervalId = window.setInterval(() => { void validate(); }, 5 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [user?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Macro subscription ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!workspaceId) return undefined;
@@ -2336,13 +2404,24 @@ function App() {
         setUser(u);
         setAuthLoading(false);
         if (u) {
-          // Fetch the user's subscription plan from the server
-          fetch('/api/payments/subscription', {
-            headers: { 'x-user-uid': u.uid, 'x-user-email': u.email ?? '' },
-          })
-            .then(r => r.ok ? r.json() : null)
-            .then(data => { if (data?.ok) setUserPlan(data.subscription?.plan ?? 'free'); })
-            .catch(() => { /* keep plan as null = free */ });
+          // Fetch the user's subscription plan from the server (with verified ID token)
+          (async () => {
+            const headers: Record<string, string> = {
+              'x-user-uid': u.uid,
+              'x-user-email': u.email ?? '',
+            };
+            try {
+              const token = await u.getIdToken();
+              if (token) headers.Authorization = `Bearer ${token}`;
+            } catch { /* noop */ }
+            try {
+              const r = await fetch('/api/payments/subscription', { headers });
+              if (r.ok) {
+                const data = await r.json();
+                if (data?.ok) setUserPlan(data.subscription?.plan ?? 'free');
+              }
+            } catch { /* keep plan as null = free */ }
+          })();
         } else {
           setUserPlan(null);
         }
@@ -2761,9 +2840,6 @@ function App() {
 
   const handleLoginSuccess = (loggedInUser: any) => {
     setUser(loggedInUser);
-    if (!isFirebaseConfigured()) {
-      localStorage.setItem('lumina_demo_user', JSON.stringify(loggedInUser));
-    }
     logActivity(loggedInUser.uid, 'SESSION_START');
     setViewState('studio'); // Transition to app
   };
@@ -2771,8 +2847,16 @@ function App() {
   const handleLogout = () => {
     if (user) logActivity(user.uid, 'SESSION_END');
     if (isFirebaseConfigured() && auth) auth.signOut();
-    else localStorage.removeItem('lumina_demo_user');
+    // Clear any cached sensitive creds so a logged-out session cannot hit CCLI
+    initCcliProvider(null, null);
+    setCcliActor(null, null);
+    setCcliConnected(false);
     setUser(null);
+    // Close modals so nothing from the authenticated UI leaks through
+    setIsProfileOpen(false);
+    // Always route to the login gate. In Electron this is 'studio', which the
+    // auth guard below will render as <LoginScreen>. In a browser, 'landing'
+    // shows the public landing page.
     setViewState(isElectronShell ? 'studio' : 'landing');
   };
 
@@ -5910,6 +5994,47 @@ function App() {
     }
   };
 
+  const importOpenLyricsAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setImportModalError(null);
+    setIsImportingDeck(true);
+    setImportDeckStatus('Parsing OpenLyrics file...');
+    try {
+      const hymn = await parseOpenLyricsFile(file);
+      const generated = generateSlidesFromHymn(hymn);
+      const importedItem = finalizeGeneratedItemBackground(
+        { ...generated.item, metadata: { ...generated.item.metadata, source: 'import' } },
+        'system',
+      );
+      addItem(importedItem);
+      logActivity(user?.uid, 'IMPORT_OPENLYRICS', { filename: file.name, slideCount: generated.slides.length });
+    } catch (error: any) {
+      setImportModalError(error?.message || 'OpenLyrics import failed.');
+    } finally {
+      setIsImportingDeck(false);
+      setImportDeckStatus('');
+    }
+  };
+
+  const handleSaveCcliApiCredentials = async (
+    licenseNumber: string,
+    clientId: string,
+    clientSecret: string,
+  ): Promise<void> => {
+    if (!workspaceId) throw new Error('No workspace loaded.');
+    setCcliActor(user?.uid ?? workspaceId, user?.email ?? null);
+    await storeCcliCredentials(workspaceId, licenseNumber, clientId, clientSecret);
+    // Sentinel — actual secret lives only on the server.
+    initCcliProvider(
+      { licenseNumber: '', clientId: '', clientSecret: '', connectedAt: Date.now() },
+      workspaceId,
+    );
+    setCcliConnected(true);
+    logActivity(user?.uid, 'CCLI_CREDENTIALS_SAVED', { licenseNumber });
+  };
+
   const startSlideLabelRename = useCallback((itemId: string, slideId: string, currentLabel: string, source: 'runsheet' | 'thumbnail' = 'thumbnail') => {
     setInlineSlideRename({
       itemId,
@@ -6773,9 +6898,8 @@ function App() {
     return <RemoteControl />;
   }
 
-  // ROUTING: LOGIN (If not authenticated, force login for studio)
-  // @ts-ignore
-  if (!user && viewState === 'studio' && !window.electron?.isElectron) {
+  // ROUTING: LOGIN (If not authenticated, force login for studio — both browser and Electron)
+  if (!user && viewState === 'studio') {
     if (showOnboarding) {
       return (
         <WelcomeAnimation
@@ -6786,7 +6910,8 @@ function App() {
         />
       );
     }
-    return <LoginScreen onLoginSuccess={handleLoginSuccess} onClose={() => setViewState('landing')} />;
+    // In Electron there's no public landing page, so the login screen cannot be dismissed.
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} onClose={isElectronShell ? undefined : () => setViewState('landing')} />;
   }
 
   const renderScheduleList = () => (
@@ -8025,6 +8150,7 @@ function App() {
                 onImportProPresenter={importProPresenterAsItem}
                 onImportEasyWorship={importEasyWorshipAsItem}
                 onImportOpenSong={importOpenSongAsItem}
+                onImportOpenLyrics={importOpenLyricsAsItem}
                 onOpenLyricsImport={() => setIsLyricsImportOpen(true)}
                 onAddVideoUrl={(url) => insertVideoUrlAsItem(url)}
               />
@@ -9437,7 +9563,7 @@ function App() {
         />
       )}
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
-      {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={handleWorkspaceSettingsSave} onLogout={handleLogout} currentSettings={workspaceSettings} currentUser={user} />}
+      {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={handleWorkspaceSettingsSave} onLogout={handleLogout} currentSettings={workspaceSettings} currentUser={user} onSaveCcliApiCredentials={handleSaveCcliApiCredentials} ccliConnected={ccliConnected} />}
       {presenterContextMenu && presenterContextMenuActions.length > 0 && (
         <ContextMenu
           x={presenterContextMenu.x}

@@ -2,21 +2,21 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   bundledHymnCatalogProvider,
-  darkLicensedHymnCatalogProvider,
   listAllHymnCatalogProviders,
   listCatalogHymns,
   listVisibleHymnCatalogProviders,
   searchCatalogHymns,
 } from './hymnCatalog.ts';
+import { ccliCatalogProvider } from './ccliCatalogProvider.ts';
 
-test('catalog registry keeps the licensed adapter dark by default', () => {
+test('CCLI adapter is registered but dark (no credentials) by default', () => {
   const allProviders = listAllHymnCatalogProviders();
   const visibleProviders = listVisibleHymnCatalogProviders();
 
-  assert.ok(allProviders.some((provider) => provider.id === darkLicensedHymnCatalogProvider.id));
-  assert.ok(visibleProviders.every((provider) => provider.id !== darkLicensedHymnCatalogProvider.id));
-  assert.equal(darkLicensedHymnCatalogProvider.availability, 'dark');
-  assert.equal(darkLicensedHymnCatalogProvider.isVisibleInLibrary, false);
+  assert.ok(allProviders.some((provider) => provider.id === ccliCatalogProvider.id));
+  assert.ok(visibleProviders.every((provider) => provider.id !== ccliCatalogProvider.id));
+  assert.equal(ccliCatalogProvider.availability, 'dark');
+  assert.equal(ccliCatalogProvider.isVisibleInLibrary, false);
 });
 
 test('catalog listing continues to use the bundled provider only', () => {
@@ -26,7 +26,7 @@ test('catalog listing continues to use the bundled provider only', () => {
   assert.ok(hymns.every((hymn) => hymn.librarySource.kind === 'bundled-pd'));
 });
 
-test('catalog search remains stable while the licensed adapter is dark', () => {
+test('catalog search remains stable while the CCLI adapter is dark', () => {
   const results = searchCatalogHymns('Amazing Grace');
 
   assert.ok(results.length > 0);
