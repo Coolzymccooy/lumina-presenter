@@ -6,7 +6,7 @@ interface ProfileSettingsProps {
   onClose: () => void;
   onSave: (settings: any) => void;
   onLogout?: () => void;
-  onSaveCcliApiCredentials?: (licenseNumber: string, clientId: string, clientSecret: string) => Promise<void>;
+  onSaveCcliApiCredentials?: (licenseNumber: string) => Promise<void>;
   ccliConnected?: boolean;
   currentSettings: any;
   currentUser?: {
@@ -44,8 +44,6 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
     Array.isArray(currentSettings?.ndiSources) ? currentSettings.ndiSources : []
   );
 
-  const [ccliClientId, setCcliClientId] = useState('');
-  const [ccliClientSecret, setCcliClientSecret] = useState('');
   const [ccliSaveStatus, setCcliSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   const [activeTab, setActiveTab] = useState<string | null>('account');
@@ -73,7 +71,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
     if (!onSaveCcliApiCredentials) return;
     setCcliSaveStatus('saving');
     try {
-      await onSaveCcliApiCredentials(ccli, ccliClientId, ccliClientSecret);
+      await onSaveCcliApiCredentials(ccli);
       setCcliSaveStatus('saved');
       setTimeout(() => setCcliSaveStatus('idle'), 3000);
     } catch {
@@ -424,33 +422,11 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
                     placeholder="12345678"
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Client ID</label>
-                  <input
-                    type="text"
-                    value={ccliClientId}
-                    onChange={(e) => setCcliClientId(e.target.value)}
-                    autoComplete="off"
-                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-all font-mono placeholder:text-zinc-700"
-                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Client Secret</label>
-                  <input
-                    type="password"
-                    value={ccliClientSecret}
-                    onChange={(e) => setCcliClientSecret(e.target.value)}
-                    autoComplete="new-password"
-                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-all font-mono placeholder:text-zinc-700"
-                    placeholder="••••••••••••••••••••••••"
-                  />
-                </div>
               </div>
 
               <button
                 onClick={handleSaveCcliCredentials}
-                disabled={!ccliClientId.trim() || !ccliClientSecret.trim() || ccliSaveStatus === 'saving'}
+                disabled={!ccli.trim() || ccliSaveStatus === 'saving'}
                 className={`w-full py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
                   ccliSaveStatus === 'saved'
                     ? 'bg-emerald-700 text-white border border-emerald-600'
