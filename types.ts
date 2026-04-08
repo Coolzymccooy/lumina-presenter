@@ -10,7 +10,7 @@ export enum ItemType {
   BIBLE = 'BIBLE'
 }
 
-export type MediaType = 'image' | 'video' | 'color';
+export type MediaType = 'image' | 'video' | 'color' | 'video-alpha';
 export type ServiceItemBackgroundSource = 'system' | 'user' | 'inherited';
 
 export type SlideType = 'custom' | 'lyrics' | 'scripture' | 'announcement' | 'offering' | 'hymn';
@@ -122,6 +122,8 @@ export interface Slide {
   mediaFit?: 'cover' | 'contain';
   notes?: string; // Presenter notes
   metadata?: SlideMetadata;
+  /** WebM VP9 alpha-channel overlay rendered above the background, below text */
+  alphaOverlayUrl?: string;
 }
 
 export interface TimerCue {

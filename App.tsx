@@ -9458,6 +9458,18 @@ function App() {
           <MotionLibrary
             onClose={() => setIsMotionLibOpen(false)}
             onSelect={async (asset) => {
+              // Alpha-channel overlay: update slides with alphaOverlayUrl, leave background theme alone
+              if (asset.alphaOverlayUrl && selectedItem) {
+                const resolvedAlphaUrl = await persistRemoteMotionLibraryAsset(asset.alphaOverlayUrl, 'video');
+                updateItem({
+                  ...selectedItem,
+                  slides: selectedItem.slides.map((s) => ({ ...s, alphaOverlayUrl: resolvedAlphaUrl })),
+                });
+                logActivity(user?.uid, 'UPDATE_THEME', { type: 'ALPHA_OVERLAY', itemId: selectedItem.id });
+                setMotionLibraryMode('selected-item');
+                setIsMotionLibOpen(false);
+                return;
+              }
               const url = asset.url;
               const mediaType = asset.mediaType;
               const resolvedMediaType: 'image' | 'video' = mediaType === 'image' ? 'image' : 'video';

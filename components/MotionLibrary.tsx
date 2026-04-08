@@ -5,7 +5,7 @@ import { MediaType } from '../types';
 import { searchPexelsMotion } from '../services/serverApi';
 import { getCachedMedia, getMedia, listSavedBackgrounds } from '../services/localMedia';
 
-type MotionTab = 'curated' | 'stills' | 'pexels' | 'pixabay' | 'saved';
+type MotionTab = 'curated' | 'stills' | 'alpha' | 'pexels' | 'pixabay' | 'saved';
 
 export interface MotionLibrarySelection {
   url: string;
@@ -16,6 +16,8 @@ export interface MotionLibrarySelection {
   attribution?: string;
   category?: string;
   sourceUrl?: string;
+  /** When set, apply as alpha-channel overlay (WebM VP9) instead of replacing background */
+  alphaOverlayUrl?: string;
 }
 
 interface MotionAsset extends MotionLibrarySelection {
@@ -40,6 +42,19 @@ const CURATED_VIDEO_ASSETS: MotionAsset[] = VIDEO_BACKGROUNDS.map((url, idx) => 
   attribution: url.startsWith('/assets/') ? 'Local library' : 'Built-in',
 }))
   .filter((asset) => /\.(mp4|webm|mov)(\?|$)/i.test(asset.url));
+
+const ALPHA_VIDEO_ASSETS: MotionAsset[] = VIDEO_BACKGROUNDS
+  .filter((url) => /alpha/i.test(url) || /-alpha\.webm(\?|$)/i.test(url))
+  .map((url, idx) => ({
+    id: `alpha-${idx + 1}-${url.replace(/[^a-z0-9]/gi, '').slice(0, 12)}`,
+    name: `Alpha Loop ${idx + 1}`,
+    thumb: DEFAULT_BACKGROUNDS[idx % DEFAULT_BACKGROUNDS.length],
+    url,
+    mediaType: 'video-alpha' as MediaType,
+    provider: 'alpha',
+    category: 'Overlay',
+    attribution: 'Alpha channel (WebM VP9)',
+  }));
 
 const CURATED_STILL_ASSETS: MotionAsset[] = DEFAULT_BACKGROUNDS.map((url, idx) => ({
   id: `curated-still-${idx + 1}`,
@@ -219,6 +234,12 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
         return;
       }
 
+      if (activeTab === 'alpha') {
+        setLoading(false);
+        setAssets(ALPHA_VIDEO_ASSETS);
+        return;
+      }
+
       if (activeTab === 'saved') {
         setLoading(true);
         try {
@@ -368,6 +389,7 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
         <div className="p-4 border-b border-zinc-900 flex flex-wrap items-center gap-2">
           <button onClick={() => setActiveTab('curated')} className={`px-3 py-1 text-xs rounded ${activeTab === 'curated' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Default Loops</button>
           <button onClick={() => setActiveTab('stills')} className={`px-3 py-1 text-xs rounded ${activeTab === 'stills' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Safe Stills</button>
+          <button onClick={() => setActiveTab('alpha')} className={`px-3 py-1 text-xs rounded ${activeTab === 'alpha' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Alpha Loops</button>
           <button onClick={() => setActiveTab('saved')} className={`px-3 py-1 text-xs rounded ${activeTab === 'saved' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Saved</button>
           <button onClick={() => setActiveTab('pexels')} className={`px-3 py-1 text-xs rounded ${activeTab === 'pexels' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Pexels</button>
           <button onClick={() => setActiveTab('pixabay')} className={`px-3 py-1 text-xs rounded ${activeTab === 'pixabay' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Pixabay</button>
@@ -412,7 +434,11 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
                 <MotionTile
                   key={motion.id}
                   motion={motion}
-                  onSelect={(asset) => onSelect(asset)}
+                  onSelect={(asset) => onSelect(
+                    asset.mediaType === 'video-alpha'
+                      ? { ...asset, alphaOverlayUrl: asset.url }
+                      : asset
+                  )}
                 />
               ))}
             </div>

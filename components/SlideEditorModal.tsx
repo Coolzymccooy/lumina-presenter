@@ -66,7 +66,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
         setBgUrl(slide.backgroundUrl || '');
         setMediaType(slide.mediaType || 'image');
         setMediaFit(slide.mediaFit || ((slide.backgroundUrl || '').startsWith('local://') && (slide.mediaType || 'image') === 'image' ? 'contain' : 'cover'));
-        if (slide.mediaType) setActiveTab(slide.mediaType);
+        if (slide.mediaType && slide.mediaType !== 'video-alpha') setActiveTab(slide.mediaType);
       } else {
         setContent('');
         setLabel('New Slide');
