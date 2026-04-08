@@ -13,6 +13,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   useSermonRecorder,
   type SermonRecorderLocale,
+  type SermonAccentHint,
 } from '../hooks/useSermonRecorder';
 import {
   summarizeSermon,
@@ -150,7 +151,28 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   locale = 'en-GB',
   compact = false,
 }) => {
-  const [recState, recActions] = useSermonRecorder(locale);
+  const [accentHint, setAccentHint] = useState<SermonAccentHint>('standard');
+  const [audioDeviceId, setAudioDeviceId] = useState<string | undefined>(undefined);
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+
+  // Enumerate audioinput devices; re-enumerate on plug/unplug
+  useEffect(() => {
+    let alive = true;
+    const enumerate = async () => {
+      try {
+        const all = await navigator.mediaDevices.enumerateDevices();
+        if (alive) setAudioDevices(all.filter((d) => d.kind === 'audioinput'));
+      } catch { /* unsupported context */ }
+    };
+    enumerate();
+    navigator.mediaDevices.addEventListener?.('devicechange', enumerate);
+    return () => {
+      alive = false;
+      navigator.mediaDevices.removeEventListener?.('devicechange', enumerate);
+    };
+  }, []);
+
+  const [recState, recActions] = useSermonRecorder({ locale, accentHint, audioDeviceId });
   const { phase, liveTranscript, interimText, transcript, elapsedSeconds, micLevel, error } = recState;
 
   const [editableTranscript, setEditableTranscript] = useState('');
@@ -283,12 +305,42 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
             {/* Controls row */}
             <div className="flex items-center gap-2">
               {phase === 'idle' && (
-                <button
-                  onClick={recActions.start}
-                  className="flex-1 py-2 rounded-lg bg-red-700/80 hover:bg-red-600 text-white text-[11px] font-bold tracking-wide transition-colors"
-                >
-                  Start Recording
-                </button>
+                <div className="flex-1 space-y-2">
+                  {/* Audio device picker */}
+                  {audioDevices.length > 1 && (
+                    <select
+                      value={audioDeviceId ?? ''}
+                      onChange={(e) => setAudioDeviceId(e.target.value || undefined)}
+                      className="w-full rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] px-2 py-1.5 focus:outline-none focus:border-zinc-500"
+                    >
+                      <option value="">Default microphone</option>
+                      {audioDevices.map((d) => (
+                        <option key={d.deviceId} value={d.deviceId}>
+                          {d.label || `Microphone ${d.deviceId.slice(0, 6)}`}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {/* Accent hint */}
+                  <select
+                    value={accentHint}
+                    onChange={(e) => setAccentHint(e.target.value as SermonAccentHint)}
+                    className="w-full rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] px-2 py-1.5 focus:outline-none focus:border-zinc-500"
+                  >
+                    <option value="standard">Standard English</option>
+                    <option value="uk">British English</option>
+                    <option value="nigerian">Nigerian English</option>
+                    <option value="ghanaian">Ghanaian English</option>
+                    <option value="southafrican">South African English</option>
+                    <option value="kenyan">Kenyan English</option>
+                  </select>
+                  <button
+                    onClick={recActions.start}
+                    className="w-full py-2 rounded-lg bg-red-700/80 hover:bg-red-600 text-white text-[11px] font-bold tracking-wide transition-colors"
+                  >
+                    Start Recording
+                  </button>
+                </div>
               )}
               {phase === 'recording' && (
                 <>

@@ -14,6 +14,14 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { transcribeSermonAudio, transcribeSermonChunk } from '../services/geminiService';
 
 export type SermonRecorderLocale = 'en-GB' | 'en-US';
+export type SermonAccentHint = 'standard' | 'uk' | 'nigerian' | 'ghanaian' | 'southafrican' | 'kenyan';
+
+export interface SermonRecorderOptions {
+  locale?: SermonRecorderLocale;
+  accentHint?: SermonAccentHint;
+  /** deviceId from enumerateDevices — use default if omitted */
+  audioDeviceId?: string;
+}
 
 export type SermonRecorderPhase =
   | 'idle'
@@ -83,8 +91,9 @@ const CHUNK_UPLOAD_INTERVAL_MS = 30_000; // upload every 30s for interim cloud t
 const TIMER_INTERVAL_MS = 1_000;
 
 export const useSermonRecorder = (
-  locale: SermonRecorderLocale = 'en-GB'
+  options: SermonRecorderOptions = {}
 ): [SermonRecorderState, SermonRecorderActions] => {
+  const { locale = 'en-GB', accentHint = 'standard', audioDeviceId } = options;
   const [phase, setPhase] = useState<SermonRecorderPhase>('idle');
   const [liveTranscript, setLiveTranscript] = useState('');
   const [interimText, setInterimText] = useState('');
@@ -224,6 +233,7 @@ export const useSermonRecorder = (
         audioBase64: await blobToBase64(blob),
         mimeType: mimeTypeRef.current as any,
         locale,
+        accentHint,
       });
       if (result.ok && result.transcript) {
         // Merge cloud corrections: cloud transcript becomes the reference
@@ -244,37 +254,81 @@ export const useSermonRecorder = (
 
     let micStream: MediaStream;
     try {
-      micStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          sampleRate: 48000,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Microphone access denied.';
-      setError(msg);
-      setPhase('error');
-      return;
+      const audioConstraints: MediaTrackConstraints = {
+        channelCount: 1,
+        sampleRate: 48000,
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      };
+      if (audioDeviceId) {
+        audioConstraints.deviceId = { exact: audioDeviceId };
+      }
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+    } catch (err: any) {
+      // If exact deviceId failed, retry with default mic
+      if (audioDeviceId && err?.name === 'OverconstrainedError') {
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({
+            audio: { channelCount: 1, sampleRate: 48000, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          });
+        } catch (fallbackErr) {
+          const msg = fallbackErr instanceof Error ? fallbackErr.message : 'Microphone access denied.';
+          setError(msg);
+          setPhase('error');
+          return;
+        }
+      } else {
+        const msg = err instanceof Error ? err.message : 'Microphone access denied.';
+        setError(msg);
+        setPhase('error');
+        return;
+      }
     }
 
     micStreamRef.current = micStream;
 
-    // ── AudioContext + Analyser ──
+    // ── AudioContext + processing chain ──────────────────────────────────────
+    // Chain: source → highpass (80Hz cuts PA rumble) → compressor (handles
+    // volume swings common in preaching) → analyser (for visualizer)
+    // Separate destination stream for MediaRecorder captures processed audio.
     const ctx = new AudioContext({ sampleRate: 48000 });
     audioCtxRef.current = ctx;
+
+    const source = ctx.createMediaStreamSource(micStream);
+
+    // High-pass filter: remove low-frequency PA rumble below 80Hz
+    const hpf = ctx.createBiquadFilter();
+    hpf.type = 'highpass';
+    hpf.frequency.value = 80;
+    hpf.Q.value = 0.7;
+
+    // Dynamics compressor: tame loud peaks, lift quiet sections
+    // threshold: -24dB, knee: 10, ratio: 4:1, fast attack, medium release
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.value = -24;
+    compressor.knee.value = 10;
+    compressor.ratio.value = 4;
+    compressor.attack.value = 0.003;
+    compressor.release.value = 0.25;
+
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 256;
     analyserRef.current = analyser;
-    const source = ctx.createMediaStreamSource(micStream);
-    source.connect(analyser);
+
+    // Wire: source → hpf → compressor → analyser
+    source.connect(hpf);
+    hpf.connect(compressor);
+    compressor.connect(analyser);
     startVizLoop();
 
-    // ── MediaRecorder ──
+    // ── MediaRecorder — record from processed stream via MediaStreamDestination ──
+    const destination = ctx.createMediaStreamDestination();
+    compressor.connect(destination);
+    const processedStream = destination.stream;
+
     const mimeType = mimeTypeRef.current;
-    const recorder = new MediaRecorder(micStream, { mimeType });
+    const recorder = new MediaRecorder(processedStream, { mimeType });
     mediaRecorderRef.current = recorder;
     recorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) {
@@ -345,7 +399,7 @@ export const useSermonRecorder = (
     const blob = new Blob(chunks, { type: mimeType });
 
     try {
-      const result = await transcribeSermonAudio(blob, mimeType, locale);
+      const result = await transcribeSermonAudio(blob, mimeType, locale, accentHint);
       if (result.ok && result.transcript) {
         setCloudTranscript(result.transcript);
       }
