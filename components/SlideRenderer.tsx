@@ -141,6 +141,8 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
 }) => {
   const youtubeIframeRef = useRef<HTMLIFrameElement>(null);
   const lastStableBackgroundRef = useRef<RetainedBackgroundAsset | null>(null);
+  // Reactive mirror of lastStableBackgroundRef — triggers re-render for floor layer.
+  const [retainedFloor, setRetainedFloor] = useState<RetainedBackgroundAsset | null>(null);
   const [mediaError, setMediaError] = useState(false);
   const [legacyLocalMediaMissing, setLegacyLocalMediaMissing] = useState(false);
   const [isYoutubeReady, setIsYoutubeReady] = useState(false);
@@ -319,22 +321,16 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
 
   useEffect(() => {
     if (!hasBackground || isLoading || mediaError) return;
+    let next: RetainedBackgroundAsset | null = null;
     if (mediaType === "color" && rawBgUrl) {
-      lastStableBackgroundRef.current = {
-        url: rawBgUrl,
-        mediaType: "color",
-        imageFit,
-        youtubeId: null,
-      };
-      return;
+      next = { url: rawBgUrl, mediaType: "color", imageFit, youtubeId: null };
+    } else if (resolvedUrl) {
+      next = { url: resolvedUrl, mediaType, imageFit, youtubeId };
     }
-    if (!resolvedUrl) return;
-    lastStableBackgroundRef.current = {
-      url: resolvedUrl,
-      mediaType,
-      imageFit,
-      youtubeId,
-    };
+    if (next) {
+      lastStableBackgroundRef.current = next;
+      setRetainedFloor(next);
+    }
   }, [hasBackground, isLoading, mediaError, mediaType, rawBgUrl, resolvedUrl, imageFit, youtubeId]);
 
   // HTML5 video play/pause and seek are now handled inside VideoBackground.
@@ -551,15 +547,25 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     }
 
     if (mediaError) {
-      return renderRetainedBackground(
-        legacyLocalMediaMissing
-          ? "Background missing - keeping last live visual"
-          : "Background unavailable - keeping last live visual",
+      if (isThumbnail) {
+        return renderRetainedBackground(
+          legacyLocalMediaMissing ? "Background missing" : "Background unavailable",
+        );
+      }
+      return (
+        <div
+          className="absolute top-3 right-3 text-[9px] uppercase tracking-wider bg-black/60 text-amber-100 border border-amber-300/30 px-2 py-1 rounded"
+          style={{ zIndex: 20 }}
+        >
+          {legacyLocalMediaMissing
+            ? "Background missing — keeping last live visual"
+            : "Background unavailable — keeping last live visual"}
+        </div>
       );
     }
 
     if (isLoading && !isThumbnail) {
-      return renderRetainedBackground("Loading background...", true);
+      return null;
     }
 
     if (mediaType === "color" && resolvedUrl) {
@@ -733,6 +739,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       lowerThirds={lowerThirds}
       showSlideLabel={showSlideLabel}
       renderMedia={renderMedia}
+      renderFloor={() => retainedFloor ? <RetainedFloor asset={retainedFloor} /> : null}
       mediaType={mediaType}
       hasBackground={hasBackground}
       mediaError={mediaError}
@@ -762,6 +769,7 @@ interface ScaledCanvasProps {
   lowerThirds: boolean;
   showSlideLabel: boolean;
   renderMedia: () => React.ReactNode;
+  renderFloor?: () => React.ReactNode;
   mediaType: string;
   hasBackground: boolean;
   mediaError: boolean;
@@ -775,7 +783,7 @@ interface ScaledCanvasProps {
 
 const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
   fitContainer, slide, item, contentText, hasReadableText, hasStructuredElements, structuredElements, hasTextOverlay, textPx, textLayerStyle, useReadingPanel,
-  lowerThirds, showSlideLabel, renderMedia, mediaType, hasBackground, mediaError, isLoading,
+  lowerThirds, showSlideLabel, renderMedia, renderFloor, mediaType, hasBackground, mediaError, isLoading,
   audienceOverlay, projectedAudienceQr, branding, alphaOverlayUrl, isThumbnail = false,
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -871,9 +879,15 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
           left: "50%",
           transform: `translate(-50%, -50%) scale(${scale})`,
           transformOrigin: "center center",
+          willChange: "transform",
         }}
       >
-        {/* Media layer — z-10 */}
+        {/* Floor layer — always-on last-stable background; prevents black flash during load/error */}
+        {renderFloor && (
+          <div style={{ position: "absolute", inset: 0 }}>{renderFloor()}</div>
+        )}
+
+        {/* Media layer — live background rendered on top of floor */}
         <div style={{ position: "absolute", inset: 0 }}>{renderMedia()}</div>
 
         {/* Alpha-channel video overlay — z-20 (above background, below text) */}
@@ -1248,3 +1262,35 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
     </div>
   );
 };
+
+// ── RetainedFloor ─────────────────────────────────────────────────────────────
+// Renders the last stable background asset as a static floor layer.
+// Lives below the live media layer in DOM order so it never occludes text.
+// No loading states, no error handling — it only renders what was last confirmed good.
+function RetainedFloor({ asset }: { asset: RetainedBackgroundAsset }) {
+  if (asset.mediaType === "color") {
+    return <div className="w-full h-full" style={{ backgroundColor: asset.url }} />;
+  }
+  if (asset.mediaType === "video" && !asset.youtubeId) {
+    return (
+      <VideoBackground
+        src={asset.url}
+        active={true}
+        muted={true}
+        isThumbnail={true}
+      />
+    );
+  }
+  if (asset.mediaType === "image") {
+    return (
+      <img
+        src={asset.url}
+        alt=""
+        className="w-full h-full"
+        style={{ objectFit: asset.imageFit ?? "cover" }}
+        draggable={false}
+      />
+    );
+  }
+  return null;
+}
