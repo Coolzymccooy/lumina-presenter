@@ -1,17 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowRight, CheckCircle2, Cloud, Download, HardDrive, Laptop, Layout, Menu, Monitor, Play, Presentation, Shield, Sparkles, X } from 'lucide-react';
+import { PricingSection } from './PricingSection';
 
 interface LandingPageProps {
   onEnter: () => void;
   onLogout?: () => void;
   isAuthenticated: boolean;
   hasSavedSession?: boolean;
+  user?: { uid: string; email: string | null } | null;
+  userPlan?: string | null;
+  onPlanActivated?: (plan: string, period: string) => void;
 }
 
 const RELEASES_API_URL = 'https://api.github.com/repos/Coolzymccooy/lumina-presenter/releases/latest';
 const RELEASES_URL = 'https://github.com/Coolzymccooy/lumina-presenter/releases';
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isAuthenticated, hasSavedSession = false }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isAuthenticated, hasSavedSession = false, user, userPlan, onPlanActivated }) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [latestTag, setLatestTag] = useState('v2.2.20');
@@ -197,35 +201,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
         </div>
       </section>
 
-      <section id="pricing" className="py-24 px-6 bg-black border-t border-white/5">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-20">
-            <h2 className="text-3xl md:text-5xl font-bold mb-6">Simple Pricing</h2>
-            <p className="text-gray-400">Start free, then scale into full production workflows.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <div className="p-8 rounded-3xl border border-white/10 bg-white/[0.02] flex flex-col">
-              <h3 className="text-lg font-medium text-gray-400 mb-2">Starter</h3>
-              <div className="text-4xl font-bold text-white mb-6">Free</div>
-              <ul className="space-y-4 mb-8 flex-1">{['Unlimited Services', 'Windows + macOS + Web Access', 'Audience Studio Intake', 'Bible Engine', 'Hymn Library', 'Cloud Sync (1 User)'].map((entry) => (<li key={entry} className="flex items-center gap-3 text-sm text-gray-300"><CheckCircle2 size={16} className="text-green-500" /> {entry}</li>))}</ul>
-              <button onClick={onEnter} className="w-full py-3 rounded-xl border border-white/20 hover:bg-white hover:text-black transition-all font-bold text-sm">Get Started</button>
-            </div>
-            <div className="p-8 rounded-3xl border border-purple-500 bg-purple-500/5 flex flex-col relative transform md:-translate-y-4">
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-purple-500 text-white text-[10px] font-bold px-3 py-1 rounded-b-lg uppercase tracking-wider">Most Popular</div>
-              <h3 className="text-lg font-medium text-purple-400 mb-2">Pro</h3>
-              <div className="text-4xl font-bold text-white mb-6">$19<span className="text-lg text-gray-500 font-normal">/mo</span></div>
-              <ul className="space-y-4 mb-8 flex-1">{['Everything in Starter', 'Cloud Sync (5 Users)', 'AI Assist + Motion Tools', 'Audience Moderation + Ticker Controls', 'Advanced live-service workflow', 'Priority Support'].map((entry) => (<li key={entry} className="flex items-center gap-3 text-sm text-white"><CheckCircle2 size={16} className="text-purple-400" /> {entry}</li>))}</ul>
-              <button className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white transition-all font-bold text-sm shadow-lg shadow-purple-900/50">Start Free Trial</button>
-            </div>
-            <div className="p-8 rounded-3xl border border-white/10 bg-white/[0.02] flex flex-col">
-              <h3 className="text-lg font-medium text-gray-400 mb-2">Enterprise</h3>
-              <div className="text-4xl font-bold text-white mb-6">Custom</div>
-              <ul className="space-y-4 mb-8 flex-1">{['Unlimited Operators', 'Multi-Campus Environments', 'Admin Roles + Access Policies', 'SLA + 24/7 Priority Support', 'Dedicated Success Manager'].map((entry) => (<li key={entry} className="flex items-center gap-3 text-sm text-gray-300"><CheckCircle2 size={16} className="text-green-500" /> {entry}</li>))}</ul>
-              <button className="w-full py-3 rounded-xl border border-white/20 hover:bg-white hover:text-black transition-all font-bold text-sm">Contact Sales</button>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PricingSection
+        user={user ?? null}
+        userPlan={userPlan}
+        onEnter={onEnter}
+        onPlanActivated={onPlanActivated}
+      />
 
       <section className="py-24 px-6 bg-gradient-to-b from-[#050505] to-black border-t border-white/5 text-center">
         <div className="max-w-3xl mx-auto">
@@ -241,6 +222,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnter, onLogout, isA
       <footer className="py-12 border-t border-white/10 text-center">
         <div className="flex items-center justify-center gap-2 mb-4"><div className="w-6 h-6 bg-gradient-to-tr from-purple-600 to-blue-500 rounded-md flex items-center justify-center"><Sparkles size={12} className="text-white fill-white" /></div><span className="font-bold text-sm">LUMINA PRESENTER</span></div>
         <p className="text-gray-600 text-sm">Copyright 2026 Lumina Presenter. All rights reserved. <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer" className="hover:text-gray-400 transition-colors">Releases on GitHub</a></p>
+        <p className="text-gray-700 text-xs mt-2">Crafted by <span className="text-gray-500 font-medium">Tiwaton</span></p>
       </footer>
     </div>
   );

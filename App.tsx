@@ -79,11 +79,16 @@ import { parsePptxFile } from './services/pptxImport';
 import { parseEasyWorshipFile } from './services/easyWorshipImport';
 import { parseProPresenterFile } from './services/proPresenterImport';
 import { parseOpenSongFile } from './services/openSongImport';
+import { parseOpenLyricsFile } from './services/openLyricsImport';
+import { generateSlidesFromHymn } from './services/hymnGenerator';
+import { storeCcliCredentials, getCcliCredentials, setCcliActor } from './services/ccliService';
+import { initCcliProvider } from './services/ccliCatalogProvider';
 import { copyTextToClipboard } from './services/clipboardService';
 import { dispatchAetherBridgeEvent, type AetherBridgeEvent } from './services/aetherBridge';
 import { MacroPanel } from './components/MacroPanel';
 import { BuilderPreviewPanel } from './components/builder/BuilderPreviewPanel';
 import { StageWorkspace } from './components/builder/StageWorkspace';
+import { FilesPanel } from './components/builder/FilesPanel';
 import { subscribeMacros, seedStarterMacrosIfEmpty } from './services/macroRegistry';
 import { getArchivedSermons, deleteArchivedSermon, type ArchivedSermon } from './services/sermonArchive';
 import type { MacroDefinition, MacroAuditEntry } from './types/macros';
@@ -1128,6 +1133,13 @@ function App() {
   const isElectronShell = !!window.electron?.isElectron;
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [userPlan, setUserPlan] = useState<string | null>(null);
+  // True when running inside the NDI capture window (ndi=1 URL param).
+  // In this mode, audience-facing overlays (QR projection) are suppressed.
+  const isNdiCapture = useMemo(() => {
+    const params = new URLSearchParams(window.location.search || window.location.hash.split('?')[1] || '');
+    return params.get('ndi') === '1';
+  }, []);
   const [viewState, setViewState] = useState<'landing' | 'studio' | 'audience' | 'output' | 'stage' | 'remote'>(() => {
     const hash = window.location.hash;
     if (hash.startsWith('#/audience')) return 'audience';
@@ -1284,6 +1296,7 @@ function App() {
   const [isSlideEditorOpen, setIsSlideEditorOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false); // NEW
+  const [ccliConnected, setCcliConnected] = useState(false);
   const [isStagePreviewEditorOpen, setIsStagePreviewEditorOpen] = useState(false);
   const [workspaceSettings, setWorkspaceSettings] = useState<WorkspaceSettings>({
     churchName: 'My Church',
@@ -1493,6 +1506,8 @@ function App() {
   const presenterMediaUploadInputRef = useRef<HTMLInputElement | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
   const [isStageDisplayLive, setIsStageDisplayLive] = useState(false);
+  const [ndiActive, setNdiActive] = useState(false);
+  const [ndiError, setNdiError] = useState<string | null>(null);
   const [lowerThirdsEnabled, setLowerThirdsEnabled] = useState(false);
   const [routingMode, setRoutingMode] = useState<'PROJECTOR' | 'STREAM' | 'LOBBY'>('PROJECTOR');
   const [teamPlaylists, setTeamPlaylists] = useState<CloudPlaylistRecord[]>([]);
@@ -1540,7 +1555,10 @@ function App() {
   });
   const [audienceQrProjection, setAudienceQrProjection] = useState<AudienceQrProjectionState>(() => {
     const saved = initialSavedState;
-    return sanitizeAudienceQrProjectionState(saved?.audienceQrProjection);
+    const state = sanitizeAudienceQrProjectionState(saved?.audienceQrProjection);
+    // Always start hidden — QR must be explicitly shown each session.
+    // The URL is preserved so the user doesn't need to re-enter it.
+    return { ...state, visible: false };
   });
   const [stageTimerFlash, setStageTimerFlash] = useState<StageTimerFlashState>(() => {
     const saved = initialSavedState;
@@ -1572,6 +1590,7 @@ function App() {
   const [runSheetArchiveTitle, setRunSheetArchiveTitle] = useState('');
   const [archivedSermons, setArchivedSermons] = useState<ArchivedSermon[]>([]);
   const [archivedSermonsLoading, setArchivedSermonsLoading] = useState(false);
+  const [videoUrlDraft, setVideoUrlDraft] = useState('');
   const [draggedScheduleItemId, setDraggedScheduleItemId] = useState<string | null>(null);
   const [scheduleDropIndicator, setScheduleDropIndicator] = useState<{ itemId: string; after: boolean } | null>(null);
   const [draggedRunSheetSlide, setDraggedRunSheetSlide] = useState<{ itemId: string; slideId: string } | null>(null);
@@ -1838,6 +1857,69 @@ function App() {
     }
   }, [workspaceId]);
 
+  // ── CCLI credentials — load at startup ──────────────────────────────────────
+  // The actual client_secret lives only on the server. The renderer only learns
+  // whether the workspace is connected. We pass a getIdToken closure so the
+  // server can verify the user with firebase-admin.
+  useEffect(() => {
+    if (!workspaceId) return;
+    const getIdToken = user && typeof (user as any).getIdToken === 'function'
+      ? () => (user as any).getIdToken().catch(() => null)
+      : undefined;
+    setCcliActor(user?.uid ?? workspaceId, user?.email ?? null, getIdToken);
+    getCcliCredentials(workspaceId).then((creds) => {
+      initCcliProvider(creds, workspaceId);
+      setCcliConnected(!!creds);
+    }).catch(() => {
+      initCcliProvider(null, workspaceId);
+    });
+  }, [workspaceId, user?.uid, user?.email]);
+
+  // ── Server-side session validation — startup + periodic re-check ────────────
+  // Validates the user's session against the server. Honours the free plan
+  // (free users are valid). If the server marks the account as revoked, or the
+  // server is permanently unreachable on a hard reject, the client logs out.
+  useEffect(() => {
+    if (!user?.uid) return;
+    let cancelled = false;
+    const validate = async () => {
+      try {
+        const headers: Record<string, string> = {
+          'x-user-uid': user.uid,
+          'x-user-email': user.email ?? '',
+        };
+        if (typeof (user as any).getIdToken === 'function') {
+          try {
+            const token = await (user as any).getIdToken();
+            if (token) headers.Authorization = `Bearer ${token}`;
+          } catch { /* noop */ }
+        }
+        const resp = await fetch('/api/session/validate', { headers });
+        if (cancelled) return;
+        if (resp.status === 403) {
+          // Hard revocation — force logout
+          handleLogout();
+          return;
+        }
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data?.valid && data?.plan) {
+            setUserPlan(data.plan);
+          }
+        }
+        // Soft failures (network down, 5xx) are tolerated — the user keeps working
+      } catch {
+        // Network down — fail open. Free plan users still have a working app.
+      }
+    };
+    void validate();
+    const intervalId = window.setInterval(() => { void validate(); }, 5 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [user?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Macro subscription ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!workspaceId) return undefined;
@@ -2026,6 +2108,14 @@ function App() {
     const saved = initialSavedState;
     return typeof saved?.seekAmount === 'number' ? saved.seekAmount : 0;
   });
+  // Absolute seek target (seconds) — used instead of relative seekAmount for YouTube sync
+  const [seekTarget, setSeekTarget] = useState<number | null>(null);
+  // Wall-clock ms when video play started (reset on goLive + on play toggle)
+  const videoPlayStartEpochRef = useRef<number | null>(null);
+  // Accumulated play seconds before the last pause
+  const videoPausedOffsetRef = useRef<number>(0);
+  // Shared epoch broadcast to all renderers for sync-on-load
+  const [videoSyncEpoch, setVideoSyncEpoch] = useState<{ epochMs: number; offsetSec: number } | null>(null);
 
   // --- AUDIO SOUNDTRACK STATE ---
   const [currentTrack, setCurrentTrack] = useState<GospelTrack | null>(null);
@@ -2192,16 +2282,39 @@ function App() {
 
   // Strip inline data: URLs (e.g. SVG backgrounds on Bible slides) before syncing to server.
   // These can be hundreds of KB each and cause PayloadTooLargeError.
+  // Flatten a rich-text array (per-word objects) to a plain string so the sync
+  // payload stays compact. Remote output always re-loads full slide data from
+  // the saved runsheet; the live-state snapshot only needs plain text for
+  // fallback display and hydration metadata.
+  const flattenRichText = (value: unknown): unknown => {
+    if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null && 'text' in value[0]) {
+      return (value as Array<{ text?: string }>).map(w => w.text ?? '').join('');
+    }
+    return value;
+  };
+
+  const stripDataUrl = (v: unknown): unknown =>
+    typeof v === 'string' && v.startsWith('data:') ? '' : v;
+
   const stripScheduleDataUrls = useCallback((items: any[]): any[] =>
     items.map(item => ({
       ...item,
+      // Strip item-level data URL backgrounds (PPTX imports store each slide
+      // background as a base64 data URL here — a single image is 1–5 MB).
+      theme: item.theme
+        ? {
+            ...item.theme,
+            backgroundUrl: stripDataUrl(item.theme.backgroundUrl),
+          }
+        : item.theme,
       slides: Array.isArray(item.slides)
         ? item.slides.map((slide: any) => ({
             ...slide,
-            backgroundUrl: typeof slide.backgroundUrl === 'string' && slide.backgroundUrl.startsWith('data:')
-              ? '' : slide.backgroundUrl,
-            mediaUrl: typeof slide.mediaUrl === 'string' && slide.mediaUrl.startsWith('data:')
-              ? '' : slide.mediaUrl,
+            backgroundUrl: stripDataUrl(slide.backgroundUrl),
+            mediaUrl: stripDataUrl(slide.mediaUrl),
+            // Flatten per-word rich-text to plain strings to keep payload small
+            content: flattenRichText(slide.content),
+            speakerNotes: flattenRichText(slide.speakerNotes),
           }))
         : item.slides,
     }))
@@ -2237,14 +2350,16 @@ function App() {
   }, [user?.uid, user, workspaceId, liveSessionId, enqueueLiveState, applySyncBackoff, resetSyncBackoff, buildSyncPausedMessage]);
 
   const refreshRunSheetFiles = useCallback(async () => {
-    if (!workspaceId) {
+    // Wait for Firebase auth and workspace ID to resolve — workspaceId defaults to
+    // 'default-workspace' before auth completes, which could hit a foreign workspace
+    if (!workspaceId || !user?.uid) {
       setRunSheetFiles([]);
       return;
     }
     setRunSheetFilesLoading(true);
     setRunSheetFilesError(null);
     try {
-      const response = user?.uid ? await fetchRunSheetFiles(workspaceId, user) : null;
+      const response = await fetchRunSheetFiles(workspaceId, user);
       if (response?.ok && Array.isArray(response.files)) {
         const next = response.files as RunSheetFileRecord[];
         setRunSheetFiles(next);
@@ -2252,8 +2367,9 @@ function App() {
       } else {
         const localFiles = readLocalRunSheetFiles(workspaceId);
         setRunSheetFiles(localFiles);
-        if (!localFiles.length && user?.uid) {
-          setRunSheetFilesError(`Archive API unavailable at ${getServerApiBaseUrl()} (server offline or auth missing). Using local backup.`);
+        if (!localFiles.length) {
+          const statusHint = (response as any)?.status ? ` (HTTP ${(response as any).status})` : '';
+          setRunSheetFilesError(`Archive API unavailable at ${getServerApiBaseUrl()}${statusHint}. Using local backup.`);
         }
       }
     } catch (error) {
@@ -2287,6 +2403,28 @@ function App() {
       const unsub = onAuthStateChanged(auth, (u) => {
         setUser(u);
         setAuthLoading(false);
+        if (u) {
+          // Fetch the user's subscription plan from the server (with verified ID token)
+          (async () => {
+            const headers: Record<string, string> = {
+              'x-user-uid': u.uid,
+              'x-user-email': u.email ?? '',
+            };
+            try {
+              const token = await u.getIdToken();
+              if (token) headers.Authorization = `Bearer ${token}`;
+            } catch { /* noop */ }
+            try {
+              const r = await fetch('/api/payments/subscription', { headers });
+              if (r.ok) {
+                const data = await r.json();
+                if (data?.ok) setUserPlan(data.subscription?.plan ?? 'free');
+              }
+            } catch { /* keep plan as null = free */ }
+          })();
+        } else {
+          setUserPlan(null);
+        }
         // Auto-enter workspace if authenticated, but stay in audience if scanning
         if (u) {
           setViewState(prev => prev === 'audience' ? 'audience' : 'studio');
@@ -2702,9 +2840,6 @@ function App() {
 
   const handleLoginSuccess = (loggedInUser: any) => {
     setUser(loggedInUser);
-    if (!isFirebaseConfigured()) {
-      localStorage.setItem('lumina_demo_user', JSON.stringify(loggedInUser));
-    }
     logActivity(loggedInUser.uid, 'SESSION_START');
     setViewState('studio'); // Transition to app
   };
@@ -2712,8 +2847,16 @@ function App() {
   const handleLogout = () => {
     if (user) logActivity(user.uid, 'SESSION_END');
     if (isFirebaseConfigured() && auth) auth.signOut();
-    else localStorage.removeItem('lumina_demo_user');
+    // Clear any cached sensitive creds so a logged-out session cannot hit CCLI
+    initCcliProvider(null, null);
+    setCcliActor(null, null);
+    setCcliConnected(false);
     setUser(null);
+    // Close modals so nothing from the authenticated UI leaks through
+    setIsProfileOpen(false);
+    // Always route to the login gate. In Electron this is 'studio', which the
+    // auth guard below will render as <LoginScreen>. In a browser, 'landing'
+    // shows the public landing page.
     setViewState(isElectronShell ? 'studio' : 'landing');
   };
 
@@ -2799,6 +2942,10 @@ function App() {
 
 
 
+  // Sync the schedule snapshot only when the schedule itself changes — NOT on
+  // every slide navigation. Slide navigation is synced separately via the live
+  // state effect below. This prevents re-uploading the entire (potentially
+  // large) schedule JSON every time the presenter taps the next slide.
   useEffect(() => {
     if (!user?.uid || !cloudBootstrapComplete) return;
     const updatedAt = Date.now();
@@ -2817,6 +2964,29 @@ function App() {
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
+  }, [
+    schedule,
+    workspaceSettings,
+    holdScreenMode,
+    audienceQrProjection,
+    stageTimerFlash,
+    stageMessageCenter,
+    user?.uid,
+    user?.email,
+    allowedAdminEmails,
+    syncLiveState,
+    stripScheduleDataUrls,
+    cloudBootstrapComplete,
+    user,
+  ]);
+
+  // Persist the full playlist + workspace snapshot (includes navigation state).
+  // This is separate from the live-state sync above so schedule re-uploads are
+  // not triggered by slide navigation.
+  useEffect(() => {
+    if (!user?.uid || !cloudBootstrapComplete) return;
+    const updatedAt = Date.now();
+    const settingsUpdatedAt = workspaceSettingsUpdatedAtRef.current || updatedAt;
     (async () => {
       try {
         await upsertTeamPlaylist(user.uid, cloudPlaylistId, {
@@ -2834,7 +3004,7 @@ function App() {
           updatedAt,
         });
         await saveWorkspaceSnapshot(workspaceId, user, {
-          schedule,
+          schedule: stripScheduleDataUrls(schedule),
           selectedItemId,
           activeItemId,
           activeSlideIndex,
@@ -2861,15 +3031,12 @@ function App() {
     stageTimerFlash,
     stageMessageCenter,
     user?.uid,
-    user?.email,
-    allowedAdminEmails,
-    syncLiveState,
-    stripScheduleDataUrls,
     reportSyncFailure,
     cloudBootstrapComplete,
     cloudPlaylistId,
     workspaceId,
     user,
+    stripScheduleDataUrls,
   ]);
 
   useEffect(() => {
@@ -2890,9 +3057,16 @@ function App() {
   const activeItem = schedule.find(i => i.id === activeItemId) || null;
   const activeSlide = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex] : null;
 
-  // Detect PPTX visual items in the schedule (imported as MEDIA with source 'import')
+  // Detect PPTX visual items in the schedule (imported MEDIA, excluding video-url items)
   const hasPptxImportedItems = useMemo(() =>
-    schedule.some(item => item.type === ItemType.MEDIA && item.metadata?.source === 'import'),
+    schedule.some(item =>
+      item.type === ItemType.MEDIA &&
+      item.metadata?.source === 'import' &&
+      // Exclude video URL items: they share source='import' in legacy data but
+      // are never PPTX decks. PPTX slides never carry mediaType='video'.
+      item.theme?.mediaType !== 'video' &&
+      !item.slides.some(s => s.mediaType === 'video'),
+    ),
     [schedule],
   );
   // Detect Bible items using the split-panel style (SVG data URI background)
@@ -2933,6 +3107,26 @@ function App() {
     || (!activeSlide.mediaType && activeItem?.theme.mediaType === 'video')
     || looksLikeVideoUrl(activeBackgroundUrl)
   );
+
+  // Keep epoch refs in sync with play/pause so triggerSeek has accurate time estimates
+  useEffect(() => {
+    if (!isActiveVideo) return;
+    if (isPlaying) {
+      const now = Date.now();
+      const offset = videoPausedOffsetRef.current;
+      videoPlayStartEpochRef.current = now;
+      // Broadcast sync epoch so late-loading renderers can catch up
+      setVideoSyncEpoch({ epochMs: now, offsetSec: offset });
+    } else {
+      // Freeze the accumulated offset
+      const epoch = videoPlayStartEpochRef.current;
+      if (epoch !== null) {
+        videoPausedOffsetRef.current = videoPausedOffsetRef.current + (Date.now() - epoch) / 1000;
+      }
+      videoPlayStartEpochRef.current = null;
+    }
+  }, [isPlaying, isActiveVideo]);
+
   const presenterSidebarCompact = isElectronShell && viewMode === 'PRESENTER' && viewportWidth < 1500;
   const presenterShellTight = viewMode === 'PRESENTER' && viewportWidth < 1720;
   const presenterShellVeryTight = viewMode === 'PRESENTER' && viewportWidth < 1540;
@@ -3810,6 +4004,15 @@ function App() {
     };
   }, [electronMachineApi, hasElectronDisplayControl, refreshDesktopDisplays]);
 
+  // Subscribe to NDI sender state pushed from main process.
+  useEffect(() => {
+    if (!isElectronShell) return;
+    const off = window.electron?.ndi?.onState?.((state: { active: boolean; sourceName: string }) => {
+      setNdiActive(state.active);
+    });
+    return () => off?.();
+  }, [isElectronShell]);
+
   useEffect(() => {
     if (!hasElectronDisplayControl) return;
     if (!desktopDisplays.length) return;
@@ -3838,8 +4041,22 @@ function App() {
 
   const toggleBlackout = () => setBlackout(!blackout);
 
+  const estimateVideoTime = () => {
+    const epoch = videoPlayStartEpochRef.current;
+    const offset = videoPausedOffsetRef.current;
+    if (epoch === null) return offset;
+    return offset + (Date.now() - epoch) / 1000;
+  };
+
   const triggerSeek = (seconds: number) => {
-    setSeekCommand(Date.now());
+    const target = Math.max(0, estimateVideoTime() + seconds);
+    const now = Date.now();
+    // Update the anchor so subsequent seeks stay accurate
+    videoPlayStartEpochRef.current = now;
+    videoPausedOffsetRef.current = target;
+    setSeekTarget(target);
+    setVideoSyncEpoch({ epochMs: now, offsetSec: target });
+    setSeekCommand(now);
     setSeekAmount(seconds);
   };
 
@@ -4717,6 +4934,38 @@ function App() {
     setRunSheetFilesError('Deleted from local archive backup (API unavailable or not signed in).');
   };
 
+  const handleRefreshSermons = () => {
+    setArchivedSermonsLoading(true);
+    getArchivedSermons(workspaceId).then((items) => {
+      setArchivedSermons(items);
+      setArchivedSermonsLoading(false);
+    });
+  };
+
+  const handleCopySermon = (item: ArchivedSermon) => {
+    const text = [
+      `SERMON: ${item.summary.title}`,
+      ``,
+      `THEME: ${item.summary.mainTheme}`,
+      ``,
+      `KEY POINTS:`,
+      ...item.summary.keyPoints.map((p, i) => `${i + 1}. ${p}`),
+      ``,
+      `SCRIPTURES: ${item.summary.scripturesReferenced.join(' · ') || 'None'}`,
+      ``,
+      `CALL TO ACTION: ${item.summary.callToAction}`,
+    ].join('\n');
+    navigator.clipboard.writeText(text).catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    });
+  };
+
   const openCreatePresetModal = () => {
     setEditingPresetId(null);
     setPresetDraft(createSpeakerPresetDraft());
@@ -4956,6 +5205,12 @@ function App() {
     setBlackout(false);
     setHoldScreenMode('none');
     setIsPlaying(true);
+    // Reset video playback tracking whenever a new item goes live
+    const now = Date.now();
+    videoPlayStartEpochRef.current = now;
+    videoPausedOffsetRef.current = 0;
+    setSeekTarget(null);
+    setVideoSyncEpoch({ epochMs: now, offsetSec: 0 });
     logActivity(user?.uid, 'PRESENTATION_START', { itemTitle: nextLiveItem.title });
     // Fire item_start macro triggers
     const itemStartMatches = matchTriggers(
@@ -5577,6 +5832,40 @@ function App() {
     }
   };
 
+  const insertVideoUrlAsItem = (urlOverride?: string) => {
+    const url = (urlOverride ?? videoUrlDraft).trim();
+    if (!url) return;
+    const youtubeId = getYoutubeId(url);
+    const isVideo = youtubeId || looksLikeVideoUrl(url);
+    if (!youtubeId && !isVideo) return;
+    const now = Date.now();
+    const title = youtubeId ? `YouTube — ${youtubeId}` : (url.split('/').pop() || 'Video');
+    const mediaItem = finalizeGeneratedItemBackground({
+      id: `${now}-video-url-item`,
+      title,
+      type: ItemType.MEDIA,
+      slides: [{
+        id: `${now}-video-url-slide`,
+        label: 'Video',
+        content: '',
+        backgroundUrl: url,
+        mediaType: 'video',
+      }],
+      theme: {
+        backgroundUrl: url,
+        mediaType: 'video',
+        fontFamily: 'sans-serif',
+        textColor: '#ffffff',
+        shadow: false,
+        fontSize: 'medium',
+      },
+      metadata: { source: 'video-url' },
+    }, 'user');
+    addItem(mediaItem);
+    setSelectedItemId(mediaItem.id);
+    if (!urlOverride) setVideoUrlDraft('');
+  };
+
   const importPowerPointVisualSlidesForSlideEditor = async (file: File): Promise<Slide[]> => {
     try {
       const visual = await buildVisualSlidesFromPptx(file);
@@ -5703,6 +5992,47 @@ function App() {
       setIsImportingDeck(false);
       setImportDeckStatus('');
     }
+  };
+
+  const importOpenLyricsAsItem = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setImportModalError(null);
+    setIsImportingDeck(true);
+    setImportDeckStatus('Parsing OpenLyrics file...');
+    try {
+      const hymn = await parseOpenLyricsFile(file);
+      const generated = generateSlidesFromHymn(hymn);
+      const importedItem = finalizeGeneratedItemBackground(
+        { ...generated.item, metadata: { ...generated.item.metadata, source: 'import' } },
+        'system',
+      );
+      addItem(importedItem);
+      logActivity(user?.uid, 'IMPORT_OPENLYRICS', { filename: file.name, slideCount: generated.slides.length });
+    } catch (error: any) {
+      setImportModalError(error?.message || 'OpenLyrics import failed.');
+    } finally {
+      setIsImportingDeck(false);
+      setImportDeckStatus('');
+    }
+  };
+
+  const handleSaveCcliApiCredentials = async (
+    licenseNumber: string,
+    clientId: string,
+    clientSecret: string,
+  ): Promise<void> => {
+    if (!workspaceId) throw new Error('No workspace loaded.');
+    setCcliActor(user?.uid ?? workspaceId, user?.email ?? null);
+    await storeCcliCredentials(workspaceId, licenseNumber, clientId, clientSecret);
+    // Sentinel — actual secret lives only on the server.
+    initCcliProvider(
+      { licenseNumber: '', clientId: '', clientSecret: '', connectedAt: Date.now() },
+      workspaceId,
+    );
+    setCcliConnected(true);
+    logActivity(user?.uid, 'CCLI_CREDENTIALS_SAVED', { licenseNumber });
   };
 
   const startSlideLabelRename = useCallback((itemId: string, slideId: string, currentLabel: string, source: 'runsheet' | 'thumbnail' = 'thumbnail') => {
@@ -6025,6 +6355,8 @@ function App() {
       outputMuted,
       seekCommand,
       seekAmount,
+      seekTarget,
+      videoSyncEpoch,
       lowerThirdsEnabled,
       routingMode,
       timerMode,
@@ -6045,7 +6377,7 @@ function App() {
       controllerOwnerEmail: user.email || null,
       controllerAllowedEmails: allowedAdminEmails,
     });
-  }, [activeItemId, activeSlideIndex, blackout, holdScreenMode, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerSeconds, effectiveTimerDurationSec, currentCueSpeaker, currentCueAmberPercent, currentCueRedPercent, stageTimerFlash, currentCueItemId, audienceDisplay, audienceQrProjection, stageMessageCenter, workspaceSettings, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
+  }, [activeItemId, activeSlideIndex, blackout, holdScreenMode, isPlaying, outputMuted, seekCommand, seekAmount, seekTarget, videoSyncEpoch, lowerThirdsEnabled, routingMode, timerMode, timerSeconds, effectiveTimerDurationSec, currentCueSpeaker, currentCueAmberPercent, currentCueRedPercent, stageTimerFlash, currentCueItemId, audienceDisplay, audienceQrProjection, stageMessageCenter, workspaceSettings, user?.uid, user?.email, allowedAdminEmails, syncLiveState, cloudBootstrapComplete]);
 
   useEffect(() => {
     if (hasElectronDisplayControl) return;
@@ -6483,7 +6815,15 @@ function App() {
     if (isElectronShell) {
       return null;
     }
-    return <LandingPage onEnter={() => setViewState('studio')} onLogout={user ? handleLogout : undefined} isAuthenticated={!!user} hasSavedSession={hasSavedSession} />;
+    return <LandingPage
+      onEnter={() => setViewState('studio')}
+      onLogout={user ? handleLogout : undefined}
+      isAuthenticated={!!user}
+      hasSavedSession={hasSavedSession}
+      user={user ? { uid: user.uid, email: user.email } : null}
+      userPlan={userPlan}
+      onPlanActivated={(plan) => setUserPlan(plan)}
+    />;
   }
 
   // ROUTING: AUDIENCE SUBMISSION PAGE
@@ -6505,12 +6845,14 @@ function App() {
             isPlaying={isPlaying}
             seekCommand={seekCommand}
             seekAmount={seekAmount}
+            seekTarget={seekTarget}
+            videoSyncEpoch={videoSyncEpoch}
             isMuted={outputMuted}
             isProjector={true}
             lowerThirds={lowerThirdsEnabled}
             showSlideLabel={true}
             audienceOverlay={audienceDisplay}
-            projectedAudienceQr={audienceQrProjection}
+            projectedAudienceQr={isNdiCapture ? undefined : audienceQrProjection}
             branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle, textOpacity: workspaceSettings.slideBrandingOpacity }}
           />
         )}
@@ -6556,7 +6898,7 @@ function App() {
     return <RemoteControl />;
   }
 
-  // ROUTING: LOGIN (If not authenticated, force login for studio)
+  // ROUTING: LOGIN (If not authenticated, force login for studio — both browser and Electron)
   if (!user && viewState === 'studio') {
     if (showOnboarding) {
       return (
@@ -6568,7 +6910,8 @@ function App() {
         />
       );
     }
-    return <LoginScreen onLoginSuccess={handleLoginSuccess} onClose={() => setViewState('landing')} />;
+    // In Electron there's no public landing page, so the login screen cannot be dismissed.
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} onClose={isElectronShell ? undefined : () => setViewState('landing')} />;
   }
 
   const renderScheduleList = () => (
@@ -6577,6 +6920,7 @@ function App() {
       {schedule.map((item, idx) => (
         <React.Fragment key={item.id}>
           <div
+            data-testid={`schedule-item-${item.id}`}
             draggable={viewMode === 'BUILDER'}
             onDragStart={(e) => {
               if (viewMode !== 'BUILDER') return;
@@ -7069,7 +7413,7 @@ function App() {
             <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3">
               <div className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">New Slide</div>
               <div className="mt-1.5 text-sm font-semibold text-white">Insert still or video</div>
-              <p className="mt-1.5 text-[10px] leading-4 text-zinc-500">Create a media slide from a local file or saved asset.</p>
+              <p className="mt-1.5 text-[10px] leading-4 text-zinc-500">Create a media slide from a local file, saved asset, or YouTube URL.</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   onClick={() => presenterMediaUploadInputRef.current?.click()}
@@ -7085,6 +7429,23 @@ function App() {
                   className="rounded-lg border border-cyan-800/50 bg-cyan-950/30 px-3 py-2 text-[9px] font-black uppercase tracking-[0.16em] text-cyan-200 hover:bg-cyan-950/50"
                 >
                   Library Asset
+                </button>
+              </div>
+              <div className="mt-3 flex gap-1.5">
+                <input
+                  type="url"
+                  value={videoUrlDraft}
+                  onChange={(e) => setVideoUrlDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') insertVideoUrlAsItem(); }}
+                  placeholder="Paste YouTube or video URL…"
+                  className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
+                />
+                <button
+                  onClick={() => insertVideoUrlAsItem()}
+                  disabled={!videoUrlDraft.trim()}
+                  className="shrink-0 px-3 py-1.5 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black uppercase tracking-[0.14em] text-zinc-200 hover:border-zinc-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Add
                 </button>
               </div>
             </div>
@@ -7301,6 +7662,8 @@ function App() {
                       isPlaying={isPlaying}
                       seekCommand={seekCommand}
                       seekAmount={seekAmount}
+                      seekTarget={seekTarget}
+                      videoSyncEpoch={videoSyncEpoch}
                       isMuted={isPreviewMuted}
                       lowerThirds={previewLowerThirds}
                       audienceOverlay={audienceDisplay}
@@ -7574,35 +7937,21 @@ function App() {
       {saveError && <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-red-900/90 border border-red-500 text-white px-4 py-2 rounded-sm shadow-xl z-50 flex items-center gap-3 text-xs font-bold animate-pulse"><span>⚠ STORAGE FULL: Changes are NOT saving.</span><button onClick={() => setSaveError(false)} className="hover:text-zinc-300">✕</button></div>}
       
       {showSyncGuidance && syncIssueDisplay && (
-        <div className="fixed left-1/2 top-[4.35rem] z-50 w-[min(calc(100vw-1rem),28rem)] -translate-x-1/2 sm:left-auto sm:right-4 sm:top-20 sm:w-[min(calc(100vw-2rem),28rem)] sm:translate-x-0">
-          <div className="rounded-2xl border border-amber-600/45 bg-[linear-gradient(180deg,rgba(69,26,3,0.96),rgba(17,10,3,0.98))] p-3.5 text-amber-100 shadow-[0_24px_64px_rgba(0,0,0,0.34)] backdrop-blur-xl">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-[0.26em] text-amber-200/80">Sync guidance</div>
-                <div className="mt-1 text-sm font-semibold text-amber-50">{syncIssueDisplay.title}</div>
-              </div>
-              <button
-                onClick={dismissSyncGuidance}
-                className="rounded-full border border-amber-500/25 bg-amber-500/10 p-1 text-amber-100 transition hover:border-amber-300/40 hover:bg-amber-500/15"
-                aria-label="Dismiss sync guidance"
-              >
-                <XIcon className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            <p className="mt-2 text-[12px] leading-5 text-amber-50/90">{syncIssueDisplay.summary}</p>
-            <div className="mt-3 space-y-2">
-              {syncIssueDisplay.steps.map((step) => (
-                <div key={step} className="rounded-xl border border-amber-500/20 bg-black/18 px-3 py-2 text-[11px] leading-5 text-amber-50/85">
-                  {step}
-                </div>
-              ))}
-            </div>
-             {syncIssueDisplay.detail && (
-              <div className="mt-3 text-[10px] leading-4 text-amber-200/65">
-                {syncIssueDisplay.detail}
-              </div>
-            )}
-          </div>
+        <div className="fixed top-14 left-0 right-0 z-40 flex items-center gap-3 px-4 py-2 bg-amber-950/95 border-b border-amber-700/50 backdrop-blur-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-amber-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span className="text-[11px] font-semibold text-amber-200 shrink-0">{syncIssueDisplay.title}</span>
+          {syncIssueDisplay.detail && (
+            <span className="text-[10px] text-amber-300/65 truncate hidden sm:block">{syncIssueDisplay.detail}</span>
+          )}
+          <button
+            onClick={dismissSyncGuidance}
+            className="ml-auto shrink-0 text-amber-500 hover:text-amber-200 transition-colors p-1 rounded hover:bg-amber-900/40"
+            aria-label="Dismiss sync guidance"
+          >
+            <XIcon className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
 
@@ -7775,235 +8124,36 @@ function App() {
           )}
           {activeSidebarTab === 'FILES' && (
             <div className="flex-1 overflow-hidden flex flex-col">
-              {/* Header */}
-              <div className="px-3 py-2.5 border-b border-zinc-800 shrink-0 flex items-center justify-between">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Files</h3>
-              </div>
-
-              <div className="flex-1 overflow-y-auto custom-scrollbar">
-                {/* ── IMPORT ── */}
-                <div className="px-3 pt-3 pb-2">
-                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 mb-2">Import</p>
-                  <div className="space-y-1">
-                    <label className="flex items-center gap-2.5 px-2.5 py-2 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer transition-colors group">
-                      <span className="w-6 h-6 rounded flex items-center justify-center bg-purple-900/50 text-purple-300 text-[9px] font-black shrink-0">PP</span>
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white">ProPresenter</div>
-                        <div className="text-[9px] text-zinc-500">.pro6 / .pro6x / .pro</div>
-                      </div>
-                      <input type="file" accept=".pro6,.pro6x,.pro" className="hidden" onChange={importProPresenterAsItem} disabled={isImportingDeck} />
-                    </label>
-                    <label className="flex items-center gap-2.5 px-2.5 py-2 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer transition-colors group">
-                      <span className="w-6 h-6 rounded flex items-center justify-center bg-emerald-900/50 text-emerald-300 text-[9px] font-black shrink-0">EW</span>
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white">EasyWorship</div>
-                        <div className="text-[9px] text-zinc-500">.ewsx / .ewp</div>
-                      </div>
-                      <input type="file" accept=".ewsx,.ewp" className="hidden" onChange={importEasyWorshipAsItem} disabled={isImportingDeck} />
-                    </label>
-                    <label className="flex items-center gap-2.5 px-2.5 py-2 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer transition-colors group">
-                      <span className="w-6 h-6 rounded flex items-center justify-center bg-amber-900/50 text-amber-300 text-[9px] font-black shrink-0">OS</span>
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white">OpenSong</div>
-                        <div className="text-[9px] text-zinc-500">.ofs / .xml</div>
-                      </div>
-                      <input type="file" accept=".ofs,.xml,.opensong" className="hidden" onChange={importOpenSongAsItem} disabled={isImportingDeck} />
-                    </label>
-                    <button
-                      onClick={() => setIsLyricsImportOpen(true)}
-                      className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer transition-colors group text-left"
-                    >
-                      <span className="w-6 h-6 rounded flex items-center justify-center bg-blue-900/50 text-blue-300 text-[9px] font-black shrink-0">PPT</span>
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-semibold text-zinc-200 group-hover:text-white">PowerPoint / PDF</div>
-                        <div className="text-[9px] text-zinc-500">.pptx / .pdf / lyrics</div>
-                      </div>
-                    </button>
-                  </div>
-                  {isImportingDeck && (
-                    <div className="mt-2 text-[10px] text-cyan-300 border border-cyan-900/40 bg-cyan-950/20 rounded px-2 py-1.5">
-                      {importDeckStatus || 'Importing…'}
-                    </div>
-                  )}
-                </div>
-
-                <div className="mx-3 border-t border-zinc-800/60" />
-
-                {/* ── ARCHIVE ── */}
-                <div className="px-3 pt-3 pb-2">
-                  <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 mb-2">Archive Run Sheet</p>
-                  <input
-                    value={runSheetArchiveTitle}
-                    onChange={(e) => setRunSheetArchiveTitle(e.target.value)}
-                    placeholder="Title (optional)"
-                    className="w-full mb-2 bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
-                  />
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      onClick={() => handleArchiveRunSheet(false)}
-                      className="py-1.5 text-[10px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500 transition-colors"
-                    >
-                      Archive
-                    </button>
-                    <button
-                      onClick={() => handleArchiveRunSheet(true)}
-                      className="py-1.5 text-[10px] font-bold border border-blue-800/60 rounded bg-blue-950/40 text-blue-300 hover:bg-blue-900/40 hover:border-blue-600 transition-colors"
-                    >
-                      Archive + New
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mx-3 border-t border-zinc-800/60" />
-
-                {/* ── SAVED FILES ── */}
-                <div className="px-3 pt-3 pb-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 flex-1">Saved Files</p>
-                    <button onClick={refreshRunSheetFiles} className="text-[9px] text-zinc-500 hover:text-zinc-300 transition-colors font-bold uppercase tracking-wide">↻ Refresh</button>
-                  </div>
-                  <input
-                    value={runSheetFileQuery}
-                    onChange={(e) => setRunSheetFileQuery(e.target.value)}
-                    placeholder="Search files…"
-                    className="w-full mb-2 bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
-                  />
-                  {runSheetFilesError && (
-                    <div className="mb-2 text-[10px] text-amber-400 border border-amber-900/50 bg-amber-950/20 rounded px-2 py-1.5 leading-snug">
-                      {runSheetFilesError}
-                    </div>
-                  )}
-                </div>
-
-                <div className="px-3 pb-3 space-y-1">
-                  {runSheetFilesLoading && (
-                    <div className="text-[10px] text-zinc-600 py-2">Loading…</div>
-                  )}
-                  {!runSheetFilesLoading && filteredRunSheetFiles.length === 0 && (
-                    <div className="text-[10px] text-zinc-700 py-4 text-center">No saved run sheets</div>
-                  )}
-                  {filteredRunSheetFiles.map((file) => (
-                    <div key={file.fileId} className="rounded border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition-colors overflow-hidden">
-                      <div className="px-2.5 py-2">
-                        <div className="text-[11px] font-semibold text-zinc-200 truncate leading-tight">{file.title}</div>
-                        <div className="text-[9px] text-zinc-600 mt-0.5">
-                          {new Date(file.updatedAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
-                          {' · '}
-                          {(file.payload?.items || []).length} item{(file.payload?.items || []).length !== 1 ? 's' : ''}
-                        </div>
-                      </div>
-                      <div className="flex border-t border-zinc-800">
-                        <button
-                          onClick={() => handleReuseRunSheet(file.fileId, 'replace')}
-                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-blue-900/30 hover:text-blue-200 transition-colors border-r border-zinc-800"
-                        >
-                          Reuse
-                        </button>
-                        <button
-                          onClick={() => handleReuseRunSheet(file.fileId, 'duplicate')}
-                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-zinc-800 transition-colors border-r border-zinc-800"
-                        >
-                          Duplicate
-                        </button>
-                        <button
-                          onClick={() => handleRenameRunSheet(file.fileId)}
-                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-zinc-800 transition-colors border-r border-zinc-800"
-                        >
-                          Rename
-                        </button>
-                        <button
-                          onClick={() => handleDeleteRunSheet(file.fileId)}
-                          className="flex-1 py-1.5 text-[9px] font-bold text-rose-500 hover:bg-rose-950/40 transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mx-3 border-t border-zinc-800/60" />
-
-                {/* ── SERMON ARCHIVE ── */}
-                <div className="px-3 pt-3 pb-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 flex-1">Sermon Archive</p>
-                    <button
-                      onClick={() => {
-                        setArchivedSermonsLoading(true);
-                        getArchivedSermons(workspaceId).then((items) => {
-                          setArchivedSermons(items);
-                          setArchivedSermonsLoading(false);
-                        });
-                      }}
-                      className="text-[9px] text-zinc-500 hover:text-zinc-300 transition-colors font-bold uppercase tracking-wide"
-                    >
-                      ↻ Refresh
-                    </button>
-                  </div>
-                </div>
-
-                <div className="px-3 pb-3 space-y-1">
-                  {archivedSermonsLoading && (
-                    <div className="text-[10px] text-zinc-600 py-2">Loading…</div>
-                  )}
-                  {!archivedSermonsLoading && archivedSermons.length === 0 && (
-                    <div className="text-[10px] text-zinc-700 py-4 text-center">No saved sermon summaries</div>
-                  )}
-                  {archivedSermons.map((item) => (
-                    <div key={item.id} className="rounded border border-zinc-800 bg-zinc-900/50 hover:border-zinc-700 transition-colors overflow-hidden">
-                      <div className="px-2.5 py-2">
-                        <div className="text-[11px] font-semibold text-zinc-200 truncate leading-tight">{item.summary.title || 'Untitled Sermon'}</div>
-                        <div className="text-[9px] text-zinc-500 mt-0.5 leading-tight line-clamp-1">{item.summary.mainTheme}</div>
-                        <div className="text-[9px] text-zinc-600 mt-0.5">
-                          {new Date(item.savedAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
-                          {' · '}
-                          {item.wordCount.toLocaleString()} words
-                        </div>
-                      </div>
-                      <div className="flex border-t border-zinc-800">
-                        <button
-                          onClick={() => {
-                            const text = [
-                              `SERMON: ${item.summary.title}`,
-                              ``,
-                              `THEME: ${item.summary.mainTheme}`,
-                              ``,
-                              `KEY POINTS:`,
-                              ...item.summary.keyPoints.map((p, i) => `${i + 1}. ${p}`),
-                              ``,
-                              `SCRIPTURES: ${item.summary.scripturesReferenced.join(' · ') || 'None'}`,
-                              ``,
-                              `CALL TO ACTION: ${item.summary.callToAction}`,
-                            ].join('\n');
-                            navigator.clipboard.writeText(text).catch(() => {
-                              const ta = document.createElement('textarea');
-                              ta.value = text;
-                              ta.style.cssText = 'position:fixed;opacity:0';
-                              document.body.appendChild(ta);
-                              ta.select();
-                              document.execCommand('copy');
-                              document.body.removeChild(ta);
-                            });
-                          }}
-                          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-zinc-800 transition-colors border-r border-zinc-800"
-                        >
-                          Copy
-                        </button>
-                        <button
-                          onClick={async () => {
-                            await deleteArchivedSermon(item.id, workspaceId);
-                            setArchivedSermons((prev) => prev.filter((s) => s.id !== item.id));
-                          }}
-                          className="flex-1 py-1.5 text-[9px] font-bold text-rose-500 hover:bg-rose-950/40 transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <FilesPanel
+                runSheetFiles={filteredRunSheetFiles}
+                runSheetFilesLoading={runSheetFilesLoading}
+                runSheetFilesError={runSheetFilesError}
+                runSheetFileQuery={runSheetFileQuery}
+                onRunSheetFileQueryChange={setRunSheetFileQuery}
+                onRefreshFiles={refreshRunSheetFiles}
+                onReuseRunSheet={handleReuseRunSheet}
+                onRenameRunSheet={handleRenameRunSheet}
+                onDeleteRunSheet={handleDeleteRunSheet}
+                runSheetArchiveTitle={runSheetArchiveTitle}
+                onRunSheetArchiveTitleChange={setRunSheetArchiveTitle}
+                onArchiveRunSheet={handleArchiveRunSheet}
+                archivedSermons={archivedSermons}
+                archivedSermonsLoading={archivedSermonsLoading}
+                onRefreshSermons={handleRefreshSermons}
+                onCopySermon={handleCopySermon}
+                onDeleteSermon={async (id) => {
+                  await deleteArchivedSermon(id, workspaceId);
+                  setArchivedSermons((prev) => prev.filter((s) => s.id !== id));
+                }}
+                isImportingDeck={isImportingDeck}
+                importDeckStatus={importDeckStatus}
+                onImportProPresenter={importProPresenterAsItem}
+                onImportEasyWorship={importEasyWorshipAsItem}
+                onImportOpenSong={importOpenSongAsItem}
+                onImportOpenLyrics={importOpenLyricsAsItem}
+                onOpenLyricsImport={() => setIsLyricsImportOpen(true)}
+                onAddVideoUrl={(url) => insertVideoUrlAsItem(url)}
+              />
             </div>
           )}
           {activeSidebarTab === 'HYMNS' && (
@@ -8141,6 +8291,17 @@ function App() {
         onPrevSlide={prevSlide}
         onNextSlide={nextSlide}
         onToggleBlackout={() => setBlackout(prev => !prev)}
+        isPlaying={isPlaying}
+        isActiveVideo={isActiveVideo}
+        seekTarget={seekTarget}
+        videoSyncEpoch={videoSyncEpoch}
+        seekCommand={seekCommand}
+        seekAmount={seekAmount}
+        outputMuted={outputMuted}
+        onTogglePlay={() => setIsPlaying(prev => !prev)}
+        onSeekForward={() => triggerSeek(10)}
+        onSeekBackward={() => triggerSeek(-10)}
+        onToggleMute={() => setOutputMuted(prev => !prev)}
       />
     ) : (
             <div className="flex-1 flex flex-col lg:flex-row bg-black min-w-0 overflow-hidden">
@@ -8154,6 +8315,8 @@ function App() {
                         isPlaying={isPlaying}
                         seekCommand={seekCommand}
                         seekAmount={seekAmount}
+                        seekTarget={seekTarget}
+                        videoSyncEpoch={videoSyncEpoch}
                         isMuted={isPreviewMuted}
                         lowerThirds={lowerThirdsEnabled}
                         audienceOverlay={audienceDisplay}
@@ -8291,6 +8454,36 @@ function App() {
                         <button onClick={() => void copyShareUrl(obsOutputUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy OBS URL</button>
                         <button onClick={() => void copyShareUrl(cleanFeedUrl, 'Clean feed URL copied!')} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-violet-300 hover:border-violet-600 transition-all uppercase tracking-wider" title="No branding or audience overlays — use for recording or streaming">Copy Clean Feed</button>
                         <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy Stage URL</button>
+                        {isElectronShell && hasElectronDisplayControl && (
+                          <button
+                            onClick={async () => {
+                              setNdiError(null);
+                              if (ndiActive) {
+                                await window.electron.ndi.stop();
+                              } else {
+                                const result = await window.electron.ndi.start({
+                                  sourceName: `Lumina \u2013 ${workspaceSettings.churchName || 'Presenter'}`,
+                                  workspaceId,
+                                  sessionId: liveSessionId,
+                                });
+                                if (!result.ok) setNdiError(result.error ?? 'NDI failed to start.');
+                              }
+                            }}
+                            title={ndiActive ? 'Stop NDI broadcast' : 'Broadcast slide output as an NDI source on the local network'}
+                            className={`h-9 px-3 rounded-lg border font-black text-[9px] tracking-wider uppercase transition-all ${ndiActive ? 'border-violet-500/70 bg-violet-950/50 text-violet-300 animate-pulse' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-violet-300 hover:border-violet-600'}`}
+                          >
+                            {ndiActive ? '● NDI LIVE' : 'Send NDI'}
+                          </button>
+                        )}
+                        {ndiError && (
+                          <span
+                            className="h-9 flex items-center px-3 rounded-lg border border-rose-700/60 bg-rose-950/30 text-[9px] font-bold text-rose-300 cursor-pointer"
+                            title="Click to dismiss"
+                            onClick={() => setNdiError(null)}
+                          >
+                            {ndiError}
+                          </span>
+                        )}
                         <button onClick={() => setBlackout(!blackout)} className={`h-9 px-5 rounded-lg border font-black text-[10px] tracking-widest uppercase active:scale-95 transition-all ml-auto shadow-lg ${blackout ? 'bg-zinc-900 text-red-400 border-red-600/80 animate-pulse shadow-red-950/20' : 'bg-red-600 border-red-500 text-white hover:bg-red-500 shadow-red-950/30'}`}>
                           {blackout ? 'Go Live' : 'BLACKOUT'}
                         </button>
@@ -8514,6 +8707,8 @@ function App() {
                     isPlaying={isPlaying}
                     seekCommand={seekCommand}
                     seekAmount={seekAmount}
+                    seekTarget={seekTarget}
+                    videoSyncEpoch={videoSyncEpoch}
                     isMuted={outputMuted}
                     isProjector={true}
                     lowerThirds={lowerThirdsEnabled}
@@ -9368,7 +9563,7 @@ function App() {
         />
       )}
       <AIModal isOpen={isAIModalOpen} onClose={() => setIsAIModalOpen(false)} onGenerate={handleAIItemGenerated} />
-      {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={handleWorkspaceSettingsSave} onLogout={handleLogout} currentSettings={workspaceSettings} currentUser={user} />}
+      {isProfileOpen && <ProfileSettings onClose={() => setIsProfileOpen(false)} onSave={handleWorkspaceSettingsSave} onLogout={handleLogout} currentSettings={workspaceSettings} currentUser={user} onSaveCcliApiCredentials={handleSaveCcliApiCredentials} ccliConnected={ccliConnected} />}
       {presenterContextMenu && presenterContextMenuActions.length > 0 && (
         <ContextMenu
           x={presenterContextMenu.x}

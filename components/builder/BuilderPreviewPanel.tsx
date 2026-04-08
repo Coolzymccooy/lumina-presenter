@@ -69,6 +69,13 @@ function NotesPreview({ text }: { text: string }) {
   return <span className="truncate text-amber-400/70 italic">{words}{plain.split(/\s+/).length > 8 ? '…' : ''}</span>;
 }
 
+function isVideoSlide(slide: Slide | null, item: ServiceItem): boolean {
+  if (!slide) return false;
+  const bgUrl = slide.backgroundUrl || item.theme?.backgroundUrl || '';
+  const mediaType = slide.mediaType || item.theme?.mediaType || '';
+  return mediaType === 'video' || /\.(mp4|webm|mov|ogg)(\?|$)/i.test(bgUrl) || /youtu\.?be/i.test(bgUrl);
+}
+
 export function BuilderPreviewPanel({
   item,
   onUpdate,
@@ -84,6 +91,8 @@ export function BuilderPreviewPanel({
 }: BuilderPreviewPanelProps) {
   const [focusedIdx, setFocusedIdx] = useState<number>(0);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [previewPlaying, setPreviewPlaying] = useState(false);
+  const [previewMuted, setPreviewMuted] = useState(true);
   const notesRef = useRef<HTMLTextAreaElement>(null);
 
   const focusedSlide = item.slides[focusedIdx] ?? item.slides[0] ?? null;
@@ -251,10 +260,41 @@ export function BuilderPreviewPanel({
           {/* Live preview canvas */}
           <div className="p-3 shrink-0">
             <div className="aspect-video w-full border border-zinc-700 rounded-sm overflow-hidden bg-black shadow-lg relative">
-              <SlideRenderer slide={focusedSlide} item={item} fitContainer={true} isThumbnail={false} />
+              <SlideRenderer
+                slide={focusedSlide}
+                item={item}
+                fitContainer={true}
+                isThumbnail={false}
+                isPlaying={isVideoSlide(focusedSlide, item) ? previewPlaying : true}
+                isMuted={previewMuted}
+              />
               <div className="absolute top-0 left-0 bg-black/60 text-[8px] font-black tracking-widest text-zinc-400 px-2 py-1">
                 LIVE PREVIEW
               </div>
+              {isVideoSlide(focusedSlide, item) && (
+                <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm rounded-lg px-2 py-1">
+                  <button
+                    onClick={() => setPreviewPlaying(p => !p)}
+                    className="text-white hover:text-zinc-200 transition-colors"
+                    title={previewPlaying ? 'Pause' : 'Play'}
+                  >
+                    {previewPlaying
+                      ? <svg className="w-4 h-4 fill-current" viewBox="0 0 16 16"><rect x="3" y="2" width="4" height="12" rx="1"/><rect x="9" y="2" width="4" height="12" rx="1"/></svg>
+                      : <svg className="w-4 h-4 fill-current" viewBox="0 0 16 16"><path d="M3 2l11 6-11 6V2z"/></svg>
+                    }
+                  </button>
+                  <button
+                    onClick={() => setPreviewMuted(m => !m)}
+                    className={`transition-colors ${previewMuted ? 'text-red-400 hover:text-red-300' : 'text-emerald-400 hover:text-emerald-300'}`}
+                    title={previewMuted ? 'Unmute' : 'Mute'}
+                  >
+                    {previewMuted
+                      ? <svg className="w-4 h-4 fill-current" viewBox="0 0 16 16"><path d="M9 2v12l-5-4H1V6h3L9 2zm5.5 3.5l-1.4 1.4a3 3 0 010 2.2l1.4 1.4A5 5 0 0114.5 8a5 5 0 00-.5-2.5h.5z" opacity=".4"/><line x1="12" y1="4" x2="4" y2="12" stroke="currentColor" strokeWidth="1.5"/></svg>
+                      : <svg className="w-4 h-4 fill-current" viewBox="0 0 16 16"><path d="M9 2v12l-5-4H1V6h3L9 2zm4.5 1.5l-1.4 1.4a3 3 0 010 5.2l1.4 1.4A5 5 0 0013.5 8a5 5 0 00-.5-3.5h.5z"/></svg>
+                    }
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

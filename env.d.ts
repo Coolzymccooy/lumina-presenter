@@ -94,6 +94,16 @@ interface Window {
         stageOpen: boolean;
       }) => void) => (() => void);
     };
+    ndi?: {
+      start?: (payload: {
+        sourceName?: string;
+        workspaceId?: string;
+        sessionId?: string;
+      }) => Promise<{ ok: boolean; error?: string }>;
+      stop?: () => Promise<{ ok: boolean }>;
+      getStatus?: () => Promise<{ active: boolean; sourceName: string }>;
+      onState?: (callback: (state: { active: boolean; sourceName: string }) => void) => (() => void);
+    };
     updates?: {
       getStatus?: () => Promise<{
         state: 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'not-available' | 'error';

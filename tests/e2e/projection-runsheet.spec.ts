@@ -2,6 +2,11 @@ import { expect, APIRequestContext, test } from '@playwright/test';
 
 const SERVER_BASE_URL = 'http://127.0.0.1:8877';
 
+// NOTE: These E2E tests rely on the server's dev-header auth fallback.
+// The server only honours `x-user-uid` when running with NODE_ENV !== 'production'
+// or LUMINA_ALLOW_DEV_HEADER_AUTH=true. For E2E runs, the playwright config
+// launches the server with LUMINA_ALLOW_DEV_HEADER_AUTH=true so this works
+// regardless of the host's NODE_ENV. Do not run these against a production server.
 const ownerHeaders = {
   'x-user-uid': 'e2e-owner',
   'x-user-email': 'owner@e2e.local',

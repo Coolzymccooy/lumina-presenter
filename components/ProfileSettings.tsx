@@ -1,11 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
-import { UserIcon, Settings, X, Save, Church, ShieldCheck, ChevronDown, ChevronUp, CreditCard, Palette, Globe, Lock, Tv2, Network } from 'lucide-react';
+import { UserIcon, Settings, X, Save, Church, ShieldCheck, ChevronDown, ChevronUp, CreditCard, Palette, Globe, Lock, Tv2, Network, Music } from 'lucide-react';
 
 interface ProfileSettingsProps {
   onClose: () => void;
   onSave: (settings: any) => void;
   onLogout?: () => void;
+  onSaveCcliApiCredentials?: (licenseNumber: string, clientId: string, clientSecret: string) => Promise<void>;
+  ccliConnected?: boolean;
   currentSettings: any;
   currentUser?: {
     uid?: string | null;
@@ -19,7 +21,7 @@ interface ProfileSettingsProps {
   } | null;
 }
 
-export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSave, onLogout, currentSettings, currentUser }) => {
+export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSave, onLogout, onSaveCcliApiCredentials, ccliConnected, currentSettings, currentUser }) => {
   const [churchName, setChurchName] = useState(currentSettings?.churchName || 'My Church');
   const [ccli, setCcli] = useState(currentSettings?.ccli || '');
   const [defaultVersion, setDefaultVersion] = useState(currentSettings?.defaultVersion || 'kjv');
@@ -42,6 +44,10 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
     Array.isArray(currentSettings?.ndiSources) ? currentSettings.ndiSources : []
   );
 
+  const [ccliClientId, setCcliClientId] = useState('');
+  const [ccliClientSecret, setCcliClientSecret] = useState('');
+  const [ccliSaveStatus, setCcliSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
   const [activeTab, setActiveTab] = useState<string | null>('account');
 
   const accountName = currentUser?.displayName || currentUser?.email || 'Authenticated User';
@@ -62,6 +68,19 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
     const nextSessionId = String(currentSettings?.sessionId || '').trim() || 'live';
     setSessionId(nextSessionId);
   }, [currentSettings?.sessionId]);
+
+  const handleSaveCcliCredentials = async () => {
+    if (!onSaveCcliApiCredentials) return;
+    setCcliSaveStatus('saving');
+    try {
+      await onSaveCcliApiCredentials(ccli, ccliClientId, ccliClientSecret);
+      setCcliSaveStatus('saved');
+      setTimeout(() => setCcliSaveStatus('idle'), 3000);
+    } catch {
+      setCcliSaveStatus('error');
+      setTimeout(() => setCcliSaveStatus('idle'), 4000);
+    }
+  };
 
   const handleSave = () => {
     const normalizedSessionId = String(sessionId || '').trim() || 'live';
@@ -365,10 +384,92 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
               <p className="text-[10px] text-zinc-600 px-1">Source name is the NDI output name. Scene ID maps to an Aether scene for <span className="font-mono">trigger_aether_scene</span> macro actions.</p>
             </div>
           )}
-        </div>
 
-        {/* ── Slide Branding ── */}
-        <div className="border-b border-zinc-800/50">
+          {/* CCLI SongSelect Section */}
+          <SectionHeader id="ccli-songselect" icon={Music} title="CCLI SongSelect" description="300k+ Licensed Songs" />
+          {activeTab === 'ccli-songselect' && (
+            <div className="p-6 space-y-5 bg-zinc-950/30 animate-in slide-in-from-top-4 duration-300">
+              {/* Status badge */}
+              <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${ccliConnected ? 'border-emerald-800/50 bg-emerald-950/30' : 'border-zinc-800 bg-zinc-900/40'}`}>
+                <div className={`w-2 h-2 rounded-full shrink-0 ${ccliConnected ? 'bg-emerald-400' : 'bg-zinc-600'}`} />
+                <div>
+                  <div className={`text-[11px] font-bold ${ccliConnected ? 'text-emerald-300' : 'text-zinc-400'}`}>
+                    {ccliConnected ? 'Connected — 300k+ songs available' : 'Not connected'}
+                  </div>
+                  <div className="text-[9px] text-zinc-600 mt-0.5">
+                    {ccliConnected ? 'CCLI SongSelect API is active for this workspace.' : 'Enter your CCLI SongSelect API credentials to enable live song search.'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Migration notice — credentials are now stored encrypted on the server, not in Firestore */}
+              {!ccliConnected && (
+                <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg border border-amber-900/40 bg-amber-950/20">
+                  <div className="text-amber-400 text-[10px] font-bold mt-px">i</div>
+                  <div className="text-[10px] leading-relaxed text-amber-200/80">
+                    <span className="font-bold">Security upgrade:</span> CCLI credentials are now stored encrypted on the server.
+                    If you connected CCLI in an older version of Lumina, please reconnect once below — your secret is verified once and never stored on this device.
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">CCLI License Number</label>
+                  <input
+                    type="text"
+                    value={ccli}
+                    onChange={(e) => setCcli(e.target.value)}
+                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-all font-mono placeholder:text-zinc-700"
+                    placeholder="12345678"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Client ID</label>
+                  <input
+                    type="text"
+                    value={ccliClientId}
+                    onChange={(e) => setCcliClientId(e.target.value)}
+                    autoComplete="off"
+                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-all font-mono placeholder:text-zinc-700"
+                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-1">Client Secret</label>
+                  <input
+                    type="password"
+                    value={ccliClientSecret}
+                    onChange={(e) => setCcliClientSecret(e.target.value)}
+                    autoComplete="new-password"
+                    className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3 text-sm text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 focus:outline-none transition-all font-mono placeholder:text-zinc-700"
+                    placeholder="••••••••••••••••••••••••"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleSaveCcliCredentials}
+                disabled={!ccliClientId.trim() || !ccliClientSecret.trim() || ccliSaveStatus === 'saving'}
+                className={`w-full py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
+                  ccliSaveStatus === 'saved'
+                    ? 'bg-emerald-700 text-white border border-emerald-600'
+                    : ccliSaveStatus === 'error'
+                    ? 'bg-red-900/50 text-red-300 border border-red-800'
+                    : 'bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-40 disabled:cursor-not-allowed'
+                }`}
+              >
+                {ccliSaveStatus === 'saving' ? 'Connecting…' : ccliSaveStatus === 'saved' ? 'Connected ✓' : ccliSaveStatus === 'error' ? 'Connection failed — check credentials' : 'Connect to SongSelect'}
+              </button>
+
+              <p className="text-[9px] text-zinc-600 leading-relaxed px-1">
+                API credentials are obtained from the CCLI Developer Program. Credentials are stored securely in your workspace and never shared.
+              </p>
+            </div>
+          )}
+
+          {/* ── Slide Branding ── */}
+          <div className="border-b border-zinc-800/50">
           <SectionHeader id="branding" icon={Tv2} title="Slide Branding" description="Church name & series strips on slides" />
           {activeTab === 'branding' && (
             <div className="p-6 space-y-5 bg-zinc-950/30 animate-in slide-in-from-top-4 duration-300">
@@ -460,6 +561,7 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
             </div>
           )}
         </div>
+        </div>{/* end scrollable content */}
 
         {/* Footer */}
         <div className="p-6 border-t border-zinc-800 bg-zinc-950/80 backdrop-blur-md flex justify-between items-center gap-4">

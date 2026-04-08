@@ -22,6 +22,16 @@ contextBridge.exposeInMainWorld('electron', {
       return () => ipcRenderer.removeListener('machine:service-state', listener);
     },
   },
+  ndi: {
+    start: (payload) => ipcRenderer.invoke('ndi:start', payload),
+    stop: () => ipcRenderer.invoke('ndi:stop'),
+    getStatus: () => ipcRenderer.invoke('ndi:get-status'),
+    onState: (callback) => {
+      const listener = (_event, payload) => callback(payload);
+      ipcRenderer.on('ndi:state', listener);
+      return () => ipcRenderer.removeListener('ndi:state', listener);
+    },
+  },
   updates: {
     getStatus: () => ipcRenderer.invoke('app-update:get-status'),
     checkNow: () => ipcRenderer.invoke('app-update:check-now'),

@@ -31,21 +31,29 @@ process.env.LUMINA_PDF_RASTER_DPI = process.env.LUMINA_PDF_RASTER_DPI || '120';
 process.env.LUMINA_VIS_RASTER_ENGINE = process.env.LUMINA_VIS_RASTER_ENGINE || 'auto';
 
 if (!process.env.LUMINA_SOFFICE_BIN) {
-  const scoopLibreOfficeDir = path.join(
-    os.homedir(),
-    'scoop',
-    'apps',
-    'libreoffice',
-    'current',
-    'LibreOffice',
-    'program',
-  );
-  const sofficeCom = path.join(scoopLibreOfficeDir, 'soffice.com');
-  const sofficeExe = path.join(scoopLibreOfficeDir, 'soffice.exe');
-  if (fs.existsSync(sofficeCom)) {
-    process.env.LUMINA_SOFFICE_BIN = sofficeCom;
-  } else if (fs.existsSync(sofficeExe)) {
-    process.env.LUMINA_SOFFICE_BIN = sofficeExe;
+  // Candidate paths in priority order. Program Files is checked first because
+  // Scoop installs use NTFS junction points which can fail when spawned via
+  // Node.js child_process even though fs.existsSync resolves them correctly.
+  const candidates = [
+    // Standard Windows installer locations
+    path.join('C:\\Program Files\\LibreOffice\\program\\soffice.com'),
+    path.join('C:\\Program Files\\LibreOffice\\program\\soffice.exe'),
+    path.join('C:\\Program Files (x86)\\LibreOffice\\program\\soffice.com'),
+    path.join('C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe'),
+    // Scoop per-user install
+    path.join(os.homedir(), 'scoop', 'apps', 'libreoffice', 'current', 'LibreOffice', 'program', 'soffice.com'),
+    path.join(os.homedir(), 'scoop', 'apps', 'libreoffice', 'current', 'LibreOffice', 'program', 'soffice.exe'),
+    // macOS
+    '/Applications/LibreOffice.app/Contents/MacOS/soffice',
+    // Linux
+    '/usr/bin/soffice',
+    '/usr/local/bin/soffice',
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      process.env.LUMINA_SOFFICE_BIN = candidate;
+      break;
+    }
   }
 }
 

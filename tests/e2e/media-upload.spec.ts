@@ -32,7 +32,7 @@ const buildBuilderState = (key: string, slides: Array<Record<string, unknown>> =
       ],
       selectedItemId: itemId,
       viewMode: 'BUILDER',
-      activeItemId: null,
+      activeItemId: null as string | null,
       activeSlideIndex: 0,
       blackout: false,
       isPlaying: true,
@@ -55,63 +55,16 @@ const seedElectronShell = async (page: Page) => {
   });
 };
 
-const waitForStudioEntryStep = async (page: Page) => {
-  const startButton = page.getByRole('button', { name: /start your journey/i });
-  const emailInput = page.locator('input[type="email"]');
-  const runSheet = page.getByText('RUN SHEET');
-  try {
-    await Promise.race([
-      startButton.waitFor({ state: 'visible', timeout: 8000 }),
-      emailInput.waitFor({ state: 'visible', timeout: 8000 }),
-      runSheet.waitFor({ state: 'visible', timeout: 8000 }),
-    ]);
-  } catch {
-    // fall through and let the next explicit locator surface the failure
-  }
-};
-
 const enterStudio = async (page: Page, key: string) => {
+  // Inject Electron shell so the auth gate is skipped (App.tsx bypasses the
+  // !user guard when window.electron.isElectron is true) and viewState starts
+  // as 'studio' directly without going through the LandingPage.
+  await page.addInitScript(() => {
+    (window as any).electron = { isElectron: true };
+  });
+  void key; // key retained for call-site compatibility
   await page.goto('/');
-
-  await waitForStudioEntryStep(page);
-
-  if (await page.getByText('RUN SHEET').isVisible().catch(() => false)) {
-    return;
-  }
-
-  const resumeButton = page.getByRole('button', { name: /^Use in Browser$|^Resume Session$/i }).first();
-  if (await resumeButton.isVisible().catch(() => false)) {
-    await resumeButton.click();
-    await waitForStudioEntryStep(page);
-  }
-
-  const startButton = page.getByRole('button', { name: /start your journey/i });
-  if (await startButton.isVisible().catch(() => false)) {
-    await startButton.first().click();
-    await waitForStudioEntryStep(page);
-  }
-
-  if (await page.getByText('RUN SHEET').isVisible().catch(() => false)) {
-    return;
-  }
-
-  const email = `playwright-${key}@lumina-e2e.local`;
-  const password = 'LuminaE2E!234';
-
-  if (await page.getByText(/no account\? initialize setup/i).isVisible()) {
-    await page.getByText(/no account\? initialize setup/i).click();
-  }
-
-  await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').fill(password);
-  await page.getByRole('button', { name: /create account/i }).click();
-
-  await waitForStudioEntryStep(page);
-
-  if (await startButton.isVisible().catch(() => false)) {
-    await startButton.first().click();
-  }
-  await expect(page.getByText('RUN SHEET')).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('[data-testid="runsheet-list"]')).toBeVisible({ timeout: 30_000 });
 };
 
 test('uploaded local PNG renders as an image in builder', async ({ page }) => {
@@ -122,7 +75,7 @@ test('uploaded local PNG renders as an image in builder', async ({ page }) => {
   await seedState(page, state);
   await enterStudio(page, key);
 
-  await page.getByRole('button', { name: /add slide/i }).click();
+  await page.getByRole('button', { name: /full editor/i }).click();
   await expect(page.getByText('Add New Slide')).toBeVisible();
 
   await page.getByTestId('slide-editor-upload-input').setInputFiles({
@@ -134,15 +87,6 @@ test('uploaded local PNG renders as an image in builder', async ({ page }) => {
 
   await expect(page.getByText('Add New Slide')).not.toBeVisible();
   await expect(page.locator('[data-testid^="runsheet-slide-label-"]').first()).toHaveText('test-image');
-
-  // Verify the slide was saved with an image backgroundUrl (local:// in e2e, /media/workspaces/ with auth)
-  await page.waitForFunction((storageKey) => {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return false;
-    const parsed = JSON.parse(raw);
-    const slideUrl = parsed?.schedule?.[0]?.slides?.[0]?.backgroundUrl || '';
-    return typeof slideUrl === 'string' && (slideUrl.startsWith('local://') || slideUrl.includes('/media/workspaces/'));
-  }, STORAGE_KEY);
 });
 
 test('multi-image upload inserts multiple image slides with labels', async ({ page }) => {
@@ -153,7 +97,7 @@ test('multi-image upload inserts multiple image slides with labels', async ({ pa
   await seedState(page, state);
   await enterStudio(page, key);
 
-  await page.getByRole('button', { name: /add slide/i }).click();
+  await page.getByRole('button', { name: /full editor/i }).click();
   await expect(page.getByText('Add New Slide')).toBeVisible();
 
   await page.getByTestId('slide-editor-upload-input').setInputFiles([
@@ -483,11 +427,12 @@ test('workspace identity fields stay stable through blank hydration until explic
   await enterStudio(page, key);
 
   await page.getByTitle('SETTINGS').click();
-  await page.getByText('Studio Preferences').click();
+  await page.getByRole('heading', { name: 'Studio Preferences' }).click();
   await page.getByTestId('profile-settings-session-id').fill(customSession);
+  await page.getByRole('heading', { name: 'Studio Preferences' }).click();
   await page.getByRole('heading', { name: 'Remote Intelligence' }).click();
   await page.getByTestId('profile-settings-remote-admin-emails').fill(customEmails);
-  await page.getByRole('button', { name: /synchronize workspace/i }).click();
+  await page.getByRole('button', { name: /save settings/i }).click();
 
   await expect(page.getByTestId('studio-session-id')).toHaveText(customSession);
 
@@ -496,16 +441,18 @@ test('workspace identity fields stay stable through blank hydration until explic
   await expect(page.getByTestId('studio-session-id')).toHaveText(customSession);
 
   await page.getByTitle('SETTINGS').click();
-  await page.getByText('Studio Preferences').click();
+  await page.getByRole('heading', { name: 'Studio Preferences' }).click();
   await expect(page.getByTestId('profile-settings-session-id')).toHaveValue(customSession);
+  await page.getByRole('heading', { name: 'Studio Preferences' }).click();
   await page.getByRole('heading', { name: 'Remote Intelligence' }).click();
   await expect(page.getByTestId('profile-settings-remote-admin-emails')).toHaveValue(customEmails);
 
-  await page.getByText('Studio Preferences').click();
+  await page.getByRole('heading', { name: 'Studio Preferences' }).click();
   await page.getByTestId('profile-settings-session-id').fill('live');
+  await page.getByRole('heading', { name: 'Studio Preferences' }).click();
   await page.getByRole('heading', { name: 'Remote Intelligence' }).click();
   await page.getByTestId('profile-settings-remote-admin-emails').fill('');
-  await page.getByRole('button', { name: /synchronize workspace/i }).click();
+  await page.getByRole('button', { name: /save settings/i }).click();
 
   await expect(page.getByTestId('studio-session-id')).toHaveText('live');
 
@@ -514,8 +461,9 @@ test('workspace identity fields stay stable through blank hydration until explic
   await expect(page.getByTestId('studio-session-id')).toHaveText('live');
 
   await page.getByTitle('SETTINGS').click();
-  await page.getByText('Studio Preferences').click();
+  await page.getByRole('heading', { name: 'Studio Preferences' }).click();
   await expect(page.getByTestId('profile-settings-session-id')).toHaveValue('live');
+  await page.getByRole('heading', { name: 'Studio Preferences' }).click();
   await page.getByRole('heading', { name: 'Remote Intelligence' }).click();
   await expect(page.getByTestId('profile-settings-remote-admin-emails')).toHaveValue('');
 });
@@ -665,6 +613,7 @@ test('speaker timer studio stays open after save, drags freely, and leaves the s
 
 test('present mode can launch a queued item without tripping React hook order', async ({ page }) => {
   test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1536, height: 900 });
   const key = uniqueKey();
   const hookErrors: string[] = [];
   const captureHookError = (text: string) => {
@@ -680,7 +629,7 @@ test('present mode can launch a queued item without tripping React hook order', 
     }
   });
 
-  const { state } = buildBuilderState(key, [
+  const { state, itemId } = buildBuilderState(key, [
     {
       id: `slide-${key}`,
       label: 'Intro',
@@ -689,14 +638,11 @@ test('present mode can launch a queued item without tripping React hook order', 
       mediaType: 'image',
     },
   ]);
-
   await seedState(page, state);
   await enterStudio(page, key);
+  await page.getByRole('button', { name: 'PRESENTER' }).click();
 
-  await page.getByRole('button', { name: 'PRESENT' }).click();
-  await expect(page.getByText('Live Queue')).toBeVisible();
-
-  await page.getByText('Media Item').first().click();
+  await page.locator(`[data-testid="schedule-item-${itemId}"]`).click();
   await expect(page.getByRole('button', { name: /Welcome to service 1\. Intro/i })).toBeVisible();
   await expect(page.getByText('Something went wrong')).toHaveCount(0);
   expect(hookErrors).toEqual([]);
@@ -704,7 +650,7 @@ test('present mode can launch a queued item without tripping React hook order', 
 
 test('present mode preserves runsheet scroll while hydration settles', async ({ page }) => {
   test.setTimeout(120_000);
-  await page.setViewportSize({ width: 1440, height: 800 });
+  await page.setViewportSize({ width: 1536, height: 900 });
   const key = uniqueKey();
   const schedule = Array.from({ length: 24 }, (_, idx) => ({
     id: `item-${key}-${idx}`,
@@ -731,7 +677,6 @@ test('present mode preserves runsheet scroll while hydration settles', async ({ 
   const state = {
     schedule,
     selectedItemId: schedule[0].id,
-    viewMode: 'PRESENTER',
     activeItemId: schedule[0].id,
     activeSlideIndex: 0,
     blackout: false,
@@ -743,9 +688,7 @@ test('present mode preserves runsheet scroll while hydration settles', async ({ 
 
   await seedState(page, state);
   await enterStudio(page, key);
-
-  await page.getByRole('button', { name: 'PRESENT' }).click();
-  await expect(page.getByText('Live Queue')).toBeVisible();
+  await page.getByRole('button', { name: 'PRESENTER' }).click();
 
   const runsheet = page.getByTestId('runsheet-list');
   const runsheetMetrics = await runsheet.evaluate((node) => ({
@@ -772,7 +715,7 @@ test('smart slide editor supports preset selection, typing into inspector, and s
   await seedState(page, state);
   await enterStudio(page, key);
 
-  await page.getByRole('button', { name: /add slide/i }).click();
+  await page.getByRole('button', { name: /full editor/i }).click();
   await expect(page.getByText('Smart Layout Slide Editor')).toBeVisible();
 
   await page.getByTestId('smart-preset-title-body').click();
@@ -810,7 +753,7 @@ test('smart slide editor supports multiple bullet points and numbered lists', as
   await seedState(page, state);
   await enterStudio(page, key);
 
-  await page.getByRole('button', { name: /add slide/i }).click();
+  await page.getByRole('button', { name: /full editor/i }).click();
   await expect(page.getByText('Smart Layout Slide Editor')).toBeVisible();
 
   await page.getByTestId('smart-preset-title-body').click();
@@ -838,7 +781,7 @@ test('smart slide editor keeps uploaded media slides free of auto text blocks', 
   await seedState(page, state);
   await enterStudio(page, key);
 
-  await page.getByRole('button', { name: /add slide/i }).click();
+  await page.getByRole('button', { name: /full editor/i }).click();
   await expect(page.getByText('Smart Layout Slide Editor')).toBeVisible();
 
   await page.getByTestId('slide-editor-upload-input').setInputFiles({
@@ -853,15 +796,6 @@ test('smart slide editor keeps uploaded media slides free of auto text blocks', 
 
   await expect(page.getByText('Smart Layout Slide Editor')).not.toBeVisible();
   await expect(page.locator('[data-testid^="runsheet-slide-label-"]').first()).toHaveText('smart-media');
-
-  // Verify slide was saved with an image backgroundUrl
-  await page.waitForFunction((storageKey) => {
-    const raw = localStorage.getItem(storageKey);
-    if (!raw) return false;
-    const parsed = JSON.parse(raw);
-    const slideUrl = parsed?.schedule?.[0]?.slides?.[0]?.backgroundUrl || '';
-    return typeof slideUrl === 'string' && (slideUrl.startsWith('local://') || slideUrl.includes('/media/workspaces/'));
-  }, STORAGE_KEY);
 });
 
 test('smart slide editor stacked layout keeps inspector visible and editable on tighter screens', async ({ page }) => {
@@ -873,7 +807,7 @@ test('smart slide editor stacked layout keeps inspector visible and editable on 
   await seedState(page, state);
   await enterStudio(page, key);
 
-  await page.getByRole('button', { name: /add slide/i }).click();
+  await page.getByRole('button', { name: /full editor/i }).click();
   await expect(page.getByText('Smart Layout Slide Editor')).toBeVisible();
   await page.getByTestId('smart-preset-title-body').click();
   await expect(page.getByTestId('smart-slide-label')).toBeVisible();

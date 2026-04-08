@@ -303,9 +303,12 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const sermonStartedAtRef = useRef<number | null>(null);
   const sermonAutoEnabledVisionaryRef = useRef(false);
   const sermonRestartAttemptRef = useRef(0);
-  // Audio blob collection for full-file transcription fallback (ScribeAI pattern)
+  // Audio blob collection for full-file transcription (ScribeAI pattern)
   const sermonAudioChunksRef = useRef<Blob[]>([]);
   const sermonAudioMimeTypeRef = useRef<string>('audio/webm');
+  // Dedicated sermon recorder — always captures audio during sermon, independent of cloud fallback
+  const sermonRecorderRef = useRef<MediaRecorder | null>(null);
+  const sermonStreamRef = useRef<MediaStream | null>(null);
 
   const resolveSemanticReference = useCallback(async (
     rawQuery: string,
@@ -724,48 +727,80 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     }
   }, [scheduleAutoProcess]);
 
+  const stopSermonCapture = useCallback(() => {
+    try {
+      if (sermonRecorderRef.current && sermonRecorderRef.current.state !== 'inactive') {
+        sermonRecorderRef.current.stop();
+      }
+    } catch { /* ignore */ }
+    sermonRecorderRef.current = null;
+    try {
+      sermonStreamRef.current?.getTracks().forEach((t) => t.stop());
+    } catch { /* ignore */ }
+    sermonStreamRef.current = null;
+  }, []);
+
+  const startSermonCapture = useCallback(async (): Promise<void> => {
+    stopSermonCapture();
+    try {
+      const mimeType = pickSupportedRecorderMimeType() ?? 'audio/webm';
+      sermonAudioMimeTypeRef.current = mimeType;
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      sermonStreamRef.current = stream;
+      const recorder = new MediaRecorder(stream, { mimeType });
+      recorder.ondataavailable = (event: BlobEvent) => {
+        if (event.data?.size && sermonRecordingRef.current) {
+          sermonAudioChunksRef.current.push(event.data);
+        }
+      };
+      recorder.onerror = () => { /* silent — we'll use what was collected */ };
+      recorder.start(5000);
+      sermonRecorderRef.current = recorder;
+    } catch { /* mic unavailable — will rely on STT transcript only */ }
+  }, [stopSermonCapture]);
+
   const toggleSermonRecording = useCallback(async () => {
     if (sermonRecordingRef.current) {
-      // STOP recording → transcribe → summarize
+      // STOP — ScribeAI pattern: always transcribe full audio first, fall back to STT words
       sermonRecordingRef.current = false;
       setSermonRecording(false);
+      stopSermonCapture();
       if (sermonAutoEnabledVisionaryRef.current) {
         sermonAutoEnabledVisionaryRef.current = false;
         setAutoVisionaryEnabled(false);
       }
 
-      let transcript = sermonTranscriptRef.current.trim();
+      const audioChunks = sermonAudioChunksRef.current.slice();
+      sermonAudioChunksRef.current = [];
+      const sttTranscript = sermonTranscriptRef.current.trim();
+      let transcript = '';
 
-      // If browser STT gave us nothing, try full-file transcription (ScribeAI pattern)
-      if (!transcript) {
-        const audioChunks = sermonAudioChunksRef.current.slice();
-        sermonAudioChunksRef.current = [];
-        if (audioChunks.length > 0) {
-          setSermonTranscribing(true);
-          setSermonSummaryError(null);
-          const mimeType = sermonAudioMimeTypeRef.current;
-          const audioBlob = new Blob(audioChunks, { type: mimeType });
-          const locale = speechLocaleMode === 'en-GB' ? 'en-GB' : 'en-US';
-          const result = await transcribeSermonAudio(audioBlob, mimeType, locale);
-          setSermonTranscribing(false);
-          if (result.ok) {
-            transcript = result.transcript;
-            // Update word count from full transcript
-            const wc = transcript.trim().split(/\s+/).filter(Boolean).length;
-            setSermonWordCount(wc);
-          } else {
-            setSermonSummaryError('No transcript was captured. Try recording a longer segment.');
-            return;
-          }
-        } else {
-          setSermonSummaryError('No transcript was captured. Turn on Auto Visionary before recording, or try again.');
-          return;
-        }
-      } else {
-        sermonAudioChunksRef.current = [];
+      // Primary: full-file Gemini transcription
+      if (audioChunks.length > 0) {
+        setSermonTranscribing(true);
         setSermonSummaryError(null);
+        const mimeType = sermonAudioMimeTypeRef.current;
+        const audioBlob = new Blob(audioChunks, { type: mimeType });
+        const locale = speechLocaleMode === 'en-GB' ? 'en-GB' : 'en-US';
+        const result = await transcribeSermonAudio(audioBlob, mimeType, locale);
+        setSermonTranscribing(false);
+        if (result.ok && result.transcript) {
+          transcript = result.transcript;
+          setSermonWordCount(transcript.trim().split(/\s+/).filter(Boolean).length);
+        }
       }
 
+      // Fallback: whatever browser STT captured live
+      if (!transcript) transcript = sttTranscript;
+
+      if (!transcript) {
+        setSermonSummaryError('No transcript was captured. Try recording a longer segment with microphone access enabled.');
+        return;
+      }
+
+      setSermonSummaryError(null);
       setSermonSummarizing(true);
       const accentHint = speechLocaleMode === 'en-GB' ? 'uk' : 'standard';
       const result = await summarizeSermon(transcript, accentHint);
@@ -778,7 +813,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
         setSermonSummaryError(result.error || 'Summarization failed. Please try again.');
       }
     } else {
-      // START recording
+      // START — launch dedicated sermon recorder immediately + Auto Visionary for live word count
       sermonTranscriptRef.current = '';
       sermonAudioChunksRef.current = [];
       sermonRecordingRef.current = true;
@@ -791,13 +826,13 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       setSermonMicWarning(null);
       setSermonArchived(false);
       setSermonRecording(true);
-      // Auto-enable Auto Visionary if not already on so the mic activates
+      void startSermonCapture();
       if (!autoEnabledRef.current) {
         sermonAutoEnabledVisionaryRef.current = true;
         setAutoVisionaryEnabled(true);
       }
     }
-  }, [speechLocaleMode]);
+  }, [speechLocaleMode, startSermonCapture, stopSermonCapture]);
 
   // Elapsed timer while sermon is recording
   useEffect(() => {
@@ -977,11 +1012,9 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       recorder.ondataavailable = (event: BlobEvent) => {
         const chunk = event.data;
         if (!chunk || !chunk.size) return;
+        // During sermon recording, skip live cloud transcription — dedicated sermon recorder handles capture
+        if (sermonRecordingRef.current) return;
         cloudQueueRef.current.push(chunk);
-        // Also collect for full-file sermon transcription (ScribeAI pattern)
-        if (sermonRecordingRef.current) {
-          sermonAudioChunksRef.current.push(chunk);
-        }
         void processCloudQueue();
       };
       recorder.onerror = () => {

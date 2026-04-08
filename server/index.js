@@ -3,7 +3,7 @@ import cors from "cors";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomUUID, createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -316,6 +316,23 @@ CREATE INDEX IF NOT EXISTS idx_connections_workspace_session_seen ON session_con
 CREATE UNIQUE INDEX IF NOT EXISTS idx_runsheet_workspace_file_unique ON workspace_runsheet_files(workspace_id, file_id);
 CREATE INDEX IF NOT EXISTS idx_runsheet_workspace_updated ON workspace_runsheet_files(workspace_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sermons_workspace_time ON sermon_summaries(workspace_id, saved_at DESC);
+
+CREATE TABLE IF NOT EXISTS workspace_ccli_credentials (
+  workspace_id TEXT PRIMARY KEY,
+  license_number TEXT NOT NULL,
+  client_id TEXT NOT NULL,
+  client_secret_enc TEXT NOT NULL,
+  enc_iv TEXT NOT NULL,
+  enc_tag TEXT NOT NULL,
+  connected_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS revoked_users (
+  uid TEXT PRIMARY KEY,
+  reason TEXT,
+  revoked_at INTEGER NOT NULL
+);
 `);
 
 const ensureColumnExists = (tableName, columnName, definitionSql, backfillSql = null) => {
@@ -383,6 +400,32 @@ app.use(
 );
 
 const now = () => Date.now();
+
+// ── Secret encryption (AES-256-GCM) ──────────────────────────────────────────
+// Used to encrypt CCLI client secrets at rest. Key is derived from an env var
+// so that even a DB dump cannot be used to recover secrets without the key.
+const CCLI_ENCRYPTION_PASSPHRASE = String(process.env.CCLI_ENCRYPTION_KEY || "").trim();
+const CCLI_ENCRYPTION_AVAILABLE = CCLI_ENCRYPTION_PASSPHRASE.length >= 16;
+const CCLI_ENCRYPTION_KEY = CCLI_ENCRYPTION_AVAILABLE
+  ? scryptSync(CCLI_ENCRYPTION_PASSPHRASE, "lumina-ccli-v1", 32)
+  : null;
+
+const encryptSecret = (plaintext) => {
+  if (!CCLI_ENCRYPTION_KEY) throw new Error("CCLI_ENCRYPTION_KEY not configured");
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", CCLI_ENCRYPTION_KEY, iv);
+  const enc = Buffer.concat([cipher.update(String(plaintext), "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return { ciphertext: enc.toString("base64"), iv: iv.toString("base64"), tag: tag.toString("base64") };
+};
+
+const decryptSecret = (ciphertextB64, ivB64, tagB64) => {
+  if (!CCLI_ENCRYPTION_KEY) throw new Error("CCLI_ENCRYPTION_KEY not configured");
+  const decipher = createDecipheriv("aes-256-gcm", CCLI_ENCRYPTION_KEY, Buffer.from(ivB64, "base64"));
+  decipher.setAuthTag(Buffer.from(tagB64, "base64"));
+  const dec = Buffer.concat([decipher.update(Buffer.from(ciphertextB64, "base64")), decipher.final()]);
+  return dec.toString("utf8");
+};
 const parseJson = (raw, fallback) => {
   if (!raw) return fallback;
   try {
@@ -667,19 +710,112 @@ const createRunSheetFileId = () => {
   return `rs_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 };
 
-const readActor = (req) => {
-  const uid = String(req.header("x-user-uid") || "").trim();
-  const email = String(req.header("x-user-email") || "").trim().toLowerCase();
-  return { uid, email };
+// ── Firebase Admin (ID-token verification) ──────────────────────────────────
+// In production, requireActor REQUIRES a verified Firebase ID token. The
+// header `x-user-uid` is only honoured in development for local testing.
+//
+// Configure with one of:
+//   FIREBASE_SERVICE_ACCOUNT_JSON  — full JSON string of the service account key
+//   FIREBASE_SERVICE_ACCOUNT_PATH  — path to a service account JSON file
+//   GOOGLE_APPLICATION_CREDENTIALS — standard Google SDK env var (path)
+let firebaseAdminApp = null;
+let firebaseAdminInitError = null;
+const ALLOW_DEV_HEADER_AUTH = String(process.env.LUMINA_ALLOW_DEV_HEADER_AUTH || "").toLowerCase() === "true"
+  || process.env.NODE_ENV !== "production";
+
+const initFirebaseAdmin = async () => {
+  try {
+    const { initializeApp, cert, applicationDefault, getApps } = await import("firebase-admin/app");
+    if (getApps().length > 0) {
+      firebaseAdminApp = getApps()[0];
+      return firebaseAdminApp;
+    }
+
+    const inlineJson = String(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || "").trim();
+    const filePath = String(process.env.FIREBASE_SERVICE_ACCOUNT_PATH || "").trim();
+
+    if (inlineJson) {
+      const parsed = JSON.parse(inlineJson);
+      firebaseAdminApp = initializeApp({ credential: cert(parsed) });
+    } else if (filePath && fs.existsSync(filePath)) {
+      const parsed = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      firebaseAdminApp = initializeApp({ credential: cert(parsed) });
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      firebaseAdminApp = initializeApp({ credential: applicationDefault() });
+    } else {
+      throw new Error("No Firebase service account credentials configured (set FIREBASE_SERVICE_ACCOUNT_JSON, FIREBASE_SERVICE_ACCOUNT_PATH, or GOOGLE_APPLICATION_CREDENTIALS).");
+    }
+
+    console.log("[lumina-server-api] firebase-admin initialised — ID token verification active");
+    return firebaseAdminApp;
+  } catch (err) {
+    firebaseAdminInitError = err;
+    if (ALLOW_DEV_HEADER_AUTH) {
+      console.warn("[lumina-server-api] firebase-admin not initialised:", err?.message || err);
+      console.warn("[lumina-server-api] running in DEV-HEADER-AUTH mode — x-user-uid header is trusted (insecure, dev only)");
+    } else {
+      console.error("[lumina-server-api] firebase-admin REQUIRED in production:", err?.message || err);
+      throw err;
+    }
+    return null;
+  }
 };
 
-const requireActor = (req, res, next) => {
-  const actor = readActor(req);
-  if (!actor.uid) {
-    return res.status(401).json({ ok: false, error: "AUTH_REQUIRED", message: "Missing x-user-uid header." });
+void initFirebaseAdmin();
+
+const verifyIdTokenIfPossible = async (token) => {
+  if (!firebaseAdminApp || !token) return null;
+  try {
+    const { getAuth } = await import("firebase-admin/auth");
+    const decoded = await getAuth(firebaseAdminApp).verifyIdToken(token);
+    return { uid: String(decoded.uid || ""), email: String(decoded.email || "").toLowerCase() };
+  } catch (err) {
+    console.warn("[lumina-server-api] ID token verification failed:", err?.message || err);
+    return null;
   }
-  req.actor = actor;
-  return next();
+};
+
+const readBearerToken = (req) => {
+  const header = String(req.header("authorization") || req.header("Authorization") || "");
+  const match = /^Bearer\s+(.+)$/i.exec(header);
+  return match ? match[1].trim() : "";
+};
+
+const readActor = async (req) => {
+  // Prefer verified ID token
+  const token = readBearerToken(req);
+  if (token && firebaseAdminApp) {
+    const verified = await verifyIdTokenIfPossible(token);
+    if (verified?.uid) return { uid: verified.uid, email: verified.email, verified: true };
+  }
+
+  // Dev fallback: trust headers (only in non-production builds)
+  if (ALLOW_DEV_HEADER_AUTH) {
+    const uid = String(req.header("x-user-uid") || "").trim();
+    const email = String(req.header("x-user-email") || "").trim().toLowerCase();
+    return { uid, email, verified: false };
+  }
+
+  return { uid: "", email: "", verified: false };
+};
+
+const requireActor = async (req, res, next) => {
+  try {
+    const actor = await readActor(req);
+    if (!actor.uid) {
+      return res.status(401).json({
+        ok: false,
+        error: "AUTH_REQUIRED",
+        message: firebaseAdminApp
+          ? "Missing or invalid Firebase ID token."
+          : "Missing x-user-uid header or Firebase ID token.",
+      });
+    }
+    req.actor = actor;
+    return next();
+  } catch (err) {
+    return res.status(401).json({ ok: false, error: "AUTH_FAILED", message: err?.message || "Authentication failed" });
+  }
 };
 
 const getWorkspaceRow = db.prepare("SELECT * FROM workspaces WHERE id = ?");
@@ -913,6 +1049,126 @@ const checkTranscribeRateLimit = (bucketKey) => {
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "lumina-server-api", db: DB_PATH, now: now() });
+});
+
+// ── Paystack payment routes ────────────────────────────────────────────────────
+
+const PAYSTACK_SECRET_KEY = String(process.env.PAYSTACK_SECRET_KEY || "").trim();
+
+// Map Paystack plan codes → plan/period keys so we can identify what was purchased.
+const PAYSTACK_PLAN_MAP = {
+  [String(process.env.VITE_PAYSTACK_PLAN_PRO_MONTHLY    || "")]: { plan: "pro",    period: "monthly"   },
+  [String(process.env.VITE_PAYSTACK_PLAN_PRO_QUARTERLY  || "")]: { plan: "pro",    period: "quarterly" },
+  [String(process.env.VITE_PAYSTACK_PLAN_PRO_ANNUAL     || "")]: { plan: "pro",    period: "annual"    },
+  [String(process.env.VITE_PAYSTACK_PLAN_CHURCH_MONTHLY    || "")]: { plan: "church", period: "monthly"   },
+  [String(process.env.VITE_PAYSTACK_PLAN_CHURCH_QUARTERLY  || "")]: { plan: "church", period: "quarterly" },
+  [String(process.env.VITE_PAYSTACK_PLAN_CHURCH_ANNUAL     || "")]: { plan: "church", period: "annual"    },
+};
+
+// Ensure subscriptions table exists
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_subscriptions (
+    uid TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    plan TEXT NOT NULL DEFAULT 'free',
+    period TEXT,
+    paystack_customer_code TEXT,
+    paystack_subscription_code TEXT,
+    status TEXT NOT NULL DEFAULT 'active',
+    expires_at INTEGER,
+    updated_at INTEGER NOT NULL
+  );
+`);
+
+// GET /api/payments/verify/:reference — called by browser after successful checkout
+app.get("/api/payments/verify/:reference", requireActor, async (req, res) => {
+  if (!PAYSTACK_SECRET_KEY) {
+    return res.status(503).json({ ok: false, message: "Payment service not configured." });
+  }
+  const reference = String(req.params.reference || "").trim();
+  if (!reference) return res.status(400).json({ ok: false, message: "Missing reference." });
+
+  try {
+    const psRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+      headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` },
+    });
+    const psData = await psRes.json();
+    if (!psData.status || psData.data?.status !== "success") {
+      return res.status(402).json({ ok: false, message: "Transaction not successful." });
+    }
+
+    const { metadata, plan, customer } = psData.data;
+    const planKey   = metadata?.lumina_plan   || (PAYSTACK_PLAN_MAP[plan?.plan_code]?.plan   ?? "pro");
+    const periodKey = metadata?.lumina_period || (PAYSTACK_PLAN_MAP[plan?.plan_code]?.period ?? "monthly");
+    const uid  = String(metadata?.lumina_uid || req.actor?.uid || "").trim();
+    const email = String(customer?.email || "").trim().toLowerCase();
+
+    if (uid) {
+      db.prepare(`
+        INSERT INTO user_subscriptions (uid, email, plan, period, paystack_customer_code, status, updated_at)
+        VALUES (?, ?, ?, ?, ?, 'active', ?)
+        ON CONFLICT(uid) DO UPDATE SET
+          plan = excluded.plan,
+          period = excluded.period,
+          paystack_customer_code = excluded.paystack_customer_code,
+          status = 'active',
+          updated_at = excluded.updated_at
+      `).run(uid, email, planKey, periodKey, customer?.customer_code || null, now());
+    }
+
+    return res.json({ ok: true, subscription: { plan: planKey, period: periodKey, status: "active" } });
+  } catch (err) {
+    return res.status(500).json({ ok: false, message: "Verification request failed." });
+  }
+});
+
+// GET /api/payments/subscription — return current user's plan
+app.get("/api/payments/subscription", requireActor, (req, res) => {
+  const uid = req.actor?.uid;
+  const row = db.prepare("SELECT plan, period, status, expires_at FROM user_subscriptions WHERE uid = ?").get(uid);
+  if (!row) return res.json({ ok: true, subscription: { plan: "free", period: null, status: "active" } });
+  // Check expiry if set
+  if (row.expires_at && row.expires_at < now()) {
+    db.prepare("UPDATE user_subscriptions SET status = 'expired', updated_at = ? WHERE uid = ?").run(now(), uid);
+    return res.json({ ok: true, subscription: { plan: "free", period: null, status: "expired" } });
+  }
+  return res.json({ ok: true, subscription: { plan: row.plan, period: row.period, status: row.status } });
+});
+
+// POST /api/payments/paystack/webhook — Paystack event push (subscription cancel, charge failure, etc.)
+// Must be raw body for signature verification — mount before express.json() processes it.
+app.post("/api/payments/paystack/webhook", express.raw({ type: "application/json" }), (req, res) => {
+  if (!PAYSTACK_SECRET_KEY) return res.sendStatus(200);
+
+  const sig  = String(req.headers["x-paystack-signature"] || "");
+  const hash = createHash("sha512").update(req.body).update(PAYSTACK_SECRET_KEY).digest("hex");
+  if (hash !== sig) return res.sendStatus(401);
+
+  let event;
+  try { event = JSON.parse(req.body.toString()); } catch { return res.sendStatus(400); }
+
+  const data = event?.data ?? {};
+  const customerCode = String(data?.customer?.customer_code || "").trim();
+  const planCode     = String(data?.plan?.plan_code || "").trim();
+  const planMeta     = PAYSTACK_PLAN_MAP[planCode];
+
+  if (event.event === "subscription.disable" || event.event === "subscription.not_renew") {
+    if (customerCode) {
+      db.prepare(`
+        UPDATE user_subscriptions SET plan = 'free', period = NULL, status = 'cancelled', updated_at = ?
+        WHERE paystack_customer_code = ?
+      `).run(now(), customerCode);
+    }
+  }
+
+  if (event.event === "charge.success" && planMeta && customerCode) {
+    db.prepare(`
+      UPDATE user_subscriptions SET plan = ?, period = ?, status = 'active', updated_at = ?
+      WHERE paystack_customer_code = ?
+    `).run(planMeta.plan, planMeta.period, now(), customerCode);
+  }
+
+  res.sendStatus(200);
 });
 
 app.get("/api/media/pexels/videos", async (req, res) => {
@@ -1522,18 +1778,21 @@ app.post("/api/ai/transcribe-sermon-chunk", async (req, res) => {
       : "Transcribe this church speech audio in American English. Return plain transcript text only.";
 
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
-      contents: {
-        parts: [
-          { text: speechPrompt },
-          {
-            inlineData: {
-              mimeType: geminiMimeType,
-              data: audioBuffer.toString("base64"),
+      model: "gemini-2.5-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: speechPrompt },
+            {
+              inlineData: {
+                mimeType: geminiMimeType,
+                data: audioBuffer.toString("base64"),
+              },
             },
-          },
-        ],
-      },
+          ],
+        },
+      ],
     });
 
     const transcript = String(response?.text || "").trim();
@@ -1597,12 +1856,15 @@ app.post("/api/ai/transcribe-sermon-audio", sermonAudioUpload.single("audio"), a
       const fileBuffer = fs.readFileSync(audioFile.path);
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
-        contents: {
-          parts: [
-            { inlineData: { data: fileBuffer.toString("base64"), mimeType: geminiMimeType } },
-            { text: speechPrompt },
-          ],
-        },
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { inlineData: { data: fileBuffer.toString("base64"), mimeType: geminiMimeType } },
+              { text: speechPrompt },
+            ],
+          },
+        ],
       });
       transcript = String(response?.text || "").trim();
     } else {
@@ -1620,12 +1882,15 @@ app.post("/api/ai/transcribe-sermon-audio", sermonAudioUpload.single("audio"), a
         if (fileState.state === "FAILED") throw new Error("Gemini File processing failed.");
         const response = await ai.models.generateContent({
           model: "gemini-2.5-flash",
-          contents: {
-            parts: [
-              { fileData: { fileUri: uploadResult.uri, mimeType: geminiMimeType } },
-              { text: speechPrompt },
-            ],
-          },
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { fileData: { fileUri: uploadResult.uri, mimeType: geminiMimeType } },
+                { text: speechPrompt },
+              ],
+            },
+          ],
         });
         transcript = String(response?.text || "").trim();
       } finally {
@@ -2499,6 +2764,251 @@ app.get("/api/workspaces/:workspaceId/reports/audit", requireActor, (req, res) =
     if (error?.code === 403) return res.status(403).json({ ok: false, error: "FORBIDDEN" });
     return res.status(500).json({ ok: false, error: "AUDIT_REPORT_FAILED", message: String(error?.message || error) });
   }
+});
+
+// ─── CCLI SongSelect proxy ───────────────────────────────────────────────────
+// All CCLI OAuth and SongSelect calls happen server-side so the client_secret
+// never reaches the renderer (or the binary). The client secret is encrypted
+// at rest using AES-256-GCM with a server-side key.
+
+const CCLI_TOKEN_ENDPOINT = "https://identity.ccli.com/connect/token";
+const CCLI_API_BASE = "https://songselect.ccli.com/api/v1";
+
+// Server-side token cache, keyed by workspace_id
+const ccliTokenCache = new Map(); // workspace_id → { token, expiresAt }
+
+const getCcliCredentialsRow = db.prepare(
+  "SELECT license_number, client_id, client_secret_enc, enc_iv, enc_tag, connected_at FROM workspace_ccli_credentials WHERE workspace_id = ?"
+);
+const upsertCcliCredentialsStmt = db.prepare(`
+  INSERT INTO workspace_ccli_credentials (workspace_id, license_number, client_id, client_secret_enc, enc_iv, enc_tag, connected_at, updated_at)
+  VALUES (@workspace_id, @license_number, @client_id, @client_secret_enc, @enc_iv, @enc_tag, @connected_at, @updated_at)
+  ON CONFLICT(workspace_id) DO UPDATE SET
+    license_number = excluded.license_number,
+    client_id = excluded.client_id,
+    client_secret_enc = excluded.client_secret_enc,
+    enc_iv = excluded.enc_iv,
+    enc_tag = excluded.enc_tag,
+    updated_at = excluded.updated_at
+`);
+const deleteCcliCredentialsStmt = db.prepare("DELETE FROM workspace_ccli_credentials WHERE workspace_id = ?");
+
+const loadCcliCredentials = (workspaceId) => {
+  const row = getCcliCredentialsRow.get(String(workspaceId || ""));
+  if (!row) return null;
+  try {
+    const clientSecret = decryptSecret(row.client_secret_enc, row.enc_iv, row.enc_tag);
+    return {
+      licenseNumber: row.license_number,
+      clientId: row.client_id,
+      clientSecret,
+      connectedAt: row.connected_at,
+    };
+  } catch (err) {
+    console.error("[ccli] failed to decrypt client_secret for workspace", workspaceId, err?.message);
+    return null;
+  }
+};
+
+const acquireCcliToken = async (workspaceId, creds) => {
+  const cached = ccliTokenCache.get(workspaceId);
+  if (cached && now() < cached.expiresAt - 60_000) return cached.token;
+
+  const body = new URLSearchParams({
+    grant_type: "client_credentials",
+    client_id: creds.clientId,
+    client_secret: creds.clientSecret,
+    scope: "SongSelect",
+  });
+  const response = await fetch(CCLI_TOKEN_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+  if (!response.ok) {
+    const msg = await response.text().catch(() => response.statusText);
+    throw new Error(`CCLI auth ${response.status}: ${msg}`);
+  }
+  const data = await response.json();
+  if (!data?.access_token) throw new Error("CCLI auth: missing access_token");
+  const ttlMs = Math.max(60_000, (Number(data.expires_in) || 3600) * 1000);
+  ccliTokenCache.set(workspaceId, { token: data.access_token, expiresAt: now() + ttlMs });
+  return data.access_token;
+};
+
+// POST /api/ccli/credentials — store encrypted credentials
+app.post("/api/ccli/credentials", requireActor, async (req, res) => {
+  if (!CCLI_ENCRYPTION_AVAILABLE) {
+    return res.status(503).json({ ok: false, error: "ENCRYPTION_UNAVAILABLE", message: "CCLI_ENCRYPTION_KEY is not configured on the server." });
+  }
+  const workspaceId = String(req.body?.workspaceId || req.actor?.uid || "").trim();
+  const licenseNumber = String(req.body?.licenseNumber || "").trim();
+  const clientId = String(req.body?.clientId || "").trim();
+  const clientSecret = String(req.body?.clientSecret || "").trim();
+  if (!workspaceId || !clientId || !clientSecret) {
+    return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
+  }
+
+  // Verify credentials by attempting to acquire a token before storing
+  try {
+    const body = new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: clientId,
+      client_secret: clientSecret,
+      scope: "SongSelect",
+    });
+    const verifyResp = await fetch(CCLI_TOKEN_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+    if (!verifyResp.ok) {
+      return res.status(401).json({ ok: false, error: "CCLI_AUTH_FAILED", message: `CCLI rejected credentials (${verifyResp.status})` });
+    }
+  } catch (err) {
+    return res.status(502).json({ ok: false, error: "CCLI_UNREACHABLE", message: err?.message || "CCLI verification failed" });
+  }
+
+  const { ciphertext, iv, tag } = encryptSecret(clientSecret);
+  const ts = now();
+  upsertCcliCredentialsStmt.run({
+    workspace_id: workspaceId,
+    license_number: licenseNumber,
+    client_id: clientId,
+    client_secret_enc: ciphertext,
+    enc_iv: iv,
+    enc_tag: tag,
+    connected_at: ts,
+    updated_at: ts,
+  });
+  ccliTokenCache.delete(workspaceId); // invalidate cached token on re-save
+  return res.json({ ok: true, connected: true });
+});
+
+// GET /api/ccli/status — check whether a workspace has connected creds
+app.get("/api/ccli/status", requireActor, (req, res) => {
+  const workspaceId = String(req.query?.workspaceId || req.actor?.uid || "").trim();
+  if (!workspaceId) return res.status(400).json({ ok: false, error: "MISSING_WORKSPACE" });
+  const row = getCcliCredentialsRow.get(workspaceId);
+  return res.json({ ok: true, connected: !!row, connectedAt: row?.connected_at || null });
+});
+
+// DELETE /api/ccli/credentials — disconnect
+app.delete("/api/ccli/credentials", requireActor, (req, res) => {
+  const workspaceId = String(req.query?.workspaceId || req.actor?.uid || "").trim();
+  if (!workspaceId) return res.status(400).json({ ok: false, error: "MISSING_WORKSPACE" });
+  deleteCcliCredentialsStmt.run(workspaceId);
+  ccliTokenCache.delete(workspaceId);
+  return res.json({ ok: true });
+});
+
+// POST /api/ccli/search — proxied SongSelect search
+app.post("/api/ccli/search", requireActor, async (req, res) => {
+  const workspaceId = String(req.body?.workspaceId || req.actor?.uid || "").trim();
+  const query = String(req.body?.query || "").trim();
+  const limit = Math.min(50, Math.max(1, Number(req.body?.limit) || 25));
+  if (!workspaceId || !query) return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
+
+  const creds = loadCcliCredentials(workspaceId);
+  if (!creds) return res.status(404).json({ ok: false, error: "NOT_CONNECTED" });
+
+  try {
+    const token = await acquireCcliToken(workspaceId, creds);
+    const url = new URL(`${CCLI_API_BASE}/songs/search`);
+    url.searchParams.set("query", query);
+    url.searchParams.set("pageSize", String(limit));
+    const resp = await fetch(url.toString(), { headers: { Authorization: `Bearer ${token}`, Accept: "application/json" } });
+    if (!resp.ok) {
+      if (resp.status === 401) ccliTokenCache.delete(workspaceId);
+      return res.status(resp.status).json({ ok: false, error: "CCLI_SEARCH_FAILED", message: resp.statusText });
+    }
+    const data = await resp.json();
+    const raw = data?.results ?? data?.songs ?? [];
+    return res.json({ ok: true, licenseNumber: creds.licenseNumber, results: raw });
+  } catch (err) {
+    return res.status(502).json({ ok: false, error: "CCLI_UNREACHABLE", message: err?.message || "CCLI request failed" });
+  }
+});
+
+// GET /api/ccli/lyrics/:songNumber — proxied lyrics fetch
+app.get("/api/ccli/lyrics/:songNumber", requireActor, async (req, res) => {
+  const workspaceId = String(req.query?.workspaceId || req.actor?.uid || "").trim();
+  const songNumber = parseInt(String(req.params?.songNumber || ""), 10);
+  if (!workspaceId || !Number.isFinite(songNumber) || songNumber <= 0) {
+    return res.status(400).json({ ok: false, error: "MISSING_FIELDS" });
+  }
+  const creds = loadCcliCredentials(workspaceId);
+  if (!creds) return res.status(404).json({ ok: false, error: "NOT_CONNECTED" });
+
+  try {
+    const token = await acquireCcliToken(workspaceId, creds);
+    const resp = await fetch(`${CCLI_API_BASE}/songs/${songNumber}/lyrics`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    });
+    if (!resp.ok) {
+      if (resp.status === 401) ccliTokenCache.delete(workspaceId);
+      return res.status(resp.status).json({ ok: false, error: "CCLI_LYRICS_FAILED", message: resp.statusText });
+    }
+    const data = await resp.json();
+    return res.json({ ok: true, licenseNumber: creds.licenseNumber, lyrics: data });
+  } catch (err) {
+    return res.status(502).json({ ok: false, error: "CCLI_UNREACHABLE", message: err?.message || "CCLI request failed" });
+  }
+});
+
+// ─── Session / license validation ────────────────────────────────────────────
+// The client calls this on startup and periodically. It returns the user's
+// plan (free/pro/church) and a revoked flag. The free plan is explicitly
+// supported — users on "free" are considered valid.
+
+const getRevokedUserRow = db.prepare("SELECT reason, revoked_at FROM revoked_users WHERE uid = ?");
+
+app.get("/api/session/validate", requireActor, (req, res) => {
+  const uid = req.actor?.uid;
+
+  // Check revocation list first
+  const revoked = getRevokedUserRow.get(uid);
+  if (revoked) {
+    return res.status(403).json({
+      ok: false,
+      valid: false,
+      revoked: true,
+      reason: revoked.reason || "Account revoked",
+      revokedAt: revoked.revoked_at,
+    });
+  }
+
+  // Fetch subscription (free plan is fine)
+  const row = db.prepare("SELECT plan, period, status, expires_at FROM user_subscriptions WHERE uid = ?").get(uid);
+  const plan = row?.plan || "free";
+  const status = row?.status || "active";
+  const expiresAt = row?.expires_at || null;
+  const expired = !!(expiresAt && expiresAt < now());
+
+  return res.json({
+    ok: true,
+    valid: true,
+    revoked: false,
+    plan: expired ? "free" : plan,
+    status: expired ? "expired" : status,
+    expiresAt,
+    serverTime: now(),
+  });
+});
+
+// Global error handler — catches body-parser 413, JSON parse errors, etc.
+// Must have 4 params for Express to treat it as an error middleware.
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, _next) => {
+  if (err.type === "entity.too.large" || err.status === 413) {
+    console.warn(
+      `[lumina-server-api] 413 payload too large on ${req.method} ${req.path} ` +
+      `(limit=${JSON_LIMIT}) — client should strip base64 data before syncing`
+    );
+    return res.status(413).json({ ok: false, error: "PAYLOAD_TOO_LARGE", message: `Request body exceeds ${JSON_LIMIT} limit.` });
+  }
+  console.error("[lumina-server-api] unhandled error:", err?.message || err);
+  return res.status(500).json({ ok: false, error: "INTERNAL_ERROR", message: String(err?.message || err) });
 });
 
 app.listen(PORT, () => {

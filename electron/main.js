@@ -2,6 +2,7 @@ import { app, BrowserWindow, screen, session, Menu, shell, ipcMain, clipboard, d
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import * as ndiSender from './ndiSender.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,6 +31,16 @@ let outputWindowRef = null;
 let stageWindowRef = null;
 let displayTestTimers = new Map();
 let displayTestWindows = new Map();
+
+// ─── NDI outbound sender state ────────────────────────────────────────────────
+let ndiActive = false;
+let ndiStatus = { active: false, sourceName: '' };
+let ndiDroppedFrames = 0;
+let ndiDropLogTimer = null;
+let ndiWindowRef = null;  // dedicated offscreen capture window — separate from projector
+const NDI_TARGET_FPS = 30;
+// ─────────────────────────────────────────────────────────────────────────────
+
 let machineServiceState = {
   controlDisplayId: null,
   audienceDisplayId: null,
@@ -165,6 +176,13 @@ function emitMachineServiceState() {
   mainWindowRef.webContents.send('machine:service-state', machineServiceState);
 }
 
+function emitNdiState() {
+  ndiStatus = { active: ndiActive, sourceName: ndiSender.getSourceName() };
+  if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
+  mainWindowRef.webContents.send('ndi:state', ndiStatus);
+}
+
+
 function emitMachineDisplaysChanged() {
   if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
   mainWindowRef.webContents.send('machine:displays-changed', listDisplayDescriptors());
@@ -214,32 +232,37 @@ async function createManagedRoleWindow(kind, displayId, payload = {}) {
   const targetDisplay = findDisplayById(displayId) || screen.getPrimaryDisplay();
   const displayBounds = targetDisplay?.bounds || targetDisplay?.workArea || { x: 0, y: 0, width: 1280, height: 720 };
 
-  // Windowed (NDI/stream capture) mode: fixed 1920×1080 window on the primary display, not fullscreen.
+  // Windowed (NDI/stream capture) mode: offscreen rendering is used, so the position doesn't
+  // affect compositing. We still set 1920×1080 so the page layout matches the NDI output size.
   const bounds = isWindowed
-    ? { x: displayBounds.x + 40, y: displayBounds.y + 40, width: 1920, height: 1080 }
+    ? { x: displayBounds.x, y: displayBounds.y, width: 1920, height: 1080 }
     : displayBounds;
 
   const isAudience = kind === 'audience';
   let targetWindow = isAudience ? outputWindowRef : stageWindowRef;
 
   if (!targetWindow || targetWindow.isDestroyed()) {
+    // Windowed/NDI mode uses offscreen rendering so capturePage() works regardless
+    // of window position or GPU compositing state. Normal projector/stage windows
+    // use the regular on-screen pipeline.
     targetWindow = new BrowserWindow({
       x: bounds.x,
       y: bounds.y,
       width: bounds.width,
       height: bounds.height,
-      show: false,
+      show: !isWindowed,
       backgroundColor: '#000000',
       autoHideMenuBar: true,
       fullscreenable: !isWindowed,
       frame: false,
-      skipTaskbar: isWindowed ? false : true,
+      skipTaskbar: true,
       resizable: isWindowed,
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
         nodeIntegration: false,
         contextIsolation: true,
-        sandbox: true,
+        sandbox: !isWindowed,   // offscreen + sandbox conflicts in some Electron builds
+        offscreen: isWindowed,  // render to buffer — invisible, GPU-independent
       },
       title: isAudience ? 'Lumina Output (Projector)' : 'Lumina Stage Display',
     });
@@ -251,34 +274,36 @@ async function createManagedRoleWindow(kind, displayId, payload = {}) {
     }
   }
 
-  try {
-    if (targetWindow.isFullScreen()) {
-      targetWindow.setFullScreen(false);
+  if (!isWindowed) {
+    try {
+      if (targetWindow.isFullScreen()) {
+        targetWindow.setFullScreen(false);
+      }
+    } catch {
+      // ignore
     }
-  } catch {
-    // ignore
+    targetWindow.setBounds(bounds);
   }
-
-  targetWindow.setBounds(bounds);
   targetWindow.setMenuBarVisibility(false);
   await loadRendererRoute(targetWindow, isAudience ? 'output' : 'stage', {
     session: payload.sessionId || 'live',
     workspace: payload.workspaceId || 'default-workspace',
     fullscreen: isAudience ? '1' : undefined,
+    ndi: isWindowed ? '1' : undefined,
   });
   if (isAudience) {
     targetWindow.webContents.insertCSS('html,body,*{cursor:none !important;}').catch(() => {});
   }
-  try {
-    if (!targetWindow.isVisible()) {
-      targetWindow.show();
-    }
-    if (!isWindowed) {
+  if (!isWindowed) {
+    try {
+      if (!targetWindow.isVisible()) {
+        targetWindow.show();
+      }
       targetWindow.setFullScreen(true);
+      targetWindow.focus();
+    } catch {
+      // ignore
     }
-    targetWindow.focus();
-  } catch {
-    // ignore
   }
 
   machineServiceState = {
@@ -422,6 +447,130 @@ function installMachineIpcHandlers() {
     const state = await createManagedRoleWindow(role, displayId || 0, payload);
     return { ok: true, state };
   });
+  // ── NDI outbound send ──────────────────────────────────────────────────────
+  ipcMain.handle('ndi:start', async (_event, payload) => {
+    try {
+      // Destroy any previous NDI capture window.
+      if (ndiWindowRef && !ndiWindowRef.isDestroyed()) {
+        ndiWindowRef.destroy();
+        ndiWindowRef = null;
+      }
+
+      // Always create a dedicated offscreen window for NDI capture.
+      // This is completely separate from the projector window so the user
+      // can have PROJECTION ON at the same time. Offscreen rendering delivers
+      // frames via the 'paint' event — no GPU framebuffer needed.
+      ndiWindowRef = new BrowserWindow({
+        width: 1920,
+        height: 1080,
+        show: false,
+        webPreferences: {
+          preload: path.join(__dirname, 'preload.js'),
+          nodeIntegration: false,
+          contextIsolation: true,
+          sandbox: false,
+          offscreen: true,
+          backgroundThrottling: false,
+        },
+      });
+
+      await loadRendererRoute(ndiWindowRef, 'output', {
+        session: payload?.sessionId || 'live',
+        workspace: payload?.workspaceId || 'default-workspace',
+        ndi: '1',
+      });
+
+      // Wait for the page to load and receive live state before starting capture.
+      await new Promise((resolve) => {
+        ndiWindowRef.webContents.once('did-finish-load', () => setTimeout(resolve, 2500));
+        // Fallback: resolve after 6s if did-finish-load never fires.
+        setTimeout(resolve, 6000);
+      });
+
+      if (!ndiWindowRef || ndiWindowRef.isDestroyed()) {
+        return { ok: false, error: 'NDI capture window closed before capture started.' };
+      }
+
+      const result = await ndiSender.startNdiSend(
+        payload?.sourceName || 'Lumina Presenter',
+        1920,
+        1080,
+      );
+      if (!result.ok) return result;
+
+      ndiActive = true;
+
+      // Stop NDI cleanly if the capture window is closed.
+      ndiWindowRef.once('closed', () => {
+        if (!ndiActive) return;
+        ndiActive = false;
+        ndiWindowRef = null;
+        if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
+        ndiSender.stopNdiSend().catch(() => {});
+        emitNdiState();
+      });
+
+      // Subscribe to paint events — the correct capture API for offscreen windows.
+      // capturePage() reads from the GPU framebuffer which doesn't exist for offscreen
+      // windows; paint events deliver rendered frames directly from the software renderer.
+      ndiWindowRef.webContents.setFrameRate(NDI_TARGET_FPS);
+      let ndiSending = false;
+      ndiWindowRef.webContents.on('paint', async (_paintEvent, _dirty, image) => {
+        if (!ndiActive) return;
+        if (ndiSending) { ndiDroppedFrames++; return; }
+        const { width, height } = image.getSize();
+        if (width === 0 || height === 0) { ndiDroppedFrames++; return; }
+        // toBitmap() returns BGRA on Windows/Linux; RGBA on macOS.
+        const buffer = image.toBitmap();
+        if (process.platform === 'darwin') {
+          for (let i = 0; i < buffer.length; i += 4) {
+            const r = buffer[i]; buffer[i] = buffer[i + 2]; buffer[i + 2] = r;
+          }
+        }
+        ndiSending = true;
+        try {
+          await ndiSender.sendFrame(buffer, width, height);
+        } catch (err) {
+          ndiDroppedFrames++;
+          if (ndiDroppedFrames <= 3) console.error('[NDI] send error:', err?.message || String(err));
+        } finally {
+          ndiSending = false;
+        }
+      });
+
+      // Log dropped frames every 10 seconds (non-blocking).
+      if (!ndiDropLogTimer) {
+        ndiDropLogTimer = setInterval(() => {
+          if (ndiDroppedFrames > 0) {
+            console.warn(`[NDI] Dropped ${ndiDroppedFrames} frames in last 10s`);
+            ndiDroppedFrames = 0;
+          }
+        }, 10000);
+      }
+
+      emitNdiState();
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err?.message || String(err) };
+    }
+  });
+
+  ipcMain.handle('ndi:stop', async () => {
+    ndiActive = false;
+    if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
+    ndiDroppedFrames = 0;
+    if (ndiWindowRef && !ndiWindowRef.isDestroyed()) {
+      ndiWindowRef.destroy();
+      ndiWindowRef = null;
+    }
+    await ndiSender.stopNdiSend();
+    emitNdiState();
+    return { ok: true };
+  });
+
+  ipcMain.handle('ndi:get-status', () => ndiStatus);
+  // ──────────────────────────────────────────────────────────────────────────
+
   ipcMain.handle('machine:start-service', async (_event, payload) => {
     const controlDisplayId = Number(payload?.controlDisplayId || 0) || null;
     const audienceDisplayId = Number(payload?.audienceDisplayId || 0) || null;
@@ -533,11 +682,61 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
+      // Disable DevTools in production builds to prevent users from tampering
+      // with localStorage (e.g. forging lumina_demo_user) or inspecting creds.
+      devTools: !isProd,
     },
     title: 'Lumina Presenter',
     backgroundColor: '#000000',
     show: false,
   });
+
+  // Block DevTools keyboard shortcuts in production as a belt-and-braces guard
+  // (F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Cmd+Opt+I on macOS).
+  if (isProd) {
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.type !== 'keyDown') return;
+      const key = (input.key || '').toLowerCase();
+      const isDevToolsShortcut =
+        key === 'f12' ||
+        ((input.control || input.meta) && input.shift && (key === 'i' || key === 'j' || key === 'c')) ||
+        (input.meta && input.alt && key === 'i');
+      if (isDevToolsShortcut) {
+        event.preventDefault();
+      }
+    });
+    // Extra safety: if anything in the renderer calls openDevTools, close it immediately.
+    mainWindow.webContents.on('devtools-opened', () => {
+      try { mainWindow.webContents.closeDevTools(); } catch { /* noop */ }
+    });
+    // Block right-click "Inspect Element" context menu and any popup that might
+    // expose dev affordances. The renderer can still handle its own contextmenu
+    // events for in-app menus because this only suppresses the default Chromium menu.
+    mainWindow.webContents.on('context-menu', (event) => {
+      event.preventDefault();
+    });
+    // Refuse navigation to non-app origins to prevent XSS-style escapes.
+    mainWindow.webContents.on('will-navigate', (event, url) => {
+      try {
+        const parsed = new URL(url);
+        const isApp = parsed.protocol === 'file:' || parsed.origin === 'https://api.luminalive.co.uk';
+        if (!isApp) event.preventDefault();
+      } catch {
+        event.preventDefault();
+      }
+    });
+    // Refuse new windows except via setWindowOpenHandler below.
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+      try {
+        const parsed = new URL(url);
+        // Allow only https external links — they open in the default browser.
+        if (parsed.protocol === 'https:') {
+          shell.openExternal(url).catch(() => {});
+        }
+      } catch { /* noop */ }
+      return { action: 'deny' };
+    });
+  }
   mainWindowRef = mainWindow;
 
   // Desktop UX: pressing Esc restores a maximized/fullscreen window back to normal.
@@ -573,10 +772,11 @@ function createWindow() {
   });
 
   mainWindow.once('ready-to-show', () => {
+    mainWindow.maximize();
     mainWindow.show();
-    // Check for updates on launch
+    // Check for updates on launch — delay 20s to let network settle after startup
     if (isProd) {
-      void checkForUpdatesSafely();
+      setTimeout(() => void checkForUpdatesSafely(), 20_000);
       scheduleUpdateChecks();
     }
   });
@@ -762,7 +962,40 @@ async function checkForUpdatesSafely(isManual = false) {
   }
 }
 
+// ── Runtime ASAR / critical-file integrity check ─────────────────────────────
+// In production, verify that the bundled renderer and preload script exist and
+// are non-empty before launching. This is not a substitute for code signing —
+// a determined attacker who repacks the ASAR can defeat this — but it catches
+// trivial tampering and accidental corruption (failed installs, AV quarantine).
+function verifyCriticalFiles() {
+  if (!app.isPackaged) return true;
+  const required = [
+    path.join(__dirname, 'preload.js'),
+    DIST_INDEX_PATH,
+  ];
+  for (const p of required) {
+    try {
+      const st = fs.statSync(p);
+      if (!st.isFile() || st.size === 0) {
+        throw new Error(`Critical file missing or empty: ${p}`);
+      }
+    } catch (err) {
+      console.error('[lumina-integrity] critical file check failed:', err?.message || err);
+      try {
+        dialog.showErrorBox(
+          'Lumina Presenter — integrity error',
+          'A required application file is missing or has been modified. Please reinstall Lumina Presenter from the official source.'
+        );
+      } catch { /* noop */ }
+      app.exit(1);
+      return false;
+    }
+  }
+  return true;
+}
+
 app.whenReady().then(() => {
+  if (!verifyCriticalFiles()) return;
   installApplicationMenu();
   installMediaPermissionHandlers();
   installClipboardHandlers();

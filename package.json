@@ -1,7 +1,7 @@
 {
   "name": "lumina-presenter",
   "private": true,
-  "version": "2.4.1",
+  "version": "2.4.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,24 +12,27 @@
     "preview": "vite preview",
     "electron:dev": "node scripts/electron-dev.mjs",
     "electron:dev:raw": "electron .",
-    "dist:win": "npm run build && electron-builder --win --publish never",
-    "dist:win:ci": "npm run build && electron-builder --win --publish never --config.directories.output=release",
-    "dist:win:publish": "npm run build && electron-builder --win --publish always",
-    "dist:mac": "npm run build && electron-builder --mac --universal --publish never",
-    "dist:mac:ci": "npm run build && electron-builder --mac --universal --publish never --config.directories.output=release",
+    "dist:win": "npm run build && electron-rebuild -f -w better-sqlite3 && electron-builder --win --publish never",
+    "dist:win:ci": "npm run build && electron-rebuild -f -w better-sqlite3 && electron-builder --win --publish never --config.directories.output=release",
+    "dist:win:publish": "npm run build && electron-rebuild -f -w better-sqlite3 && electron-builder --win --publish always",
+    "dist:mac": "npm run build && electron-rebuild -f -w better-sqlite3 && electron-builder --mac --universal --publish never",
+    "dist:mac:ci": "npm run build && electron-rebuild -f -w better-sqlite3 && electron-builder --mac --universal --publish never --config.directories.output=release",
     "test:e2e": "node scripts/run-e2e.mjs",
     "test:e2e:smoke": "node scripts/run-e2e.mjs --grep @smoke",
     "test:e2e:headed": "node scripts/run-e2e.mjs --headed",
     "test:e2e:ui": "node scripts/run-e2e.mjs --ui",
-    "test:e2e:install": "playwright install chromium"
+    "test:e2e:install": "playwright install chromium",
+    "postinstall": "electron-rebuild -f -w @stagetimerio/grandiose"
   },
   "dependencies": {
     "@google/genai": "^1.33.0",
+    "@stagetimerio/grandiose": "^0.1.1",
     "better-sqlite3": "^12.6.2",
     "cors": "^2.8.6",
     "electron-updater": "^6.8.3",
     "express": "^5.2.1",
     "firebase": "^12.6.0",
+    "firebase-admin": "^13.0.2",
     "jszip": "^3.10.1",
     "lucide-react": "^0.563.0",
     "multer": "^2.1.1",
@@ -39,6 +42,7 @@
     "react-player": "^3.4.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^3.7.1",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "^4.2.1",
     "@types/node": "^22.19.3",
@@ -58,6 +62,9 @@
   "build": {
     "appId": "com.luminapresenter.app",
     "productName": "Lumina Presenter",
+    "npmRebuild": true,
+    "asar": true,
+    "electronUpdaterCompatibility": ">=2.16",
     "directories": {
       "output": "C:\\lumina-build"
     },
@@ -66,6 +73,10 @@
       "electron/**/*",
       "node_modules/**/*",
       "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/@stagetimerio/grandiose/dist/**",
+      "node_modules/better-sqlite3/**"
     ],
     "win": {
       "target": [
