@@ -1461,16 +1461,21 @@ app.post("/api/ai/summarize-sermon", async (req, res) => {
   const ai = ensureGoogleAiClient(res);
   if (!ai) return;
 
+  const greetingMarkers = /\b(welcome|good evening|good morning|good afternoon|joining us|warm welcome|pleased to have|glad you|nice to see|wonderful to have|first time|bless you all)\b/i;
   const fallbackSummary = () => {
     const scriptureRegex = /\b(?:[1-3]\s)?[A-Za-z]+\s\d{1,3}:\d{1,3}(?:-\d{1,3})?\b/g;
     const scriptures = Array.from(new Set((transcript.match(scriptureRegex) || []).slice(0, 10)));
-    const sentences = transcript.split(/[.!?]+/).map((s) => s.trim()).filter((s) => s.length > 20);
+    // Split on sentence-ending punctuation but only where followed by whitespace (avoids splitting "St. John's")
+    const sentences = transcript.split(/[.!?]+(?=\s|$)/).map((s) => s.trim()).filter((s) => s.length > 20);
+    // Skip greeting/pleasantry sentences; keep theological content
+    const contentSentences = sentences.filter((s) => !greetingMarkers.test(s));
+    const usable = contentSentences.length >= 3 ? contentSentences : sentences;
     return {
       title: "Sermon",
-      mainTheme: sentences[0]?.slice(0, 120) || "Faith and purpose",
-      keyPoints: sentences.slice(0, 5).map((s) => s.slice(0, 160)),
+      mainTheme: usable[0]?.slice(0, 120) || "Faith and purpose",
+      keyPoints: usable.slice(1, 6).map((s) => s.slice(0, 160)),
       scripturesReferenced: scriptures,
-      callToAction: sentences[sentences.length - 1]?.slice(0, 200) || "Walk in faith.",
+      callToAction: usable[usable.length - 1]?.slice(0, 200) || "Walk in faith.",
       quotableLines: [],
     };
   };
@@ -1481,15 +1486,21 @@ app.post("/api/ai/summarize-sermon", async (req, res) => {
       contents: `You are a sermon note-taker for a church service${accentHint !== "standard" ? ` (${accentHint} English accent)` : ""}.
 The following is a live speech transcript from a pastor's sermon captured by a speech-to-text engine. There may be minor transcription errors.
 
-IMPORTANT: Extract ONLY what is explicitly stated in the transcript below. Do NOT infer, assume, or fabricate any content that is not present. If a field cannot be determined from the transcript, return an empty string or empty array. Never fill in key points, scriptures, quotes, or a call to action that the pastor did not actually say.
+IMPORTANT RULES:
+1. Extract ONLY theological/spiritual content explicitly stated in the transcript. Do NOT infer, assume, or fabricate.
+2. SKIP all opening pleasantries, greetings, welcomes, and introductions (e.g. "Good evening", "welcome to St John's", "glad you joined us"). These are NOT the sermon content.
+3. The mainTheme must describe the central spiritual/theological message — not the opening greeting.
+4. keyPoints must be actual points the pastor made about faith, scripture, or the sermon topic — not pleasantries.
+5. If a field cannot be determined from the actual sermon content, return an empty string or empty array.
+6. Correct obvious transcription artifacts before extracting content: remove duplicate repeated words (e.g. "yeah yeah exactly exactly" → omit entirely unless theologically relevant), fix broken sentences from speech-to-text, and clean up filler words — but preserve the pastor's authentic voice, idioms, and theological vocabulary.
 
 Return a JSON object with:
 - title: short sermon title based only on what was said (max 8 words, or "Untitled Sermon" if unclear)
-- mainTheme: one sentence describing the central message — only from what was said
-- keyPoints: array of 3 to 7 concise points the pastor explicitly made (only from the transcript)
+- mainTheme: one sentence describing the central spiritual message (NEVER use a greeting or welcome as the theme)
+- keyPoints: array of 3 to 7 concise theological points the pastor explicitly made
 - scripturesReferenced: array of Bible references explicitly mentioned (book chapter:verse format)
 - callToAction: the closing challenge given to the congregation — only if clearly stated, otherwise empty string
-- quotableLines: array of up to 4 direct quotes from the transcript
+- quotableLines: array of up to 4 direct quotes that capture the sermon's spiritual content
 
 Transcript (${wordCount} words):
 ${transcript.slice(0, 20000)}`,

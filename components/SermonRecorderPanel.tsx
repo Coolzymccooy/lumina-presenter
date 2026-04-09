@@ -24,6 +24,7 @@ import {
 export interface SermonRecorderPanelProps {
   onClose: () => void;
   onFlashToScreen: (content: { transcript: string; summary?: SermonSummary }) => void;
+  onSave?: (transcript: string, summary: SermonSummary) => Promise<void>;
   onAddToSchedule?: (text: string) => void;
   locale?: SermonRecorderLocale;
   compact?: boolean;
@@ -165,6 +166,7 @@ const InlineSummary: React.FC<{ summary: SermonSummary }> = ({ summary }) => (
 export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   onClose,
   onFlashToScreen,
+  onSave,
   onAddToSchedule,
   locale = 'en-GB',
   compact = false,
@@ -209,6 +211,8 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
   const [flashDone, setFlashDone] = useState(false);
+  const [saveDone, setSaveDone] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const transcriptScrollRef = useRef<HTMLDivElement>(null);
 
@@ -255,6 +259,16 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
     setFlashDone(true);
     setTimeout(() => setFlashDone(false), 2500);
   }, [editableTranscript, isEditing, onFlashToScreen, summary, transcript]);
+
+  const handleSave = useCallback(async () => {
+    if (!onSave || !summary) return;
+    setSaving(true);
+    const text = isEditing ? editableTranscript : transcript;
+    await onSave(text, summary);
+    setSaving(false);
+    setSaveDone(true);
+    setTimeout(() => setSaveDone(false), 3000);
+  }, [editableTranscript, isEditing, onSave, summary, transcript]);
 
   const handleAddToSchedule = useCallback(() => {
     if (!onAddToSchedule) return;
@@ -553,19 +567,35 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
 
       {/* ── Footer actions (visible when done) ── */}
       {isDone && (
-        <div className="border-t border-zinc-800 px-4 py-2.5 flex gap-2 flex-shrink-0">
-          {onAddToSchedule && (
-            <button
-              onClick={handleAddToSchedule}
-              className="flex-1 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold transition-colors"
-            >
-              Add to Schedule
-            </button>
-          )}
+        <div className="border-t border-zinc-800 px-4 py-2.5 flex flex-col gap-2 flex-shrink-0">
+          <div className="flex gap-2">
+            {onSave && summary && (
+              <button
+                onClick={handleSave}
+                disabled={saving || saveDone}
+                className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-60 ${
+                  saveDone
+                    ? 'bg-emerald-900/50 border border-emerald-700/50 text-emerald-300'
+                    : 'bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300'
+                }`}
+                title="Save sermon summary to the Sermons archive"
+              >
+                {saving ? 'Saving…' : saveDone ? 'Saved ✓' : 'Save to Files'}
+              </button>
+            )}
+            {onAddToSchedule && (
+              <button
+                onClick={handleAddToSchedule}
+                className="flex-1 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold transition-colors"
+              >
+                Add to Schedule
+              </button>
+            )}
+          </div>
           <button
             onClick={handleFlash}
             disabled={!canFlash}
-            className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`w-full py-1.5 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
               flashDone
                 ? 'bg-emerald-900/50 border border-emerald-700/50 text-emerald-300'
                 : 'bg-red-900/50 hover:bg-red-800/70 border border-red-700/50 text-red-200'
