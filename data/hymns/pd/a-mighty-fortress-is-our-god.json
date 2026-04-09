@@ -1,0 +1,99 @@
+{
+  "status": "approved",
+  "id": "a-mighty-fortress-is-our-god",
+  "title": "A mighty Fortress is our God",
+  "alternateTitles": [],
+  "firstLine": "A mighty Fortress is our God,",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Martin Luther",
+      "role": "text"
+    },
+    {
+      "name": "Frederick H. Hedge",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Martin Luther"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Martin Luther (1483–1546), Frederick H. Hedge (1805–1890).",
+  "tuneAttribution": "Tune: Martin Luther (1483–1546).",
+  "publicDomainBasis": "Martin Luther (1483–1546), Frederick H. Hedge (1805–1890), Martin Luther (1483–1546). All public domain.",
+  "searchKeywords": [
+    "mighty",
+    "fortress"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "A mighty Fortress is our God,\nA Bulwark never failing;\nOur Helper He amid the flood\nOf mortal ills prevailing:\nFor still our ancient foe\nDoth seek to work us woe;\nHis craft and power are great,\nAnd, armed with cruel hate,\nOn earth is not his equal."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Did we in our own strength confide,\nOur striving would be losing;\nWere not the right Man on our side,\nThe Man of God’s own choosing:\nDost ask who that may be?\nChrist Jesus, it is He;\nLord Sabaoth His Name,\nFrom age to age the same,\nAnd He must win the battle."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "And though this world, with devils filled,\nShould threaten to undo us,\nWe will not fear, for God hath willed\nHis truth to triumph through us:\nThe Prince of Darkness grim,\nWe tremble not for him;\nHis rage we can endure,\nFor lo! his doom is sure,\nOne little word shall fell him."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "That Word above all earthly powers,\nNo thanks to them, abideth;\nThe Spirit and the gifts are ours\nThrough Him who with us sideth:\nLet goods and kindred go,\nThis mortal life also;\nThe body they may kill:\nGod’s truth abideth still,\nHis Kingdom is forever."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "a mighty fortress is our god",
+    "normalizedFirstLine": "a mighty fortress is our god",
+    "keywords": [
+      "mighty",
+      "fortress"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "mighty",
+      "fortress",
+      "is",
+      "our",
+      "god",
+      "martin",
+      "luther",
+      "frederick",
+      "hedge",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "a mighty fortress is our god a mighty fortress is our god martin luther frederick h hedge unknown praise mighty fortress"
+  }
+}

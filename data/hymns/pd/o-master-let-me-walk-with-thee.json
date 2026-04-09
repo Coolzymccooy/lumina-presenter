@@ -1,0 +1,98 @@
+{
+  "status": "approved",
+  "id": "o-master-let-me-walk-with-thee",
+  "title": "O Master, let me walk with Thee",
+  "alternateTitles": [],
+  "firstLine": "O Master, let me walk with Thee",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Washington Gladden",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Henry Percy Smith"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Washington Gladden (1836–1918).",
+  "tuneAttribution": "Tune: Henry Percy Smith (1825–1898).",
+  "publicDomainBasis": "Washington Gladden (1836–1918), Henry Percy Smith (1825–1898). All public domain.",
+  "searchKeywords": [
+    "master",
+    "walk",
+    "with",
+    "thee"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O Master, let me walk with Thee\nIn lowly paths of service free;\nTell me Thy secret, help me bear\nThe strain of toil, the fret of care."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Help me the slow of heart to move\nBy some clear, winning word of love;\nTeach me the wayward feet to stay,\nAnd guide them in the Godward way."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Teach me Thy patience; still with Thee\nIn closer, dearer company,\nIn work that keeps faith sweet and strong,\nIn trust that triumphs over wrong."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "In hope that sends a shining ray\nFar down the future’s broad’ning way,\nIn peace that only Thou canst give,\nWith Thee, O Master, let me live."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o master let me walk with thee",
+    "normalizedFirstLine": "o master let me walk with thee",
+    "keywords": [
+      "master",
+      "walk",
+      "with",
+      "thee"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "master",
+      "let",
+      "me",
+      "walk",
+      "with",
+      "thee",
+      "washington",
+      "gladden",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o master let me walk with thee o master let me walk with thee washington gladden unknown praise master walk with thee"
+  }
+}

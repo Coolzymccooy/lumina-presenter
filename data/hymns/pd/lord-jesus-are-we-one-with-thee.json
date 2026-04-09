@@ -1,0 +1,114 @@
+{
+  "status": "approved",
+  "id": "lord-jesus-are-we-one-with-thee",
+  "title": "Lord Jesus, are we one with Thee",
+  "alternateTitles": [],
+  "firstLine": "Lord Jesus, are we one with Thee?",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "James George Deck",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James Walch"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: James George Deck (1807–1884).",
+  "tuneAttribution": "Tune: James Walch (1837–1901).",
+  "publicDomainBasis": "James George Deck (1807–1884), James Walch (1837–1901). All public domain.",
+  "searchKeywords": [
+    "lord",
+    "jesus",
+    "with",
+    "thee"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Lord Jesus, are we one with Thee?\nO height, O depth of love!\nThou one with us on Calvary,\nWe one with Thee above."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Such was Thy grace that for our sake\nThou didst from heaven come down,\nWith us of flesh and blood partake,\nIn all our misery one."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Our sins, our guilt, in love Divine\nConfessed and borne by Thee;\nThe gall, the curse, the wrath were Thine,\nTo set Thy members free."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Ascended now, in glory bright,\nHead of the Church Thou art;\nNor life nor death, nor depth nor height,\nThy saints and Thee can part."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Oh teach us, Lord, to know and own\nThis wondrous mystery,\nThat Thou in heaven with us art one,\nAnd we are one with Thee."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Soon, soon shall come that glorious day\nWhen, seated on Thy throne,\nThou shalt to wondering worlds display\nThat Thou with us art one."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "lord jesus are we one with thee",
+    "normalizedFirstLine": "lord jesus are we one with thee",
+    "keywords": [
+      "lord",
+      "jesus",
+      "with",
+      "thee"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "lord",
+      "jesus",
+      "are",
+      "we",
+      "one",
+      "with",
+      "thee",
+      "james",
+      "george",
+      "deck",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "lord jesus are we one with thee lord jesus are we one with thee james george deck unknown praise lord jesus with thee"
+  }
+}

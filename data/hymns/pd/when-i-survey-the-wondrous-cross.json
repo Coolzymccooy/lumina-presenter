@@ -1,0 +1,60 @@
+{
+  "status": "approved",
+  "id": "when-i-survey-the-wondrous-cross",
+  "title": "When I Survey the Wondrous Cross",
+  "alternateTitles": [],
+  "firstLine": "When I survey the wondrous cross on which the Prince of Glory died",
+  "meter": "LM",
+  "hymnalNumbers": { "UMH": 298, "SBC": 185, "LW": 115, "ELW": 803 },
+  "authors": [
+    { "name": "Isaac Watts", "role": "text" },
+    { "name": "Lowell Mason", "role": "tune", "notes": "Arranged from Gregorian chant." }
+  ],
+  "tunes": [
+    { "name": "HAMBURG", "composer": "Lowell Mason", "alternateNames": ["When I Survey"] }
+  ],
+  "themes": ["reflection", "grace", "surrender"],
+  "scriptureThemes": ["Galatians 6:14", "Philippians 3:7-8", "1 Corinthians 1:18"],
+  "textAttribution": "Text: Isaac Watts, 1707.",
+  "tuneAttribution": "Tune: HAMBURG, arr. Lowell Mason, 1824.",
+  "publicDomainBasis": "Isaac Watts (1674–1748), Lowell Mason (1792–1872). Text published 1707 in Hymns and Spiritual Songs. Both public domain.",
+  "searchKeywords": ["cross", "sacrifice", "love", "crucifixion", "sorrow", "survey"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "reflection",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 40,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "When I survey the wondrous cross\nOn which the Prince of Glory died,\nMy richest gain I count but loss,\nAnd pour contempt on all my pride."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Forbid it, Lord, that I should boast,\nSave in the death of Christ my God!\nAll the vain things that charm me most,\nI sacrifice them to His blood."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "See from His head, His hands, His feet,\nSorrow and love flow mingled down!\nDid e'er such love and sorrow meet,\nOr thorns compose so rich a crown?"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Were the whole realm of nature mine,\nThat were a present far too small;\nLove so amazing, so divine,\nDemands my soul, my life, my all."
+    }
+  ]
+}

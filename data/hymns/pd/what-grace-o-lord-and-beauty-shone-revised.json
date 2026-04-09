@@ -1,0 +1,110 @@
+{
+  "status": "approved",
+  "id": "what-grace-o-lord-and-beauty-shone-revised",
+  "title": "What grace, O Lord, and beauty shone (revised)",
+  "alternateTitles": [],
+  "firstLine": "What grace, O Lord, and beauty shone",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Edward Denny",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Samuel Arnold"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Edward Denny (1796–1889).",
+  "tuneAttribution": "Tune: Samuel Arnold (1740–1802).",
+  "publicDomainBasis": "Edward Denny (1796–1889), Samuel Arnold (1740–1802). All public domain.",
+  "searchKeywords": [
+    "what",
+    "grace",
+    "lord",
+    "beauty",
+    "shone",
+    "revised"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "What grace, O Lord, and beauty shone\nAround Thy steps below!\nWhat patient love was seen in all\nThy life and death of woe!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Thou love steadfast didst manifest\nThrough toilsome path extreme;\nBy pain, e’en death, wast not distressed—\nLong-suffering love supreme!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Forever on Thy burdened heart\nA weight of sorrow hung,\nYet no ungentle, murm’ring word\nEscaped Thy silent tongue."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Thy foes did hate, despise, revile,\nThy friends unfaithful prove;\nUnwearied in forgiveness still,\nThy heart could only love!"
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "In all Thy living, fragrant, sweet,\nMeal offering’s realized:\nFine, tender, balanced, and complete—\nBy God and man e’er prized."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "what grace o lord and beauty shone revised",
+    "normalizedFirstLine": "what grace o lord and beauty shone",
+    "keywords": [
+      "what",
+      "grace",
+      "lord",
+      "beauty",
+      "shone",
+      "revised"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "what",
+      "grace",
+      "lord",
+      "and",
+      "beauty",
+      "shone",
+      "revised",
+      "edward",
+      "denny",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "what grace o lord and beauty shone revised what grace o lord and beauty shone edward denny unknown praise what grace lord beauty shone revised"
+  }
+}

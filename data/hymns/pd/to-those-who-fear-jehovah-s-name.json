@@ -1,0 +1,106 @@
+{
+  "status": "approved",
+  "id": "to-those-who-fear-jehovah-s-name",
+  "title": "To those who fear Jehovah’s name",
+  "alternateTitles": [],
+  "firstLine": "To those who fear Jehovah’s name",
+  "meter": "8.8.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Joseph Barnby"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Joseph Barnby (1838–1896).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Joseph Barnby (1838–1896). All public domain.",
+  "searchKeywords": [
+    "those",
+    "fear",
+    "jehovah",
+    "name"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "To those who fear Jehovah’s name\nHow sweet the word the prophet brings:\nThe Sun of Righteousness shall rise\nWith healing in His wings."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "It is to those that fear His name\nHis healing power the Savior brings;\nOh, let us hide with contrite hearts\nBeneath His healing wings."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "He is the Sun of Righteousness;\nAnd while to sin our being clings\nWe cannot know His healing touch\nOr rest beneath His wings."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "It is His wings that heal our pains\nAnd soothe the serpent’s poisoned stings;\nClose to His bosom we must press\nTo feel His healing wings."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Beneath those healing wings I rest,\nWhile all my heart with rapture sings:\nThe Sun of Righteousness has risen\nWith healing in His wings."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "to those who fear jehovah s name",
+    "normalizedFirstLine": "to those who fear jehovah s name",
+    "keywords": [
+      "those",
+      "fear",
+      "jehovah",
+      "name"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "to",
+      "those",
+      "who",
+      "fear",
+      "jehovah",
+      "name",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "to those who fear jehovah s name to those who fear jehovah s name albert benjamin simpson unknown praise those fear jehovah name"
+  }
+}

@@ -1,0 +1,112 @@
+{
+  "status": "approved",
+  "id": "the-king-of-love-my-shepherd-is",
+  "title": "The King of love my Shepherd is",
+  "alternateTitles": [],
+  "firstLine": "The King of love my Shepherd is,",
+  "meter": "8.7.8.7.(I)",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Henry Williams Baker",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Bacchus Dykes"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Henry Williams Baker (1821–1877).",
+  "tuneAttribution": "Tune: John Bacchus Dykes (1823–1876).",
+  "publicDomainBasis": "Henry Williams Baker (1821–1877), John Bacchus Dykes (1823–1876). All public domain.",
+  "searchKeywords": [
+    "king",
+    "love",
+    "shepherd"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "The King of love my Shepherd is,\nWhose goodness faileth never;\nI nothing lack if I am His,\nAnd He is mine forever."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Where streams of living water flow\nMy ransomed soul He leadeth,\nAnd, where the verdant pastures grow,\nWith food celestial feedeth."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Perverse and foolish oft I strayed,\nBut yet in love He sought me,\nAnd on His shoulder gently laid,\nAnd home rejoicing brought me."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "In death’s dark vale I fear no ill\nWith Thee, dear Lord, beside me;\nThy rod and staff my comfort still,\nThy Cross before to guide me."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Thou spread’st a table in my sight;\nThy unction grace bestoweth;\nAnd oh, what transport of delight\nFrom Thy pure chalice floweth!"
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "And so through all the length of days\nThy goodness faileth never;\nGood Shepherd, may I sing Thy praise\nWithin Thy house forever."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "the king of love my shepherd is",
+    "normalizedFirstLine": "the king of love my shepherd is",
+    "keywords": [
+      "king",
+      "love",
+      "shepherd"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "the",
+      "king",
+      "of",
+      "love",
+      "my",
+      "shepherd",
+      "is",
+      "henry",
+      "williams",
+      "baker",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "the king of love my shepherd is the king of love my shepherd is henry williams baker unknown praise king love shepherd"
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "status": "approved",
+  "id": "just-as-i-am",
+  "title": "Just As I Am, Without One Plea",
+  "alternateTitles": ["Just As I Am"],
+  "firstLine": "Just as I am, without one plea, but that Thy blood was shed for me",
+  "meter": "8.8.8.6",
+  "hymnalNumbers": { "UMH": 357, "SBC": 307, "LW": 359, "ELW": 592 },
+  "authors": [
+    { "name": "Charlotte Elliott", "role": "text" },
+    { "name": "William B. Bradbury", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "WOODWORTH", "composer": "William B. Bradbury" }
+  ],
+  "themes": ["surrender", "grace", "assurance"],
+  "scriptureThemes": ["John 6:37", "Romans 5:8", "Revelation 22:17"],
+  "textAttribution": "Text: Charlotte Elliott, 1835.",
+  "tuneAttribution": "Tune: WOODWORTH by William B. Bradbury, 1849.",
+  "publicDomainBasis": "Charlotte Elliott (1789–1871), William B. Bradbury (1816–1868). Text 1835, tune 1849. Both public domain.",
+  "searchKeywords": ["invitation", "come", "altar", "surrender", "just as i am", "plea"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Just as I am, without one plea,\nBut that Thy blood was shed for me,\nAnd that Thou bidst me come to Thee,\nO Lamb of God, I come, I come."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Just as I am, and waiting not\nTo rid my soul of one dark blot,\nTo Thee whose blood can cleanse each spot,\nO Lamb of God, I come, I come."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Just as I am, though tossed about\nWith many a conflict, many a doubt,\nFightings and fears within, without,\nO Lamb of God, I come, I come."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Just as I am, poor, wretched, blind;\nSight, riches, healing of the mind,\nYea, all I need in Thee to find,\nO Lamb of God, I come, I come."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Just as I am, Thou wilt receive,\nWilt welcome, pardon, cleanse, relieve;\nBecause Thy promise I believe,\nO Lamb of God, I come, I come."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Just as I am, of that free love\nThe breadth, length, depth, and height to prove,\nHere for a season, then above,\nO Lamb of God, I come, I come."
+    }
+  ]
+}

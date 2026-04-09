@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "with-praise-and-thanksgiving-there",
+  "title": "With praise and thanksgiving there",
+  "alternateTitles": [],
+  "firstLine": "With praise and thanksgiving",
+  "meter": "11.12.12.12.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Arthur Tappan Pierson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Philip Paul Bliss"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Arthur Tappan Pierson (1837–1911).",
+  "tuneAttribution": "Tune: Philip Paul Bliss (1838–1876).",
+  "publicDomainBasis": "Arthur Tappan Pierson (1837–1911), Philip Paul Bliss (1838–1876). All public domain.",
+  "searchKeywords": [
+    "with",
+    "praise",
+    "thanksgiving",
+    "there"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "With praise and thanksgiving\nThere stands a great throng\nIn the presence of Jesus\nAnd sing this new song."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "All these once were sinners,\nDefiled in His sight,\nNow arrayed in pure garments,\nIn praise they unite."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "He maketh the rebel\nA priest and a king,\nHe hath bought us, and taught us\nThis new song to sing."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "How helpless and hopeless\nWe sinners had been,\nIf He never had loved us till\nCleansed from our sin."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Aloud in His praises\nOur voices shall ring,\nSo that others, believing,\nThis new song shall sing."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "with praise and thanksgiving there",
+    "normalizedFirstLine": "with praise and thanksgiving",
+    "keywords": [
+      "with",
+      "praise",
+      "thanksgiving",
+      "there"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "with",
+      "praise",
+      "and",
+      "thanksgiving",
+      "there",
+      "arthur",
+      "tappan",
+      "pierson",
+      "unknown"
+    ],
+    "searchableText": "with praise and thanksgiving there with praise and thanksgiving arthur tappan pierson unknown praise with praise thanksgiving there"
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "status": "approved",
+  "id": "once-i-stood-in-condemnation",
+  "title": "Once I stood in condemnation",
+  "alternateTitles": [],
+  "firstLine": "Once I stood in condemnation,",
+  "meter": "8.7.8.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "George West Frazer",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Robert Lowry"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: George West Frazer (1840–1896).",
+  "tuneAttribution": "Tune: Robert Lowry (1826–1899).",
+  "publicDomainBasis": "George West Frazer (1840–1896), Robert Lowry (1826–1899). All public domain.",
+  "searchKeywords": [
+    "once",
+    "stood",
+    "condemnation"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Once I stood in condemnation,\nWaiting thus the sinner’s doom;\nChrist in death has wrought salvation,\nGod has raised Him from the tomb.\nOnce I was to God a stranger,\nFilled with enmity and fear;\nHe has rescued me from danger,\nLove revealed and brought me near.\nHe has rescued me from danger,\nLove revealed and brought me near."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Now I see in Christ’s acceptance\nBut the measure of my own;\nHe who lay beneath my sentence,\nSeated high upon the Throne.\nQuickened, raised, and in Him seated,\nI a full deliverance know;\nEvery foe has been defeated,\nEvery enemy laid low,\nEvery foe has been defeated,\nEvery enemy laid low."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Now I have a life in union\nWith the risen Lord above;\nNow I drink in sweet communion\nSome rich foretaste of His love.\nSoon, O Lord! in highest glory,\nAll its vastness I’ll explore;\nSoon I’ll cast my crown before Thee,\nWhile I worship and adore,\nSoon I’ll cast my crown before Thee,\nWhile I worship and adore."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "once i stood in condemnation",
+    "normalizedFirstLine": "once i stood in condemnation",
+    "keywords": [
+      "once",
+      "stood",
+      "condemnation"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "once",
+      "stood",
+      "in",
+      "condemnation",
+      "george",
+      "west",
+      "frazer",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "once i stood in condemnation once i stood in condemnation george west frazer unknown praise once stood condemnation"
+  }
+}

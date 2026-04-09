@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "and-can-it-be-that-i-should-gain",
+  "title": "And can it be that I should gain",
+  "alternateTitles": [],
+  "firstLine": "And can it be that I should gain",
+  "meter": "8.8.8.8.8.8. with repeat.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Thomas Campbell"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Wesley (1707–1788).",
+  "tuneAttribution": "Tune: Thomas Campbell (1777–1844).",
+  "publicDomainBasis": "Charles Wesley (1707–1788), Thomas Campbell (1777–1844). All public domain.",
+  "searchKeywords": [
+    "that",
+    "should",
+    "gain"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "And can it be that I should gain\nAn int’rest in the Savior’s blood?\nDied He for me, who caused His pain?\nFor me, who Him to death pursued?\nAmazing love! how can it be\nThat Thou, my God, shouldst die for me?\nAmazing love! how can it be\nThat Thou, my God, shouldst die for me?"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "’Tis mystery all! The Immortal dies!\nWho can explore His strange design?\nIn vain the firstborn seraph tries\nTo sound the depths of love Divine!\n’Tis mercy all! let earth adore,\nLet angel minds inquire no more.\n’Tis mercy all! let earth adore,\nLet angel minds inquire no more."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "He left His Father’s throne above,\nSo free, so infinite His grace;\nEmptied Himself of all but love,\nAnd bled for Adam’s helpless race:\n’Tis mercy all, immense and free;\nFor, O my God, it found out me.\n’Tis mercy all, immense and free;\nFor, O my God, it found out me."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Long my imprisoned spirit lay\nFast bound in sin and nature’s night;\nThine eye diffused a quickening ray,\nI woke, the dungeon flamed with light;\nMy chains fell off, my heart was free,\nI rose, went forth, and followed Thee.\nMy chains fell off, my heart was free,\nI rose, went forth, and followed Thee."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "No condemnation now I dread;\nJesus, and all in Him, is mine!\nAlive in Him, my living Head,\nAnd clothed in righteousness Divine,\nBold I approach the eternal throne,\nAnd claim the crown, through Christ my own.\nBold I approach the eternal throne,\nAnd claim the crown, through Christ my own."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "and can it be that i should gain",
+    "normalizedFirstLine": "and can it be that i should gain",
+    "keywords": [
+      "that",
+      "should",
+      "gain"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "and",
+      "can",
+      "it",
+      "be",
+      "that",
+      "should",
+      "gain",
+      "charles",
+      "wesley",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "and can it be that i should gain and can it be that i should gain charles wesley unknown praise that should gain"
+  }
+}

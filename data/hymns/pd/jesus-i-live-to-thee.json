@@ -1,0 +1,94 @@
+{
+  "status": "approved",
+  "id": "jesus-i-live-to-thee",
+  "title": "Jesus, I live to Thee",
+  "alternateTitles": [],
+  "firstLine": "Jesus, I live to Thee,",
+  "meter": "6.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Henry Harbaugh",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Robert Jackson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Henry Harbaugh (1817–1867).",
+  "tuneAttribution": "Tune: Robert Jackson (1842–1914).",
+  "publicDomainBasis": "Henry Harbaugh (1817–1867), Robert Jackson (1842–1914). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "live",
+    "thee"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Jesus, I live to Thee,\nThe Loveliest and Best;\nMy life in Thee, Thy life in me,\nIn Thy blest love I rest."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Jesus, I die to Thee,\nWhenever death shall come;\nTo die in Thee is life to me,\nWith Thee I’m ever one!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Whether to live or die,\nI know not which is best;\nTo live in Thee is bliss to me,\nTo die is endless rest."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Living or dying, Lord,\nI ask but to be Thine;\nMy life in Thee, Thy life in me,\nMakes Thee forever mine."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "jesus i live to thee",
+    "normalizedFirstLine": "jesus i live to thee",
+    "keywords": [
+      "jesus",
+      "live",
+      "thee"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "jesus",
+      "live",
+      "to",
+      "thee",
+      "henry",
+      "harbaugh",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "jesus i live to thee jesus i live to thee henry harbaugh unknown praise jesus live thee"
+  }
+}

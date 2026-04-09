@@ -1,0 +1,101 @@
+{
+  "status": "approved",
+  "id": "once-it-was-the-blessing",
+  "title": "Once it was the blessing",
+  "alternateTitles": [],
+  "firstLine": "Once it was the blessing,",
+  "meter": "6.5.6.5.D. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Albert Benjamin Simpson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Albert Benjamin Simpson (1843–1919).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Albert Benjamin Simpson (1843–1919). All public domain.",
+  "searchKeywords": [
+    "once",
+    "blessing"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Once it was the blessing,\nNow it is the Lord;\nOnce it was the feeling,\nNow it is His Word;\nOnce His gift I wanted,\nNow, the Giver own;\nOnce I sought for healing,\nNow Himself alone."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Once ’twas painful trying,\nNow ’tis perfect trust;\nOnce a half salvation,\nNow the uttermost;\nOnce ’twas ceaseless holding,\nNow He holds me fast;\nOnce ’twas constant drifting,\nNow my anchor’s cast."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Once ’twas busy planning,\nNow ’tis trustful prayer;\nOnce ’twas anxious caring,\nNow He has the care;\nOnce ’twas what I wanted,\nNow what Jesus says;\nOnce ’twas constant asking,\nNow ’tis ceaseless praise."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Once it was my working,\nHis it hence shall be;\nOnce I tried to use Him,\nNow He uses me;\nOnce the pow’r I wanted,\nNow the Mighty One;\nOnce for self I labored,\nNow for Him alone."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Once I hoped in Jesus,\nNow I know He’s mine;\nOnce my lamps were dying,\nNow they brightly shine;\nOnce for death I waited,\nNow His coming hail;\nAnd my hopes are anchored\nSafe within the veil."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "once it was the blessing",
+    "normalizedFirstLine": "once it was the blessing",
+    "keywords": [
+      "once",
+      "blessing"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "once",
+      "it",
+      "was",
+      "the",
+      "blessing",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "once it was the blessing once it was the blessing albert benjamin simpson unknown praise once blessing"
+  }
+}

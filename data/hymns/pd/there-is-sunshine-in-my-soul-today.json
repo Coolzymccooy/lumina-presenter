@@ -1,0 +1,100 @@
+{
+  "status": "approved",
+  "id": "there-is-sunshine-in-my-soul-today",
+  "title": "There is sunshine in my soul today",
+  "alternateTitles": [],
+  "firstLine": "There is sunshine in my soul today,",
+  "meter": "9.6.8.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Eliza Edmunds Hewitt",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Robson Sweney"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Eliza Edmunds Hewitt (1851–1920).",
+  "tuneAttribution": "Tune: John Robson Sweney (1837–1899).",
+  "publicDomainBasis": "Eliza Edmunds Hewitt (1851–1920), John Robson Sweney (1837–1899). All public domain.",
+  "searchKeywords": [
+    "there",
+    "sunshine",
+    "soul",
+    "today"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "There is sunshine in my soul today,\nMore glorious and bright\nThan glows in any earthly sky,\nFor Jesus is my light."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "There is music in my soul today,\nA carol to my King;\nAnd Jesus, listening, can hear\nThe song I cannot sing."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "There is springtime in my soul today,\nFor when the Lord is near\nThe dove of peace sings in my heart,\nThe flowers of grace appear."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "There is gladness in my soul today,\nAnd hope, and praise, and love,\nFor blessings which He gives me now,\nFor joys laid up above."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "there is sunshine in my soul today",
+    "normalizedFirstLine": "there is sunshine in my soul today",
+    "keywords": [
+      "there",
+      "sunshine",
+      "soul",
+      "today"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "there",
+      "is",
+      "sunshine",
+      "in",
+      "my",
+      "soul",
+      "today",
+      "eliza",
+      "edmunds",
+      "hewitt",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "there is sunshine in my soul today there is sunshine in my soul today eliza edmunds hewitt unknown praise there sunshine soul today"
+  }
+}

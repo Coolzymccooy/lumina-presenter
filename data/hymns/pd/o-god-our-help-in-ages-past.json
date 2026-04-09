@@ -1,0 +1,74 @@
+{
+  "status": "approved",
+  "id": "o-god-our-help-in-ages-past",
+  "title": "O God, Our Help in Ages Past",
+  "alternateTitles": ["Our God, Our Help in Ages Past"],
+  "firstLine": "O God, our help in ages past, our hope for years to come",
+  "meter": "CM",
+  "hymnalNumbers": { "UMH": 117, "SBC": 74, "LW": 180, "ELW": 632 },
+  "authors": [
+    { "name": "Isaac Watts", "role": "text" },
+    { "name": "William Croft", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "ST. ANNE", "composer": "William Croft", "alternateNames": ["O God Our Help"] }
+  ],
+  "themes": ["assurance", "majesty", "comfort"],
+  "scriptureThemes": ["Psalm 90", "Deuteronomy 33:27", "Isaiah 26:4"],
+  "textAttribution": "Text: Isaac Watts, 1719.",
+  "tuneAttribution": "Tune: ST. ANNE by William Croft, 1708.",
+  "publicDomainBasis": "Isaac Watts (1674–1748), William Croft (1678–1727). Text published 1719 in Psalms of David. Both public domain.",
+  "searchKeywords": ["help", "hope", "shelter", "refuge", "time", "eternity", "ages"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "assurance",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O God, our help in ages past,\nOur hope for years to come,\nOur shelter from the stormy blast,\nAnd our eternal home."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Under the shadow of Thy throne\nStill may we dwell secure;\nSufficient is Thine arm alone,\nAnd our defense is sure."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Before the hills in order stood,\nOr earth received her frame,\nFrom everlasting Thou art God,\nTo endless years the same."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "A thousand ages in Thy sight\nAre like an evening gone;\nShort as the watch that ends the night\nBefore the rising sun."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Time, like an ever-rolling stream,\nBears all its sons away;\nThey fly, forgotten, as a dream\nDies at the opening day."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "O God, our help in ages past,\nOur hope for years to come,\nBe Thou our guard while troubles last,\nAnd our eternal home."
+    }
+  ]
+}

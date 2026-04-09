@@ -1,0 +1,98 @@
+{
+  "status": "approved",
+  "id": "to-god-be-the-glory-great-things-he-hath-done",
+  "title": "To God be the glory, great things He hath done",
+  "alternateTitles": [],
+  "firstLine": "To God be the glory, great things He hath done,",
+  "meter": "11.11.11.11. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "glory",
+    "great",
+    "things",
+    "hath",
+    "done"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "To God be the glory, great things He hath done,\nSo loved He the world that He gave us His Son,\nWho yielded His life our redemption to win,\nAnd opened the life-gate that all may go in."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Oh, perfect redemption, the purchase of blood,\nTo every believer the promise of God;\nThe vilest offender who truly believes,\nThat moment from Jesus a pardon receives."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Great things He hath taught us, great things He hath done,\nAnd great our rejoicing through Jesus the Son;\nBut purer, and higher, and greater will be\nOur wonder, our transport when Jesus we see."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "to god be the glory great things he hath done",
+    "normalizedFirstLine": "to god be the glory great things he hath done",
+    "keywords": [
+      "glory",
+      "great",
+      "things",
+      "hath",
+      "done"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "to",
+      "god",
+      "be",
+      "the",
+      "glory",
+      "great",
+      "things",
+      "he",
+      "hath",
+      "done",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "to god be the glory great things he hath done to god be the glory great things he hath done fanny jane crosby unknown praise glory great things hath done"
+  }
+}

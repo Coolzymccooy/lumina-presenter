@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "pass-me-not-o-gentle-savior",
+  "title": "Pass me not, O gentle Savior",
+  "alternateTitles": [],
+  "firstLine": "Pass me not, O gentle Savior,",
+  "meter": "8.5.8.5. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "pass",
+    "gentle",
+    "savior"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Pass me not, O gentle Savior,\nHear my humble cry;\nWhile on others Thou art calling,\nDo not pass me by."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Let me at Thy throne of mercy\nFind a sweet relief;\nKneeling there in deep contrition,\nHelp my unbelief."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Trusting only in Thy merit,\nWould I seek Thy face;\nHeal my wounded, broken spirit,\nSave me by Thy grace."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Thou the spring of all my comfort,\nMore than life to me;\nWhom have I on earth beside Thee?\nWhom in heaven but Thee?"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "pass me not o gentle savior",
+    "normalizedFirstLine": "pass me not o gentle savior",
+    "keywords": [
+      "pass",
+      "gentle",
+      "savior"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "pass",
+      "me",
+      "not",
+      "gentle",
+      "savior",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "pass me not o gentle savior pass me not o gentle savior fanny jane crosby unknown praise pass gentle savior"
+  }
+}

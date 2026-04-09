@@ -1,0 +1,88 @@
+{
+  "status": "approved",
+  "id": "day-is-dying-in-the-west",
+  "title": "Day is dying in the west",
+  "alternateTitles": [],
+  "firstLine": "Day is dying in the west,",
+  "meter": "7.7.7.7.4. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Mary Artemesia Lathbury",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Fiske Sherwin"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Mary Artemesia Lathbury (1841–1913).",
+  "tuneAttribution": "Tune: William Fiske Sherwin (1826–1888).",
+  "publicDomainBasis": "Mary Artemesia Lathbury (1841–1913), William Fiske Sherwin (1826–1888). All public domain.",
+  "searchKeywords": [
+    "dying",
+    "west"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Day is dying in the west,\nHeav’n is touching earth with rest,\nWait and worship while the night\nSets her evening lamps alight\nThrough all the sky."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Lord of life, beneath the dome\nOf the universe, Thy home,\nGather us, who seek Thy face,\nTo the fold of Thy embrace,\nFor Thou art nigh."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "While the deepening shadows fall,\nHeart of love, enfolding all,\nThrough the glory and the grace\nOf the stars that veil Thy face,\nOur hearts ascend."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "day is dying in the west",
+    "normalizedFirstLine": "day is dying in the west",
+    "keywords": [
+      "dying",
+      "west"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "day",
+      "is",
+      "dying",
+      "in",
+      "the",
+      "west",
+      "mary",
+      "artemesia",
+      "lathbury",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "day is dying in the west day is dying in the west mary artemesia lathbury unknown praise dying west"
+  }
+}

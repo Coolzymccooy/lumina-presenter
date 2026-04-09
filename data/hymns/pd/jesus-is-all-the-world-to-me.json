@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "jesus-is-all-the-world-to-me",
+  "title": "Jesus is all the world to me",
+  "alternateTitles": [],
+  "firstLine": "Jesus is all the world to me:",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Will Lamartine Thompson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Will Lamartine Thompson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Will Lamartine Thompson (1847–1909).",
+  "tuneAttribution": "Tune: Will Lamartine Thompson (1847–1909).",
+  "publicDomainBasis": "Will Lamartine Thompson (1847–1909), Will Lamartine Thompson (1847–1909). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "world"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Jesus is all the world to me:\nMy life, my joy, my all.\nHe is my strength from day to day;\nWithout Him I would fall.\nWhen I am sad, to Him I go;\nNo other one can cheer me so.\nWhen I am sad, He makes me glad;\nHe’s my Friend."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Jesus is all the world to me,\nMy Friend in trials sore.\nI go to Him for blessings, and\nHe gives them o’er and o’er.\nHe sends the sunshine and the rain;\nHe sends the harvest’s golden grain:\nSunshine and rain, harvest of grain—\nHe’s my Friend."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Jesus is all the world to me,\nAnd true to Him I’ll be.\nOh, how could I this Friend deny\nWhen He’s so true to me?\nFollowing Him I know I’m right;\nHe watches o’er me day and night.\nFollowing Him by day and night,\nHe’s my Friend."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Jesus is all the world to me,\nI want no better friend.\nI trust Him now; I’ll trust Him when\nLife’s fleeting days shall end.\nBeautiful life with such a Friend;\nBeautiful life that has no end!\nEternal life, eternal joy,\nHe’s my Friend."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "jesus is all the world to me",
+    "normalizedFirstLine": "jesus is all the world to me",
+    "keywords": [
+      "jesus",
+      "world"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "jesus",
+      "is",
+      "all",
+      "the",
+      "world",
+      "to",
+      "me",
+      "will",
+      "lamartine",
+      "thompson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "jesus is all the world to me jesus is all the world to me will lamartine thompson unknown praise jesus world"
+  }
+}

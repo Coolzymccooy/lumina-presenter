@@ -1,0 +1,94 @@
+{
+  "status": "approved",
+  "id": "from-greenland-s-icy-mountains",
+  "title": "From Greenland’s icy mountains",
+  "alternateTitles": [],
+  "firstLine": "From Greenland’s icy mountains,",
+  "meter": "7.6.7.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Reginald Heber",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lowell Mason"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Reginald Heber (1783–1826).",
+  "tuneAttribution": "Tune: Lowell Mason (1792–1872).",
+  "publicDomainBasis": "Reginald Heber (1783–1826), Lowell Mason (1792–1872). All public domain.",
+  "searchKeywords": [
+    "from",
+    "greenland",
+    "mountains"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "From Greenland’s icy mountains,\nFrom India’s coral strand,\nWhere Afric’s sunny fountains\nRoll down their golden sand;\nFrom many an ancient river,\nFrom many a palmy plain,\nThey call us to deliver\nTheir land from error’s chain."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "What though the spicy breezes\nBlow soft on Ceylon’s isle;\nThough every prospect pleases,\nAnd only man is vile;\nIn vain with lavish kindness\nThe gifts of God are strown;\nThe heathen, in his blindness,\nBows down to wood and stone."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Can we, whose souls are lighted\nWith wisdom from on high;\nCan we to men benighted\nThe lamp of life deny?\nSalvation! O salvation!\nThe joyful sound proclaim,\nTill each remotest nation\nHas learned Messiah’s name."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Waft, waft, ye winds, His story;\nAnd you, ye waters, roll,\nTill, like a sea of glory,\nIt spreads from pole to pole;\nTill o’er our ransomed nature,\nThe Lamb for sinners slain,\nRedeemer, King, Creator,\nIn bliss returns to reign."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "from greenland s icy mountains",
+    "normalizedFirstLine": "from greenland s icy mountains",
+    "keywords": [
+      "from",
+      "greenland",
+      "mountains"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "from",
+      "greenland",
+      "icy",
+      "mountains",
+      "reginald",
+      "heber",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "from greenland s icy mountains from greenland s icy mountains reginald heber unknown praise from greenland mountains"
+  }
+}

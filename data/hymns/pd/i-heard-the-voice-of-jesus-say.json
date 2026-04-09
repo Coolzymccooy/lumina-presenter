@@ -1,0 +1,89 @@
+{
+  "status": "approved",
+  "id": "i-heard-the-voice-of-jesus-say",
+  "title": "I heard the voice of Jesus say",
+  "alternateTitles": [],
+  "firstLine": "I heard the voice of Jesus say,",
+  "meter": "8.6.8.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Horatius Bonar",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Bacchus Dykes"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Horatius Bonar (1808–1889).",
+  "tuneAttribution": "Tune: John Bacchus Dykes (1823–1876).",
+  "publicDomainBasis": "Horatius Bonar (1808–1889), John Bacchus Dykes (1823–1876). All public domain.",
+  "searchKeywords": [
+    "heard",
+    "voice",
+    "jesus"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I heard the voice of Jesus say,\n“Come unto Me, and rest;\nLay down, thou weary one, lay down\nThy head upon My breast.”\nI came to Jesus as I was,\nWeary, and worn, and sad;\nI found in Him a resting-place,\nAnd He has made me glad."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "I heard the voice of Jesus say,\n“Behold, I freely give\nThe living water: thirsty one,\nStoop down, and drink, and live.”\nI came to Jesus, and I drank\nOf that life-giving stream;\nMy thirst was quenched, my soul revived,\nAnd now I live in Him."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "I heard the voice of Jesus say,\n“I am this dark world’s Light;\nLook unto Me, thy morn shall rise,\nAnd all thy day be bright.”\nI looked to Jesus, and I found\nIn Him my Star, my Sun;\nAnd in that Light of life I’ll walk\nTill trav’lling days are done."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i heard the voice of jesus say",
+    "normalizedFirstLine": "i heard the voice of jesus say",
+    "keywords": [
+      "heard",
+      "voice",
+      "jesus"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "heard",
+      "the",
+      "voice",
+      "of",
+      "jesus",
+      "say",
+      "horatius",
+      "bonar",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i heard the voice of jesus say i heard the voice of jesus say horatius bonar unknown praise heard voice jesus"
+  }
+}

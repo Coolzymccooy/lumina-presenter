@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "i-know-not-why-god-s-wondrous-grace",
+  "title": "I know not why God’s wondrous grace",
+  "alternateTitles": [],
+  "firstLine": "I know not why God’s wondrous grace",
+  "meter": "8.6.8.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Daniel Webster Whittle",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James McGranahan"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Daniel Webster Whittle (1840–1901).",
+  "tuneAttribution": "Tune: James McGranahan (1840–1907).",
+  "publicDomainBasis": "Daniel Webster Whittle (1840–1901), James McGranahan (1840–1907). All public domain.",
+  "searchKeywords": [
+    "know",
+    "wondrous",
+    "grace"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I know not why God’s wondrous grace\nTo me He hath made known,\nNor why, unworthy, Christ in love\nRedeemed me for His own."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "I know not how this saving faith\nTo me He did impart,\nNor how believing in His word\nWrought peace within my heart."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "I know not how the Spirit moves,\nConvincing men of sin,\nRevealing Jesus through the Word,\nCreating faith in Him."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "I know not what of good or ill\nMay be reserved for me,\nOf weary ways or golden days,\nBefore His face I see."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "I know not when my Lord may come,\nAt night or noon-day fair,\nNor if I’ll walk the vale with Him,\nOr “meet Him in the air.”"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i know not why god s wondrous grace",
+    "normalizedFirstLine": "i know not why god s wondrous grace",
+    "keywords": [
+      "know",
+      "wondrous",
+      "grace"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "know",
+      "not",
+      "why",
+      "god",
+      "wondrous",
+      "grace",
+      "daniel",
+      "webster",
+      "whittle",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i know not why god s wondrous grace i know not why god s wondrous grace daniel webster whittle unknown praise know wondrous grace"
+  }
+}

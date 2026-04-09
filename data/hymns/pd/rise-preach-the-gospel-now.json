@@ -1,0 +1,75 @@
+{
+  "status": "approved",
+  "id": "rise-preach-the-gospel-now",
+  "title": "Rise! Preach the gospel now",
+  "alternateTitles": [],
+  "firstLine": "Rise! Preach the gospel now!",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "rise",
+    "preach",
+    "gospel"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Rise! Preach the gospel now!\nRescue the fallen!\nLo, millions perishing daily in pain!\nQuench not your heart of love,\nCount not possessions:\nRise! Preach the gospel while moments remain."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "rise preach the gospel now",
+    "normalizedFirstLine": "rise preach the gospel now",
+    "keywords": [
+      "rise",
+      "preach",
+      "gospel"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "rise",
+      "preach",
+      "the",
+      "gospel",
+      "now",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "rise preach the gospel now rise preach the gospel now fanny jane crosby unknown praise rise preach gospel"
+  }
+}

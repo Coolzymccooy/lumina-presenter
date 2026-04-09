@@ -1,0 +1,100 @@
+{
+  "status": "approved",
+  "id": "more-about-jesus-would-i-know",
+  "title": "More about Jesus would I know",
+  "alternateTitles": [],
+  "firstLine": "More about Jesus would I know,",
+  "meter": "8.8.8.8. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Eliza Edmunds Hewitt",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Robson Sweney"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Eliza Edmunds Hewitt (1851–1920).",
+  "tuneAttribution": "Tune: John Robson Sweney (1837–1899).",
+  "publicDomainBasis": "Eliza Edmunds Hewitt (1851–1920), John Robson Sweney (1837–1899). All public domain.",
+  "searchKeywords": [
+    "more",
+    "about",
+    "jesus",
+    "would",
+    "know"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "More about Jesus would I know,\nMore of His grace to others show;\nMore of His saving fulness see,\nMore of His love who died for me."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "More about Jesus let me learn,\nMore of His holy will discern;\nSpirit of God my teacher be,\nShowing the things of Christ to me."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "More about Jesus; in His Word,\nHolding communion with my Lord;\nHearing His voice in every line,\nMaking each faithful saying mine."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "More about Jesus; on His throne,\nRiches in glory all His own;\nMore of His kingdom’s sure increase;\nMore of His coming, Prince of Peace."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "more about jesus would i know",
+    "normalizedFirstLine": "more about jesus would i know",
+    "keywords": [
+      "more",
+      "about",
+      "jesus",
+      "would",
+      "know"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "more",
+      "about",
+      "jesus",
+      "would",
+      "know",
+      "eliza",
+      "edmunds",
+      "hewitt",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "more about jesus would i know more about jesus would i know eliza edmunds hewitt unknown praise more about jesus would know"
+  }
+}

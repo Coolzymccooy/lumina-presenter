@@ -1,0 +1,102 @@
+{
+  "status": "approved",
+  "id": "from-every-stormy-wind-that-blows",
+  "title": "From every stormy wind that blows",
+  "alternateTitles": [],
+  "firstLine": "From every stormy wind that blows,",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Hugh Stowell",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Melody by Thomas Hastings"
+    }
+  ],
+  "themes": [
+    "prayer"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Hugh Stowell (1799–1865).",
+  "tuneAttribution": "Tune: Melody by Thomas Hastings (1784–1872).",
+  "publicDomainBasis": "Hugh Stowell (1799–1865), Melody by Thomas Hastings (1784–1872). All public domain.",
+  "searchKeywords": [
+    "from",
+    "every",
+    "stormy",
+    "wind",
+    "that",
+    "blows"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "prayer",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "From every stormy wind that blows,\nFrom every swelling tide of woes,\nThere is a calm, a sure retreat—\n’Tis found beneath the mercy seat."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "There is a place where Jesus sheds\nThe oil of gladness on our heads,\nA place than all besides more sweet—\nIt is the blood-bought mercy seat."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "There is a scene where spirits blend,\nWhere friend holds fellowship with friend;\nThough sundered far, by faith they meet\nAround one common mercy seat."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "There, there on eagle’s wings we soar,\nAnd time and sense seem all no more,\nAnd heaven comes down our souls to greet,\nAnd glory crowns the mercy seat."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "from every stormy wind that blows",
+    "normalizedFirstLine": "from every stormy wind that blows",
+    "keywords": [
+      "from",
+      "every",
+      "stormy",
+      "wind",
+      "that",
+      "blows"
+    ],
+    "themes": [
+      "prayer"
+    ],
+    "tokens": [
+      "from",
+      "every",
+      "stormy",
+      "wind",
+      "that",
+      "blows",
+      "hugh",
+      "stowell",
+      "unknown",
+      "prayer"
+    ],
+    "searchableText": "from every stormy wind that blows from every stormy wind that blows hugh stowell unknown prayer from every stormy wind that blows"
+  }
+}

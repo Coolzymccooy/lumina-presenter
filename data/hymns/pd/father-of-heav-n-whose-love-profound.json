@@ -1,0 +1,100 @@
+{
+  "status": "approved",
+  "id": "father-of-heav-n-whose-love-profound",
+  "title": "Father of heav’n, whose love profound",
+  "alternateTitles": [],
+  "firstLine": "Father of heav’n, whose love profound",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Edward Cooper",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Bacchus Dykes"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Edward Cooper (1770–1833).",
+  "tuneAttribution": "Tune: John Bacchus Dykes (1823–1876).",
+  "publicDomainBasis": "Edward Cooper (1770–1833), John Bacchus Dykes (1823–1876). All public domain.",
+  "searchKeywords": [
+    "father",
+    "heav",
+    "whose",
+    "love",
+    "profound"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Father of heav’n, whose love profound\nA ransom for our souls hath found,\nBefore Thy throne we sinners bend;\nTo us Thy pard’ning love extend."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Almighty Son, incarnate Word,\nOur Prophet, Priest, Redeemer, Lord,\nBefore Thy throne we sinners bend;\nTo us Thy saving grace extend."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Eternal Spirit, by whose breath\nThe soul is raised from sin and death,\nBefore Thy throne we sinners bend;\nTo us Thy quickening power extend."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Thrice holy—Father, Spirit, Son;\nMysterious Godhead, Three in One,\nBefore Thy throne we sinners bend;\nGrace, pardon, life to us extend."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "father of heav n whose love profound",
+    "normalizedFirstLine": "father of heav n whose love profound",
+    "keywords": [
+      "father",
+      "heav",
+      "whose",
+      "love",
+      "profound"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "father",
+      "of",
+      "heav",
+      "whose",
+      "love",
+      "profound",
+      "edward",
+      "cooper",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "father of heav n whose love profound father of heav n whose love profound edward cooper unknown praise father heav whose love profound"
+  }
+}

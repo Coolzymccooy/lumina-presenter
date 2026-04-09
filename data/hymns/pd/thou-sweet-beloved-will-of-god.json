@@ -1,0 +1,133 @@
+{
+  "status": "approved",
+  "id": "thou-sweet-beloved-will-of-god",
+  "title": "Thou sweet, beloved will of God",
+  "alternateTitles": [],
+  "firstLine": "Thou sweet, beloved will of God,",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Gerhardt Tersteegen",
+      "role": "text"
+    },
+    {
+      "name": "Jean Sophia Pigott",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "George Hews"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Gerhardt Tersteegen (1697–1769), Jean Sophia Pigott (1845–1882).",
+  "tuneAttribution": "Tune: George Hews (1806–1873).",
+  "publicDomainBasis": "Gerhardt Tersteegen (1697–1769), Jean Sophia Pigott (1845–1882), George Hews (1806–1873). All public domain.",
+  "searchKeywords": [
+    "thou",
+    "sweet",
+    "beloved",
+    "will"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Thou sweet, beloved will of God,\nMy anchor ground, my fortress hill,\nMy spirit’s silent, fair abode,\nIn Thee I hide me and am still."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "O Will, that willest good alone,\nLead Thou the way, Thou guidest best;\nA little child, I follow on,\nAnd, trusting, lean upon Thy breast."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "God’s will doth make the bitter sweet,\nAnd all is well when it is done;\nUnless His will doth hallow it,\nThe glory of all joy is gone."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Thy beautiful sweet will, my God,\nHolds fast in its sublime embrace\nMy captive will, a gladsome bird,\nPrisoned in such a realm of grace."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Within this place of certain good\nLove evermore expands her wings,\nOr nestling in Thy perfect choice,\nAbides content with what it brings."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Oh, lightest burden, sweetest yoke;\nIt lifts, it bears my happy soul,\nIt giveth wings to this poor heart;\nMy freedom is Thy grand control."
+    },
+    {
+      "id": "v7",
+      "type": "verse",
+      "label": "Verse 7",
+      "order": 7,
+      "text": "Upon God’s will I lay me down,\nAs child upon its mother’s breast;\nNo silken couch, nor softest bed,\nCould ever give me such deep rest."
+    },
+    {
+      "id": "v8",
+      "type": "verse",
+      "label": "Verse 8",
+      "order": 8,
+      "text": "Thy wonderful grand will, my God,\nWith triumph now I make it mine;\nAnd faith shall cry a joyous Yes\nTo every dear command of Thine."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "thou sweet beloved will of god",
+    "normalizedFirstLine": "thou sweet beloved will of god",
+    "keywords": [
+      "thou",
+      "sweet",
+      "beloved",
+      "will"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "thou",
+      "sweet",
+      "beloved",
+      "will",
+      "of",
+      "god",
+      "gerhardt",
+      "tersteegen",
+      "jean",
+      "sophia",
+      "pigott",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "thou sweet beloved will of god thou sweet beloved will of god gerhardt tersteegen jean sophia pigott unknown praise thou sweet beloved will"
+  }
+}

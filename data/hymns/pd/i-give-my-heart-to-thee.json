@@ -1,0 +1,123 @@
+{
+  "status": "approved",
+  "id": "i-give-my-heart-to-thee",
+  "title": "I give my heart to Thee",
+  "alternateTitles": [],
+  "firstLine": "I give my heart to Thee,",
+  "meter": "6.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Ray Palmer",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Robert Jackson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Ray Palmer (1808–1887).",
+  "tuneAttribution": "Tune: Robert Jackson (1842–1914).",
+  "publicDomainBasis": "Ray Palmer (1808–1887), Robert Jackson (1842–1914). All public domain.",
+  "searchKeywords": [
+    "give",
+    "heart",
+    "thee"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I give my heart to Thee,\nO Jesus most desired;\nAnd heart for heart the gift shall be,\nFor Thou my heart hast fired."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Thou hearts alone wouldst move,\nThou only hearts dost love;\nI would love Thee as Thou lov’st me,\nO Jesus most desired."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "What off’ring can I make,\nDear Lord, to love like Thine;\nThat Thou, the Word, didst stoop to take\nA human form like mine?"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "“Give Me thy heart, My son”:\nLord, Thou my heart hast won;\nI would love Thee as Thou lov’st me,\nO Jesus most desired."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Thy heart is opened wide,\nIts offered love most free,\nThat heart to heart I may abide,\nAnd hide myself in Thee."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Ah, how Thy love doth burn,\nTill I that love return!\nI would love Thee as Thou lov’st me,\nO Jesus most desired."
+    },
+    {
+      "id": "v7",
+      "type": "verse",
+      "label": "Verse 7",
+      "order": 7,
+      "text": "Here finds my heart its rest,\nRepose that knows no shock,\nThe strength of love that keeps it blest\nIn Thee, the riven Rock."
+    },
+    {
+      "id": "v8",
+      "type": "verse",
+      "label": "Verse 8",
+      "order": 8,
+      "text": "My heart, as girt around,\nHer citadel hath found;\nI would love Thee as Thou lov’st me,\nO Jesus most desired."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i give my heart to thee",
+    "normalizedFirstLine": "i give my heart to thee",
+    "keywords": [
+      "give",
+      "heart",
+      "thee"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "give",
+      "my",
+      "heart",
+      "to",
+      "thee",
+      "ray",
+      "palmer",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i give my heart to thee i give my heart to thee ray palmer unknown praise give heart thee"
+  }
+}

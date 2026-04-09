@@ -1,0 +1,98 @@
+{
+  "status": "approved",
+  "id": "and-is-it-so-i-shall-be-like-thy-son",
+  "title": "And is it so! I shall be like Thy Son",
+  "alternateTitles": [],
+  "firstLine": "And is it so! I shall be like Thy Son?",
+  "meter": "10.10.10.10.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Nelson Darby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "George William Warren"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Nelson Darby (1800–1882).",
+  "tuneAttribution": "Tune: George William Warren (1828–1902).",
+  "publicDomainBasis": "John Nelson Darby (1800–1882), George William Warren (1828–1902). All public domain.",
+  "searchKeywords": [
+    "shall",
+    "like"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "And is it so! I shall be like Thy Son?\nIs this the grace which He for me has won?\nFather of glory—thought beyond all thought!\nIn glory, to His own blest likeness brought!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Oh, Jesus, Lord, who loved me like to Thee?\nFruit of Thy work, with Thee, too, there to see\nThy glory, Lord, while endless ages roll,\nMyself the prize and travail of Thy soul."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Yet it must be: Thy love had not its rest\nWere Thy redeemed not with Thee fully blest;\nThat love that gives not as the world, but shares\nAll it possesses with its loved co-heirs."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Nor I alone; Thy loved ones, all complete\nIn glory, round Thee there with joy shall meet\nAll like Thee, for Thy glory like Thee, Lord,\nObject supreme of all, by all adored."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "and is it so i shall be like thy son",
+    "normalizedFirstLine": "and is it so i shall be like thy son",
+    "keywords": [
+      "shall",
+      "like"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "and",
+      "is",
+      "it",
+      "so",
+      "shall",
+      "be",
+      "like",
+      "thy",
+      "son",
+      "john",
+      "nelson",
+      "darby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "and is it so i shall be like thy son and is it so i shall be like thy son john nelson darby unknown praise shall like"
+  }
+}

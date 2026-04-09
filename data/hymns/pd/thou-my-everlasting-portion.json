@@ -1,0 +1,88 @@
+{
+  "status": "approved",
+  "id": "thou-my-everlasting-portion",
+  "title": "Thou my everlasting Portion",
+  "alternateTitles": [],
+  "firstLine": "Thou my everlasting Portion,",
+  "meter": "8.7.8.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Silas Jones Vail"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: Silas Jones Vail (1818–1884).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), Silas Jones Vail (1818–1884). All public domain.",
+  "searchKeywords": [
+    "thou",
+    "everlasting",
+    "portion"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Thou my everlasting Portion,\nMore than friend or life to me,\nAll along my pilgrim journey,\nSavior, let me walk with Thee."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Not for ease or worldly pleasure,\nNot for fame my prayer shall be;\nGladly will I toil and suffer,\nOnly let me walk with Thee."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Lead me through the vale of shadows,\nBear me o’er life’s fitful sea;\nThen the gate of life eternal\nMay I enter, Lord, with Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "thou my everlasting portion",
+    "normalizedFirstLine": "thou my everlasting portion",
+    "keywords": [
+      "thou",
+      "everlasting",
+      "portion"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "thou",
+      "my",
+      "everlasting",
+      "portion",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "thou my everlasting portion thou my everlasting portion fanny jane crosby unknown praise thou everlasting portion"
+  }
+}

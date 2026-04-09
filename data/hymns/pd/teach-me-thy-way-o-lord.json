@@ -1,0 +1,87 @@
+{
+  "status": "approved",
+  "id": "teach-me-thy-way-o-lord",
+  "title": "Teach me Thy way, O Lord",
+  "alternateTitles": [],
+  "firstLine": "Teach me Thy way, O Lord,",
+  "meter": "6.4.6.4.6.6.6.4.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Benjamin Mansell Ramsey",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Benjamin Mansell Ramsey"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Benjamin Mansell Ramsey (1849–1923).",
+  "tuneAttribution": "Tune: Benjamin Mansell Ramsey (1849–1923).",
+  "publicDomainBasis": "Benjamin Mansell Ramsey (1849–1923), Benjamin Mansell Ramsey (1849–1923). All public domain.",
+  "searchKeywords": [
+    "teach",
+    "lord"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Teach me Thy way, O Lord,\nTeach me Thy way;\nThy gracious aid afford,\nTeach me Thy way.\nHelp me to walk aright;\nMore by faith, less by sight;\nLead me with heav’nly light,\nTeach me Thy way."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "When doubts and fears arise,\nTeach me Thy way;\nWhen storms o’erspread the skies,\nTeach me Thy way.\nShine through the cloud and rain,\nThrough sorrow, toil, and pain;\nMake Thou my pathway plain,\nTeach me Thy way."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Long as my life shall last,\nTeach me Thy way;\nWhere’er my lot be cast,\nTeach me Thy way.\nUntil the race is run,\nUntil the journey’s done,\nUntil the crown is won,\nTeach me Thy way."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "teach me thy way o lord",
+    "normalizedFirstLine": "teach me thy way o lord",
+    "keywords": [
+      "teach",
+      "lord"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "teach",
+      "me",
+      "thy",
+      "way",
+      "lord",
+      "benjamin",
+      "mansell",
+      "ramsey",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "teach me thy way o lord teach me thy way o lord benjamin mansell ramsey unknown praise teach lord"
+  }
+}

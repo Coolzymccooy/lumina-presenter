@@ -1,0 +1,94 @@
+{
+  "status": "approved",
+  "id": "lord-thou-hast-made-thyself-to-me",
+  "title": "Lord, Thou hast made Thyself to me",
+  "alternateTitles": [],
+  "firstLine": "Lord, Thou hast made Thyself to me",
+  "meter": "8.8.8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charlotte Elliott",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Henri Frederick Hemy"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charlotte Elliott (1789–1871).",
+  "tuneAttribution": "Tune: Henri Frederick Hemy (1818–1888), James George Walton (1821–1905).",
+  "publicDomainBasis": "Charlotte Elliott (1789–1871), Henri Frederick Hemy (1818–1888), James George Walton (1821–1905). All public domain.",
+  "searchKeywords": [
+    "lord",
+    "thou",
+    "hast",
+    "made",
+    "thyself"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Lord, Thou hast made Thyself to me\nA living, bright reality,\nMore present to faith’s vision keen\nThan any earthly object seen;\nMore dear, more intimately nigh\nThan e’en the closest earthly tie."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "And Thou, blest vision of my soul,\nHast made my broken nature whole;\nHast purified my base desires,\nAnd kindled passion’s holiest fires;\nMy nature Thou hast lifted up,\nAnd filled me with a glorious hope."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Nearer and dearer still to me,\nThou living, loving Savior be;\nBrighter the vision of Thy face,\nMore charming still Thy words of grace;\nSo, life shall be transformed to love,\nThy grace and mercy more to prove."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "lord thou hast made thyself to me",
+    "normalizedFirstLine": "lord thou hast made thyself to me",
+    "keywords": [
+      "lord",
+      "thou",
+      "hast",
+      "made",
+      "thyself"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "lord",
+      "thou",
+      "hast",
+      "made",
+      "thyself",
+      "to",
+      "me",
+      "charlotte",
+      "elliott",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "lord thou hast made thyself to me lord thou hast made thyself to me charlotte elliott unknown praise lord thou hast made thyself"
+  }
+}

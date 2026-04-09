@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "begone-unbelief",
+  "title": "Begone, unbelief",
+  "alternateTitles": [],
+  "firstLine": "Begone, unbelief,",
+  "meter": "5.5.5.5.6.5.6.5.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Newton",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Franz Joseph Haydn"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Newton (1725–1807).",
+  "tuneAttribution": "Tune: Franz Joseph Haydn (1732–1809).",
+  "publicDomainBasis": "John Newton (1725–1807), Franz Joseph Haydn (1732–1809). All public domain.",
+  "searchKeywords": [
+    "begone",
+    "unbelief"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Begone, unbelief,\nMy Savior is near,\nAnd for my relief\nWill surely appear;\nBy prayer let me wrestle,\nAnd He will perform;\nWith Christ in the vessel,\nI smile at the storm."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Though dark be my way,\nSince He is my Guide,\n’Tis mine to obey,\n’Tis His to provide;\nThough cisterns be broken,\nAnd creatures all fail,\nThe word He hath spoken\nShall surely prevail."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "His love, in time past,\nForbids me to think\nHe’ll leave me at last\nIn trouble to sink:\nEach sweet Ebenezer\nI have in review\nConfirms His good pleasure\nTo help me quite through."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Why should I complain\nOf want or distress,\nTemptation or pain?\nHe told me no less;\nThe heirs of salvation,\nI know from His Word,\nThrough much tribulation\nMust follow their Lord."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "How bitter that cup\nNo heart can conceive,\nWhich He drank quite up,\nThat sinners might live!\nHis way was much rougher\nAnd darker than mine;\nDid Christ, my Lord, suffer,\nAnd shall I repine?"
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Since all that I meet\nShall work for my good,\nThe bitter is sweet,\nThe medicine, food;\nThough painful at present,\n’Twill cease before long,\nAnd then, oh, how pleasant\nThe conqueror’s song!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "begone unbelief",
+    "normalizedFirstLine": "begone unbelief",
+    "keywords": [
+      "begone",
+      "unbelief"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "begone",
+      "unbelief",
+      "john",
+      "newton",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "begone unbelief begone unbelief john newton unknown praise begone unbelief"
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "status": "approved",
+  "id": "father-son-and-holy-ghost",
+  "title": "Father, Son and Holy Ghost",
+  "alternateTitles": [],
+  "firstLine": "Father, Son and Holy Ghost,",
+  "meter": "7.7.7.7.7.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Conrad Kocher"
+    }
+  ],
+  "themes": [
+    "surrender"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Wesley (1707–1788).",
+  "tuneAttribution": "Tune: Conrad Kocher (1786–1872).",
+  "publicDomainBasis": "Charles Wesley (1707–1788), Conrad Kocher (1786–1872). All public domain.",
+  "searchKeywords": [
+    "father",
+    "holy",
+    "ghost"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Father, Son and Holy Ghost,\nOne in Three, and Three in One,\nAs by the celestial host,\nLet Thy will on earth be done;\nPraise by all to Thee be giv’n,\nGlorious Lord of earth and heav’n!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Vilest of the sinful race,\nLo, I answer to Thy call:\nMeanest vessel of Thy grace,\nGrace divinely free for all;\nLo, I come to do Thy will,\nAll Thy counsel to fulfil."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "If so poor a worm as I,\nMay to Thy great glory live,\nAll my actions sanctify,\nAll my words and thoughts receive;\nClaim me for Thy service, claim\nAll I have, and all I am."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Take my soul and body’s powers,\nTake my mem’ry, mind, and will;\nAll my goods and all my hours,\nAll I know, and all I feel;\nAll I think, or speak, or do;\nTake my heart, but make it new."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Now, O God, Thine own I am,\nNow I give Thee back Thine own:\nFreedom, friends, and health, and fame,\nConsecrate to Thee alone;\nThine I live, thrice happy I;\nHappier still when Thine I die."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "father son and holy ghost",
+    "normalizedFirstLine": "father son and holy ghost",
+    "keywords": [
+      "father",
+      "holy",
+      "ghost"
+    ],
+    "themes": [
+      "surrender"
+    ],
+    "tokens": [
+      "father",
+      "son",
+      "and",
+      "holy",
+      "ghost",
+      "charles",
+      "wesley",
+      "unknown",
+      "surrender"
+    ],
+    "searchableText": "father son and holy ghost father son and holy ghost charles wesley unknown surrender father holy ghost"
+  }
+}

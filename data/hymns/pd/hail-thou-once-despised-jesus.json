@@ -1,0 +1,99 @@
+{
+  "status": "approved",
+  "id": "hail-thou-once-despised-jesus",
+  "title": "Hail, Thou once despised Jesus",
+  "alternateTitles": [],
+  "firstLine": "Hail, Thou once despised Jesus!",
+  "meter": "8.7.8.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Bakewell",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Rowland Huw Prichard"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Bakewell (1721–1819).",
+  "tuneAttribution": "Tune: Rowland Huw Prichard (1811–1887).",
+  "publicDomainBasis": "John Bakewell (1721–1819), Rowland Huw Prichard (1811–1887). All public domain.",
+  "searchKeywords": [
+    "hail",
+    "thou",
+    "once",
+    "despised",
+    "jesus"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Hail, Thou once despised Jesus!\nHail, Thou still rejected King!\nThou didst suffer to release us,\nThou didst free salvation bring;\nThrough Thy death and resurrection,\nBearer of our sin and shame!\nWe enjoy divine protection,\nLife and glory through Thy name."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Paschal Lamb, by God appointed,\nAll our sins on Thee were laid;\nBy our Father’s love anointed,\nThou redemption’s price hast paid.\nAll who trust Thee are forgiven\nThrough the virtue of Thy blood;\nOpened are the things of heaven,\nGrace shines forth to man from God."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Savior, hail! enthroned in glory,\nWhere for us Thou dost abide;\nWe, by faith, do now adore Thee,\nSeated at Thy Father’s side.\nThere, for us Thou now art pleading,\nThere Thou dost our sorrows share,\nEver for us interceding,\nTill in glory we appear."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Worship, honor, praise, and blessing,\nThou art worthy to receive;\nLoudest praises, without ceasing,\nMeet it is for us to give.\nIn that day Thy saints will meet Thee,\nWelcome Thee with grateful song;\nJoyful hearts will ever greet Thee,\nSource of joy to all the throng!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "hail thou once despised jesus",
+    "normalizedFirstLine": "hail thou once despised jesus",
+    "keywords": [
+      "hail",
+      "thou",
+      "once",
+      "despised",
+      "jesus"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "hail",
+      "thou",
+      "once",
+      "despised",
+      "jesus",
+      "john",
+      "bakewell",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "hail thou once despised jesus hail thou once despised jesus john bakewell unknown praise hail thou once despised jesus"
+  }
+}

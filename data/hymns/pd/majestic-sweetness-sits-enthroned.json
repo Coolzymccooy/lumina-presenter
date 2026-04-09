@@ -1,0 +1,103 @@
+{
+  "status": "approved",
+  "id": "majestic-sweetness-sits-enthroned",
+  "title": "Majestic sweetness sits enthroned",
+  "alternateTitles": [],
+  "firstLine": "Majestic sweetness sits enthroned",
+  "meter": "8.6.8.6. with repeat.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Samuel Stennett",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Thomas Hastings"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Samuel Stennett (1727–1795).",
+  "tuneAttribution": "Tune: Thomas Hastings (1784–1872).",
+  "publicDomainBasis": "Samuel Stennett (1727–1795), Thomas Hastings (1784–1872). All public domain.",
+  "searchKeywords": [
+    "majestic",
+    "sweetness",
+    "sits",
+    "enthroned"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Majestic sweetness sits enthroned\nUpon the Savior’s brow;\nHis head with radiant glories crowned,\nHis lips with grace o’erflow."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "No mortal can with Him compare\nAmong the sons of men;\nFairer is He than all the fair\nThat fill the heavenly train."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "To Him I owe my life and breath,\nAnd all the joys I have;\nHe makes me triumph over death,\nAnd saves me from the grave."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "To God, the Father, my abode,\nHe brings my weary feet;\nShows me the glories of my God,\nAnd makes my joys complete."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Since from His bounty I receive\nSuch proofs of love divine,\nHad I a thousand hearts to give,\nLord, they should all be Thine."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "majestic sweetness sits enthroned",
+    "normalizedFirstLine": "majestic sweetness sits enthroned",
+    "keywords": [
+      "majestic",
+      "sweetness",
+      "sits",
+      "enthroned"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "majestic",
+      "sweetness",
+      "sits",
+      "enthroned",
+      "samuel",
+      "stennett",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "majestic sweetness sits enthroned majestic sweetness sits enthroned samuel stennett unknown praise majestic sweetness sits enthroned"
+  }
+}

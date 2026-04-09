@@ -1,0 +1,98 @@
+{
+  "status": "approved",
+  "id": "faith-is-the-victory",
+  "title": "Faith is the Victory",
+  "alternateTitles": [],
+  "firstLine": "Encamped along the hills of light,",
+  "meter": "8.6.8.6.D. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Henry Yates",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Ira David Sankey"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Henry Yates (1837–1900).",
+  "tuneAttribution": "Tune: Ira David Sankey (1840–1908).",
+  "publicDomainBasis": "John Henry Yates (1837–1900), Ira David Sankey (1840–1908). All public domain.",
+  "searchKeywords": [
+    "faith",
+    "victory"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Encamped along the hills of light,\nYe Christian soldiers rise,\nAnd press the battle ere the night\nShall veil the glowing skies;\nAgainst the foe in vales below\nLet all our strength be hurled;\nFaith is the victory, we know,\nThat overcomes the world."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "His banner over us is love,\nOur sword the Word of God;\nWe tread the road the saints before\nWith shouts of triumph trod.\nBy faith, they like a whirlwind’s breath,\nSwept on o’er every field;\nThe faith by which they conquered death\nIs still our shining shield."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "On every hand the foe we find\nDrawn up in dread array;\nLet tents of ease be left behind,\nAnd onward to the fray.\nSalvation’s helmet on each head,\nWith truth all girt about,\nThe earth shall tremble ’neath our tread,\nAnd echo with our shout."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "To him that overcomes the foe,\nWhite raiment shall be giv’n;\nBefore the angels he shall know\nHis name confessed in heav’n;\nThen onward from the hills of light,\nOur hearts with love aflame,\nWe’ll vanquish all the hosts of night,\nIn Jesus’ conqu’ring name."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "faith is the victory",
+    "normalizedFirstLine": "encamped along the hills of light",
+    "keywords": [
+      "faith",
+      "victory"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "faith",
+      "is",
+      "the",
+      "victory",
+      "encamped",
+      "along",
+      "hills",
+      "of",
+      "light",
+      "john",
+      "henry",
+      "yates",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "faith is the victory encamped along the hills of light john henry yates unknown praise faith victory"
+  }
+}

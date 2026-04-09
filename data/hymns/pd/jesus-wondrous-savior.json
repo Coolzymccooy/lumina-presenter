@@ -1,0 +1,94 @@
+{
+  "status": "approved",
+  "id": "jesus-wondrous-savior",
+  "title": "Jesus, wondrous Savior",
+  "alternateTitles": [],
+  "firstLine": "Jesus, wondrous Savior!",
+  "meter": "6.5.6.5.D",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Daniel Arthur McGregor",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Thomas Hastings"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Daniel Arthur McGregor (1847–1890).",
+  "tuneAttribution": "Tune: Thomas Hastings (1784–1872).",
+  "publicDomainBasis": "Daniel Arthur McGregor (1847–1890), Thomas Hastings (1784–1872). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "wondrous",
+    "savior"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Jesus, wondrous Savior!\nChrist, of kings the King!\nAngels fall before Thee,\nProstrate, worshipping;\nFairest they confess Thee\nIn the heav’n above.\nWe would sing Thee fairest\nHere in hymns of love."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "All earth’s flowing pleasures\nWere a wintry sea;\nHeav’n itself without Thee\nDark as night would be.\nLamb of God! Thy glory\nIs the light above.\nLamb of God! Thy glory\nIs the life of love."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Life is death, if severed\nFrom Thy throbbing heart.\nDeath with life abundant\nAt Thy touch would start.\nWorlds and men and angels\nAll consist in Thee,\nYet Thou camest to us\nIn humility."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Jesus! all perfections\nRise and end in Thee;\nBrightness of God’s glory\nThou, eternally.\nFavored beyond measure\nThey Thy face who see;\nMay we, gracious Savior,\nShare this ecstasy."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "jesus wondrous savior",
+    "normalizedFirstLine": "jesus wondrous savior",
+    "keywords": [
+      "jesus",
+      "wondrous",
+      "savior"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "jesus",
+      "wondrous",
+      "savior",
+      "daniel",
+      "arthur",
+      "mcgregor",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "jesus wondrous savior jesus wondrous savior daniel arthur mcgregor unknown praise jesus wondrous savior"
+  }
+}

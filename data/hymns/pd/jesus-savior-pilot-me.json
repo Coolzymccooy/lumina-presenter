@@ -1,0 +1,87 @@
+{
+  "status": "approved",
+  "id": "jesus-savior-pilot-me",
+  "title": "Jesus, Savior, pilot me",
+  "alternateTitles": [],
+  "firstLine": "Jesus, Savior, pilot me",
+  "meter": "7.7.7.7.7.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Edward Hopper",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Edgar Gould"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Edward Hopper (1816–1888).",
+  "tuneAttribution": "Tune: John Edgar Gould (1822–1875).",
+  "publicDomainBasis": "Edward Hopper (1816–1888), John Edgar Gould (1822–1875). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "savior",
+    "pilot"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Jesus, Savior, pilot me\nOver life’s tempestuous sea;\nUnknown waves before me roll,\nHiding rock and treach’rous shoal;\nChart and compass come from Thee;\nJesus, Savior, pilot me."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "As a mother stills her child,\nThou canst hush the ocean wild;\nBoist’rous waves obey Thy will\nWhen Thou say’st to them, “Be still.”\nWondrous Sov’reign of the sea,\nJesus, Savior, pilot me."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Though death’s valley I may pass,\nStill Thy grace will fear surpass;\nIn Thy presence I will rest,\nAnd, while leaning on Thy breast,\nI will hear Thee say to me,\n“Fear not, I will pilot thee.”"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "jesus savior pilot me",
+    "normalizedFirstLine": "jesus savior pilot me",
+    "keywords": [
+      "jesus",
+      "savior",
+      "pilot"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "jesus",
+      "savior",
+      "pilot",
+      "me",
+      "edward",
+      "hopper",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "jesus savior pilot me jesus savior pilot me edward hopper unknown praise jesus savior pilot"
+  }
+}

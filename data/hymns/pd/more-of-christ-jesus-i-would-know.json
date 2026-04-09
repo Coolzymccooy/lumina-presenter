@@ -1,0 +1,101 @@
+{
+  "status": "approved",
+  "id": "more-of-christ-jesus-i-would-know",
+  "title": "More of Christ Jesus I would know",
+  "alternateTitles": [],
+  "firstLine": "More of Christ Jesus I would know,",
+  "meter": "8.8.8.8. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Eliza Edmunds Hewitt",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Robson Sweney"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Eliza Edmunds Hewitt (1851–1920).",
+  "tuneAttribution": "Tune: John Robson Sweney (1837–1899).",
+  "publicDomainBasis": "Eliza Edmunds Hewitt (1851–1920), John Robson Sweney (1837–1899). All public domain.",
+  "searchKeywords": [
+    "more",
+    "christ",
+    "jesus",
+    "would",
+    "know"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "More of Christ Jesus I would know,\nMore of His way pursue below;\nMore His redemption I’d perceive;\nMore of His riches I’d receive."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "More resurrection pow’r I’d sense,\nMore boundless life experience;\nMore of His high authority,\nMore of His glorious victory."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "More of the Spirit’s light receive,\nMore of the Father’s will perceive,\nMore things within the veil I’d see;\nMore to Christ’s death conformed I’d be."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "More faith I in His Word would place;\nMore I’d rely upon His grace,\nMore His appearing love, desire,\nMore for His kingship hope, aspire."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "more of christ jesus i would know",
+    "normalizedFirstLine": "more of christ jesus i would know",
+    "keywords": [
+      "more",
+      "christ",
+      "jesus",
+      "would",
+      "know"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "more",
+      "of",
+      "christ",
+      "jesus",
+      "would",
+      "know",
+      "eliza",
+      "edmunds",
+      "hewitt",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "more of christ jesus i would know more of christ jesus i would know eliza edmunds hewitt unknown praise more christ jesus would know"
+  }
+}

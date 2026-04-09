@@ -1,0 +1,97 @@
+{
+  "status": "approved",
+  "id": "on-his-father-s-throne-is-seated",
+  "title": "On His Father’s throne is seated",
+  "alternateTitles": [],
+  "firstLine": "On His Father’s throne is seated",
+  "meter": "8.7.8.7.8.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Hannah Kilham Burlingham",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Henry John Gauntlett"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Hannah Kilham Burlingham (1842–1901).",
+  "tuneAttribution": "Tune: Henry John Gauntlett (1805–1876).",
+  "publicDomainBasis": "Hannah Kilham Burlingham (1842–1901), Henry John Gauntlett (1805–1876). All public domain.",
+  "searchKeywords": [
+    "father",
+    "throne",
+    "seated"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "On His Father’s throne is seated\nChrist the Lord, the living One!\nAll His toil on earth completed,\nAll His work for sinners done.\nIn the glory, in the glory,\nSee Him—God’s eternal Son!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Every knee shall bow before Him,\nEvery tongue confess His name,\nRansomed myriads shall adore Him,\nWho endured the sinner’s shame!\nFrom the glory, from the glory,\nGod doth now His worth proclaim."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Man, the cross to Him awarded;\nMan, the Savior crucified;\nThis world’s judgment stands recorded.\nGod’s own justice satisfied!\nBy the glory, by the glory,\nChrist was claimed on earth who died."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Son of Man, His incarnation\nOpened first the tale of grace;\nSon of Man, in new creation\nLeader of a chosen race!\nWell may glory, well may glory,\nGive to Him the honored place!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "on his father s throne is seated",
+    "normalizedFirstLine": "on his father s throne is seated",
+    "keywords": [
+      "father",
+      "throne",
+      "seated"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "on",
+      "his",
+      "father",
+      "throne",
+      "is",
+      "seated",
+      "hannah",
+      "kilham",
+      "burlingham",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "on his father s throne is seated on his father s throne is seated hannah kilham burlingham unknown praise father throne seated"
+  }
+}

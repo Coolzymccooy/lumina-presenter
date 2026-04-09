@@ -1,0 +1,54 @@
+{
+  "status": "approved",
+  "id": "guide-me-o-thou-great-jehovah",
+  "title": "Guide Me, O Thou Great Jehovah",
+  "alternateTitles": ["Guide Me O Thou Great Redeemer", "Cwm Rhondda"],
+  "firstLine": "Guide me, O Thou great Jehovah, pilgrim through this barren land",
+  "meter": "8.7.8.7.8.8.7",
+  "hymnalNumbers": { "UMH": 127, "SBC": 56, "LW": 220, "ELW": 618 },
+  "authors": [
+    { "name": "William Williams", "role": "text", "notes": "Original Welsh, 1745." },
+    { "name": "Peter Williams", "role": "translator", "notes": "English translation, 1771." },
+    { "name": "John Hughes", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "CWM RHONDDA", "composer": "John Hughes", "alternateNames": ["Guide Me O Thou Great Jehovah"] }
+  ],
+  "themes": ["guidance", "assurance", "comfort"],
+  "scriptureThemes": ["Exodus 13:21-22", "Psalm 23", "Revelation 7:17"],
+  "textAttribution": "Text: William Williams, 1745; tr. Peter Williams, 1771.",
+  "tuneAttribution": "Tune: CWM RHONDDA by John Hughes, 1907.",
+  "publicDomainBasis": "William Williams (1717–1791), Peter Williams (1722–1796), John Hughes (1873–1932). Text 1745, tune 1907. All public domain.",
+  "searchKeywords": ["guide", "pilgrim", "land", "bread of heaven", "jordan", "strength"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "guidance",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "either",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 38,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Guide me, O Thou great Jehovah,\nPilgrim through this barren land.\nI am weak, but Thou art mighty;\nHold me with Thy powerful hand.\nBread of heaven, bread of heaven,\nFeed me till I want no more;\nFeed me till I want no more."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Open now the crystal fountain,\nWhence the healing stream doth flow;\nLet the fire and cloudy pillar\nLead me all my journey through.\nStrong deliverer, strong deliverer,\nBe Thou still my strength and shield;\nBe Thou still my strength and shield."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "When I tread the verge of Jordan,\nBid my anxious fears subside;\nDeath of death and hell's destruction,\nLand me safe on Canaan's side.\nSongs of praises, songs of praises,\nI will ever give to Thee;\nI will ever give to Thee."
+    }
+  ]
+}

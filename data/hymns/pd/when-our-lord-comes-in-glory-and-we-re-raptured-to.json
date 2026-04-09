@@ -1,0 +1,115 @@
+{
+  "status": "approved",
+  "id": "when-our-lord-comes-in-glory-and-we-re-raptured-to",
+  "title": "When our Lord comes in glory and we’re raptured to",
+  "alternateTitles": [],
+  "firstLine": "When our Lord comes in glory and we’re raptured to His side,",
+  "meter": "14.11.14.11. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Robson Sweney"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: John Robson Sweney (1837–1899).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), John Robson Sweney (1837–1899). All public domain.",
+  "searchKeywords": [
+    "when",
+    "lord",
+    "comes",
+    "glory",
+    "raptured"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "When our Lord comes in glory and we’re raptured to His side,\nWhen that bright and glorious moment we shall see,\nWe shall know our dear Bridegroom as He comes to take His Bride,\nAnd He’ll know the Bride He’s loved so tenderly."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Even now in the Spirit He reveals Himself to us,\nAnd His Person dear we’ve learned to recognize.\nBut our eyes shall behold Him—O what rapture glorious\nWhen we gaze on Him unveiled in the skies!"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "In the Word we have seen Him shining forth in truth and grace,\nO how blessed to behold His features thus!\nBut the day soon is coming when we’ll see Him face to face,\nHe, the living Word, in full revealed to us."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "In the brothers and sisters, O how blest to see the Lord,\nIn their attitudes and actions Christ expressed!\nBut the day soon is coming when in rapturous accord\nWe shall see His Person fully manifest."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "In the meetings of the churches He’s unveiled increasingly—\nO the joy unspeakable and glory too!\nAs the meetings grow higher we’re expecting soon to see\nThe full glory of our Lord come into view."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "when our lord comes in glory and we re raptured to",
+    "normalizedFirstLine": "when our lord comes in glory and we re raptured to his side",
+    "keywords": [
+      "when",
+      "lord",
+      "comes",
+      "glory",
+      "raptured"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "when",
+      "our",
+      "lord",
+      "comes",
+      "in",
+      "glory",
+      "and",
+      "we",
+      "re",
+      "raptured",
+      "to",
+      "his",
+      "side",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "when our lord comes in glory and we re raptured to when our lord comes in glory and we re raptured to his side fanny jane crosby unknown praise when lord comes glory raptured"
+  }
+}

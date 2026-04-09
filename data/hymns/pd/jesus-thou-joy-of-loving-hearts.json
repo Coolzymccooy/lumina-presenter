@@ -1,0 +1,111 @@
+{
+  "status": "approved",
+  "id": "jesus-thou-joy-of-loving-hearts",
+  "title": "Jesus, Thou Joy of loving hearts",
+  "alternateTitles": [],
+  "firstLine": "Jesus, Thou Joy of loving hearts,",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Bernard of Clairvaux",
+      "role": "text"
+    },
+    {
+      "name": "Ray Palmer",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Henry Percy Smith"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Bernard of Clairvaux (1090–1153), Ray Palmer (1808–1887).",
+  "tuneAttribution": "Tune: Henry Percy Smith (1825–1898).",
+  "publicDomainBasis": "Bernard of Clairvaux (1090–1153), Ray Palmer (1808–1887), Henry Percy Smith (1825–1898). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "thou",
+    "loving",
+    "hearts"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Jesus, Thou Joy of loving hearts,\nThou Fount of life, Thou Light of men,\nFrom the best bliss that earth imparts,\nWe turn unfilled to Thee again."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Thy truth unchanged hath ever stood;\nThou savest those that on Thee call;\nTo them that seek Thee, Thou art good,\nTo them that find Thee, all in all!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "We taste Thee, O Thou living Bread,\nAnd long to feast upon Thee still;\nWe drink of Thee, the Fountain-head,\nAnd thirst our souls from Thee to fill!"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Our restless spirits yearn for Thee,\nWhere’er our changeful lot is cast;\nGlad when Thy gracious smile we see,\nBlest, when our faith can hold Thee fast."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "O Lord, be Thou our strength and stay!\nMake all our moments calm and bright,\nChase all dark thoughts of sin away,\nShed o’er us here Thy holy light."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "jesus thou joy of loving hearts",
+    "normalizedFirstLine": "jesus thou joy of loving hearts",
+    "keywords": [
+      "jesus",
+      "thou",
+      "loving",
+      "hearts"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "jesus",
+      "thou",
+      "joy",
+      "of",
+      "loving",
+      "hearts",
+      "bernard",
+      "clairvaux",
+      "ray",
+      "palmer",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "jesus thou joy of loving hearts jesus thou joy of loving hearts bernard of clairvaux ray palmer unknown praise jesus thou loving hearts"
+  }
+}

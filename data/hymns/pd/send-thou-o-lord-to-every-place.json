@@ -1,0 +1,109 @@
+{
+  "status": "approved",
+  "id": "send-thou-o-lord-to-every-place",
+  "title": "Send Thou, O Lord, to every place",
+  "alternateTitles": [],
+  "firstLine": "Send Thou, O Lord, to every place",
+  "meter": "8.8.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Mary Cornelia Bishop Gates",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Edwin D. Drewett"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Mary Cornelia Bishop Gates (1842–1905).",
+  "tuneAttribution": "Tune: Edwin D. Drewett (1850–1924).",
+  "publicDomainBasis": "Mary Cornelia Bishop Gates (1842–1905), Edwin D. Drewett (1850–1924). All public domain.",
+  "searchKeywords": [
+    "send",
+    "thou",
+    "lord",
+    "every",
+    "place"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Send Thou, O Lord, to every place\nSwift messengers before Thy face,\nThe heralds of Thy wondrous grace,\nWhere Thou Thyself wilt come."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Send men whose eyes have seen the King!\nMen in whose ears His sweet words ring;\nSend such Thy lost ones home to bring;\nSend them where Thou wilt come."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "To bring good news to souls in sin;\nThe bruised and broken hearts to win;\nIn every place to bring them in,\nWhere Thou Thyself wilt come."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Gird each one with the Spirit’s sword,\nThe sword of Thine own deathless word;\nAnd make them conquerors, conquering Lord,\nWhere Thou Thyself wilt come."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Raise up, O Lord the Holy Ghost,\nFrom this broad land a mighty host,\nTheir war-cry, We will seek the lost,\nWhere Thou, O Christ, wilt come!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "send thou o lord to every place",
+    "normalizedFirstLine": "send thou o lord to every place",
+    "keywords": [
+      "send",
+      "thou",
+      "lord",
+      "every",
+      "place"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "send",
+      "thou",
+      "lord",
+      "to",
+      "every",
+      "place",
+      "mary",
+      "cornelia",
+      "bishop",
+      "gates",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "send thou o lord to every place send thou o lord to every place mary cornelia bishop gates unknown praise send thou lord every place"
+  }
+}

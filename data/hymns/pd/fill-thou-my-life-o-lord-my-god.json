@@ -1,0 +1,105 @@
+{
+  "status": "approved",
+  "id": "fill-thou-my-life-o-lord-my-god",
+  "title": "Fill Thou my life, O Lord my God",
+  "alternateTitles": [],
+  "firstLine": "Fill Thou my life, O Lord my God,",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Horatius Bonar",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Thomas Haweis"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Horatius Bonar (1808–1889).",
+  "tuneAttribution": "Tune: Thomas Haweis (1734–1820).",
+  "publicDomainBasis": "Horatius Bonar (1808–1889), Thomas Haweis (1734–1820). All public domain.",
+  "searchKeywords": [
+    "fill",
+    "thou",
+    "life",
+    "lord"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Fill Thou my life, O Lord my God,\nIn every part with praise,\nThat my whole being may proclaim\nThy being and Thy ways."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Not for the lip of praise alone,\nNor e’en the praising heart,\nI ask, but for a life made up\nOf praise in every part:"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Praise in the common things of life,\nIts goings out and in;\nPraise in each duty and each deed,\nHowever small and mean."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Fill every part of me with praise;\nLet all my being speak\nOf Thee and of Thy love, O Lord,\nPoor though I be and weak."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "So shall no part of day or night\nFrom sacredness be free,\nBut all my life, in every step,\nBe fellowship with Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "fill thou my life o lord my god",
+    "normalizedFirstLine": "fill thou my life o lord my god",
+    "keywords": [
+      "fill",
+      "thou",
+      "life",
+      "lord"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "fill",
+      "thou",
+      "my",
+      "life",
+      "lord",
+      "god",
+      "horatius",
+      "bonar",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "fill thou my life o lord my god fill thou my life o lord my god horatius bonar unknown praise fill thou life lord"
+  }
+}

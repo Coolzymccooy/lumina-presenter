@@ -1,0 +1,120 @@
+{
+  "status": "approved",
+  "id": "the-great-physician-now-is-near-revised",
+  "title": "The Great Physician now is near (revised)",
+  "alternateTitles": [],
+  "firstLine": "The Great Physician now is near,",
+  "meter": "8.7.8.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Hunter",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Hart Stockton"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Hunter (1811–1877).",
+  "tuneAttribution": "Tune: John Hart Stockton (1813–1877).",
+  "publicDomainBasis": "William Hunter (1811–1877), John Hart Stockton (1813–1877). All public domain.",
+  "searchKeywords": [
+    "great",
+    "physician",
+    "near",
+    "revised"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "The Great Physician now is near,\nThe sympathizing Jesus;\nSin’s wounds, exhaustion disappear—\nDraw quickly near to Jesus."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Your many sins are all forgiv’n,\nIf you will come to Jesus!\nWhen conscience smites, you’ll peace be giv’n\nWhen you draw near to Jesus!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 3,
+      "text": "Corrupted nature, sin-stained heart,\nAll find their cure in Jesus;\nAll weakness, sighs, disease depart,\nWhen you draw near to Jesus."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 4,
+      "text": "Man’s life is gloomy, painful, dry;\nWhy not draw near to Jesus?\nThe living water He’ll supply;\nOh, come draw near to Jesus!"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 5,
+      "text": "Now healed and full released I am,\nFor I’ve received Christ Jesus;\nAll glory to the smitten Lamb!\nI now believe in Jesus."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 6,
+      "text": "My gracious Savior’s name’s so dear;\nThe name I love is Jesus!\nDispelling misery, so near,\nNo other name but Jesus!"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 7,
+      "text": "When I’m that day to Him brought near,\nBrought face to face with Jesus,\nE’en more I’ll glorify and cheer:\nO Jesus! Precious Jesus!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "the great physician now is near revised",
+    "normalizedFirstLine": "the great physician now is near",
+    "keywords": [
+      "great",
+      "physician",
+      "near",
+      "revised"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "the",
+      "great",
+      "physician",
+      "now",
+      "is",
+      "near",
+      "revised",
+      "william",
+      "hunter",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "the great physician now is near revised the great physician now is near william hunter unknown praise great physician near revised"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "status": "approved",
+  "id": "glory-be-to-god",
+  "title": "Glory be to God",
+  "alternateTitles": [],
+  "firstLine": "Glory be to God the Father,",
+  "meter": "8.7.8.7.8.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Horatius Bonar",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Henry Thomas Smart"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Horatius Bonar (1808–1889).",
+  "tuneAttribution": "Tune: Henry Thomas Smart (1813–1879).",
+  "publicDomainBasis": "Horatius Bonar (1808–1889), Henry Thomas Smart (1813–1879). All public domain.",
+  "searchKeywords": [
+    "glory"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Glory be to God the Father,\nGlory be to God the Son,\nGlory be to God the Spirit,\nGreat Jehovah, Three in One!\nAs it was, is now, and shall be\nWhile the endless ages run."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "glory be to god",
+    "normalizedFirstLine": "glory be to god the father",
+    "keywords": [
+      "glory"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "glory",
+      "be",
+      "to",
+      "god",
+      "the",
+      "father",
+      "horatius",
+      "bonar",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "glory be to god glory be to god the father horatius bonar unknown praise glory"
+  }
+}

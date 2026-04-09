@@ -1,0 +1,98 @@
+{
+  "status": "approved",
+  "id": "jesus-i-my-cross-have-taken",
+  "title": "Jesus, I my cross have taken",
+  "alternateTitles": [],
+  "firstLine": "Jesus, I my cross have taken,",
+  "meter": "8.7.8.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Henry Francis Lyte",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Wolfgang Amadeus Mozart"
+    }
+  ],
+  "themes": [
+    "surrender"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Henry Francis Lyte (1793–1847).",
+  "tuneAttribution": "Tune: Wolfgang Amadeus Mozart (1756–1791).",
+  "publicDomainBasis": "Henry Francis Lyte (1793–1847), Wolfgang Amadeus Mozart (1756–1791). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "cross",
+    "have",
+    "taken"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Jesus, I my cross have taken,\nAll to leave and follow Thee;\nDestitute, despised, forsaken,\nThou, from hence, my all shalt be.\nPerish every fond ambition,\nAll I’ve sought, and hoped, and known;\nYet how rich is my condition,\nGod and Christ are still my own!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Let the world despise and leave me,\nThey have left my Savior, too;\nHuman hearts and looks deceive me;\nThou art not, like man, untrue;\nAnd, while Thou shalt smile upon me,\nGod of wisdom, love, and might,\nFoes may hate, and friends disown me;\nShow Thy face, and all is bright."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Man may trouble and distress me,\n’Twill but drive me to Thy breast;\nLife with trials hard may press me,\nChrist will bring me sweeter rest.\nO ’tis not in grief to harm me,\nWhile Thy love is left to me;\nO ’twere not in joy to charm me,\nWere that joy unmixed with Thee."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Haste then on from grace to glory,\nArmed by faith and winged by prayer;\nGod’s eternal day’s before thee,\nGod’s own hand shall guide thee there.\nSoon shall close thy earthly mission,\nSwift shall pass thy pilgrim days,\nHope shall change to glad fruition,\nFaith to sight, and prayer to praise."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "jesus i my cross have taken",
+    "normalizedFirstLine": "jesus i my cross have taken",
+    "keywords": [
+      "jesus",
+      "cross",
+      "have",
+      "taken"
+    ],
+    "themes": [
+      "surrender"
+    ],
+    "tokens": [
+      "jesus",
+      "my",
+      "cross",
+      "have",
+      "taken",
+      "henry",
+      "francis",
+      "lyte",
+      "unknown",
+      "surrender"
+    ],
+    "searchableText": "jesus i my cross have taken jesus i my cross have taken henry francis lyte unknown surrender jesus cross have taken"
+  }
+}

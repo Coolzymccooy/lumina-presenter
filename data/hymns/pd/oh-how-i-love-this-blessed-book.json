@@ -1,0 +1,99 @@
+{
+  "status": "approved",
+  "id": "oh-how-i-love-this-blessed-book",
+  "title": "Oh, how I love this blessed Book",
+  "alternateTitles": [],
+  "firstLine": "Oh, how I love this blessed Book!",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lowell Mason"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Lowell Mason (1792–1872).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Lowell Mason (1792–1872). All public domain.",
+  "searchKeywords": [
+    "love",
+    "this",
+    "blessed",
+    "book"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Oh, how I love this blessed Book!\nThe story of redeeming grace,\nLove letter of my Bridegroom’s heart\nAnd mirror of my Savior’s face."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Oh, how I love this blessed Book!\nMy checkbook on the bank above,\nDeed of my heavenly heritage\nAnd dying will of Him I love."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Oh, how I love this blessed Book!\nBright telescope through which I view\nThe wonders of the world to come\nAnd gaze on glories ever new."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Oh, how I love this blessed Book!\nMy Guide Book all my earthly way,\nThe lamp that cheers my darkest night,\nThe sunshine of my brightest day."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "oh how i love this blessed book",
+    "normalizedFirstLine": "oh how i love this blessed book",
+    "keywords": [
+      "love",
+      "this",
+      "blessed",
+      "book"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "oh",
+      "how",
+      "love",
+      "this",
+      "blessed",
+      "book",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "oh how i love this blessed book oh how i love this blessed book albert benjamin simpson unknown praise love this blessed book"
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "status": "approved",
+  "id": "come-and-rejoice-with-me",
+  "title": "Come and rejoice with me",
+  "alternateTitles": [],
+  "firstLine": "Come and rejoice with me!",
+  "meter": "6.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Elizabeth Rundle Charles",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Robert Jackson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Elizabeth Rundle Charles (1828–1896).",
+  "tuneAttribution": "Tune: Robert Jackson (1842–1914).",
+  "publicDomainBasis": "Elizabeth Rundle Charles (1828–1896), Robert Jackson (1842–1914). All public domain.",
+  "searchKeywords": [
+    "come",
+    "rejoice",
+    "with"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Come and rejoice with me!\nFor once my heart was poor,\nAnd I have found a treasury\nOf love, a boundless store."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Come and rejoice with me!\nI, once so sick at heart,\nHave met with One who knows my case,\nAnd knows the healing art."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Come and rejoice with me!\nFor I was wearied sore,\nAnd I have found a mighty arm\nWhich holds me evermore."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Come and rejoice with me!\nMy feet so wide did roam,\nAnd One has brought me from afar,\nTo find in Him my home."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Come and rejoice with me!\nFor I have found a Friend\nWho knows my heart’s most secret depths,\nYet loves me without end."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "I knew not of His love;\nAnd He had loved so long,\nWith love so faithful and so deep,\nSo tender and so strong."
+    },
+    {
+      "id": "v7",
+      "type": "verse",
+      "label": "Verse 7",
+      "order": 7,
+      "text": "And now I know it all,\nHave heard and known His voice,\nAnd hear it still from day to day.\nCan I enough rejoice?"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "come and rejoice with me",
+    "normalizedFirstLine": "come and rejoice with me",
+    "keywords": [
+      "come",
+      "rejoice",
+      "with"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "come",
+      "and",
+      "rejoice",
+      "with",
+      "me",
+      "elizabeth",
+      "rundle",
+      "charles",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "come and rejoice with me come and rejoice with me elizabeth rundle charles unknown praise come rejoice with"
+  }
+}

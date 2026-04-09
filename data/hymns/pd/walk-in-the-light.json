@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "walk-in-the-light",
+  "title": "Walk in the light",
+  "alternateTitles": [],
+  "firstLine": "Walk in the light, and thou shalt know",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Bernard Barton",
+      "role": "text"
+    }
+  ],
+  "tunes": [],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Bernard Barton (1784–1849).",
+  "tuneAttribution": "Tune: Unknown.",
+  "publicDomainBasis": "Bernard Barton (1784–1849). All public domain.",
+  "searchKeywords": [
+    "walk",
+    "light"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Walk in the light, and thou shalt know\nThat fellowship of love\nHis Spirit only can bestow,\nWho reigns in light above."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Walk in the light, and thou shalt find\nThy heart made truly His;\nWho dwells in cloudless light enshrined,\nIn whom no darkness is."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Walk in the light, and sin abhorred\nShall ne’er defile again;\nThe blood of Jesus Christ the Lord\nShall cleanse from every stain."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Walk in the light, and e’en the tomb\nNo fearful shade shall wear;\nThe glory shall dispel the gloom,\nFor Christ hath conquered there."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Walk in the light, and thou shalt own\nThy darkness passed away,\nBecause that light hath on thee shone\nIn which is Perfect day."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Walk in the light, thy path shall be\nSerene and clear and bright;\nFor God, by grace, shall dwell in thee,\nAnd God Himself is Light."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "walk in the light",
+    "normalizedFirstLine": "walk in the light and thou shalt know",
+    "keywords": [
+      "walk",
+      "light"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "walk",
+      "in",
+      "the",
+      "light",
+      "and",
+      "thou",
+      "shalt",
+      "know",
+      "bernard",
+      "barton",
+      "praise"
+    ],
+    "searchableText": "walk in the light walk in the light and thou shalt know bernard barton praise walk light"
+  }
+}

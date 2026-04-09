@@ -1,0 +1,107 @@
+{
+  "status": "approved",
+  "id": "all-for-jesus-all-for-jesus-revised",
+  "title": "All for Jesus! All for Jesus (revised)",
+  "alternateTitles": [],
+  "firstLine": "All for Jesus! All for Jesus!",
+  "meter": "8.7.8.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Mary Dagworthy James",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Asa Hull"
+    }
+  ],
+  "themes": [
+    "surrender"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Mary Dagworthy James (1810–1883).",
+  "tuneAttribution": "Tune: Asa Hull (1828–1917).",
+  "publicDomainBasis": "Mary Dagworthy James (1810–1883), Asa Hull (1828–1917). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "revised"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "All for Jesus! All for Jesus!\nThis most reasonable is;\nBy redeeming blood most precious,\nRight of ownership is His.\nAll for Jesus! All for Jesus!\nRight of ownership is His.\nAll for Jesus! All for Jesus!\nRight of ownership is His."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "All for Jesus! All for Jesus!\nThis the longing of my heart;\nAs His love compels and urges,\nI would yield Him every part.\nAll for Jesus! All for Jesus!\nI would yield Him every part.\nAll for Jesus! All for Jesus!\nI would yield Him every part."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "All for Jesus! All for Jesus!\nTo be sanctified His own,\nAll my being and possessions,\nDays and time are His alone.\nAll for Jesus! All for Jesus!\nDays and time are His alone.\nAll for Jesus! All for Jesus!\nDays and time are His alone."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Let my hands perform His bidding;\nLet my feet run in His ways;\nLet mine eyes see Jesus only;\nLet my lips speak forth His praise.\nAll for Jesus! All for Jesus!\nLet my lips speak forth His praise.\nAll for Jesus! All for Jesus!\nLet my lips speak forth His praise."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Since mine eyes were fixed on Jesus,\nI’ve lost sight of all beside—\nSo enchained my spirit’s vision,\nLooking at the Crucified.\nAll for Jesus! All for Jesus!\nLooking at the Crucified.\nAll for Jesus! All for Jesus!\nLooking at the Crucified."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Oh, what wonder! How amazing!\nJesus, glorious King of kings,\nDeigns to call me His beloved,\nLets me rest beneath His wings.\nAll for Jesus! All for Jesus!\nResting now beneath His wings.\nAll for Jesus! All for Jesus!\nResting now beneath His wings."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "all for jesus all for jesus revised",
+    "normalizedFirstLine": "all for jesus all for jesus",
+    "keywords": [
+      "jesus",
+      "revised"
+    ],
+    "themes": [
+      "surrender"
+    ],
+    "tokens": [
+      "all",
+      "for",
+      "jesus",
+      "revised",
+      "mary",
+      "dagworthy",
+      "james",
+      "unknown",
+      "surrender"
+    ],
+    "searchableText": "all for jesus all for jesus revised all for jesus all for jesus mary dagworthy james unknown surrender jesus revised"
+  }
+}

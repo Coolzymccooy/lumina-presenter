@@ -1,0 +1,97 @@
+{
+  "status": "approved",
+  "id": "church-of-god-beloved-and-chosen",
+  "title": "Church of God, beloved and chosen",
+  "alternateTitles": [],
+  "firstLine": "Church of God, beloved and chosen,",
+  "meter": "8.7.8.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Frances Ridley Havergal",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Samuel Bambridge"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Frances Ridley Havergal (1836–1879).",
+  "tuneAttribution": "Tune: William Samuel Bambridge (1842–1923).",
+  "publicDomainBasis": "Frances Ridley Havergal (1836–1879), William Samuel Bambridge (1842–1923). All public domain.",
+  "searchKeywords": [
+    "church",
+    "beloved",
+    "chosen"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Church of God, beloved and chosen,\nChurch of Christ for whom He died,\nClaim thy gifts and praise the Giver,\nYe are washed and sanctified.\nSanctified by God the Father,\nAnd by Jesus Christ His Son,\nAnd by God the Holy Spirit,\nHoly, Holy, Three in One."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "By His will He sanctifieth,\nBy the Spirit’s power within;\nBy the loving hand that chasteneth\nFruits of righteousness to win;\nBy His truth and by His promise,\nBy the Word, His gift unpriced,\nBy His own blood, and by union\nWith the risen life of Christ."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Holiness by faith in Jesus,\nNot by effort of thine own,\nSin’s dominion crushed and broken\nBy the power of grace alone,\nChrist, the holiness within thee,\nHis own beauty on thy brow:\nThis shall be thy pilgrim brightness,\nThis thy blessed portion now."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "He will sanctify thee wholly;\nBody, spirit, soul shall be\nBlameless till thy Savior’s coming\nIn His glorious majesty!\nHe hath perfected forever\nThose whom He hath sanctified;\nSpotless, glorious, and holy,\nIs the Church, His chosen Bride."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "church of god beloved and chosen",
+    "normalizedFirstLine": "church of god beloved and chosen",
+    "keywords": [
+      "church",
+      "beloved",
+      "chosen"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "church",
+      "of",
+      "god",
+      "beloved",
+      "and",
+      "chosen",
+      "frances",
+      "ridley",
+      "havergal",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "church of god beloved and chosen church of god beloved and chosen frances ridley havergal unknown praise church beloved chosen"
+  }
+}

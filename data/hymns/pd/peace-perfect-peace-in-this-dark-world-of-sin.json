@@ -1,0 +1,110 @@
+{
+  "status": "approved",
+  "id": "peace-perfect-peace-in-this-dark-world-of-sin",
+  "title": "Peace, perfect peace, in this dark world of sin",
+  "alternateTitles": [],
+  "firstLine": "Peace, perfect peace, in this dark world of sin?",
+  "meter": "10.10.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Edward Henry Bickersteth",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "George Thomas Caldbeck"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Edward Henry Bickersteth (1825–1906).",
+  "tuneAttribution": "Tune: George Thomas Caldbeck (1852–1918).",
+  "publicDomainBasis": "Edward Henry Bickersteth (1825–1906), George Thomas Caldbeck (1852–1918). All public domain.",
+  "searchKeywords": [
+    "peace",
+    "perfect",
+    "this",
+    "dark",
+    "world"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Peace, perfect peace, in this dark world of sin?\nThe blood of Jesus whispers peace within."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Peace, perfect peace, by thronging duties pressed?\nTo do the will of Jesus—this is rest."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Peace, perfect peace, with sorrows surging round?\nOn Jesus’ bosom naught but calm is found."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Peace, perfect peace, with loved ones far away?\nIn Jesus’ keeping we are safe, and they."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Peace, perfect peace, our future all unknown?\nJesus we know, and He is on the throne."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "peace perfect peace in this dark world of sin",
+    "normalizedFirstLine": "peace perfect peace in this dark world of sin",
+    "keywords": [
+      "peace",
+      "perfect",
+      "this",
+      "dark",
+      "world"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "peace",
+      "perfect",
+      "in",
+      "this",
+      "dark",
+      "world",
+      "of",
+      "sin",
+      "edward",
+      "henry",
+      "bickersteth",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "peace perfect peace in this dark world of sin peace perfect peace in this dark world of sin edward henry bickersteth unknown praise peace perfect this dark world"
+  }
+}

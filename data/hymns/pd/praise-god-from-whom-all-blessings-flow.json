@@ -1,0 +1,86 @@
+{
+  "status": "approved",
+  "id": "praise-god-from-whom-all-blessings-flow",
+  "title": "Praise God, from whom all blessings flow",
+  "alternateTitles": [],
+  "firstLine": "Praise God, from whom all blessings flow;",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Thomas Ken",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Genevan Psalter"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Thomas Ken (1637–1711).",
+  "tuneAttribution": "Tune: Genevan Psalter.",
+  "publicDomainBasis": "Thomas Ken (1637–1711), Genevan Psalter. All public domain.",
+  "searchKeywords": [
+    "praise",
+    "from",
+    "whom",
+    "blessings",
+    "flow"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Praise God, from whom all blessings flow;\nPraise Him, all creatures here below;\nPraise Him above, ye heav’nly host;\nPraise Father, Son, and Holy Ghost!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Praise God the Father who’s the source;\nPraise God the Son who is the course;\nPraise God the Spirit who’s the flow;\nPraise God, our portion here below!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "praise god from whom all blessings flow",
+    "normalizedFirstLine": "praise god from whom all blessings flow",
+    "keywords": [
+      "praise",
+      "from",
+      "whom",
+      "blessings",
+      "flow"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "praise",
+      "god",
+      "from",
+      "whom",
+      "all",
+      "blessings",
+      "flow",
+      "thomas",
+      "ken",
+      "unknown"
+    ],
+    "searchableText": "praise god from whom all blessings flow praise god from whom all blessings flow thomas ken unknown praise praise from whom blessings flow"
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "status": "approved",
+  "id": "it-is-well",
+  "title": "It is well",
+  "alternateTitles": [],
+  "firstLine": "When peace like a river attendeth my way,",
+  "meter": "11.8.11.9. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Horatio Gates Spafford",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Philip Paul Bliss"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Horatio Gates Spafford (1828–1888).",
+  "tuneAttribution": "Tune: Philip Paul Bliss (1838–1876).",
+  "publicDomainBasis": "Horatio Gates Spafford (1828–1888), Philip Paul Bliss (1838–1876). All public domain.",
+  "searchKeywords": [
+    "well"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "When peace like a river attendeth my way,\nWhen sorrows like sea billows roll;\nWhatever my lot Thou hast taught me to say,\n“It is well, it is well with my soul!”"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Though Satan should buffet, though trials should come,\nLet this blest assurance control,\nThat Christ hath regarded my helpless estate,\nAnd hath shed His own blood for my soul."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "My sin—oh, the bliss of this glorious thought—\nMy sin, not in part, but the whole,\nIs nailed to His Cross, and I bear it no more;\nPraise the Lord, praise the Lord, O my soul!"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "For me, be it Christ, be it Christ hence to live;\nIf dark hours about me shall roll,\nNo pang shall be mine, for in death as in life\nThou wilt whisper Thy peace to my soul."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "it is well",
+    "normalizedFirstLine": "when peace like a river attendeth my way",
+    "keywords": [
+      "well"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "it",
+      "is",
+      "well",
+      "when",
+      "peace",
+      "like",
+      "river",
+      "attendeth",
+      "my",
+      "way",
+      "horatio",
+      "gates",
+      "spafford",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "it is well when peace like a river attendeth my way horatio gates spafford unknown praise well"
+  }
+}

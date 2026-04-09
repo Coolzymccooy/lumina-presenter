@@ -1,0 +1,95 @@
+{
+  "status": "approved",
+  "id": "simply-trusting-every-day",
+  "title": "Simply trusting every day",
+  "alternateTitles": [],
+  "firstLine": "Simply trusting every day;",
+  "meter": "7.7.7.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Edgar Page Stites",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Ira David Sankey"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Edgar Page Stites (1836–1921).",
+  "tuneAttribution": "Tune: Ira David Sankey (1840–1908).",
+  "publicDomainBasis": "Edgar Page Stites (1836–1921), Ira David Sankey (1840–1908). All public domain.",
+  "searchKeywords": [
+    "simply",
+    "trusting",
+    "every"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Simply trusting every day;\nTrusting through a stormy way;\nEven when my faith is small,\nTrusting Jesus, that is all."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Brightly doth His Spirit shine\nInto this poor heart of mine;\nWhile He leads I cannot fall,\nTrusting Jesus, that is all."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Singing if my way be clear,\nPraying if the path be drear;\nIf in danger, for Him call,\nTrusting Jesus, that is all."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Trusting Him while life shall last,\nTrusting Him till earth is past,\nTill His gracious advent call,\nTrusting Jesus, that is all."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "simply trusting every day",
+    "normalizedFirstLine": "simply trusting every day",
+    "keywords": [
+      "simply",
+      "trusting",
+      "every"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "simply",
+      "trusting",
+      "every",
+      "day",
+      "edgar",
+      "page",
+      "stites",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "simply trusting every day simply trusting every day edgar page stites unknown praise simply trusting every"
+  }
+}

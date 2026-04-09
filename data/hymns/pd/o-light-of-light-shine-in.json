@@ -1,0 +1,106 @@
+{
+  "status": "approved",
+  "id": "o-light-of-light-shine-in",
+  "title": "O Light of light, shine in",
+  "alternateTitles": [],
+  "firstLine": "O Light of light, shine in!",
+  "meter": "6.6.6.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Horatius Bonar",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Horatius Bonar (1808–1889).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "Horatius Bonar (1808–1889), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "light",
+    "shine"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O Light of light, shine in!\nCast out this night of sin,\nCreate true day within:\nO Light of light, shine in!"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "O Joy of joys, come in!\nEnd Thou this grief of sin,\nCreate calm peace within:\nO Joy of joys, come in!"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "O Life of life, pour in!\nExpel this death of sin,\nAwake true life within:\nO Life of life, pour in!"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "O Love of love, flow in!\nThis hateful root of sin\nDeal with, renew, within:\nO Love of love, flow in!"
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "O Heaven of heavens, descend!\nThis cloudy curtain rend,\nAnd all earth’s turmoil end:\nO Heaven of heavens, descend!"
+    },
+    {
+      "id": "chorus-5",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 6,
+      "text": "My God and Lord, O come!\nOf joys the Joy and Sum,\nMake in this heart Thy home:\nMy God and Lord, O come!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o light of light shine in",
+    "normalizedFirstLine": "o light of light shine in",
+    "keywords": [
+      "light",
+      "shine"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "light",
+      "of",
+      "shine",
+      "in",
+      "horatius",
+      "bonar",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o light of light shine in o light of light shine in horatius bonar unknown praise light shine"
+  }
+}

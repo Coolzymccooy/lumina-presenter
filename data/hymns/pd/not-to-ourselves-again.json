@@ -1,0 +1,99 @@
+{
+  "status": "approved",
+  "id": "not-to-ourselves-again",
+  "title": "Not to ourselves again",
+  "alternateTitles": [],
+  "firstLine": "Not to ourselves again,",
+  "meter": "6.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Horatius Bonar",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Genevan Psalter"
+    }
+  ],
+  "themes": [
+    "surrender"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Horatius Bonar (1808–1889).",
+  "tuneAttribution": "Tune: Genevan Psalter.",
+  "publicDomainBasis": "Horatius Bonar (1808–1889), Genevan Psalter. All public domain.",
+  "searchKeywords": [
+    "ourselves",
+    "again"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Not to ourselves again,\nNot to the flesh we live;\nNot to the world henceforth shall we\nOur strength, our being give."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "The time past of our lives\nSufficeth to have wrought\nThe fleshly will, which only ill\nHath to us ever brought."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "No longer is our life\nA thing unused or vain;\nTo us e’en here to live is Christ,\nTo us to die is gain."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Our life is hid with Christ,\nWith Christ in God above,\nUpward our heart would go to Him,\nWhom, seeing not, we love."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "He liveth, and we live!\nHis life for us prevails;\nHis fulness fills our mighty void,\nHis strength for us avails."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "not to ourselves again",
+    "normalizedFirstLine": "not to ourselves again",
+    "keywords": [
+      "ourselves",
+      "again"
+    ],
+    "themes": [
+      "surrender"
+    ],
+    "tokens": [
+      "not",
+      "to",
+      "ourselves",
+      "again",
+      "horatius",
+      "bonar",
+      "unknown",
+      "surrender"
+    ],
+    "searchableText": "not to ourselves again not to ourselves again horatius bonar unknown surrender ourselves again"
+  }
+}

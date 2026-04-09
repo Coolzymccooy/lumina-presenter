@@ -1,0 +1,95 @@
+{
+  "status": "approved",
+  "id": "fade-fade-each-earthly-joy",
+  "title": "Fade, fade each earthly joy",
+  "alternateTitles": [],
+  "firstLine": "Fade, fade each earthly joy;",
+  "meter": "6.4.6.4.6.6.6.4.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Jane Catharine Bonar",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Theodore E. Perkins"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Jane Catharine Bonar (1821–1884).",
+  "tuneAttribution": "Tune: Theodore E. Perkins (1831–1912).",
+  "publicDomainBasis": "Jane Catharine Bonar (1821–1884), Theodore E. Perkins (1831–1912). All public domain.",
+  "searchKeywords": [
+    "fade",
+    "each",
+    "earthly"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Fade, fade each earthly joy;\nJesus is mine.\nBreak every tender tie;\nJesus is mine.\nDark is the wilderness,\nEarth has no resting place,\nJesus alone can bless;\nJesus is mine."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Tempt not my soul away;\nJesus is mine.\nHere would I ever stay;\nJesus is mine.\nPerishing things of clay,\nBorn but for one brief day,\nPass from my heart away;\nJesus is mine."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Farewell, ye dreams of night;\nJesus is mine.\nLost in this dawning bright;\nJesus is mine.\nAll that my soul has tried\nLeft but a dismal void;\nJesus has satisfied;\nJesus is mine."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Farewell, mortality;\nJesus is mine.\nWelcome, eternity;\nJesus is mine.\nWelcome, O Loved and Blest,\nWelcome, sweet scenes of rest,\nWelcome, my Savior’s breast;\nJesus is mine."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "fade fade each earthly joy",
+    "normalizedFirstLine": "fade fade each earthly joy",
+    "keywords": [
+      "fade",
+      "each",
+      "earthly"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "fade",
+      "each",
+      "earthly",
+      "joy",
+      "jane",
+      "catharine",
+      "bonar",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "fade fade each earthly joy fade fade each earthly joy jane catharine bonar unknown praise fade each earthly"
+  }
+}

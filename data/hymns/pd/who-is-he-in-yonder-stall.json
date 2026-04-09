@@ -1,0 +1,137 @@
+{
+  "status": "approved",
+  "id": "who-is-he-in-yonder-stall",
+  "title": "Who is He in yonder stall",
+  "alternateTitles": [],
+  "firstLine": "Who is He in yonder stall,",
+  "meter": "7.7.8.8.7.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Benjamin Russell Hanby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Benjamin Russell Hanby"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Benjamin Russell Hanby (1833–1867).",
+  "tuneAttribution": "Tune: Benjamin Russell Hanby (1833–1867).",
+  "publicDomainBasis": "Benjamin Russell Hanby (1833–1867), Benjamin Russell Hanby (1833–1867). All public domain.",
+  "searchKeywords": [
+    "yonder",
+    "stall"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Who is He in yonder stall,\nAt whose feet the shepherds fall?"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Who is He in deep distress,\nFasting in the wilderness?"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Who is He the people bless\nFor His words of gentleness?"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Who is He to whom they bring\nAll the sick and sorrowing?"
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Who is He that stands and weeps\nAt the grave where Lazarus sleeps?"
+    },
+    {
+      "id": "chorus-5",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 6,
+      "text": "Who is He the gathering throng\nGreet with loud triumphant song?"
+    },
+    {
+      "id": "chorus-6",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 7,
+      "text": "Lo! at midnight, who is He\nPrays in dark Gethsemane?"
+    },
+    {
+      "id": "chorus-7",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 8,
+      "text": "Who is He on yonder tree\nDies in grief and agony?"
+    },
+    {
+      "id": "chorus-8",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 9,
+      "text": "Who is He who from the grave\nComes to succor, help, and save?"
+    },
+    {
+      "id": "chorus-9",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 10,
+      "text": "Who is He who from His throne\nRules through all the worlds alone?"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "who is he in yonder stall",
+    "normalizedFirstLine": "who is he in yonder stall",
+    "keywords": [
+      "yonder",
+      "stall"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "who",
+      "is",
+      "he",
+      "in",
+      "yonder",
+      "stall",
+      "benjamin",
+      "russell",
+      "hanby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "who is he in yonder stall who is he in yonder stall benjamin russell hanby unknown praise yonder stall"
+  }
+}

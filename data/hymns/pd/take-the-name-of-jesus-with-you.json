@@ -1,0 +1,100 @@
+{
+  "status": "approved",
+  "id": "take-the-name-of-jesus-with-you",
+  "title": "Take the name of Jesus with you",
+  "alternateTitles": [],
+  "firstLine": "Take the name of Jesus with you,",
+  "meter": "8.7.8.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Lydia Odell Baxter",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Lydia Odell Baxter (1809–1874).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "Lydia Odell Baxter (1809–1874), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "take",
+    "name",
+    "jesus",
+    "with"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Take the name of Jesus with you,\nChild of sorrow and of woe;\nIt will joy and comfort give you,\nTake it then where’er you go."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Take the name of Jesus ever,\nAs a shield from every snare.\nIf temptations ’round you gather,\nBreathe that holy name in prayer."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Oh, the precious name of Jesus,\nHow it thrills our souls with joy;\nAll the favor of the Father\nIn this name we may enjoy."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "At the name of Jesus bowing,\nFalling prostrate at His feet,\nClaim His vict’ry over evil\nAnd the enemy defeat."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "take the name of jesus with you",
+    "normalizedFirstLine": "take the name of jesus with you",
+    "keywords": [
+      "take",
+      "name",
+      "jesus",
+      "with"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "take",
+      "the",
+      "name",
+      "of",
+      "jesus",
+      "with",
+      "you",
+      "lydia",
+      "odell",
+      "baxter",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "take the name of jesus with you take the name of jesus with you lydia odell baxter unknown praise take name jesus with"
+  }
+}

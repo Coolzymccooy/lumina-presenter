@@ -1,0 +1,110 @@
+{
+  "status": "approved",
+  "id": "as-pants-the-hart-for-cooling-streams",
+  "title": "As pants the hart for cooling streams",
+  "alternateTitles": [],
+  "firstLine": "As pants the hart for cooling streams",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "N. Tate",
+      "role": "text"
+    },
+    {
+      "name": "N. Brady",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Hugh Wilson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: N. Tate (1652–1715), N. Brady (1639–1726).",
+  "tuneAttribution": "Tune: Hugh Wilson (1766–1824).",
+  "publicDomainBasis": "N. Tate (1652–1715), N. Brady (1639–1726), Hugh Wilson (1766–1824). All public domain.",
+  "searchKeywords": [
+    "pants",
+    "hart",
+    "cooling",
+    "streams"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "As pants the hart for cooling streams\nWhen heated in the chase,\nSo longs my soul, O God, for Thee,\nAnd Thy refreshing grace."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Why restless, why cast down, my soul?\nTrust God, who will employ\nHis aid for thee, and change these sighs\nTo thankful hymns of joy."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "For Thee, my God, the living God,\nMy thirsty soul doth pine;\nOh, when shall I behold Thy face,\nThou Majesty Divine?"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "God of my strength, how long shall I,\nLike one forgotten, mourn,\nForlorn, forsaken, and exposed\nTo my oppressor’s scorn?"
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Why restless, why cast down, my soul?\nHope still, and thou shalt sing\nThe praise of Him who is thy God,\nThy health’s eternal spring."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "as pants the hart for cooling streams",
+    "normalizedFirstLine": "as pants the hart for cooling streams",
+    "keywords": [
+      "pants",
+      "hart",
+      "cooling",
+      "streams"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "as",
+      "pants",
+      "the",
+      "hart",
+      "for",
+      "cooling",
+      "streams",
+      "tate",
+      "brady",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "as pants the hart for cooling streams as pants the hart for cooling streams n tate n brady unknown praise pants hart cooling streams"
+  }
+}

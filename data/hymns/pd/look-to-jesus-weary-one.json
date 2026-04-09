@@ -1,0 +1,89 @@
+{
+  "status": "approved",
+  "id": "look-to-jesus-weary-one",
+  "title": "Look to Jesus, weary one",
+  "alternateTitles": [],
+  "firstLine": "Look to Jesus, weary one,",
+  "meter": "7.6.7.3.D. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Philip Paul Bliss",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Philip Paul Bliss"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Philip Paul Bliss (1838–1876).",
+  "tuneAttribution": "Tune: Philip Paul Bliss (1838–1876).",
+  "publicDomainBasis": "Philip Paul Bliss (1838–1876), Philip Paul Bliss (1838–1876). All public domain.",
+  "searchKeywords": [
+    "look",
+    "jesus",
+    "weary"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Look to Jesus, weary one,\nLook and live! look and live!\nLook at what the Lord has done,\nLook and live!\nSee Him lifted on the tree,\nLook and live! look and live!\nHear Him say, “Look unto Me!”\nLook and live!"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Though unworthy, vile, unclean,\nLook and live! look and live!\nLook away from self and sin,\nLook and live!\nLong by Satan’s power enslaved,\nLook and live! look and live!\nLook to Me, ye shall be saved,\nLook and live!"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Though you’ve wandered far away,\nLook and live! look and live!\nHarden not your heart today,\nLook and live!\n’Tis thy Father calls thee home,\nLook and live! look and live!\nWhosoever will may come,\nLook and live!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "look to jesus weary one",
+    "normalizedFirstLine": "look to jesus weary one",
+    "keywords": [
+      "look",
+      "jesus",
+      "weary"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "look",
+      "to",
+      "jesus",
+      "weary",
+      "one",
+      "philip",
+      "paul",
+      "bliss",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "look to jesus weary one look to jesus weary one philip paul bliss unknown praise look jesus weary"
+  }
+}

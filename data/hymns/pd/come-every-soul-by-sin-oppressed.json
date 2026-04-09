@@ -1,0 +1,99 @@
+{
+  "status": "approved",
+  "id": "come-every-soul-by-sin-oppressed",
+  "title": "Come, every soul by sin oppressed",
+  "alternateTitles": [],
+  "firstLine": "Come, every soul by sin oppressed,",
+  "meter": "8.6.8.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Hart Stockton",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Hart Stockton"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Hart Stockton (1813–1877).",
+  "tuneAttribution": "Tune: John Hart Stockton (1813–1877).",
+  "publicDomainBasis": "John Hart Stockton (1813–1877), John Hart Stockton (1813–1877). All public domain.",
+  "searchKeywords": [
+    "come",
+    "every",
+    "soul",
+    "oppressed"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Come, every soul by sin oppressed,\nThere’s mercy with the Lord;\nAnd He will surely give you rest\nBy trusting in His Word."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "For Jesus shed His precious blood\nRich blessings to bestow;\nPlunge now into the crimson flood\nThat washeth white as snow."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Yes, Jesus is the Truth, the Way,\nThat leads you into rest;\nBelieve in Him without delay,\nAnd you are fully blest."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Come then, and join the holy band,\nAnd on to glory go;\nIn Christ’s redemption take your stand,\nAnd all His goodness know."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "come every soul by sin oppressed",
+    "normalizedFirstLine": "come every soul by sin oppressed",
+    "keywords": [
+      "come",
+      "every",
+      "soul",
+      "oppressed"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "come",
+      "every",
+      "soul",
+      "by",
+      "sin",
+      "oppressed",
+      "john",
+      "hart",
+      "stockton",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "come every soul by sin oppressed come every soul by sin oppressed john hart stockton unknown praise come every soul oppressed"
+  }
+}

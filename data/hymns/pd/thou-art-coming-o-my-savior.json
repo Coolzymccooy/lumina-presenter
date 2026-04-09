@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "thou-art-coming-o-my-savior",
+  "title": "Thou art coming, O my Savior",
+  "alternateTitles": [],
+  "firstLine": "Thou art coming, O my Savior,",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Frances Ridley Havergal",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Henry Monk"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Frances Ridley Havergal (1836–1879).",
+  "tuneAttribution": "Tune: William Henry Monk (1823–1889).",
+  "publicDomainBasis": "Frances Ridley Havergal (1836–1879), William Henry Monk (1823–1889). All public domain.",
+  "searchKeywords": [
+    "thou",
+    "coming",
+    "savior"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Thou art coming, O my Savior,\nThou art coming, O my King,\nIn Thy beauty all resplendent,\nIn Thy glory all transcendent;\nWell may we rejoice and sing;\nComing! In the opening east,\nHerald brightness slowly swells:\nComing! O my glorious Priest,\nHear we not Thy golden bells?"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Thou art coming, Thou art coming;\nWe shall meet Thee on Thy way;\nWe shall see Thee, we shall know Thee,\nWe shall bless Thee, we shall show Thee\nAll our hearts could never say:\nWhat an anthem that will be,\nRinging out our love to Thee,\nPouring out our rapture sweet\nAt Thine own all-glorious feet."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Thou art coming, at Thy Table\nWe are witnesses for this;\nWhile rememb’ring hearts Thou meetest\nIn communion clearest, sweetest,\nEarnest of our coming bliss,\nShowing not Thy death alone,\nAnd Thy love exceeding great,\nBut Thy coming and Thy throne,\nAll for which we long and wait."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Oh, the joy to see Thee reigning,\nThee, my own beloved Lord!\nEvery tongue Thy Name confessing,\nWorship, honor, glory, blessing,\nBrought to Thee with one accord;\nThee, my Master and my Friend,\nVindicated and enthroned,\nUnto earth’s remotest end\nGlorified, adored, and owned!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "thou art coming o my savior",
+    "normalizedFirstLine": "thou art coming o my savior",
+    "keywords": [
+      "thou",
+      "coming",
+      "savior"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "thou",
+      "art",
+      "coming",
+      "my",
+      "savior",
+      "frances",
+      "ridley",
+      "havergal",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "thou art coming o my savior thou art coming o my savior frances ridley havergal unknown praise thou coming savior"
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "i-know-that-my-redeemer-lives",
+  "title": "I know that my Redeemer lives",
+  "alternateTitles": [],
+  "firstLine": "I know that my Redeemer lives",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "George Frederick Handel"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Wesley (1707–1788).",
+  "tuneAttribution": "Tune: George Frederick Handel (1685–1759).",
+  "publicDomainBasis": "Charles Wesley (1707–1788), George Frederick Handel (1685–1759). All public domain.",
+  "searchKeywords": [
+    "know",
+    "that",
+    "redeemer",
+    "lives"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I know that my Redeemer lives\nAnd ever prays for me;\nA token of His love He gives,\nA pledge of liberty."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "I know that my Redeemer lives,\nA quick’ning Spirit He;\nI know eternal life He gives—\nAmazing grace—to me."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "I find Him lifting up my head;\nHe brings salvation near;\nHis presence makes me free indeed,\nAnd He will soon appear."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "He wills that I should holy be:\nWhat can withstand His will?\nThe counsel of His grace in me\nHe surely shall fulfill."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Jesus, I hang upon Thy word:\nI steadfastly believe\nThou wilt return and claim me, Lord,\nAnd to Thyself receive."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i know that my redeemer lives",
+    "normalizedFirstLine": "i know that my redeemer lives",
+    "keywords": [
+      "know",
+      "that",
+      "redeemer",
+      "lives"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "know",
+      "that",
+      "my",
+      "redeemer",
+      "lives",
+      "charles",
+      "wesley",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i know that my redeemer lives i know that my redeemer lives charles wesley unknown praise know that redeemer lives"
+  }
+}

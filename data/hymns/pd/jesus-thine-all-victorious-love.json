@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "jesus-thine-all-victorious-love",
+  "title": "Jesus, Thine all-victorious love",
+  "alternateTitles": [],
+  "firstLine": "Jesus, Thine all-victorious love",
+  "meter": "8.6.8.6. with repeat.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Thomas Hastings"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Wesley (1707–1788).",
+  "tuneAttribution": "Tune: Thomas Hastings (1784–1872).",
+  "publicDomainBasis": "Charles Wesley (1707–1788), Thomas Hastings (1784–1872). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "thine",
+    "victorious",
+    "love"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Jesus, Thine all-victorious love\nShed in my soul abroad;\nThen shall my heart no longer rove,\nRooted and fixed in God,\nRooted and fixed in God."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Oh, that in me the sacred fire\nMight now begin to glow;\nBurn up the dross of base desire,\nAnd make the mountains flow,\nAnd make the mountains flow."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "He, who at Pentecost didst fall,\nMay He my sins consume;\nThy Holy Ghost, for Him I call;\nThy burning Spirit, come,\nThy burning Spirit, come."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Refining fire, go through my heart,\nIlluminate my soul;\nScatter Thy life through every part,\nAnd sanctify the whole,\nAnd sanctify the whole."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "My steadfast soul, from falling free,\nShall then no longer move,\nWhile Christ is all the world to me,\nAnd all my heart is love,\nAnd all my heart is love."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "jesus thine all victorious love",
+    "normalizedFirstLine": "jesus thine all victorious love",
+    "keywords": [
+      "jesus",
+      "thine",
+      "victorious",
+      "love"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "jesus",
+      "thine",
+      "all",
+      "victorious",
+      "love",
+      "charles",
+      "wesley",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "jesus thine all victorious love jesus thine all victorious love charles wesley unknown praise jesus thine victorious love"
+  }
+}

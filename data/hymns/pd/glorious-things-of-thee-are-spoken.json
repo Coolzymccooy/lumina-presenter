@@ -1,0 +1,98 @@
+{
+  "status": "approved",
+  "id": "glorious-things-of-thee-are-spoken",
+  "title": "Glorious things of thee are spoken",
+  "alternateTitles": [],
+  "firstLine": "Glorious things of thee are spoken,",
+  "meter": "8.7.8.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Newton",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Franz Joseph Haydn"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Newton (1725–1807).",
+  "tuneAttribution": "Tune: Franz Joseph Haydn (1732–1809).",
+  "publicDomainBasis": "John Newton (1725–1807), Franz Joseph Haydn (1732–1809). All public domain.",
+  "searchKeywords": [
+    "glorious",
+    "things",
+    "thee",
+    "spoken"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Glorious things of thee are spoken,\nHoly city of our God;\nHe whose word cannot be broken\nFormed thee for His own abode;\nOn the Rock of Ages founded,\nWhat can shake thy sure repose?\nWith salvation’s walls surrounded,\nThou may’st smile at all thy foes."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "See the streams of living waters,\nSpringing from eternal love,\nWell supply thy blessed members,\nAnd all fear of want remove;\nWho can faint, when such a river\nEver flows their thirst t’ assuage?\nGrace which, like the Lord, the giver,\nNever fails from age to age."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Blest constituents of Zion,\nWashed in the Redeemer’s blood;\nJesus, whom their souls rely on,\nMakes them kings and priests to God.\n’Tis His love His people raises\nOver self to reign as kings:\nAnd as priests, His worthy praises,\nEach his thankful offering brings."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Savior, if of Zion’s city\nI, through grace, a member am,\nLet the world deride or pity—\nI will glory in Thy name.\nFading is the worldling’s pleasure,\nAll his boasted pomp and show;\nSolid joys and lasting treasure\nNone but Zion’s members know."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "glorious things of thee are spoken",
+    "normalizedFirstLine": "glorious things of thee are spoken",
+    "keywords": [
+      "glorious",
+      "things",
+      "thee",
+      "spoken"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "glorious",
+      "things",
+      "of",
+      "thee",
+      "are",
+      "spoken",
+      "john",
+      "newton",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "glorious things of thee are spoken glorious things of thee are spoken john newton unknown praise glorious things thee spoken"
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "status": "approved",
+  "id": "join-all-the-glorious-names",
+  "title": "Join all the glorious names",
+  "alternateTitles": [],
+  "firstLine": "Join all the glorious names",
+  "meter": "6.6.6.6.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Isaac Watts",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Darwall"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Isaac Watts (1674–1748).",
+  "tuneAttribution": "Tune: John Darwall (1731–1789).",
+  "publicDomainBasis": "Isaac Watts (1674–1748), John Darwall (1731–1789). All public domain.",
+  "searchKeywords": [
+    "join",
+    "glorious",
+    "names"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Join all the glorious names\nOf wisdom, love, and pow’r,\nThat mortals ever knew,\nThat angels ever bore;\nAll are too mean to speak His worth,\nToo mean to set my Savior forth."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Great Prophet of my God,\nMy tongue would bless Thy name;\nBy Thee the joyful news\nOf our salvation came;\nThe joyful news of sins forgiv’n,\nOf death annulled, and Thy life giv’n."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Jesus, my great High Priest,\nOffered His blood, and died;\nMy guilty conscience seeks\nNo sacrifice beside:\nHis pow’rful blood did me redeem,\n’Tis worthy of my heart’s esteem."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "I love my Shepherd’s voice:\nHis watchful eye shall keep\nMy wand’ring soul among\nThe thousands of His sheep:\nHe feeds His flock, He calls their names,\nHis bosom bears the tender lambs."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "My Savior and my Lord,\nMy Conqu’ror and my King,\nThy scepter and Thy sword,\nThy reigning grace I sing:\nThine is the pow’r; behold I sit\nIn willing bonds beneath Thy feet."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "join all the glorious names",
+    "normalizedFirstLine": "join all the glorious names",
+    "keywords": [
+      "join",
+      "glorious",
+      "names"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "join",
+      "all",
+      "the",
+      "glorious",
+      "names",
+      "isaac",
+      "watts",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "join all the glorious names join all the glorious names isaac watts unknown praise join glorious names"
+  }
+}

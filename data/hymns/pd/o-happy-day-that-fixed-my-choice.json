@@ -1,0 +1,98 @@
+{
+  "status": "approved",
+  "id": "o-happy-day-that-fixed-my-choice",
+  "title": "O happy day that fixed my choice",
+  "alternateTitles": [],
+  "firstLine": "O happy day that fixed my choice",
+  "meter": "8.8.8.8. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Philip Doddridge",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Edward Francis Rimbault"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Philip Doddridge (1702–1751).",
+  "tuneAttribution": "Tune: Edward Francis Rimbault (1816–1876).",
+  "publicDomainBasis": "Philip Doddridge (1702–1751), Edward Francis Rimbault (1816–1876). All public domain.",
+  "searchKeywords": [
+    "happy",
+    "that",
+    "fixed",
+    "choice"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O happy day that fixed my choice\nOn Thee, my Savior and my God!\nWell may this glowing heart rejoice,\nAnd tell its raptures all abroad."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "’Tis done—the great transaction’s done;\nI am my Lord’s, and He is mine;\nHe drew me and I followed on,\nRejoiced to own the call divine."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Now rest, my long-divided heart,\nFixed on this blissful center, rest;\nHere have I found a nobler part,\nHere heav’nly pleasures fill my breast."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "High heav’n that hears the solemn vow,\nThat vow renewed shall daily hear!\nTill in life’s latest hour I bow,\nAnd bless, in death, a bond so dear."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o happy day that fixed my choice",
+    "normalizedFirstLine": "o happy day that fixed my choice",
+    "keywords": [
+      "happy",
+      "that",
+      "fixed",
+      "choice"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "happy",
+      "day",
+      "that",
+      "fixed",
+      "my",
+      "choice",
+      "philip",
+      "doddridge",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o happy day that fixed my choice o happy day that fixed my choice philip doddridge unknown praise happy that fixed choice"
+  }
+}

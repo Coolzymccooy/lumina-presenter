@@ -1,0 +1,62 @@
+{
+  "status": "approved",
+  "id": "blessed-assurance",
+  "title": "Blessed Assurance",
+  "alternateTitles": [],
+  "firstLine": "Blessed assurance, Jesus is mine!",
+  "meter": "9.10.9.9 with refrain",
+  "hymnalNumbers": { "UMH": 369, "SBC": 334, "ELW": 638 },
+  "authors": [
+    { "name": "Fanny J. Crosby", "role": "text" },
+    { "name": "Phoebe P. Knapp", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "ASSURANCE", "composer": "Phoebe P. Knapp", "alternateNames": ["Blessed Assurance"] }
+  ],
+  "themes": ["assurance", "praise", "grace"],
+  "scriptureThemes": ["Hebrews 10:22", "Romans 8:16", "1 Peter 1:3-4"],
+  "textAttribution": "Text: Fanny J. Crosby.",
+  "tuneAttribution": "Tune: Phoebe P. Knapp.",
+  "publicDomainBasis": "Fanny J. Crosby (1820–1915). Text and tune first published 1873. Both text and tune are public domain.",
+  "searchKeywords": ["assurance", "testimony", "joy", "story"],
+  "defaultTypographyPresetId": "modern-clean-sans",
+  "defaultThemeCategory": "assurance",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "either",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 32,
+  "allowThreeLineSlides": true,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Blessed assurance, Jesus is mine!\nO what a foretaste of glory divine!\nHeir of salvation, purchase of God,\nBorn of His Spirit, washed in His blood."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "This is my story, this is my song,\nPraising my Savior all the day long;\nThis is my story, this is my song,\nPraising my Savior all the day long.",
+      "repeatMode": "each-verse",
+      "visuallyDistinct": true
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 3,
+      "text": "Perfect submission, perfect delight,\nVisions of rapture now burst on my sight;\nAngels descending bring from above\nEchoes of mercy, whispers of love."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 4,
+      "text": "Perfect submission, all is at rest,\nI in my Savior am happy and blest;\nWatching and waiting, looking above,\nFilled with His goodness, lost in His love."
+    }
+  ]
+}

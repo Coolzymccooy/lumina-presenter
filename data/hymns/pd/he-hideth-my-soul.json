@@ -1,0 +1,98 @@
+{
+  "status": "approved",
+  "id": "he-hideth-my-soul",
+  "title": "He Hideth My Soul",
+  "alternateTitles": [],
+  "firstLine": "A wonderful Savior is Jesus my Lord,",
+  "meter": "11.8.11.8. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William James Kirkpatrick"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: William James Kirkpatrick (1838–1921).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), William James Kirkpatrick (1838–1921). All public domain.",
+  "searchKeywords": [
+    "hideth",
+    "soul"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "A wonderful Savior is Jesus my Lord,\nA wonderful Savior to me;\nHe hideth my soul in the cleft of the rock,\nWhere rivers of pleasure I see."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "A wonderful Savior is Jesus my Lord,\nHe taketh my burden away;\nHe holdeth me up and I shall not be moved,\nHe giveth me strength as my day."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "With numberless blessings each moment He crowns,\nAnd, filled with His fulness divine,\nI sing in my rapture, oh, glory to God,\nFor such a Redeemer as mine!"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "When clothed in His brightness, transported I rise\nTo meet Him in clouds of the sky,\nHis perfect salvation, His wonderful love,\nI’ll shout with the millions on high."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "he hideth my soul",
+    "normalizedFirstLine": "a wonderful savior is jesus my lord",
+    "keywords": [
+      "hideth",
+      "soul"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "he",
+      "hideth",
+      "my",
+      "soul",
+      "wonderful",
+      "savior",
+      "is",
+      "jesus",
+      "lord",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "he hideth my soul a wonderful savior is jesus my lord fanny jane crosby unknown praise hideth soul"
+  }
+}

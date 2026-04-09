@@ -1,0 +1,107 @@
+{
+  "status": "approved",
+  "id": "lamb-of-god-our-souls-adore-thee",
+  "title": "Lamb of God! our souls adore Thee",
+  "alternateTitles": [],
+  "firstLine": "Lamb of God! our souls adore Thee,",
+  "meter": "8.7.8.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "James George Deck",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James Langran"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: James George Deck (1807–1884).",
+  "tuneAttribution": "Tune: James Langran (1835–1909).",
+  "publicDomainBasis": "James George Deck (1807–1884), James Langran (1835–1909). All public domain.",
+  "searchKeywords": [
+    "lamb",
+    "souls",
+    "adore",
+    "thee"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Lamb of God! our souls adore Thee,\nWhile upon Thy face we gaze;\nThere the Father’s love and glory\nShine in all their brightest rays;\nThine Almighty pow’r and wisdom\nAll creation’s works proclaim;\nHeav’n and earth alike confess Thee\nAs the ever great “I AM.”"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Lamb of God! Thy Father’s bosom\nEver was Thy dwelling place;\nHis delight, in Him rejoicing,\nOne with Him in pow’r and grace;\nO what wondrous love and mercy!\nThou didst lay Thy glory by;\nAnd for us didst come from heaven\nAs the Lamb of God to die."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Lamb of God! When we behold Thee\nLowly in the manger laid,\nWand’ring as a homeless stranger\nIn the world Thy hands had made;\nWhen we see Thee in the garden\nIn Thine agony of blood,\nAt Thy grace we are confounded,\nHoly, spotless Lamb of God!"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "When we see Thee, as the victim,\nBound to the accursed tree,\nFor our guilt and folly stricken,\nAll our judgment borne by Thee,\nLord, we own, with hearts adoring,\nThou hast loved us unto blood;\nGlory, glory everlasting\nBe to Thee, Thou Lamb of God."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Lamb of God, Thou soon in glory\nWilt to this sad earth return;\nAll Thy foes shall quake before Thee,\nAll that now despise Thee mourn;\nThen Thy saints all gathered to Thee,\nWith Thee in Thy kingdom reign;\nThine the praise and Thine the glory,\nLamb of God, for sinners slain!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "lamb of god our souls adore thee",
+    "normalizedFirstLine": "lamb of god our souls adore thee",
+    "keywords": [
+      "lamb",
+      "souls",
+      "adore",
+      "thee"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "lamb",
+      "of",
+      "god",
+      "our",
+      "souls",
+      "adore",
+      "thee",
+      "james",
+      "george",
+      "deck",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "lamb of god our souls adore thee lamb of god our souls adore thee james george deck unknown praise lamb souls adore thee"
+  }
+}

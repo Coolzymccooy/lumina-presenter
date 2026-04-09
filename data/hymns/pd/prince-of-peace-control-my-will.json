@@ -1,0 +1,98 @@
+{
+  "status": "approved",
+  "id": "prince-of-peace-control-my-will",
+  "title": "Prince of peace, control my will",
+  "alternateTitles": [],
+  "firstLine": "Prince of peace, control my will;",
+  "meter": "7.7.7.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Wolfgang Amadeus Mozart"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Wesley (1707–1788).",
+  "tuneAttribution": "Tune: Wolfgang Amadeus Mozart (1756–1791).",
+  "publicDomainBasis": "Charles Wesley (1707–1788), Wolfgang Amadeus Mozart (1756–1791). All public domain.",
+  "searchKeywords": [
+    "prince",
+    "peace",
+    "control",
+    "will"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Prince of peace, control my will;\nBid this struggling heart be still:\nBid my fears and doubtings cease:\nHush my spirit into peace."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Thou hast bought me with Thy blood,\nOpened wide the gate to God;\nPeace I ask, but peace must be,\nLord, in being one with Thee."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "May Thy will, not mine be done;\nMay Thy will and mine be one;\nChase these doubtings from my heart,\nNow Thy perfect peace impart."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Savior, at Thy feet I fall,\nThou, my life, my God, my all;\nLet Thy happy servant be\nOne forevermore with Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "prince of peace control my will",
+    "normalizedFirstLine": "prince of peace control my will",
+    "keywords": [
+      "prince",
+      "peace",
+      "control",
+      "will"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "prince",
+      "of",
+      "peace",
+      "control",
+      "my",
+      "will",
+      "charles",
+      "wesley",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "prince of peace control my will prince of peace control my will charles wesley unknown praise prince peace control will"
+  }
+}

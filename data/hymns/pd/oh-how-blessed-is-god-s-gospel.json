@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "oh-how-blessed-is-god-s-gospel",
+  "title": "Oh, how blessed is God’s gospel",
+  "alternateTitles": [],
+  "firstLine": "Oh, how blessèd is God’s gospel,",
+  "meter": "8.7.8.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Unknown.",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919). All public domain.",
+  "searchKeywords": [
+    "blessed",
+    "gospel"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Oh, how blessèd is God’s gospel,\nCome to save the suff’ring world;\nChrist’s redemption heals our sickness;\nIn His stripes is pow’r unfurled."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Whosoever would beseech Him,\nAll will surely welcomed be.\nSickness causes me to seek Him;\nBy His stripes, His pow’r heals me."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Praise Him for His ointment holy—\n’Tis the Spirit, gift outpoured;\nO Lord, lay Your hands upon me;\nBy Your stripes, a cure afford."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "When come flaming darts from Satan,\nBe our sure defending shield.\nWe shall reach our destination,\nFor Your stripes have pow’r to heal."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Lord, I offer all my members\nGlory unto Thee to yield;\nLet me evermore remember—\nIn Your stripes is pow’r to heal."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "oh how blessed is god s gospel",
+    "normalizedFirstLine": "oh how blessed is god s gospel",
+    "keywords": [
+      "blessed",
+      "gospel"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "oh",
+      "how",
+      "blessed",
+      "is",
+      "god",
+      "gospel",
+      "albert",
+      "benjamin",
+      "simpson",
+      "praise"
+    ],
+    "searchableText": "oh how blessed is god s gospel oh how blessed is god s gospel albert benjamin simpson praise blessed gospel"
+  }
+}

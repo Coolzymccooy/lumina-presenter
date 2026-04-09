@@ -1,0 +1,99 @@
+{
+  "status": "approved",
+  "id": "o-holy-father-who-in-tender-love",
+  "title": "O Holy Father, who in tender love",
+  "alternateTitles": [],
+  "firstLine": "O Holy Father, who in tender love",
+  "meter": "10.10.10.10.10.10.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Edward Henry Bickersteth",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Henry Monk"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Edward Henry Bickersteth (1825–1906).",
+  "tuneAttribution": "Tune: William Henry Monk (1823–1889).",
+  "publicDomainBasis": "Edward Henry Bickersteth (1825–1906), William Henry Monk (1823–1889). All public domain.",
+  "searchKeywords": [
+    "holy",
+    "father",
+    "tender",
+    "love"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O Holy Father, who in tender love\nDidst give Thine only Son for us to die,\nThe while He pleads at Thy right hand above,\nWe in one Spirit now with faith draw nigh;\nAnd, as we eat this bread and drink this wine,\nPlead His once offered sacrifice Divine."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "We are not worthy to be called Thy sons,\nNor gather up the fragments of Thy feast;\nYet look on us, Thy sorrowing contrite ones,\nOn us in Him our Advocate and Priest,\nWhose robe is fringed with mercy’s golden bells,\nWhose breastplate fathomless compassion tells."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Oh, hear us, for Thou always hearest Him;\nBehold us sprinkled with His precious blood;\nAnd from between the shadowing cherubim\nShine forth, and grant us by this heav’nly food\nForetastes of coming glory, and meanwhile\nA Father’s blessing and a Father’s smile."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "And, Father, ere we leave Thy mercy-throne,\nBound by these sacred pledges, yet most free,\nWe give our hearts, and not our hearts alone,\nBut all we are and all we have to Thee;\nGlad free-will offerings all our pilgrim days,\nHereafter an eternity of praise."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o holy father who in tender love",
+    "normalizedFirstLine": "o holy father who in tender love",
+    "keywords": [
+      "holy",
+      "father",
+      "tender",
+      "love"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "holy",
+      "father",
+      "who",
+      "in",
+      "tender",
+      "love",
+      "edward",
+      "henry",
+      "bickersteth",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o holy father who in tender love o holy father who in tender love edward henry bickersteth unknown praise holy father tender love"
+  }
+}

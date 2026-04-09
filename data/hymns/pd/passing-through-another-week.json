@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "passing-through-another-week",
+  "title": "Passing through another week",
+  "alternateTitles": [],
+  "firstLine": "Passing through another week,",
+  "meter": "7.7.7.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Newton",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lowell Mason"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Newton (1725–1807).",
+  "tuneAttribution": "Tune: Lowell Mason (1792–1872).",
+  "publicDomainBasis": "John Newton (1725–1807), Lowell Mason (1792–1872). All public domain.",
+  "searchKeywords": [
+    "passing",
+    "through",
+    "another",
+    "week"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Passing through another week,\nGod has granted us His aid;\nLet us now a blessing seek,\nOn the day the Lord hath made;\nDay of all the week the best,\nEmblem of eternal rest.\nDay of all the week the best,\nEmblem of eternal rest."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "While we pray for pard’ning grace,\nThrough the dear Redeemer’s name,\nShow Thy reconciled face;\nTake away our sin and shame:\nFrom our worldly cares set free,\nMay we rest this day in Thee."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Here we come Thy name to praise,\nLet us feel Thy presence near;\nMay Thy glory meet our eyes,\nWhile we in Thy house appear:\nHere afford us, Lord, a taste\nOf our everlasting feast."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "May Thy gospel’s joyful sound\nConquer sinners, comfort saints;\nMake the fruits of grace abound,\nBring relief for all complaints:\nThus may all our Lord’s Days prove,\nTill we meet the Lord above."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "passing through another week",
+    "normalizedFirstLine": "passing through another week",
+    "keywords": [
+      "passing",
+      "through",
+      "another",
+      "week"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "passing",
+      "through",
+      "another",
+      "week",
+      "john",
+      "newton",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "passing through another week passing through another week john newton unknown praise passing through another week"
+  }
+}

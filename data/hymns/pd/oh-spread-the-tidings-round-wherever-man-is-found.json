@@ -1,0 +1,103 @@
+{
+  "status": "approved",
+  "id": "oh-spread-the-tidings-round-wherever-man-is-found",
+  "title": "Oh, spread the tidings ’round, wherever man is found",
+  "alternateTitles": [],
+  "firstLine": "Oh, spread the tidings ’round, wherever man is found,",
+  "meter": "12.12.12.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Frank Bottome",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William James Kirkpatrick"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Frank Bottome (1823–1894).",
+  "tuneAttribution": "Tune: William James Kirkpatrick (1838–1921).",
+  "publicDomainBasis": "Frank Bottome (1823–1894), William James Kirkpatrick (1838–1921). All public domain.",
+  "searchKeywords": [
+    "spread",
+    "tidings",
+    "round",
+    "wherever",
+    "found"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Oh, spread the tidings ’round, wherever man is found,\nWherever human hearts and human woes abound;\nLet every Christian tongue proclaim the joyful sound:\nThe Comforter has come!"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "The long, long night is past, the morning breaks at last;\nAnd hushed the dreadful wail and fury of the blast,\nAs o’er the golden hills the day advances fast!\nThe Comforter has come!"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Lo, the great King of kings, with healing in His wings,\nTo every captive soul a full deliv’rance brings;\nAnd through the vacant cells the song of triumph rings:\nThe Comforter has come!"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "O boundless love divine! how shall this tongue of mine\nTo wond’ring mortals tell the matchless grace divine—\nThat I, a child of hell, should in His image shine!\nThe Comforter has come!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "oh spread the tidings round wherever man is found",
+    "normalizedFirstLine": "oh spread the tidings round wherever man is found",
+    "keywords": [
+      "spread",
+      "tidings",
+      "round",
+      "wherever",
+      "found"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "oh",
+      "spread",
+      "the",
+      "tidings",
+      "round",
+      "wherever",
+      "man",
+      "is",
+      "found",
+      "frank",
+      "bottome",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "oh spread the tidings round wherever man is found oh spread the tidings round wherever man is found frank bottome unknown praise spread tidings round wherever found"
+  }
+}

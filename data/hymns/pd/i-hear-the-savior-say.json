@@ -1,0 +1,94 @@
+{
+  "status": "approved",
+  "id": "i-hear-the-savior-say",
+  "title": "I hear the Savior say",
+  "alternateTitles": [],
+  "firstLine": "I hear the Savior say,",
+  "meter": "6.6.6.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Elvina Mable Reynolds Hall",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Thomas Grape"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Elvina Mable Reynolds Hall (1822–1889).",
+  "tuneAttribution": "Tune: John Thomas Grape (1834–1915).",
+  "publicDomainBasis": "Elvina Mable Reynolds Hall (1822–1889), John Thomas Grape (1834–1915). All public domain.",
+  "searchKeywords": [
+    "hear",
+    "savior"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I hear the Savior say,\n“Thy strength indeed is small,\nChild of weakness, watch and pray,\nFind in Me thine all in all.”"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Lord, now indeed I find\nThy pow’r, and Thine alone,\nCan change the leper’s spots,\nAnd melt the heart of stone."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "For nothing good have I\nWhereby Thy grace to claim—\nI’ll wash my garments white\nIn the blood of Calv’ry’s Lamb."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "And when, before the throne,\nI stand in Him complete,\n“Jesus died my soul to save,”\nMy lips shall still repeat."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i hear the savior say",
+    "normalizedFirstLine": "i hear the savior say",
+    "keywords": [
+      "hear",
+      "savior"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "hear",
+      "the",
+      "savior",
+      "say",
+      "elvina",
+      "mable",
+      "reynolds",
+      "hall",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i hear the savior say i hear the savior say elvina mable reynolds hall unknown praise hear savior"
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "status": "approved",
+  "id": "there-s-a-little-word-that-the-lord-has-giv-n",
+  "title": "There’s a little word that the Lord has giv’n",
+  "alternateTitles": [],
+  "firstLine": "There’s a little word that the Lord has giv’n",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Albert Benjamin Simpson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Albert Benjamin Simpson (1843–1919).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Albert Benjamin Simpson (1843–1919). All public domain.",
+  "searchKeywords": [
+    "there",
+    "little",
+    "word",
+    "that",
+    "lord"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "There’s a little word that the Lord has giv’n\nFor our help in the hour of need:\nLet us reckon ourselves to be dead to sin,\nTo be dead and dead indeed."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "There’s another word that the Lord has giv’n,\nIn the very same verse we read,\nLet us reckon ourselves as alive in Him,\nAs alive and alive indeed."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "While we trust in feeling or inward frames\nWe shall always be tossed about,\nLet us anchor fast to the Word of God,\nAnd reckon away our doubt."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "As the mariner, when the skies are dim.\nSails on by his compass true;\nSo our faith would cling to the promise firm.\nAnd reckon the journey through."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "O how sweet it is to be anchored fast\nTo a hope that can never fail;\nLet us reckon on with a firmer trust,\nTill we anchor within the veil."
+    },
+    {
+      "id": "chorus-5",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 6,
+      "text": "You may claim the promise from every pain,\nYou may know His power to heal;\nBut your faith must rest in His word alone,\nAnd reckon, rather than feel."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "there s a little word that the lord has giv n",
+    "normalizedFirstLine": "there s a little word that the lord has giv n",
+    "keywords": [
+      "there",
+      "little",
+      "word",
+      "that",
+      "lord"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "there",
+      "little",
+      "word",
+      "that",
+      "the",
+      "lord",
+      "has",
+      "giv",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "there s a little word that the lord has giv n there s a little word that the lord has giv n albert benjamin simpson unknown praise there little word that lord"
+  }
+}

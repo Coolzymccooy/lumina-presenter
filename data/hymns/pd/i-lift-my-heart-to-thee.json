@@ -1,0 +1,103 @@
+{
+  "status": "approved",
+  "id": "i-lift-my-heart-to-thee",
+  "title": "I lift my heart to Thee",
+  "alternateTitles": [],
+  "firstLine": "I lift my heart to Thee,",
+  "meter": "10.10.10.10.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Edward Mudie",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Claude Goudimel"
+    }
+  ],
+  "themes": [
+    "surrender"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Edward Mudie (1818–1890).",
+  "tuneAttribution": "Tune: Claude Goudimel (1514–1572).",
+  "publicDomainBasis": "Charles Edward Mudie (1818–1890), Claude Goudimel (1514–1572). All public domain.",
+  "searchKeywords": [
+    "lift",
+    "heart",
+    "thee"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I lift my heart to Thee,\nSavior Divine,\nFor Thou art all to me,\nAnd I am Thine;\nIs there on earth a closer bond than this,\nThat my Beloved’s mine, and I am His?"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Thine am I by all ties,\nAnd chiefly Thine,\nFor through Thy sacrifice\nThou, Lord, art mine;\nBy Thine own cords of love, so sweetly wound\nAround me, closely I to Thee am bound."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "To Thee, Thou Bleeding Lamb,\nI all things owe,\nAll that I have and am,\nAnd all I know;\nAll that I have is now no longer mine,\nAnd I am not my own: Lord, I am Thine."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "How can I, Lord, withhold\nLife’s brightest hour\nFrom Thee; or gathered gold,\nOr any power?\nWhy should I keep one precious thing from Thee,\nWhen Thou hast given Thine own dear Self for me?"
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "I pray Thee, Savior, keep\nMe in Thy love,\nUntil the world Thou sweep\nAnd me remove\nTo that fair realm, where, sin and sorrow o’er,\nThou and Thine own are one for evermore."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i lift my heart to thee",
+    "normalizedFirstLine": "i lift my heart to thee",
+    "keywords": [
+      "lift",
+      "heart",
+      "thee"
+    ],
+    "themes": [
+      "surrender"
+    ],
+    "tokens": [
+      "lift",
+      "my",
+      "heart",
+      "to",
+      "thee",
+      "charles",
+      "edward",
+      "mudie",
+      "unknown",
+      "surrender"
+    ],
+    "searchableText": "i lift my heart to thee i lift my heart to thee charles edward mudie unknown surrender lift heart thee"
+  }
+}

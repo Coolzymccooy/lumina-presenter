@@ -1,0 +1,53 @@
+{
+  "status": "approved",
+  "id": "sweet-hour-of-prayer",
+  "title": "Sweet Hour of Prayer",
+  "alternateTitles": [],
+  "firstLine": "Sweet hour of prayer! sweet hour of prayer! that calls me from a world of care",
+  "meter": "LM D",
+  "hymnalNumbers": { "UMH": 496, "SBC": 478 },
+  "authors": [
+    { "name": "William W. Walford", "role": "text" },
+    { "name": "William B. Bradbury", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "SWEET HOUR", "composer": "William B. Bradbury", "alternateNames": ["Sweet Hour of Prayer"] }
+  ],
+  "themes": ["prayer", "comfort", "assurance"],
+  "scriptureThemes": ["Matthew 6:6", "Philippians 4:6", "Psalm 55:17"],
+  "textAttribution": "Text: William W. Walford, 1845.",
+  "tuneAttribution": "Tune: SWEET HOUR by William B. Bradbury, 1861.",
+  "publicDomainBasis": "William W. Walford (1772–1850), William B. Bradbury (1816–1868). Text published 1845, tune 1861. Both public domain.",
+  "searchKeywords": ["prayer", "retreat", "wings", "portal", "care", "peace"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "prayer",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 40,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Sweet hour of prayer! sweet hour of prayer!\nThat calls me from a world of care,\nAnd bids me at my Father's throne\nMake all my wants and wishes known.\nIn seasons of distress and grief,\nMy soul has often found relief,\nAnd oft escaped the tempter's snare\nBy thy return, sweet hour of prayer!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Sweet hour of prayer! sweet hour of prayer!\nThe joys I feel, the bliss I share,\nOf those whose anxious spirits burn\nWith strong desires for thy return!\nWith such I hasten to the place\nWhere God my Savior shows His face,\nAnd gladly take my station there,\nAnd wait for thee, sweet hour of prayer!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Sweet hour of prayer! sweet hour of prayer!\nThy wings shall my petition bear\nTo Him whose truth and faithfulness\nEngage the waiting soul to bless.\nAnd since He bids me seek His face,\nBelieve His word, and trust His grace,\nI'll cast on Him my every care,\nAnd wait for thee, sweet hour of prayer!"
+    }
+  ]
+}

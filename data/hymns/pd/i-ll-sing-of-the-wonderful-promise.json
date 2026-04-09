@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "i-ll-sing-of-the-wonderful-promise",
+  "title": "I’ll sing of the wonderful promise",
+  "alternateTitles": [],
+  "firstLine": "I’ll sing of the wonderful promise",
+  "meter": "9.8.9.8.D. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Albert Benjamin Simpson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Albert Benjamin Simpson (1843–1919).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Albert Benjamin Simpson (1843–1919). All public domain.",
+  "searchKeywords": [
+    "sing",
+    "wonderful",
+    "promise"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I’ll sing of the wonderful promise\nThat Jesus has given to me;\n“My strength is made perfect in weakness,\nMy grace is sufficient for thee.”\nAnd lest my poor heart should forget it,\nOr ever forgetful should be,\nHe still keeps repeating the promise,\nMy grace is sufficient for thee."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "His grace is sufficient to save me,\nAnd cleanse me from guilt and from sin;\nSufficient to sanctify wholly,\nAnd give me His Spirit within.\nHis grace is sufficient for trials,\nNo matter how hard they may be,\nThis promise stands over against them,\nMy grace is sufficient for thee."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "His grace is sufficient for sickness,\nSustaining and making me whole;\nHis grace is sufficient when sorrows\nLike billows roll over the soul.\nHis grace is sufficient for service,\nIt sets us from selfishness free,\nAnd sends us to tell to the tried ones,\nHis grace is sufficient for thee."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "His grace is sufficient to live by,\nAnd should we be summoned to die\n’Twill light up the valley of shadows,\nAnd bear us away to Him nigh.\nOr when we shall stand in His vict’ry,\nAnd Christ in His glory shall see,\nWe’ll fall at His footstool confessing,\nThy grace was sufficient for me."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "It is not our grace that’s sufficient,\nBut His grace, it ever must be:\nOur graces are transient and changing;\nHis grace is unfailing as He.\nAnd so I am ever repeating\nHis wonderful promise to me,\nMy strength is made perfect in weakness,\nMy grace is sufficient for thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i ll sing of the wonderful promise",
+    "normalizedFirstLine": "i ll sing of the wonderful promise",
+    "keywords": [
+      "sing",
+      "wonderful",
+      "promise"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "ll",
+      "sing",
+      "of",
+      "the",
+      "wonderful",
+      "promise",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i ll sing of the wonderful promise i ll sing of the wonderful promise albert benjamin simpson unknown praise sing wonderful promise"
+  }
+}

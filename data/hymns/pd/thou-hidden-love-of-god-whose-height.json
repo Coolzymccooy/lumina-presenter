@@ -1,0 +1,122 @@
+{
+  "status": "approved",
+  "id": "thou-hidden-love-of-god-whose-height",
+  "title": "Thou hidden love of God, whose height",
+  "alternateTitles": [],
+  "firstLine": "Thou hidden love of God, whose height,",
+  "meter": "8.8.8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Gerhardt Tersteegen",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Henri Frederick Hemy"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Gerhardt Tersteegen (1697–1769).",
+  "tuneAttribution": "Tune: Henri Frederick Hemy (1818–1888), James George Walton (1821–1905).",
+  "publicDomainBasis": "Gerhardt Tersteegen (1697–1769), Henri Frederick Hemy (1818–1888), James George Walton (1821–1905). All public domain.",
+  "searchKeywords": [
+    "thou",
+    "hidden",
+    "love",
+    "whose",
+    "height"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Thou hidden love of God, whose height,\nWhose depth unfathomed no man knows,\nI see from far Thy beauteous light,\nInly I sigh for Thy repose;\nMy heart is pained, nor can it be\nAt rest, till it finds rest in Thee."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Thy secret voice invites me still\nThe sweetness of Thy yoke to prove;\nAnd fain I would: but though my will\nSeems fixed, yet wide my passions rove;\nYet hindrances strew all the way;\nI aim at Thee, yet from Thee stray."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "’Tis mercy all, that Thou hast brought\nMy mind to seek her peace in Thee;\nYet, while I seek but find Thee not,\nNo peace my wand’ring soul shall see.\nOh, when shall all my wand’rings end,\nAnd all my steps to Thee-ward tend!"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Is there a thing beneath the sun\nThat strives with Thee my heart to share?\nAh! tear it thence, and reign alone,\nThe Lord of every motion there.\nThen shall my heart from earth be free,\nWhen it has found repose in Thee."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Oh, hide this self from me, that I\nNo more, but Christ in me may live;\nMy vile affections mortify,\nNor let one darling sin survive.\nIn all things nothing may I see,\nNothing desire or seek but Thee."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "O Lord, Thy sovereign aid impart,\nTo save me from low-thoughted care\nChase this self-will through all my heart\nThrough all its latent mazes there\nMake me Thy duteous child, that I\nCeaseless may Abba, Father, cry."
+    },
+    {
+      "id": "v7",
+      "type": "verse",
+      "label": "Verse 7",
+      "order": 7,
+      "text": "Each moment draw from earth away\nMy heart which lowly waits Thy call;\nSpeak to my inmost soul and say\n“I am Thy Love, Thy God, Thy All.”\nTo feel Thy power, to hear Thy voice,\nTo taste Thy love, be all my choice."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "thou hidden love of god whose height",
+    "normalizedFirstLine": "thou hidden love of god whose height",
+    "keywords": [
+      "thou",
+      "hidden",
+      "love",
+      "whose",
+      "height"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "thou",
+      "hidden",
+      "love",
+      "of",
+      "god",
+      "whose",
+      "height",
+      "gerhardt",
+      "tersteegen",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "thou hidden love of god whose height thou hidden love of god whose height gerhardt tersteegen unknown praise thou hidden love whose height"
+  }
+}

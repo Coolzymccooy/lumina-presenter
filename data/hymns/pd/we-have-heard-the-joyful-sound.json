@@ -1,0 +1,99 @@
+{
+  "status": "approved",
+  "id": "we-have-heard-the-joyful-sound",
+  "title": "We have heard the joyful sound",
+  "alternateTitles": [],
+  "firstLine": "We have heard the joyful sound:",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Priscilla Jane Owens",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William James Kirkpatrick"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Priscilla Jane Owens (1829–1907).",
+  "tuneAttribution": "Tune: William James Kirkpatrick (1838–1921).",
+  "publicDomainBasis": "Priscilla Jane Owens (1829–1907), William James Kirkpatrick (1838–1921). All public domain.",
+  "searchKeywords": [
+    "have",
+    "heard",
+    "joyful",
+    "sound"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "We have heard the joyful sound:\nJesus saves! Jesus saves!\nSpread the tidings all around:\nJesus saves! Jesus saves!\nBear the news to every land,\nClimb the steeps and cross the waves;\nOnward!—’tis our Lord’s command;\nJesus saves! Jesus saves!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Waft it on the rolling tide,\nJesus saves, Jesus saves;\nTell to sinners far and wide,\nJesus saves, Jesus saves;\nSing, ye islands of the sea,\nEcho back, ye ocean caves;\nEarth shall keep her jubilee,\nJesus saves, Jesus saves."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Sing above the battle’s strife,\nJesus saves, Jesus saves;\nBy His death and endless life,\nJesus saves, Jesus saves;\nSing it softly thru the gloom,\nWhen the heart for mercy craves,\nSing in triumph o’er the tomb,\nJesus saves, Jesus saves."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Give the winds a mighty voice,\nJesus saves, Jesus saves;\nLet the nations now rejoice.\nJesus saves, Jesus saves;\nShout salvation full and free,\nHighest hills and deepest caves,\nThis our song of victory,\nJesus saves, Jesus saves."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "we have heard the joyful sound",
+    "normalizedFirstLine": "we have heard the joyful sound",
+    "keywords": [
+      "have",
+      "heard",
+      "joyful",
+      "sound"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "we",
+      "have",
+      "heard",
+      "the",
+      "joyful",
+      "sound",
+      "priscilla",
+      "jane",
+      "owens",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "we have heard the joyful sound we have heard the joyful sound priscilla jane owens unknown praise have heard joyful sound"
+  }
+}

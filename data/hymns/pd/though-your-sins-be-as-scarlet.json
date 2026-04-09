@@ -1,0 +1,92 @@
+{
+  "status": "approved",
+  "id": "though-your-sins-be-as-scarlet",
+  "title": "Though your sins be as scarlet",
+  "alternateTitles": [],
+  "firstLine": "“Though your sins be as scarlet,",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "though",
+    "your",
+    "sins",
+    "scarlet"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "“Though your sins be as scarlet,\nThey shall be as white as snow;\nThough your sins be as scarlet,\nThey shall be as white as snow;\nThough they be red as crimson,\nThey shall be as wool;”\n“Though your sins be as scarlet,\nThough your sins be as scarlet,\nThey shall be as white as snow,\nThey shall be as white as snow."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Hear the voice that entreats you,\nO return ye unto God!\nHear the voice that entreats you,\nO return ye unto God!\nHe is of great compassion,\nAnd of wondrous love;\nHear the voice that entreats you,\nHear the voice that entreats you,\nO return ye unto God!\nO return ye unto God!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "He’ll forgive your transgressions,\nAnd remember them no more;\nHe’ll forgive your transgressions,\nAnd remember them no more;\n“Look unto Me, ye people,”\nSaith the Lord your God!\nHe’ll forgive your transgressions,\nHe’ll forgive your transgressions,\nAnd remember them no more,\nAnd remember them no more."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "though your sins be as scarlet",
+    "normalizedFirstLine": "though your sins be as scarlet",
+    "keywords": [
+      "though",
+      "your",
+      "sins",
+      "scarlet"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "though",
+      "your",
+      "sins",
+      "be",
+      "as",
+      "scarlet",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "though your sins be as scarlet though your sins be as scarlet fanny jane crosby unknown praise though your sins scarlet"
+  }
+}

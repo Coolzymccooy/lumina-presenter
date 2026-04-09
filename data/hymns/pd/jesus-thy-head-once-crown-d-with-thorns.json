@@ -1,0 +1,110 @@
+{
+  "status": "approved",
+  "id": "jesus-thy-head-once-crown-d-with-thorns",
+  "title": "Jesus, Thy head, once crown’d with thorns",
+  "alternateTitles": [],
+  "firstLine": "Jesus, Thy head, once crown’d with thorns,",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Thomas Kelly",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "George Nelson Allen"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Thomas Kelly (1769–1855).",
+  "tuneAttribution": "Tune: George Nelson Allen (1812–1877).",
+  "publicDomainBasis": "Thomas Kelly (1769–1855), George Nelson Allen (1812–1877). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "head",
+    "once",
+    "crown",
+    "with",
+    "thorns"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Jesus, Thy head, once crown’d with thorns,\nIs crown’d with glory now;\nHeaven’s royal diadem adorns\nThe mighty Victor’s brow."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Thou glorious light of courts above,\nJoy of the saints below,\nTo us still manifest Thy love,\nThat we its depths may know."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "To us Thy cross with all its shame,\nWith all its grace be giv’n;\nThough earth disowns Thy lowly name,\nGod honors it in heav’n."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Who suffer with Thee, Lord, today,\nShall also with Thee reign:\nThen let it be our joy to pay\nThe Price, this goal attain."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "To us Thy cross is life and health;\n’Twas shame and death to Thee;\nOur present glory, joy and wealth,\nOur everlasting stay."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "jesus thy head once crown d with thorns",
+    "normalizedFirstLine": "jesus thy head once crown d with thorns",
+    "keywords": [
+      "jesus",
+      "head",
+      "once",
+      "crown",
+      "with",
+      "thorns"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "jesus",
+      "thy",
+      "head",
+      "once",
+      "crown",
+      "with",
+      "thorns",
+      "thomas",
+      "kelly",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "jesus thy head once crown d with thorns jesus thy head once crown d with thorns thomas kelly unknown praise jesus head once crown with thorns"
+  }
+}

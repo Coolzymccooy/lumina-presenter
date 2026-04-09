@@ -1,0 +1,105 @@
+{
+  "status": "approved",
+  "id": "hark-ten-thousand-heav-nly-voices",
+  "title": "Hark! Ten thousand heav’nly voices",
+  "alternateTitles": [],
+  "firstLine": "Hark! Ten thousand heav’nly voices",
+  "meter": "8.7.8.7.7.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Thomas Kelly",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lowell Mason"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Thomas Kelly (1769–1855).",
+  "tuneAttribution": "Tune: Lowell Mason (1792–1872).",
+  "publicDomainBasis": "Thomas Kelly (1769–1855), Lowell Mason (1792–1872). All public domain.",
+  "searchKeywords": [
+    "hark",
+    "thousand",
+    "heav",
+    "voices"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Hark! Ten thousand heav’nly voices\nSound the note of praise above;\nJesus reigns and heav’n rejoices,\nJesus reigns, the God of love.\nSee, He sits on yonder throne;\nJesus rules the world alone."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Sing how Jesus came from heaven,\nHow He bore the cross below,\nHow all power to Him is given,\nHow He reigns in glory now.\n’Tis a great and endless theme—\nOh, ’tis sweet to sing of Him."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Jesus, hail! Thy glory brightens\nAll above and gives it worth;\nLord of life, Thy smile enlightens,\nCheers, and charms Thy saints on earth.\nWhen we think of love like Thine,\nLord, we own it love divine."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "King of glory, reign forever!\nThine an everlasting crown.\nNothing from Thy love shall sever\nThose whom Thou hast made Thine own:\nHappy objects of Thy grace,\nDestined to behold Thy face."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Savior, hasten Thine appearing:\nBring, oh, bring the glorious day,\nWhen, the awful summons hearing,\nHeav’n and earth shall pass away.\nThen with raptured hearts we’ll sing,\n“Glory, glory to our King!”"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "hark ten thousand heav nly voices",
+    "normalizedFirstLine": "hark ten thousand heav nly voices",
+    "keywords": [
+      "hark",
+      "thousand",
+      "heav",
+      "voices"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "hark",
+      "ten",
+      "thousand",
+      "heav",
+      "nly",
+      "voices",
+      "thomas",
+      "kelly",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "hark ten thousand heav nly voices hark ten thousand heav nly voices thomas kelly unknown praise hark thousand heav voices"
+  }
+}

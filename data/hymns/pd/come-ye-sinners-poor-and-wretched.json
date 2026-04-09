@@ -1,0 +1,112 @@
+{
+  "status": "approved",
+  "id": "come-ye-sinners-poor-and-wretched",
+  "title": "Come, ye sinners, poor and wretched",
+  "alternateTitles": [],
+  "firstLine": "Come, ye sinners, poor and wretched,",
+  "meter": "8.7.8.7.8.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Joseph Hart",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Letton Viner"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Joseph Hart (1712–1768).",
+  "tuneAttribution": "Tune: William Letton Viner (1790–1867).",
+  "publicDomainBasis": "Joseph Hart (1712–1768), William Letton Viner (1790–1867). All public domain.",
+  "searchKeywords": [
+    "come",
+    "sinners",
+    "poor",
+    "wretched"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Come, ye sinners, poor and wretched,\nWeak and wounded, sick and sore;\nJesus ready waits to save you,\nFull of pity, love and pow’r:\nHe is able, He is able,\nHe is willing, doubt no more."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Come, ye needy, come and welcome;\nGod’s free bounty glorify;\nTrue belief and true repentance,\nEvery grace that brings us nigh,\nWithout money, without money,\nCome to Jesus Christ and buy."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Let not conscience make you linger,\nNor of fitness fondly dream;\nAll the fitness He requireth\nIs to feel your need of Him:\nThis He gives you, this He gives you,\n’Tis the Spirit’s rising beam."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Come, ye weary, heavy laden,\nLost and ruined by the fall;\nIf you tarry till you’re better,\nYou will never come at all:\nNot the righteous, not the righteous,\nSinners Jesus came to call."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Agonizing in the garden,\nYour Redeemer prostrate lies;\nOn the bloody tree behold Him!\nHear Him cry, before He dies,\n“It is finished!” “It is finished!”\nSinner, will not this suffice?"
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Lo! th’ incarnate God, ascended,\nPleads the merit of His blood;\nVenture on Him, venture wholly;\nLet no other trust intrude:\nNone but Jesus, none but Jesus,\nCan do helpless sinners good."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "come ye sinners poor and wretched",
+    "normalizedFirstLine": "come ye sinners poor and wretched",
+    "keywords": [
+      "come",
+      "sinners",
+      "poor",
+      "wretched"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "come",
+      "ye",
+      "sinners",
+      "poor",
+      "and",
+      "wretched",
+      "joseph",
+      "hart",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "come ye sinners poor and wretched come ye sinners poor and wretched joseph hart unknown praise come sinners poor wretched"
+  }
+}

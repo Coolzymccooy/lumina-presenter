@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "the-son-of-god-goes-forth-to-war",
+  "title": "The Son of God goes forth to war",
+  "alternateTitles": [],
+  "firstLine": "The Son of God goes forth to war,",
+  "meter": "8.6.8.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Reginald Heber",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Henry Stephen Cutler"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Reginald Heber (1783–1826).",
+  "tuneAttribution": "Tune: Henry Stephen Cutler (1825–1902).",
+  "publicDomainBasis": "Reginald Heber (1783–1826), Henry Stephen Cutler (1825–1902). All public domain.",
+  "searchKeywords": [
+    "goes",
+    "forth"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "The Son of God goes forth to war,\nA kingly crown to gain;\nHis blood-red banner streams afar:\nWho follows in His train?\nWho best can drink his cup of woe,\nTriumphant over pain,\nWho patient bears his cross below,\nHe follows in His train."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "The martyr first, whose eagle eye\nCould pierce beyond the grave,\nWho saw his Master in the sky,\nAnd called to Him to save:\nLike Him, with pardon on his tongue,\nIn midst of mortal pain,\nHe prayed for them that did the wrong:\nWho follows in his train?"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "A glorious band, the chosen few\nOn whom the Spirit came,\nTwelve valiant saints, their hope they knew,\nAnd mocked the cross and flame.\nThey met the tyrant’s brandished steel,\nThe lion’s gory mane,\nThey bowed their necks, the death to feel:\nWho follows in their train?"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "A noble army, men and boys,\nThe matron and the maid,\nAround the Savior’s throne rejoice,\nIn robes of light arrayed.\nThey climbed by strength divine from heaven,\nThrough peril, toil, and pain:\nO God, to us may grace be given\nTo follow in their train."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "the son of god goes forth to war",
+    "normalizedFirstLine": "the son of god goes forth to war",
+    "keywords": [
+      "goes",
+      "forth"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "the",
+      "son",
+      "of",
+      "god",
+      "goes",
+      "forth",
+      "to",
+      "war",
+      "reginald",
+      "heber",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "the son of god goes forth to war the son of god goes forth to war reginald heber unknown praise goes forth"
+  }
+}

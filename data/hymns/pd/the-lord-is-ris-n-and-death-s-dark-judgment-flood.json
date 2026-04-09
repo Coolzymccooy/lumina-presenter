@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "the-lord-is-ris-n-and-death-s-dark-judgment-flood",
+  "title": "The Lord is ris’n; and death’s dark judgment flood",
+  "alternateTitles": [],
+  "firstLine": "The Lord is ris’n; and death’s dark judgment flood",
+  "meter": "10.10.10.10.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Paton MacKay",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "George Clement Martin"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Paton MacKay (1839–1885).",
+  "tuneAttribution": "Tune: George Clement Martin (1844–1916).",
+  "publicDomainBasis": "William Paton MacKay (1839–1885), George Clement Martin (1844–1916). All public domain.",
+  "searchKeywords": [
+    "lord",
+    "death",
+    "dark",
+    "judgment",
+    "flood"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "The Lord is ris’n; and death’s dark judgment flood\nIs passed, in Him who bought us with His blood.\nThe Lord is ris’n: we stand beyond the doom\nOf all our sin, through Jesus’ empty tomb."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "The Lord is ris’n: with Him we also rose,\nAnd in His grave see vanquished all our foes.\nThe Lord is ris’n: beyond the judgment land,\nIn Him, in resurrection-life we stand."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "The Lord is ris’n: and now redeemed to God,\nWe tread the desert which His feet have trod.\nThe Lord is ris’n: the sanctu’ry’s our place,\nWhere now we dwell before the Father’s face."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "The Lord is ris’n: the Lord is gone before.\nWe long to see Him, and to sin no more.\nThe Lord is ris’n: our triumph-shout shall be,\n“Thou hast prevailed! Thy people, Lord, are free!”"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "the lord is ris n and death s dark judgment flood",
+    "normalizedFirstLine": "the lord is ris n and death s dark judgment flood",
+    "keywords": [
+      "lord",
+      "death",
+      "dark",
+      "judgment",
+      "flood"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "the",
+      "lord",
+      "is",
+      "ris",
+      "and",
+      "death",
+      "dark",
+      "judgment",
+      "flood",
+      "william",
+      "paton",
+      "mackay",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "the lord is ris n and death s dark judgment flood the lord is ris n and death s dark judgment flood william paton mackay unknown praise lord death dark judgment flood"
+  }
+}

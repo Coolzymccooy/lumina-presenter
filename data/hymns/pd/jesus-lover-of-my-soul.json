@@ -1,0 +1,95 @@
+{
+  "status": "approved",
+  "id": "jesus-lover-of-my-soul",
+  "title": "Jesus, lover of my soul",
+  "alternateTitles": [],
+  "firstLine": "Jesus, lover of my soul,",
+  "meter": "7.7.7.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Simeon Butler Marsh"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Wesley (1707–1788).",
+  "tuneAttribution": "Tune: Simeon Butler Marsh (1798–1875).",
+  "publicDomainBasis": "Charles Wesley (1707–1788), Simeon Butler Marsh (1798–1875). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "lover",
+    "soul"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Jesus, lover of my soul,\nLet me to Thy bosom fly,\nWhile the nearer waters roll,\nWhile the tempest still is high:\nHide me, O my Savior, hide,\nTill the storm of life is past;\nSafe into the haven guide;\nO receive my soul at last."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Other refuge have I none,\nHangs my helpless soul on Thee;\nLeave, oh, leave me not alone,\nStill support and comfort me.\nAll my trust on Thee is stayed,\nAll my help from Thee I bring;\nCover my defenseless head\nWith the shadow of Thy wing."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Thou, O Christ, art all I want;\nMore than all in Thee I find;\nRaise the fallen, cheer the faint,\nHeal the sick and lead the blind.\nJust and holy is Thy name,\nI am all unrighteousness;\nVile and full of sin I am,\nThou art full of truth and grace."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Plenteous grace with Thee is found,\nGrace to cover all my sin;\nLet the healing streams abound;\nMake and keep me pure within.\nThou of life the fountain art,\nFreely let me take of Thee;\nSpring Thou up within my heart,\nRise to all eternity."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "jesus lover of my soul",
+    "normalizedFirstLine": "jesus lover of my soul",
+    "keywords": [
+      "jesus",
+      "lover",
+      "soul"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "jesus",
+      "lover",
+      "of",
+      "my",
+      "soul",
+      "charles",
+      "wesley",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "jesus lover of my soul jesus lover of my soul charles wesley unknown praise jesus lover soul"
+  }
+}

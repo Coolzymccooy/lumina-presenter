@@ -1,0 +1,99 @@
+{
+  "status": "approved",
+  "id": "softly-and-tenderly-jesus-is-calling",
+  "title": "Softly and tenderly Jesus is calling",
+  "alternateTitles": [],
+  "firstLine": "Softly and tenderly Jesus is calling—",
+  "meter": "11.7.11.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Will Lamartine Thompson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Will Lamartine Thompson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Will Lamartine Thompson (1847–1909).",
+  "tuneAttribution": "Tune: Will Lamartine Thompson (1847–1909).",
+  "publicDomainBasis": "Will Lamartine Thompson (1847–1909), Will Lamartine Thompson (1847–1909). All public domain.",
+  "searchKeywords": [
+    "softly",
+    "tenderly",
+    "jesus",
+    "calling"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Softly and tenderly Jesus is calling—\nCalling for you and for me;\nPatiently Jesus is waiting and watching—\nWatching for you and for me!"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Why should we tarry when Jesus is pleading—\nPleading for you and for me?\nWhy should we linger and heed not His mercies—\nMercies for you and for me?"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Time is now fleeting, the moments are passing—\nPassing from you and from me;\nShadows are gathering, death-beds are coming—\nComing for you and for me!"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Oh, for the wonderful love He has promised—\nPromised for you and for me!\nThough we have sinned, He has mercy and pardon—\nPardon for you and for me!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "softly and tenderly jesus is calling",
+    "normalizedFirstLine": "softly and tenderly jesus is calling",
+    "keywords": [
+      "softly",
+      "tenderly",
+      "jesus",
+      "calling"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "softly",
+      "and",
+      "tenderly",
+      "jesus",
+      "is",
+      "calling",
+      "will",
+      "lamartine",
+      "thompson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "softly and tenderly jesus is calling softly and tenderly jesus is calling will lamartine thompson unknown praise softly tenderly jesus calling"
+  }
+}

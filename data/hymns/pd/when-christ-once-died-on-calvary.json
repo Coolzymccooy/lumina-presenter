@@ -1,0 +1,101 @@
+{
+  "status": "approved",
+  "id": "when-christ-once-died-on-calvary",
+  "title": "When Christ once died on Calvary",
+  "alternateTitles": [],
+  "firstLine": "When Christ once died on Calvary,",
+  "meter": "8.4.8.8.4. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Albert Benjamin Simpson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Albert Benjamin Simpson (1843–1919).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Albert Benjamin Simpson (1843–1919). All public domain.",
+  "searchKeywords": [
+    "when",
+    "christ",
+    "once",
+    "died",
+    "calvary"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "When Christ once died on Calvary,\nI too was there;\n’Twas in my place He stood for me,\nAnd now accepted e’en as He,\nHis name I bear."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "When Christ once rose with life divine,\nI too was there;\nHis resurrection pow’r is mine,\nAnd as the branches and the vine\nHis life I share."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "When Christ will come some day for me,\nI shall be there;\nWith Him and like Him I shall be,\nAnd all His glorious majesty\nI too shall share."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "O blessed life so deep, so high,\nLord, keep me there;\nHelp me with Christ to live, to die,\nAnd let me with Him, bye and bye\nHis glory share."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "when christ once died on calvary",
+    "normalizedFirstLine": "when christ once died on calvary",
+    "keywords": [
+      "when",
+      "christ",
+      "once",
+      "died",
+      "calvary"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "when",
+      "christ",
+      "once",
+      "died",
+      "on",
+      "calvary",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "when christ once died on calvary when christ once died on calvary albert benjamin simpson unknown praise when christ once died calvary"
+  }
+}

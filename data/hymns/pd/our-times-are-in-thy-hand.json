@@ -1,0 +1,102 @@
+{
+  "status": "approved",
+  "id": "our-times-are-in-thy-hand",
+  "title": "Our times are in Thy hand",
+  "alternateTitles": [],
+  "firstLine": "Our times are in Thy hand;",
+  "meter": "6.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Freeman Lloyd",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Henri Abraham Cesar Malan"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Freeman Lloyd (1791–1853).",
+  "tuneAttribution": "Tune: Henri Abraham Cesar Malan (1787–1864).",
+  "publicDomainBasis": "William Freeman Lloyd (1791–1853), Henri Abraham Cesar Malan (1787–1864). All public domain.",
+  "searchKeywords": [
+    "times",
+    "hand"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Our times are in Thy hand;\nO God, we wish them there;\nOur lives, our souls, our all, we leave\nEntirely to Thy care."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Our times are in Thy hand:\nWhatever they may be;\nPleasing or painful, dark or bright,\nAs best may seem to Thee."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Our times are in Thy hand;\nWhy should we doubt or fear?\nA father’s hand will never cause\nHis child a needless tear."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Our times are in Thy hand;\nJesus, the Crucified,\nWhose hand our many sins have pierced,\nIs now our guard and guide."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Our times are in Thy hand;\nWe’ll always trust to Thee,\nTill we possess the promised crown,\nAnd all Thy glory see."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "our times are in thy hand",
+    "normalizedFirstLine": "our times are in thy hand",
+    "keywords": [
+      "times",
+      "hand"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "our",
+      "times",
+      "are",
+      "in",
+      "thy",
+      "hand",
+      "william",
+      "freeman",
+      "lloyd",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "our times are in thy hand our times are in thy hand william freeman lloyd unknown praise times hand"
+  }
+}

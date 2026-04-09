@@ -1,0 +1,93 @@
+{
+  "status": "approved",
+  "id": "the-church-s-one-foundation",
+  "title": "The Church’s one foundation",
+  "alternateTitles": [],
+  "firstLine": "The Church’s one foundation",
+  "meter": "7.6.7.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Samuel John Stone",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Samuel Sebastian Wesley"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Samuel John Stone (1839–1900).",
+  "tuneAttribution": "Tune: Samuel Sebastian Wesley (1810–1876).",
+  "publicDomainBasis": "Samuel John Stone (1839–1900), Samuel Sebastian Wesley (1810–1876). All public domain.",
+  "searchKeywords": [
+    "church",
+    "foundation"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "The Church’s one foundation\nIs Jesus Christ her Lord;\nShe is His new creation\nBy water and the Word:\nFrom heav’n He came and sought her\nTo be His holy Bride;\nWith His own blood He bought her,\nAnd for her life He died."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Elect from every nation,\nYet one o’er all the earth,\nHer charter of salvation,\nOne Lord, one faith, one birth;\nOne holy Name she blesses,\nPartakes one holy food,\nAnd to one hope she presses,\nWith every grace endued."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "’Mid toil and tribulation,\nAnd tumult of her war,\nShe waits the consummation\nOf peace for evermore;\nTill, with the vision glorious,\nHer longing eyes are blest,\nAnd the great Church victorious\nShall be the Church at rest."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Yet she on earth hath union\nWith God the Three in One,\nAnd mystic sweet communion\nWith those whose rest is won:\nO happy ones and holy!\nLord, give us grace that we,\nLike them, the meek and lowly,\nIn love may dwell with Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "the church s one foundation",
+    "normalizedFirstLine": "the church s one foundation",
+    "keywords": [
+      "church",
+      "foundation"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "the",
+      "church",
+      "one",
+      "foundation",
+      "samuel",
+      "john",
+      "stone",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "the church s one foundation the church s one foundation samuel john stone unknown praise church foundation"
+  }
+}

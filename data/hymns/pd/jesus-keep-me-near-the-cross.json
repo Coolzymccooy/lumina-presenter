@@ -1,0 +1,99 @@
+{
+  "status": "approved",
+  "id": "jesus-keep-me-near-the-cross",
+  "title": "Jesus, keep me near the cross",
+  "alternateTitles": [],
+  "firstLine": "Jesus, keep me near the cross,",
+  "meter": "7.6.7.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "keep",
+    "near",
+    "cross"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Jesus, keep me near the cross,\nThere a precious fountain,\nFree to all—a healing stream,\nFlows from Calv’ry’s mountain."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Near the cross, a trembling soul,\nLove and mercy found me;\nThere the Bright and Morning Star\nSheds its beams around me."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Near the cross! O Lamb of God,\nBring its scenes before me;\nHelp me walk from day to day,\nWith its shadow o’er me."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Near the cross I’ll watch and wait,\nHoping, trusting ever,\nTill I see my Savior’s face,\nLeave His presence never."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "jesus keep me near the cross",
+    "normalizedFirstLine": "jesus keep me near the cross",
+    "keywords": [
+      "jesus",
+      "keep",
+      "near",
+      "cross"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "jesus",
+      "keep",
+      "me",
+      "near",
+      "the",
+      "cross",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "jesus keep me near the cross jesus keep me near the cross fanny jane crosby unknown praise jesus keep near cross"
+  }
+}

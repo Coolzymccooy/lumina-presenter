@@ -1,0 +1,93 @@
+{
+  "status": "approved",
+  "id": "christ-whose-glory-fills-the-skies",
+  "title": "Christ, whose glory fills the skies",
+  "alternateTitles": [],
+  "firstLine": "Christ, whose glory fills the skies",
+  "meter": "7.7.7.7.7.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Conrad Kocher"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Wesley (1707–1788).",
+  "tuneAttribution": "Tune: Conrad Kocher (1786–1872).",
+  "publicDomainBasis": "Charles Wesley (1707–1788), Conrad Kocher (1786–1872). All public domain.",
+  "searchKeywords": [
+    "christ",
+    "whose",
+    "glory",
+    "fills",
+    "skies"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Christ, whose glory fills the skies\nChrist, the true, the only Light,\nSun of Righteousness, arise,\nTriumph o’er the shades of night;\nDayspring from on high, be near,\nDaystar, in my heart appear."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Dark and cheerless is the morn\nUnaccompanied by Thee;\nJoyless is the day’s return,\nTill Thy mercy’s beams I see,\nTill Thou inward light impart,\nGlad my eyes, and warm my heart."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Visit then this soul of mine,\nPierce the gloom of sin and grief;\nFill me, Radiancy divine,\nScatter all my unbelief;\nMore and more Thyself display,\nShining to the perfect day."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "christ whose glory fills the skies",
+    "normalizedFirstLine": "christ whose glory fills the skies",
+    "keywords": [
+      "christ",
+      "whose",
+      "glory",
+      "fills",
+      "skies"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "christ",
+      "whose",
+      "glory",
+      "fills",
+      "the",
+      "skies",
+      "charles",
+      "wesley",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "christ whose glory fills the skies christ whose glory fills the skies charles wesley unknown praise christ whose glory fills skies"
+  }
+}

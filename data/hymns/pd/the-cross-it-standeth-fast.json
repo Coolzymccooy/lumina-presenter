@@ -1,0 +1,88 @@
+{
+  "status": "approved",
+  "id": "the-cross-it-standeth-fast",
+  "title": "The cross it standeth fast",
+  "alternateTitles": [],
+  "firstLine": "The cross it standeth fast,",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Horatius Bonar",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James McGranahan"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Horatius Bonar (1808–1889).",
+  "tuneAttribution": "Tune: James McGranahan (1840–1907).",
+  "publicDomainBasis": "Horatius Bonar (1808–1889), James McGranahan (1840–1907). All public domain.",
+  "searchKeywords": [
+    "cross",
+    "standeth",
+    "fast"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "The cross it standeth fast,\nHallelujah! hallelujah!\nDefying every blast,\nHallelujah! hallelujah!\nThe winds of hell have blown,\nThe world its hate hath shown,\nYet it is not overthrown,\nHallelujah for the cross!"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "It is the old cross still,\nHallelujah! hallelujah!\nIts triumph let us tell,\nHallelujah! hallelujah!\nThe grace of God here shone,\nThrough Christ the blessed Son,\nWho hath redemption won,\nHallelujah for the cross!"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "’Twas here the debt was paid,\nHallelujah! hallelujah!\nOur sins on Jesus laid,\nHallelujah! hallelujah!\nSo round the cross we sing\nOf Christ, our offering,\nOf Christ, our living King,\nHallelujah for the cross!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "the cross it standeth fast",
+    "normalizedFirstLine": "the cross it standeth fast",
+    "keywords": [
+      "cross",
+      "standeth",
+      "fast"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "the",
+      "cross",
+      "it",
+      "standeth",
+      "fast",
+      "horatius",
+      "bonar",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "the cross it standeth fast the cross it standeth fast horatius bonar unknown praise cross standeth fast"
+  }
+}

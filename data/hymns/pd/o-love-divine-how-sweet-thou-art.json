@@ -1,0 +1,98 @@
+{
+  "status": "approved",
+  "id": "o-love-divine-how-sweet-thou-art",
+  "title": "O Love divine, how sweet Thou art",
+  "alternateTitles": [],
+  "firstLine": "O Love divine, how sweet Thou art,",
+  "meter": "8.8.6.8.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lowell Mason"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Wesley (1707–1788).",
+  "tuneAttribution": "Tune: Lowell Mason (1792–1872).",
+  "publicDomainBasis": "Charles Wesley (1707–1788), Lowell Mason (1792–1872). All public domain.",
+  "searchKeywords": [
+    "love",
+    "divine",
+    "sweet",
+    "thou"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O Love divine, how sweet Thou art,\nWhen shall I find my willing heart\nAll taken up by Thee?\nMy thirsty spirit faints to prove\nThe greatness of redeeming love,\nThe love of Christ to me."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Stronger His love than death and hell,\nIts riches are unsearchable:\nThe first-born sons of light\nDesire in vain its depths to see;\nThey cannot reach the mystery,\nThe length, and breadth, and height."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "God only knows the love of God;\nOh, that it now were shed abroad\nIn this poor stony heart;\nFor love I sigh, for love I pine;\nThis only portion, Lord, be mine,\nBe mine this better part."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Oh, that I could forever sit\nLike Mary, at the Master’s feet;\nBe this my happy choice;\nMy only care, delight, and bliss,\nMy joy, my rest on earth be this,\nTo hear the Bridegroom’s voice."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o love divine how sweet thou art",
+    "normalizedFirstLine": "o love divine how sweet thou art",
+    "keywords": [
+      "love",
+      "divine",
+      "sweet",
+      "thou"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "love",
+      "divine",
+      "how",
+      "sweet",
+      "thou",
+      "art",
+      "charles",
+      "wesley",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o love divine how sweet thou art o love divine how sweet thou art charles wesley unknown praise love divine sweet thou"
+  }
+}

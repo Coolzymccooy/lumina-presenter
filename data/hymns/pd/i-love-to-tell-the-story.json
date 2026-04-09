@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "i-love-to-tell-the-story",
+  "title": "I love to tell the story",
+  "alternateTitles": [],
+  "firstLine": "I love to tell the story",
+  "meter": "7.6.7.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Arabella Katherine Hankey",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Gustavus Fischer"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Arabella Katherine Hankey (1834–1911).",
+  "tuneAttribution": "Tune: William Gustavus Fischer (1835–1912).",
+  "publicDomainBasis": "Arabella Katherine Hankey (1834–1911), William Gustavus Fischer (1835–1912). All public domain.",
+  "searchKeywords": [
+    "love",
+    "tell",
+    "story"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I love to tell the story\nOf unseen things above,\nOf Jesus and His glory,\nOf Jesus and His love.\nI love to tell the story,\nBecause I know ’tis true;\nIt satisfies my longings\nAs nothing else can do."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "I love to tell the story;\nMore wonderful it seems\nThan all the golden fancies\nOf all my golden dreams,\nI love to tell the story,\nIt did so much for me;\nAnd that is just the reason\nI tell it now to thee."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "I love to tell the story;\n’Tis pleasant to repeat\nWhat seems each time I tell it,\nMore wonderfully sweet.\nI love to tell the story;\nFor some have never heard\nThe message of salvation\nFrom God’s own holy Word."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "I love to tell the story;\nFor those who know it best\nSeem hungering and thirsting\nTo hear it like the rest.\nAnd when, in scenes of glory,\nI sing the new, new song,\n’Twill be the old, old story,\nThat I have loved so long."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i love to tell the story",
+    "normalizedFirstLine": "i love to tell the story",
+    "keywords": [
+      "love",
+      "tell",
+      "story"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "love",
+      "to",
+      "tell",
+      "the",
+      "story",
+      "arabella",
+      "katherine",
+      "hankey",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i love to tell the story i love to tell the story arabella katherine hankey unknown praise love tell story"
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "status": "approved",
+  "id": "i-need-thee-precious-jesus",
+  "title": "I need Thee, precious Jesus",
+  "alternateTitles": [],
+  "firstLine": "I need Thee, precious Jesus!",
+  "meter": "7.6.7.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Frederick Whitfield",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lowell Mason"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Frederick Whitfield (1829–1904).",
+  "tuneAttribution": "Tune: Lowell Mason (1792–1872).",
+  "publicDomainBasis": "Frederick Whitfield (1829–1904), Lowell Mason (1792–1872). All public domain.",
+  "searchKeywords": [
+    "need",
+    "thee",
+    "precious",
+    "jesus"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I need Thee, precious Jesus!\nFor I am full of sin;\nMy soul is dark and guilty,\nMy spirit dead within:\nI need the cleansing fountain,\nWhere I can always flee:\nThe blood of Christ most precious,\nThe sinner’s perfect plea."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "I need Thee, precious Jesus!\nFor I am very poor;\nA stranger and a pilgrim,\nI have no earthly store:\nI need the love of Jesus,\nTo cheer me on my way,\nTo guide my doubting footsteps,\nTo be my strength and stay."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "I need Thee, precious Jesus!\nI need a friend like Thee;\nA friend to soothe and comfort,\nA friend to care for me:\nI need the heart of Jesus,\nTo feel each anxious care,\nTo bear my every burden,\nAnd all my sorrow share."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "I need Thee, precious Jesus!\nI need Thee day by day,\nTo fill me with Thy fulness,\nTo lead me on my way;\nI need Thy Holy Spirit,\nTo teach me what I am;\nTo show me more of Jesus,\nTo point me to the Lamb."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "I need Thee, precious Jesus!\nAnd hope to see Thee soon,\nEncircled with Thy glory,\nAnd seated on Thy throne;\nThere with Thy blood-bought people,\nMy joy shall ever be\nTo praise Thee, precious Jesus,\nTo gaze, my Lord, on Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i need thee precious jesus",
+    "normalizedFirstLine": "i need thee precious jesus",
+    "keywords": [
+      "need",
+      "thee",
+      "precious",
+      "jesus"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "need",
+      "thee",
+      "precious",
+      "jesus",
+      "frederick",
+      "whitfield",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i need thee precious jesus i need thee precious jesus frederick whitfield unknown praise need thee precious jesus"
+  }
+}

@@ -1,0 +1,97 @@
+{
+  "status": "approved",
+  "id": "o-love-that-wilt-not-let-me-go",
+  "title": "O Love, that wilt not let me go",
+  "alternateTitles": [],
+  "firstLine": "O Love, that wilt not let me go,",
+  "meter": "8.8.8.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "George Matheson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Albert Lister Peace"
+    }
+  ],
+  "themes": [
+    "surrender"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: George Matheson (1842–1906).",
+  "tuneAttribution": "Tune: Albert Lister Peace (1844–1912).",
+  "publicDomainBasis": "George Matheson (1842–1906), Albert Lister Peace (1844–1912). All public domain.",
+  "searchKeywords": [
+    "love",
+    "that",
+    "wilt"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O Love, that wilt not let me go,\nI rest my weary soul in Thee;\nI give Thee back the life I owe,\nThat in Thine ocean depths its flow\nMay richer, fuller be."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "O Light, that followest all my way,\nI yield my flickering torch to Thee;\nMy heart restores its borrowed ray,\nThat in Thy sunshine’s blaze its day\nMay brighter, fairer be."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "O Joy, that seekest me through pain,\nI cannot close my heart to Thee;\nI trace the rainbow through the rain,\nAnd feel the promise is not vain\nThat morn shall tearless be."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "O Cross, that liftest up my head,\nI dare not ask to fly from Thee;\nI lay in dust life’s glory dead,\nAnd from the ground there blossoms red\nLife that shall endless be."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o love that wilt not let me go",
+    "normalizedFirstLine": "o love that wilt not let me go",
+    "keywords": [
+      "love",
+      "that",
+      "wilt"
+    ],
+    "themes": [
+      "surrender"
+    ],
+    "tokens": [
+      "love",
+      "that",
+      "wilt",
+      "not",
+      "let",
+      "me",
+      "go",
+      "george",
+      "matheson",
+      "unknown",
+      "surrender"
+    ],
+    "searchableText": "o love that wilt not let me go o love that wilt not let me go george matheson unknown surrender love that wilt"
+  }
+}

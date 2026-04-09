@@ -1,0 +1,93 @@
+{
+  "status": "approved",
+  "id": "i-am-coming-to-the-cross",
+  "title": "I am coming to the cross",
+  "alternateTitles": [],
+  "firstLine": "I am coming to the cross;",
+  "meter": "7.7.7.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William McDonald",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Gustavus Fischer"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William McDonald (1820–1901).",
+  "tuneAttribution": "Tune: William Gustavus Fischer (1835–1912).",
+  "publicDomainBasis": "William McDonald (1820–1901), William Gustavus Fischer (1835–1912). All public domain.",
+  "searchKeywords": [
+    "coming",
+    "cross"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I am coming to the cross;\nI am poor, and weak, and blind;\nI am counting all but dross;\nI shall full salvation find."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Long my heart has sighed for Thee;\nLong has evil dwelt within;\nJesus sweetly speaks to me,\n“I will cleanse you from all sin.”"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Here I give my all to Thee—\nFriends and time and earthly store,\nSoul and body Thine to be—\nWholly Thine forevermore."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "In the promises I trust;\nNow I feel the blood applied;\nI am prostrate in the dust;\nI with Christ am crucified."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i am coming to the cross",
+    "normalizedFirstLine": "i am coming to the cross",
+    "keywords": [
+      "coming",
+      "cross"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "am",
+      "coming",
+      "to",
+      "the",
+      "cross",
+      "william",
+      "mcdonald",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i am coming to the cross i am coming to the cross william mcdonald unknown praise coming cross"
+  }
+}

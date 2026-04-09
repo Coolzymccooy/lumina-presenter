@@ -1,0 +1,120 @@
+{
+  "status": "approved",
+  "id": "christians-make-haste-your-mission-high-fulfilling",
+  "title": "Christians, make haste, your mission high fulfilling",
+  "alternateTitles": [],
+  "firstLine": "Christians, make haste, your mission high fulfilling,",
+  "meter": "11.10.11.10. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Mary Ann Thompson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James Walch"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Mary Ann Thompson (1834–1923).",
+  "tuneAttribution": "Tune: James Walch (1837–1901).",
+  "publicDomainBasis": "Mary Ann Thompson (1834–1923), James Walch (1837–1901). All public domain.",
+  "searchKeywords": [
+    "christians",
+    "make",
+    "haste",
+    "your",
+    "mission",
+    "high",
+    "fulfilling"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Christians, make haste, your mission high fulfilling,\nTo tell to all the world that God is Light,\nThat He who made all nations is not willing\nOne soul should perish, lost in shades of night."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Behold how many thousands still are lying,\nBound in the darksome prison-house of sin,\nWith none to tell them of the Savior’s dying\nOr of the life He died for them to win."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "’Tis yours to save from peril of perdition\nThe soul for whom the Lord His life laid down;\nBeware lest, slothful to fulfill your mission,\nYou lose one jewel that should deck His crown."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Proclaim to every people, tongue, and nation\nThat God, in whom they live and move, is love;\nTell how He stooped to save His lost creation,\nAnd died on earth that men He might approve."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Give of your sons to bear the message glorious;\nGive of your wealth to speed them on their way;\nPour out your soul for them in prayer victorious,\nAnd all you spend our Savior will repay."
+    },
+    {
+      "id": "chorus-5",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 6,
+      "text": "He comes again; O brothers, ere you meet Him,\nMake known to every heart His saving grace;\nLet none whom He hath ransomed fail to greet Him,\nThrough your neglect unfit to see His face."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "christians make haste your mission high fulfilling",
+    "normalizedFirstLine": "christians make haste your mission high fulfilling",
+    "keywords": [
+      "christians",
+      "make",
+      "haste",
+      "your",
+      "mission",
+      "high",
+      "fulfilling"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "christians",
+      "make",
+      "haste",
+      "your",
+      "mission",
+      "high",
+      "fulfilling",
+      "mary",
+      "ann",
+      "thompson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "christians make haste your mission high fulfilling christians make haste your mission high fulfilling mary ann thompson unknown praise christians make haste your mission high fulfilling"
+  }
+}

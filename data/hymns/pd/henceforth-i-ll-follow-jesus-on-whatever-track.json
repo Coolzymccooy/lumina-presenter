@@ -1,0 +1,95 @@
+{
+  "status": "approved",
+  "id": "henceforth-i-ll-follow-jesus-on-whatever-track",
+  "title": "Henceforth, I’ll follow Jesus, on whatever track",
+  "alternateTitles": [],
+  "firstLine": "Henceforth, I’ll follow Jesus, on whatever track:",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Orcutt Cushing",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Robert Lowry"
+    }
+  ],
+  "themes": [
+    "surrender"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Orcutt Cushing (1823–1902).",
+  "tuneAttribution": "Tune: Robert Lowry (1826–1899).",
+  "publicDomainBasis": "William Orcutt Cushing (1823–1902), Robert Lowry (1826–1899). All public domain.",
+  "searchKeywords": [
+    "henceforth",
+    "follow",
+    "jesus",
+    "whatever",
+    "track"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Henceforth, I’ll follow Jesus, on whatever track:\nSmooth and broad or rough and narrow, I’ll follow Him.\nSince my Lord Himself assists me, I will not shrink back.\nAll the way into the kingdom, foll’wing Him."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Henceforth, I’ll follow Jesus, in whatever place:\nGlad land or death-shadowed valley, I’ll follow Him.\nSince my Lord Himself protects me, I’ve no bitter face;\nEverywhere, until my last step, foll’wing Him."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Henceforth, I’ll follow Jesus, through whate’er befall:\nSunshine bright or cloudy darkness, I’ll follow Him.\nSince my Lord Himself arranged it, I’ve no cares at all;\nEvery moment till day’s dawning, foll’wing Him."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "henceforth i ll follow jesus on whatever track",
+    "normalizedFirstLine": "henceforth i ll follow jesus on whatever track",
+    "keywords": [
+      "henceforth",
+      "follow",
+      "jesus",
+      "whatever",
+      "track"
+    ],
+    "themes": [
+      "surrender"
+    ],
+    "tokens": [
+      "henceforth",
+      "ll",
+      "follow",
+      "jesus",
+      "on",
+      "whatever",
+      "track",
+      "william",
+      "orcutt",
+      "cushing",
+      "unknown",
+      "surrender"
+    ],
+    "searchableText": "henceforth i ll follow jesus on whatever track henceforth i ll follow jesus on whatever track william orcutt cushing unknown surrender henceforth follow jesus whatever track"
+  }
+}

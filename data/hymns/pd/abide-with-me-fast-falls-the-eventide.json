@@ -1,0 +1,109 @@
+{
+  "status": "approved",
+  "id": "abide-with-me-fast-falls-the-eventide",
+  "title": "Abide with me! fast falls the eventide",
+  "alternateTitles": [],
+  "firstLine": "Abide with me! fast falls the eventide;",
+  "meter": "10.10.10.10.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Henry Francis Lyte",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Henry Monk"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Henry Francis Lyte (1793–1847).",
+  "tuneAttribution": "Tune: William Henry Monk (1823–1889).",
+  "publicDomainBasis": "Henry Francis Lyte (1793–1847), William Henry Monk (1823–1889). All public domain.",
+  "searchKeywords": [
+    "abide",
+    "with",
+    "fast",
+    "falls",
+    "eventide"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Abide with me! fast falls the eventide;\nThe darkness deepens; Lord, with me abide!\nWhen other helpers fail and comforts flee,\nHelp of the helpless, oh, abide with me."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Swift to its close ebbs out life’s little day;\nEarth’s joys grow dim, its glories pass away;\nChange and decay in all around I see;\nO Thou who changest not, abide with me."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Come not in terrors, as the King of kings;\nBut kind and good, with healing in Thy wings:\nTears for all woes, a heart for every plea;\nCome, Friend of sinners, thus abide with me."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "I need Thy presence every passing hour:\nWhat but Thy grace can foil the tempter’s power?\nWho like Thyself my guide and stay can be?\nThrough cloud and sunshine, oh, abide with me."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "I fear no foe, with Thee at hand to bless:\nIlls have no weight, and tears no bitterness:\nWhere is death’s sting? where, grave, thy victory?\nI triumph still, if Thou abide with me."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "abide with me fast falls the eventide",
+    "normalizedFirstLine": "abide with me fast falls the eventide",
+    "keywords": [
+      "abide",
+      "with",
+      "fast",
+      "falls",
+      "eventide"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "abide",
+      "with",
+      "me",
+      "fast",
+      "falls",
+      "the",
+      "eventide",
+      "henry",
+      "francis",
+      "lyte",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "abide with me fast falls the eventide abide with me fast falls the eventide henry francis lyte unknown praise abide with fast falls eventide"
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "status": "approved",
+  "id": "alas-and-did-my-savior-bleed",
+  "title": "Alas! and did my Savior bleed",
+  "alternateTitles": [],
+  "firstLine": "Alas! and did my Savior bleed?",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Isaac Watts",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Hugh Wilson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Isaac Watts (1674–1748).",
+  "tuneAttribution": "Tune: Hugh Wilson (1766–1824).",
+  "publicDomainBasis": "Isaac Watts (1674–1748), Hugh Wilson (1766–1824). All public domain.",
+  "searchKeywords": [
+    "alas",
+    "savior",
+    "bleed"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Alas! and did my Savior bleed?\nAnd did my Sov’reign die,\nWould He devote that sacred head\nFor such a worm as I?"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Was it for sins that I had done\nHe groaned upon the tree?\nAmazing pity! grace unknown!\nAnd love beyond degree!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Well might the sun in darkness hide,\nAnd shut his glories in,\nWhen the incarnate Maker died\nFor man, His creature’s sin."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Thus might I hide my blushing face\nWhile His dear cross appears\nDissolve my heart in thankfulness,\nAnd melt mine eyes to tears."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "But drops of grief can ne’er repay\nThe debt of love I owe;\nHere Lord, I give myself away:\n’Tis all that I can do."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "alas and did my savior bleed",
+    "normalizedFirstLine": "alas and did my savior bleed",
+    "keywords": [
+      "alas",
+      "savior",
+      "bleed"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "alas",
+      "and",
+      "did",
+      "my",
+      "savior",
+      "bleed",
+      "isaac",
+      "watts",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "alas and did my savior bleed alas and did my savior bleed isaac watts unknown praise alas savior bleed"
+  }
+}

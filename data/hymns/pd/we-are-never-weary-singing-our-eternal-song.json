@@ -1,0 +1,103 @@
+{
+  "status": "approved",
+  "id": "we-are-never-weary-singing-our-eternal-song",
+  "title": "We are never weary singing our eternal song",
+  "alternateTitles": [],
+  "firstLine": "We are never weary singing our eternal song:",
+  "meter": "13.8.13.8. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William James Kirkpatrick"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: William James Kirkpatrick (1838–1921).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), William James Kirkpatrick (1838–1921). All public domain.",
+  "searchKeywords": [
+    "never",
+    "weary",
+    "singing",
+    "eternal",
+    "song"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "We are never weary singing our eternal song:\nGlory to God, hallelujah!\nWe would sing His praise forever with our spirit strong:\nGlory to God, hallelujah!"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "We are lost amid the rapture of redeeming love:\nGlory to God, hallelujah!\nWe are seeking every moment all its grace to prove:\nGlory to God, hallelujah!"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "We are going on to glory as the Lord has told:\nGlory to God, hallelujah!\nWhere the King in all His beauty we shall soon behold:\nGlory to God, hallelujah!"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "There we’ll sing His grace and mercy in a glad new song:\nGlory to God, hallelujah!\nThere we’ll praise our glorious Savior with the blessed throng:\nGlory to God, hallelujah!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "we are never weary singing our eternal song",
+    "normalizedFirstLine": "we are never weary singing our eternal song",
+    "keywords": [
+      "never",
+      "weary",
+      "singing",
+      "eternal",
+      "song"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "we",
+      "are",
+      "never",
+      "weary",
+      "singing",
+      "our",
+      "eternal",
+      "song",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "we are never weary singing our eternal song we are never weary singing our eternal song fanny jane crosby unknown praise never weary singing eternal song"
+  }
+}

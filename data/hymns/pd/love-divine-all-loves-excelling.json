@@ -1,0 +1,60 @@
+{
+  "status": "approved",
+  "id": "love-divine-all-loves-excelling",
+  "title": "Love Divine, All Loves Excelling",
+  "alternateTitles": [],
+  "firstLine": "Love divine, all loves excelling, joy of heaven, to earth come down",
+  "meter": "8.7.8.7 D",
+  "hymnalNumbers": { "UMH": 384, "SBC": 208, "LW": 315, "ELW": 631 },
+  "authors": [
+    { "name": "Charles Wesley", "role": "text" },
+    { "name": "John Zundel", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "BEECHER", "composer": "John Zundel", "alternateNames": ["Love Divine"] }
+  ],
+  "themes": ["praise", "holiness", "surrender"],
+  "scriptureThemes": ["John 3:16", "Philippians 2:5-11", "Revelation 21:3-4"],
+  "textAttribution": "Text: Charles Wesley, 1747.",
+  "tuneAttribution": "Tune: BEECHER by John Zundel, 1870.",
+  "publicDomainBasis": "Charles Wesley (1707–1788), John Zundel (1815–1882). Text 1747, tune 1870. Both public domain.",
+  "searchKeywords": ["love divine", "joy", "pure", "heart", "changed", "glory"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "either",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 38,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Love divine, all loves excelling,\nJoy of heaven, to earth come down;\nFix in us Thy humble dwelling,\nAll Thy faithful mercies crown.\nJesus, Thou art all compassion,\nPure, unbounded love Thou art;\nVisit us with Thy salvation,\nEnter every trembling heart."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Breathe, O breathe Thy loving Spirit\nInto every troubled breast!\nLet us all in Thee inherit,\nLet us find the promised rest.\nTake away our bent to sinning;\nAlpha and Omega be;\nEnd of faith, as its beginning,\nSet our hearts at liberty."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Come, Almighty, to deliver,\nLet us all Thy life receive;\nSuddenly return, and never,\nNevermore Thy temples leave.\nThee we would be always blessing,\nServe Thee as Thy hosts above,\nPray, and praise Thee without ceasing,\nGlory in Thy perfect love."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Finish, then, Thy new creation;\nPure and spotless let us be.\nLet us see Thy great salvation\nPerfectly restored in Thee:\nChanged from glory into glory,\nTill in heaven we take our place,\nTill we cast our crowns before Thee,\nLost in wonder, love, and praise."
+    }
+  ]
+}

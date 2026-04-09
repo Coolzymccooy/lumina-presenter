@@ -1,0 +1,100 @@
+{
+  "status": "approved",
+  "id": "take-my-life-and-let-it-be-revised",
+  "title": "Take my life, and let it be (revised)",
+  "alternateTitles": [],
+  "firstLine": "Take my life, and let it be",
+  "meter": "7.7.7.7. with repeat.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Frances Ridley Havergal",
+      "role": "text"
+    }
+  ],
+  "tunes": [],
+  "themes": [
+    "surrender"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Frances Ridley Havergal (1836–1879).",
+  "tuneAttribution": "Tune: Unknown.",
+  "publicDomainBasis": "Frances Ridley Havergal (1836–1879). All public domain.",
+  "searchKeywords": [
+    "take",
+    "life",
+    "revised"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Take my life, and let it be\nConsecrated, Lord, to Thee;\nTake my moments and my days,\nLet them flow in ceaseless praise."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Take my hands and feet, I pray,\nFor Thy work, to run Thy way.\nTake my lips that I may sound\nWord of truth to those around."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Take my silver and my gold;\nNot a mite would I withhold;\nTake my intellect, and use\nEvery power as Thou shalt choose."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Make my heart and will Thine own;\nThey belong to Thee alone.\nTake my love; my Lord, I pour\nAt Thy feet its treasure-store."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Take me, Lord, till I’ve become\nEver joined to Thee as one.\nTake myself, and I will be\nEver, only, all for Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "take my life and let it be revised",
+    "normalizedFirstLine": "take my life and let it be",
+    "keywords": [
+      "take",
+      "life",
+      "revised"
+    ],
+    "themes": [
+      "surrender"
+    ],
+    "tokens": [
+      "take",
+      "my",
+      "life",
+      "and",
+      "let",
+      "it",
+      "be",
+      "revised",
+      "frances",
+      "ridley",
+      "havergal",
+      "surrender"
+    ],
+    "searchableText": "take my life and let it be revised take my life and let it be frances ridley havergal surrender take life revised"
+  }
+}

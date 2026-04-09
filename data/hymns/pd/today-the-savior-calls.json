@@ -1,0 +1,95 @@
+{
+  "status": "approved",
+  "id": "today-the-savior-calls",
+  "title": "Today the Savior calls",
+  "alternateTitles": [],
+  "firstLine": "Today the Savior calls;",
+  "meter": "6.4.6.4.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Samuel Francis Smith",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lowell Mason"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Samuel Francis Smith (1808–1895).",
+  "tuneAttribution": "Tune: Lowell Mason (1792–1872).",
+  "publicDomainBasis": "Samuel Francis Smith (1808–1895), Lowell Mason (1792–1872). All public domain.",
+  "searchKeywords": [
+    "today",
+    "savior",
+    "calls"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Today the Savior calls;\nYe wand’rers come:\nO ye benighted souls!\nWhy longer roam?"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Today the Savior calls;\nO hear Him now!\nBefore your day is gone,\nTo Jesus bow."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Today the Savior calls;\nFor refuge fly;\nThe storm of vengeance falls,\nAnd death is nigh."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "The Spirit calls today;\nYield to His pow’r;\nO grieve Him not away,\n’Tis mercy’s hour!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "today the savior calls",
+    "normalizedFirstLine": "today the savior calls",
+    "keywords": [
+      "today",
+      "savior",
+      "calls"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "today",
+      "the",
+      "savior",
+      "calls",
+      "samuel",
+      "francis",
+      "smith",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "today the savior calls today the savior calls samuel francis smith unknown praise today savior calls"
+  }
+}

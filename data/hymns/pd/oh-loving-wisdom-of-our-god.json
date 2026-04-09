@@ -1,0 +1,109 @@
+{
+  "status": "approved",
+  "id": "oh-loving-wisdom-of-our-god",
+  "title": "Oh, loving wisdom of our God",
+  "alternateTitles": [],
+  "firstLine": "Oh, loving wisdom of our God!",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Henry Newman",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Bacchus Dykes"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Henry Newman (1801–1890).",
+  "tuneAttribution": "Tune: John Bacchus Dykes (1823–1876).",
+  "publicDomainBasis": "John Henry Newman (1801–1890), John Bacchus Dykes (1823–1876). All public domain.",
+  "searchKeywords": [
+    "loving",
+    "wisdom"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Oh, loving wisdom of our God!\nWhen all was sin and shame,\nHe, the last Adam, to the fight\nAnd to the rescue came."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Oh, wisest love! That flesh and blood\nWhich did in Adam fail,\nShould strive afresh against the foe,\nShould strive and should prevail."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "And that a higher gift than grace\nShould flesh and blood refine,\nGod’s presence, and His very self\nAnd essence all-divine."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Oh, generous love! That He, who smote\nIn man for man the foe,\nThe double agony in man\nFor man should undergo."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "And in the garden secretly\nAnd on the cross on high,\nShould teach His brethren, and inspire\nTo suffer and to die."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "As man, yet also God, is He\nIn our humanity.\nThe wondrous things He’s done deserve\nOur praise eternally."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "oh loving wisdom of our god",
+    "normalizedFirstLine": "oh loving wisdom of our god",
+    "keywords": [
+      "loving",
+      "wisdom"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "oh",
+      "loving",
+      "wisdom",
+      "of",
+      "our",
+      "god",
+      "john",
+      "henry",
+      "newman",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "oh loving wisdom of our god oh loving wisdom of our god john henry newman unknown praise loving wisdom"
+  }
+}

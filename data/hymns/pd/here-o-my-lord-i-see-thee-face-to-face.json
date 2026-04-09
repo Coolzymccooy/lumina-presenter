@@ -1,0 +1,113 @@
+{
+  "status": "approved",
+  "id": "here-o-my-lord-i-see-thee-face-to-face",
+  "title": "Here, O my Lord, I see Thee face to face",
+  "alternateTitles": [],
+  "firstLine": "Here, O my Lord, I see Thee face to face;",
+  "meter": "10.10.10.10.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Horatius Bonar",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James Langran"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Horatius Bonar (1808–1889).",
+  "tuneAttribution": "Tune: James Langran (1835–1909).",
+  "publicDomainBasis": "Horatius Bonar (1808–1889), James Langran (1835–1909). All public domain.",
+  "searchKeywords": [
+    "here",
+    "lord",
+    "thee",
+    "face"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Here, O my Lord, I see Thee face to face;\nHere faith can touch and handle things unseen;\nHere would I grasp with firmer hand Thy grace,\nAnd all my weariness upon Thee lean."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Here would I feed upon the Bread of God;\nHere drink with Thee the royal wine of heav’n;\nHere would I lay aside each earthly load;\nHere taste afresh the calm of sin forgiv’n."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "I have no help but Thine; nor do I need\nAnother arm save Thine to lean upon;\nIt is enough, my Lord, enough indeed;\nMy strength is in Thy might, Thy might alone."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "This is the hour of banquet and of song;\nThis is the heav’nly table spread for me;\nHere let me feast, and, feasting, still prolong\nThe brief bright hour of fellowship with Thee."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Too soon we rise; the symbols disappear;\nThe feast, though not the love, is past and gone;\nThe bread and wine remove, but Thou art here,\nNearer than ever still our Shield and Sun."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Feast after feast thus comes and passes by,\nYet passing, points to the glad feast above,\nGiving sweet foretastes of the festal joy,\nThe Lamb’s great bridal-feast of bliss and love."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "here o my lord i see thee face to face",
+    "normalizedFirstLine": "here o my lord i see thee face to face",
+    "keywords": [
+      "here",
+      "lord",
+      "thee",
+      "face"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "here",
+      "my",
+      "lord",
+      "see",
+      "thee",
+      "face",
+      "to",
+      "horatius",
+      "bonar",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "here o my lord i see thee face to face here o my lord i see thee face to face horatius bonar unknown praise here lord thee face"
+  }
+}

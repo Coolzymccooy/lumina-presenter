@@ -1,0 +1,102 @@
+{
+  "status": "approved",
+  "id": "all-praise-to-our-redeeming-lord",
+  "title": "All praise to our redeeming Lord",
+  "alternateTitles": [],
+  "firstLine": "All praise to our redeeming Lord,",
+  "meter": "8.6.8.6. with repeat.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Thomas Hastings"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Wesley (1707–1788).",
+  "tuneAttribution": "Tune: Thomas Hastings (1784–1872).",
+  "publicDomainBasis": "Charles Wesley (1707–1788), Thomas Hastings (1784–1872). All public domain.",
+  "searchKeywords": [
+    "praise",
+    "redeeming",
+    "lord"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "All praise to our redeeming Lord,\nWho joins us by His grace,\nAnd bids us, each to each restored,\nTogether seek His face,\nTogether seek His face."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "He bids us build each other up;\nAnd, gathered into one,\nTo our high calling’s glorious hope,\nWe hand in hand go on,\nWe hand in hand go on."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "The gift which He on one bestows,\nWe all delight to prove;\nThe grace through every vessel flows,\nIn purest streams of love,\nIn purest streams of love."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "We all partake the joy of one;\nThe common peace we feel;\nA peace to worldly minds unknown,\nA joy unspeakable,\nA joy unspeakable."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "And if our fellowship below\nIn Christ yet be so sweet,\nWhat height of rapture shall we know,\nWhen round His throne we meet,\nWhen round His throne we meet!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "all praise to our redeeming lord",
+    "normalizedFirstLine": "all praise to our redeeming lord",
+    "keywords": [
+      "praise",
+      "redeeming",
+      "lord"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "all",
+      "praise",
+      "to",
+      "our",
+      "redeeming",
+      "lord",
+      "charles",
+      "wesley",
+      "unknown"
+    ],
+    "searchableText": "all praise to our redeeming lord all praise to our redeeming lord charles wesley unknown praise praise redeeming lord"
+  }
+}

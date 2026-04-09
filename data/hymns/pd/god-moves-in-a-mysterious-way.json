@@ -1,0 +1,107 @@
+{
+  "status": "approved",
+  "id": "god-moves-in-a-mysterious-way",
+  "title": "God moves in a mysterious way",
+  "alternateTitles": [],
+  "firstLine": "God moves in a mysterious way",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Cowper",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Jones"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Cowper (1731–1800).",
+  "tuneAttribution": "Tune: William Jones (1726–1800).",
+  "publicDomainBasis": "William Cowper (1731–1800), William Jones (1726–1800). All public domain.",
+  "searchKeywords": [
+    "moves",
+    "mysterious"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "God moves in a mysterious way\nHis wonders to perform:\nHe plants His footsteps in the sea,\nAnd rides upon the storm."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Deep in unfathomable mines\nOf never-failing skill,\nHe treasures up His bright designs,\nAnd works His sovereign will."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Ye fearful saints, fresh courage take;\nThe clouds ye so much dread\nAre big with mercy, and shall break\nIn blessings on your head."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Judge not the Lord by feeble sense,\nBut trust Him for His grace;\nBehind a frowning providence\nHe hides a smiling face."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "His purposes will ripen fast,\nUnfolding every hour:\nThe bud may have a bitter taste,\nBut sweet will be the flower."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Blind unbelief is sure to err,\nAnd scan His work in vain;\nGod is His own Interpreter,\nAnd He will make it plain."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "god moves in a mysterious way",
+    "normalizedFirstLine": "god moves in a mysterious way",
+    "keywords": [
+      "moves",
+      "mysterious"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "god",
+      "moves",
+      "in",
+      "mysterious",
+      "way",
+      "william",
+      "cowper",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "god moves in a mysterious way god moves in a mysterious way william cowper unknown praise moves mysterious"
+  }
+}

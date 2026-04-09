@@ -1,0 +1,110 @@
+{
+  "status": "approved",
+  "id": "how-pleasant-is-the-sound-of-praise",
+  "title": "How pleasant is the sound of praise",
+  "alternateTitles": [],
+  "firstLine": "How pleasant is the sound of praise!",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Thomas Kelly",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "George Hews"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Thomas Kelly (1769–1855).",
+  "tuneAttribution": "Tune: George Hews (1806–1873).",
+  "publicDomainBasis": "Thomas Kelly (1769–1855), George Hews (1806–1873). All public domain.",
+  "searchKeywords": [
+    "pleasant",
+    "sound",
+    "praise"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "How pleasant is the sound of praise!\nIt well becomes the saints of God;\nShould we refuse our songs to raise,\nThe stones might tell our shame abroad."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "For Him Who washed us in His blood,\nLet us our sweetest songs prepare;\nHe sought us wandering far from God,\nAnd now preserves us by His care."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "One string there is of sweetest tone,\nReserved for sinners saved by grace;\n’Tis sacred to one class alone\nAnd touched by one peculiar race."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Though angels may with rapture see\nHow mercy flows in Jesus’ blood,\nIt is not theirs to prove, as we,\nThe cleansing virtue of this flood."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Though angels praise the heavenly King,\nAnd worship Him as God alone,\nWe can with exultation sing,\n“He wears our nature on the throne.”"
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Lord, we adore Thy wondrous love,\nWhich brought Thee here to bleed and die\nThat Thou lost sinners may restore\nAnd to the Father bring them nigh."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "how pleasant is the sound of praise",
+    "normalizedFirstLine": "how pleasant is the sound of praise",
+    "keywords": [
+      "pleasant",
+      "sound",
+      "praise"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "how",
+      "pleasant",
+      "is",
+      "the",
+      "sound",
+      "of",
+      "praise",
+      "thomas",
+      "kelly",
+      "unknown"
+    ],
+    "searchableText": "how pleasant is the sound of praise how pleasant is the sound of praise thomas kelly unknown praise pleasant sound praise"
+  }
+}

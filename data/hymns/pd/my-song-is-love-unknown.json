@@ -1,0 +1,108 @@
+{
+  "status": "approved",
+  "id": "my-song-is-love-unknown",
+  "title": "My song is love unknown",
+  "alternateTitles": [],
+  "firstLine": "My song is love unknown,",
+  "meter": "6.6.6.6.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Samuel Crossman",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Baptiste Calkin"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Samuel Crossman (1623–1683).",
+  "tuneAttribution": "Tune: John Baptiste Calkin (1827–1905).",
+  "publicDomainBasis": "Samuel Crossman (1623–1683), John Baptiste Calkin (1827–1905). All public domain.",
+  "searchKeywords": [
+    "song",
+    "love",
+    "unknown"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "My song is love unknown,\nMy Savior’s love to me;\nLove to the loveless shown,\nThat they might lovely be.\nO who am I,\nThat for my sake\nMy Lord should take\nFrail flesh, and die?"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "He came from His blest throne\nSalvation to bestow;\nBut men made strange, and none\nThe longed-for Christ would know:\nBut oh, my Friend,\nMy Friend indeed,\nWho at my need\nHis life did spend."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Sometimes they strew His way,\nAnd His sweet praises sing;\nResounding all the day\nHosannas to their King:\nThen “Crucify!”\nIs all their breath,\nAnd for His death\nThey thirst and cry."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "They rise and needs will have\nMy dear Lord made away;\nA murderer they save,\nThe Prince of life they slay.\nYet cheerful He\nTo suffering goes,\nThat He His foes\nFrom thence might free."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "In life, no house, no home\nMy Lord on earth might have;\nIn death, no friendly tomb,\nBut what a stranger gave.\nWhat may I say?\nHeav’n was His home;\nBut mine the tomb\nWherein He lay."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Here might I stay and sing,\nNo story so divine;\nNever was love, dear King,\nNever was grief like Thine.\nThis is my Friend,\nIn whose sweet praise\nI all my days\nCould gladly spend."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "my song is love unknown",
+    "normalizedFirstLine": "my song is love unknown",
+    "keywords": [
+      "song",
+      "love",
+      "unknown"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "my",
+      "song",
+      "is",
+      "love",
+      "unknown",
+      "samuel",
+      "crossman",
+      "praise"
+    ],
+    "searchableText": "my song is love unknown my song is love unknown samuel crossman unknown praise song love unknown"
+  }
+}

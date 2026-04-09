@@ -1,0 +1,98 @@
+{
+  "status": "approved",
+  "id": "o-blessed-saviour-son-of-god",
+  "title": "O Blessed Saviour, Son of God",
+  "alternateTitles": [],
+  "firstLine": "Thou Son of God, our Savior dear,",
+  "meter": "8.8.6.8.8.6. with repeat.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "James George Deck",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lowell Mason"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: James George Deck (1802–1884).",
+  "tuneAttribution": "Tune: Lowell Mason (1792–1872).",
+  "publicDomainBasis": "James George Deck (1802–1884), Lowell Mason (1792–1872). All public domain.",
+  "searchKeywords": [
+    "blessed",
+    "saviour"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Thou Son of God, our Savior dear,\nThrough Thee redemption did appear,\nFrom sin and death to free.\nThy saints with rapturous joy abound,\nTo see Thee in Thy glorious crown\nAnd seated heavenly.\nAnd seated heavenly."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Love of the Father lifted Thee,\nBestowed such power, majesty;\nAt His right hand art Thou.\nWe praise Thy wisdom, Sovereign true,\nAnd consecrate our all anew;\nThou reignest ever now.\nThou reignest ever now."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Head of the Church in righteousness,\nThy members Thou didst fully bless:\nAll that Thou hast is ours.\nOur life and power Thou become,\nIn all our motives, set Thy throne,\nAnd conquer Satan’s pow’rs.\nAnd conquer Satan’s pow’rs."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Ere long that glorious day shall come,\nYour Body will be raptured home,\nTo ever see Thy face.\nSuch happy day! Thyself to see,\nAnd know that we belong to Thee,\nAnd rest in Thine embrace.\nAnd rest in Thine embrace."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o blessed saviour son of god",
+    "normalizedFirstLine": "thou son of god our savior dear",
+    "keywords": [
+      "blessed",
+      "saviour"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "blessed",
+      "saviour",
+      "son",
+      "of",
+      "god",
+      "thou",
+      "our",
+      "savior",
+      "dear",
+      "james",
+      "george",
+      "deck",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o blessed saviour son of god thou son of god our savior dear james george deck unknown praise blessed saviour"
+  }
+}

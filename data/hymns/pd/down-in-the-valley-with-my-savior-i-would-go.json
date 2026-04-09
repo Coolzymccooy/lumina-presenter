@@ -1,0 +1,97 @@
+{
+  "status": "approved",
+  "id": "down-in-the-valley-with-my-savior-i-would-go",
+  "title": "Down in the valley with my Savior I would go",
+  "alternateTitles": [],
+  "firstLine": "Down in the valley with my Savior I would go,",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Orcutt Cushing",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Robert Lowry"
+    }
+  ],
+  "themes": [
+    "surrender"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Orcutt Cushing (1823–1902).",
+  "tuneAttribution": "Tune: Robert Lowry (1826–1899).",
+  "publicDomainBasis": "William Orcutt Cushing (1823–1902), Robert Lowry (1826–1899). All public domain.",
+  "searchKeywords": [
+    "down",
+    "valley",
+    "with",
+    "savior",
+    "would"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Down in the valley with my Savior I would go,\nWhere the flowers are blooming and the sweet waters flow;\nEverywhere He leads me I would follow, follow on,\nWalking in His footsteps till the crown be won."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Down in the valley with my Savior I would go,\nWhere the storms are sweeping and the dark waters flow;\nWith His hand to lead me I will never, never fear,\nDangers cannot fright me if my Lord is near."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Down in the valley, or upon the mountain steep,\nClose beside my Savior would my heart ever keep;\nHe will lead me safely in the path that He has trod,\nUp to where they gather in the rest of God."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "down in the valley with my savior i would go",
+    "normalizedFirstLine": "down in the valley with my savior i would go",
+    "keywords": [
+      "down",
+      "valley",
+      "with",
+      "savior",
+      "would"
+    ],
+    "themes": [
+      "surrender"
+    ],
+    "tokens": [
+      "down",
+      "in",
+      "the",
+      "valley",
+      "with",
+      "my",
+      "savior",
+      "would",
+      "go",
+      "william",
+      "orcutt",
+      "cushing",
+      "unknown",
+      "surrender"
+    ],
+    "searchableText": "down in the valley with my savior i would go down in the valley with my savior i would go william orcutt cushing unknown surrender down valley with savior would"
+  }
+}

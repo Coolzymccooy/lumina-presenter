@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "lord-the-spirit-truth-divine",
+  "title": "Lord, the Spirit, Truth divine",
+  "alternateTitles": [],
+  "firstLine": "Lord, the Spirit, Truth divine,",
+  "meter": "7.7.7.7. with repeat.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Samuel Longfellow",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Henri Abraham Cesar Malan"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Samuel Longfellow (1819–1892).",
+  "tuneAttribution": "Tune: Henri Abraham Cesar Malan (1787–1864).",
+  "publicDomainBasis": "Samuel Longfellow (1819–1892), Henri Abraham Cesar Malan (1787–1864). All public domain.",
+  "searchKeywords": [
+    "lord",
+    "spirit",
+    "truth",
+    "divine"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Lord, the Spirit, Truth divine,\nDawn upon this heart of mine;\nWord of God, and inward light,\nWake my spirit, clear my sight.\nWake my spirit, clear my sight."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Lord, the Spirit, Love divine,\nGlow within this heart of mine,\nKindle every high desire,\nPerish self in Thy pure fire."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Lord, the Spirit, Power divine,\nFill and nerve this will of mine;\nBy Thee may I strongly live,\nBravely bear, and nobly strive."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Lord, the Spirit, Peace divine,\nStill this restless heart of mine,\nSpeak to calm this tossing sea,\nStayed in Thy tranquillity."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Lord, the Spirit, Joy divine,\nGladden Thou this heart of mine;\nIn the desert ways I’ll sing:\nSpring, O Well, forever spring!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "lord the spirit truth divine",
+    "normalizedFirstLine": "lord the spirit truth divine",
+    "keywords": [
+      "lord",
+      "spirit",
+      "truth",
+      "divine"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "lord",
+      "the",
+      "spirit",
+      "truth",
+      "divine",
+      "samuel",
+      "longfellow",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "lord the spirit truth divine lord the spirit truth divine samuel longfellow unknown praise lord spirit truth divine"
+  }
+}

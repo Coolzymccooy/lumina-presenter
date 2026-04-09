@@ -1,0 +1,123 @@
+{
+  "status": "approved",
+  "id": "i-hear-the-words-of-love",
+  "title": "I hear the words of love",
+  "alternateTitles": [],
+  "firstLine": "I hear the words of love,",
+  "meter": "6.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Horatius Bonar",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Genevan Psalter"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Horatius Bonar (1808–1889).",
+  "tuneAttribution": "Tune: Genevan Psalter.",
+  "publicDomainBasis": "Horatius Bonar (1808–1889), Genevan Psalter. All public domain.",
+  "searchKeywords": [
+    "hear",
+    "words",
+    "love"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I hear the words of love,\nI gaze upon the blood,\nI see the mighty sacrifice,\nAnd I have peace with God."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "’Tis everlasting peace!\nSure as Jehovah’s Name,\n’Tis stable as His steadfast throne,\nFor evermore the same."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "The clouds may go and come,\nAnd storms may sweep my sky;\nThis blood-sealed friendship changes not,\nThe Cross is ever nigh."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "My love is ofttimes low,\nMy joy still ebbs and flows,\nBut peace with Him remains the same,\nNo change my Savior knows."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "I change, He changes not;\nThe Christ can never die;\nHis love, not mine, the resting-place,\nHis truth, not mine, the tie."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "The Cross still stands unchanged,\nThough heaven is now His home;\nThe mighty stone is rolled away,\nBut yonder is His tomb!"
+    },
+    {
+      "id": "v7",
+      "type": "verse",
+      "label": "Verse 7",
+      "order": 7,
+      "text": "And yonder is my peace,\nThe grave of all my woes!\nI know the Son of God has come,\nI know He died and rose."
+    },
+    {
+      "id": "v8",
+      "type": "verse",
+      "label": "Verse 8",
+      "order": 8,
+      "text": "I know He liveth now\nAt God’s right hand above;\nI know the throne on which He sits,\nI know His truth and love!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i hear the words of love",
+    "normalizedFirstLine": "i hear the words of love",
+    "keywords": [
+      "hear",
+      "words",
+      "love"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "hear",
+      "the",
+      "words",
+      "of",
+      "love",
+      "horatius",
+      "bonar",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i hear the words of love i hear the words of love horatius bonar unknown praise hear words love"
+  }
+}

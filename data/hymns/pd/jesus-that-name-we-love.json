@@ -1,0 +1,98 @@
+{
+  "status": "approved",
+  "id": "jesus-that-name-we-love",
+  "title": "Jesus! that name we love",
+  "alternateTitles": [],
+  "firstLine": "Jesus! that name we love,",
+  "meter": "6.4.6.4.6.6.6.4.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "James George Deck",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lowell Mason"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: James George Deck (1807–1884).",
+  "tuneAttribution": "Tune: Lowell Mason (1792–1872).",
+  "publicDomainBasis": "James George Deck (1807–1884), Lowell Mason (1792–1872). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "that",
+    "name",
+    "love"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Jesus! that name we love,\nJesus, our Lord!\nJesus, all names above,\nJesus, the Lord!\nThou, Lord, our all must be;\nNothing that’s good have we,\nNothing apart from Thee.\nJesus, our Lord!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "As Son of Man it was,\nJesus, the Lord!\nThou gav’st Thy life for us,\nJesus, our Lord!\nGreat was indeed Thy love,\nAll other loves above,\nLove Thou didst dearly prove,\nJesus, our Lord!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Righteous alone in Thee,\nJesus, the Lord!\nThou wilt a refuge be,\nJesus, our Lord!\nWhom, then, have we to fear,\nWhat trouble, grief, or care,\nSince Thou art ever near,\nJesus, our Lord!"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Soon Thou wilt come again,\nJesus, the Lord!\nWe shall be happy then,\nJesus, our Lord!\nWhen Thine own face we see,\nThen shall we like Thee be,\nThen evermore with Thee,\nJesus, our Lord!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "jesus that name we love",
+    "normalizedFirstLine": "jesus that name we love",
+    "keywords": [
+      "jesus",
+      "that",
+      "name",
+      "love"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "jesus",
+      "that",
+      "name",
+      "we",
+      "love",
+      "james",
+      "george",
+      "deck",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "jesus that name we love jesus that name we love james george deck unknown praise jesus that name love"
+  }
+}

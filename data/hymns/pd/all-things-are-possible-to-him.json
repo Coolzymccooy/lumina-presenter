@@ -1,0 +1,101 @@
+{
+  "status": "approved",
+  "id": "all-things-are-possible-to-him",
+  "title": "All things are possible to him",
+  "alternateTitles": [],
+  "firstLine": "All things are possible to him",
+  "meter": "8.8.8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Henri Frederick Hemy"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Wesley (1707–1788).",
+  "tuneAttribution": "Tune: Henri Frederick Hemy (1818–1888), James George Walton (1821–1905).",
+  "publicDomainBasis": "Charles Wesley (1707–1788), Henri Frederick Hemy (1818–1888), James George Walton (1821–1905). All public domain.",
+  "searchKeywords": [
+    "things",
+    "possible"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "All things are possible to him\nThat can in Jesus’ name believe;\nLord, I no more Thy name blaspheme,\nThy truth I lovingly receive.\nI can, I do believe in Thee;\nAll things are possible to me."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "’Twas most impossible of all\nThat here sin’s reign in me should cease;\nYet shall it be, I know it shall;\nJesus, I trust Thy faithfulness.\nIf nothing is too hard for Thee,\nAll things are possible to me."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Though earth and hell the Word gainsay,\nThe Word of God shall never fail;\nThe Lord can break sin’s iron sway;\n’Tis certain, though impossible.\nThe thing impossible shall be,\nAll things are possible to me."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "All things are possible to God;\nTo Christ, the power of God in man;\nTo me when I am all renewed,\nIn Christ am fully formed again,\nAnd from the reign of sin set free,\nAll things are possible to me."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "All things are possible to God;\nTo Christ, the power of God in me;\nNow shed Thy mighty Self abroad,\nLet me no longer live, but Thee;\nGive me this hour in Thee to prove\nThe sweet omnipotence of love."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "all things are possible to him",
+    "normalizedFirstLine": "all things are possible to him",
+    "keywords": [
+      "things",
+      "possible"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "all",
+      "things",
+      "are",
+      "possible",
+      "to",
+      "him",
+      "charles",
+      "wesley",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "all things are possible to him all things are possible to him charles wesley unknown praise things possible"
+  }
+}

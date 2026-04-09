@@ -1,0 +1,99 @@
+{
+  "status": "approved",
+  "id": "sun-of-my-soul-thou-savior-dear",
+  "title": "Sun of my soul, Thou Savior dear",
+  "alternateTitles": [],
+  "firstLine": "Sun of my soul, Thou Savior dear,",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Keble",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Katholisches Gesangbuch"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Keble (1792–1866).",
+  "tuneAttribution": "Tune: Katholisches Gesangbuch.",
+  "publicDomainBasis": "John Keble (1792–1866), Katholisches Gesangbuch. All public domain.",
+  "searchKeywords": [
+    "soul",
+    "thou",
+    "savior",
+    "dear"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Sun of my soul, Thou Savior dear,\nIt is not night if Thou be near;\nOh, may no earthborn cloud arise\nTo hide Thee from Thy servant’s eyes."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "When the soft dews of kindly sleep\nMy wearied eyelids gently steep,\nBe my last thought how sweet to rest\nForever on my Savior’s breast."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Abide with me from morn till eve,\nFor without Thee I cannot live;\nAbide with me when night is nigh,\nFor without Thee I dare not die."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Come near, and bless us when we wake,\nEre through the world our way we take;\nTill in the ocean of Thy love\nWe lose ourselves in Thee above."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "sun of my soul thou savior dear",
+    "normalizedFirstLine": "sun of my soul thou savior dear",
+    "keywords": [
+      "soul",
+      "thou",
+      "savior",
+      "dear"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "sun",
+      "of",
+      "my",
+      "soul",
+      "thou",
+      "savior",
+      "dear",
+      "john",
+      "keble",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "sun of my soul thou savior dear sun of my soul thou savior dear john keble unknown praise soul thou savior dear"
+  }
+}

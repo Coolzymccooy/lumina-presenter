@@ -1,0 +1,92 @@
+{
+  "status": "approved",
+  "id": "under-his-wings-i-am-safely-abiding",
+  "title": "Under His wings I am safely abiding",
+  "alternateTitles": [],
+  "firstLine": "Under His wings I am safely abiding;",
+  "meter": "11.10.11.10. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Orcutt Cushing",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Ira David Sankey"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Orcutt Cushing (1823–1902).",
+  "tuneAttribution": "Tune: Ira David Sankey (1840–1908).",
+  "publicDomainBasis": "William Orcutt Cushing (1823–1902), Ira David Sankey (1840–1908). All public domain.",
+  "searchKeywords": [
+    "under",
+    "wings",
+    "safely",
+    "abiding"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Under His wings I am safely abiding;\nThough the night deepens and tempests are wild,\nStill I can trust Him, I know He will keep me;\nHe has redeemed me, and I am His child."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Under His wings—what a refuge in sorrow!\nHow the heart yearningly turns to His rest!\nOften when earth has no balm for my healing,\nThere I find comfort, and there I am blest."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Under His wings—oh, what precious enjoyment!\nThere will I hide till life’s trials are o’er;\nSheltered, protected, no evil can harm me;\nResting in Jesus I’m safe evermore."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "under his wings i am safely abiding",
+    "normalizedFirstLine": "under his wings i am safely abiding",
+    "keywords": [
+      "under",
+      "wings",
+      "safely",
+      "abiding"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "under",
+      "his",
+      "wings",
+      "am",
+      "safely",
+      "abiding",
+      "william",
+      "orcutt",
+      "cushing",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "under his wings i am safely abiding under his wings i am safely abiding william orcutt cushing unknown praise under wings safely abiding"
+  }
+}

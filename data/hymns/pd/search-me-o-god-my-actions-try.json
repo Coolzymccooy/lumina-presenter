@@ -1,0 +1,108 @@
+{
+  "status": "approved",
+  "id": "search-me-o-god-my-actions-try",
+  "title": "Search me, O God, my actions try",
+  "alternateTitles": [],
+  "firstLine": "Search me, O God, my actions try,",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Frank Bottome",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Henry Havergal"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Frank Bottome (1823–1894).",
+  "tuneAttribution": "Tune: William Henry Havergal (1793–1870).",
+  "publicDomainBasis": "Frank Bottome (1823–1894), William Henry Havergal (1793–1870). All public domain.",
+  "searchKeywords": [
+    "search",
+    "actions"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Search me, O God, my actions try,\nAnd let my life appear\nAs seen by Thine all-searching eye—\nTo mine my ways make clear."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Search all my sense, and know my heart\nWho only canst make known,\nAnd let the deep, the hidden part\nTo me be fully shown."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Throw light into the darkened cells,\nWhere passion reigns within;\nQuicken my conscience till it feels\nThe loathsomeness of sin."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Search all my thoughts, the secret springs,\nThe motives that control;\nThe chambers where polluted things\nHold empire o’er the soul."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Search, till Thy fiery glance has cast\nIts holy light through all,\nAnd I by grace am brought at last\nBefore Thy face to fall."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Thus prostrate I shall learn of Thee,\nWhat now I feebly prove,\nThat God alone in Christ can be\nUnutterable love."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "search me o god my actions try",
+    "normalizedFirstLine": "search me o god my actions try",
+    "keywords": [
+      "search",
+      "actions"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "search",
+      "me",
+      "god",
+      "my",
+      "actions",
+      "try",
+      "frank",
+      "bottome",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "search me o god my actions try search me o god my actions try frank bottome unknown praise search actions"
+  }
+}

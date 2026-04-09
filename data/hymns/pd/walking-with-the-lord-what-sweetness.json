@@ -1,0 +1,101 @@
+{
+  "status": "approved",
+  "id": "walking-with-the-lord-what-sweetness",
+  "title": "Walking with the Lord—what sweetness",
+  "alternateTitles": [],
+  "firstLine": "Walking with the Lord—what sweetness!",
+  "meter": "8.7.8.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Albert Benjamin Simpson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Albert Benjamin Simpson (1843–1919).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Albert Benjamin Simpson (1843–1919). All public domain.",
+  "searchKeywords": [
+    "walking",
+    "with",
+    "lord",
+    "what",
+    "sweetness"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Walking with the Lord—what sweetness!\nDespite outward suffering,\nStep by step, His footsteps’ impress,\nHis strait way I’m following."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Walking with the Lord—what splendor!\nDawn shines forth to greet the day;\nEach step, to His voice surrender;\nEvery moment take His way."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Walk with Him—naught can alarm us,\nThough assailed from many sides;\nStep by step obey His guidance;\nNarrow path, where’er He guides."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Walk with Him—our future’s precious;\nWith Him we’ll His kingdom gain;\nEvery step, pursue His purpose,\nOn His narrow way remain."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "walking with the lord what sweetness",
+    "normalizedFirstLine": "walking with the lord what sweetness",
+    "keywords": [
+      "walking",
+      "with",
+      "lord",
+      "what",
+      "sweetness"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "walking",
+      "with",
+      "the",
+      "lord",
+      "what",
+      "sweetness",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "walking with the lord what sweetness walking with the lord what sweetness albert benjamin simpson unknown praise walking with lord what sweetness"
+  }
+}

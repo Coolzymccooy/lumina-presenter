@@ -1,0 +1,94 @@
+{
+  "status": "approved",
+  "id": "standing-in-the-evil-day",
+  "title": "Standing in the evil day",
+  "alternateTitles": [],
+  "firstLine": "Standing in the evil day,",
+  "meter": "7.7.7.5.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Clement Cotterill Scholefield"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Clement Cotterill Scholefield (1839–1904).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Clement Cotterill Scholefield (1839–1904). All public domain.",
+  "searchKeywords": [
+    "standing",
+    "evil"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Standing in the evil day,\nHeeding not what men may say,\nFearing not the face of clay,\nChristian soldier, stand."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Standing for the Word of God,\nStanding for the precious blood,\nFollowing where the saints have trod,\nChristian soldier, stand."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Stand ’mid Satan’s every wile,\nStand ’mid pleasure’s wanton smile,\nStand when error would beguile;\nChristian soldier, stand."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Stand till ends life’s little day,\nStand for Jesus, come what may,\nStand and fight and watch and pray;\nChristian soldier, stand."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "standing in the evil day",
+    "normalizedFirstLine": "standing in the evil day",
+    "keywords": [
+      "standing",
+      "evil"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "standing",
+      "in",
+      "the",
+      "evil",
+      "day",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "standing in the evil day standing in the evil day albert benjamin simpson unknown praise standing evil"
+  }
+}

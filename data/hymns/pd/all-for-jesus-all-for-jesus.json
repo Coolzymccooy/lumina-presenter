@@ -1,0 +1,97 @@
+{
+  "status": "approved",
+  "id": "all-for-jesus-all-for-jesus",
+  "title": "All for Jesus! All for Jesus",
+  "alternateTitles": [],
+  "firstLine": "All for Jesus! All for Jesus!",
+  "meter": "8.7.8.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Mary Dagworthy James",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Asa Hull"
+    }
+  ],
+  "themes": [
+    "surrender"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Mary Dagworthy James (1810–1883).",
+  "tuneAttribution": "Tune: Asa Hull (1828–1917).",
+  "publicDomainBasis": "Mary Dagworthy James (1810–1883), Asa Hull (1828–1917). All public domain.",
+  "searchKeywords": [
+    "jesus"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "All for Jesus! All for Jesus!\nAll my being’s ransomed pow’rs;\nAll my thoughts and words and doings,\nAll my days and all my hours.\nAll for Jesus! All for Jesus!\nAll my days and all my hours.\nAll for Jesus! All for Jesus!\nAll my days and all my hours."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Let my hands perform His bidding;\nLet my feet run in His ways;\nLet mine eyes see Jesus only;\nLet my lips speak forth His praise.\nAll for Jesus! All for Jesus!\nLet my lips speak forth His praise.\nAll for Jesus! All for Jesus!\nLet my lips speak forth His praise."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Worldlings prize their gems of beauty,\nCling to gilded toys of dust;\nBoast of wealth, and fame, and pleasure;\nOnly Jesus will I trust.\nAll for Jesus! All for Jesus!\nOnly Jesus will I trust.\nAll for Jesus! All for Jesus!\nOnly Jesus will I trust."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Since mine eyes were fixed on Jesus,\nI’ve lost sight of all beside—\nSo enchained my spirit’s vision,\nLooking at the Crucified.\nAll for Jesus! All for Jesus!\nLooking at the Crucified.\nAll for Jesus! All for Jesus!\nLooking at the Crucified."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Oh, what wonder! how amazing!\nJesus, glorious King of kings,\nDeigns to call me His beloved,\nLets me rest beneath His wings.\nAll for Jesus! All for Jesus!\nResting now beneath His wings.\nAll for Jesus! All for Jesus!\nResting now beneath His wings."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "all for jesus all for jesus",
+    "normalizedFirstLine": "all for jesus all for jesus",
+    "keywords": [
+      "jesus"
+    ],
+    "themes": [
+      "surrender"
+    ],
+    "tokens": [
+      "all",
+      "for",
+      "jesus",
+      "mary",
+      "dagworthy",
+      "james",
+      "unknown",
+      "surrender"
+    ],
+    "searchableText": "all for jesus all for jesus all for jesus all for jesus mary dagworthy james unknown surrender jesus"
+  }
+}

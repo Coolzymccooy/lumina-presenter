@@ -1,0 +1,92 @@
+{
+  "status": "approved",
+  "id": "in-the-hour-of-trial",
+  "title": "In the hour of trial",
+  "alternateTitles": [],
+  "firstLine": "In the hour of trial,",
+  "meter": "6.5.6.5.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "James Montgomery",
+      "role": "text"
+    },
+    {
+      "name": "Frances A. Hutton",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Spencer Lane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: James Montgomery (1771–1854), Frances A. Hutton (1789–1871).",
+  "tuneAttribution": "Tune: Spencer Lane (1843–1903).",
+  "publicDomainBasis": "James Montgomery (1771–1854), Frances A. Hutton (1789–1871), Spencer Lane (1843–1903). All public domain.",
+  "searchKeywords": [
+    "hour",
+    "trial"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "In the hour of trial,\nJesus, plead for me,\nLest by base denial,\nI depart from Thee;\nWhen Thou seest me waver,\nWith a look recall,\nNor for fear or favor\nSuffer me to fall."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Should Thy mercy send me\nSorrow, toil, and woe;\nOr should pain attend me\nOn my path below;\nGrant that I may never\nFail Thy hand to see;\nGrant that I may ever\nCast my care on Thee."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "When the last hour cometh,\nFraught with strife and pain,\nWhen Thou, Lord, returneth\nTo the earth again;\nOn Thy truth relying\nAs that hour draws near,\nJesus, take me, waiting,\nTo Thy presence dear."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "in the hour of trial",
+    "normalizedFirstLine": "in the hour of trial",
+    "keywords": [
+      "hour",
+      "trial"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "in",
+      "the",
+      "hour",
+      "of",
+      "trial",
+      "james",
+      "montgomery",
+      "frances",
+      "hutton",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "in the hour of trial in the hour of trial james montgomery frances a hutton unknown praise hour trial"
+  }
+}

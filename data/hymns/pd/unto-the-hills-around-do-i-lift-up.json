@@ -1,0 +1,101 @@
+{
+  "status": "approved",
+  "id": "unto-the-hills-around-do-i-lift-up",
+  "title": "Unto the hills around do I lift up",
+  "alternateTitles": [],
+  "firstLine": "Unto the hills around do I lift up",
+  "meter": "10.4.10.4.10.10.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Douglas Sutherland Campbell",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Charles Henry Purday"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Douglas Sutherland Campbell (1878–1883).",
+  "tuneAttribution": "Tune: Charles Henry Purday (1799–1885).",
+  "publicDomainBasis": "John Douglas Sutherland Campbell (1878–1883), Charles Henry Purday (1799–1885). All public domain.",
+  "searchKeywords": [
+    "unto",
+    "hills",
+    "around",
+    "lift"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Unto the hills around do I lift up\nMy longing eyes;\nO whence for me shall my salvation come,\nFrom whence arise?\nFrom God the Lord doth come my certain aid,\nFrom God the Lord, who heav’n and earth hath made."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "He will not suffer that thy foot be moved:\nSafe shalt thou be.\nNo careless slumber shall His eyelids close,\nWho keepeth thee.\nBehold, He sleepeth not, He slumbereth ne’er,\nWho keepeth Israel in His holy care."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Jehovah is Himself thy keeper true,\nThy changeless shade;\nJehovah thy defense on thy right hand\nHimself hath made.\nAnd thee no sun by day shall ever smite;\nNo moon shall harm thee in the silent night."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "From every evil shall He keep thy soul,\nFrom every sin;\nJehovah shall preserve thy going out,\nThy coming in.\nAbove thee, watching, He whom we adore\nShall keep thee henceforth, yea, for evermore."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "unto the hills around do i lift up",
+    "normalizedFirstLine": "unto the hills around do i lift up",
+    "keywords": [
+      "unto",
+      "hills",
+      "around",
+      "lift"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "unto",
+      "the",
+      "hills",
+      "around",
+      "do",
+      "lift",
+      "up",
+      "john",
+      "douglas",
+      "sutherland",
+      "campbell",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "unto the hills around do i lift up unto the hills around do i lift up john douglas sutherland campbell unknown praise unto hills around lift"
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "status": "approved",
+  "id": "lord-accept-our-feeble-song",
+  "title": "Lord, accept our feeble song",
+  "alternateTitles": [],
+  "firstLine": "Lord, accept our feeble song!",
+  "meter": "8.7.8.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Thomas Kelly",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Bacchus Dykes"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Thomas Kelly (1769–1855).",
+  "tuneAttribution": "Tune: John Bacchus Dykes (1823–1876).",
+  "publicDomainBasis": "Thomas Kelly (1769–1855), John Bacchus Dykes (1823–1876). All public domain.",
+  "searchKeywords": [
+    "lord",
+    "accept",
+    "feeble",
+    "song"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Lord, accept our feeble song!\nPow’r and praise to Thee belong;\nWe would all Thy grace record,\nHoly, gracious, loving Lord!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Rich in glory, Thou didst stoop,\nThence is all Thy people’s hope;\nThou wast poor, that we might be\nRich in glory, Lord, with Thee."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Wherefore Thou high heaven didst spurn?\nWherefore Thou to earth didst turn?\nWhy leave heav’n to come to earth\nLonely, scorned, e’en suffering death?"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Thou in heav’n—the glorious One!\nThou on earth—the outcast Man!\nThough this suffering Thou didst know,\nLove would come to bear our woe."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "When we think of love like this,\nJoy and shame our hearts possess;\nJoy, that Thou couldst pity thus;\nShame, for such returns from us."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Yet we hope the day to see\nWhen from every hindrance free,\nWhen to Thee, in glory, brought,\nWe shall serve Thee as we ought."
+    },
+    {
+      "id": "v7",
+      "type": "verse",
+      "label": "Verse 7",
+      "order": 7,
+      "text": "Now, O Lord, we wait for Thee,\nWait “the blessed hope” to see.\nMay we ever for Thee live,\nTill Thy saints Thou dost receive."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "lord accept our feeble song",
+    "normalizedFirstLine": "lord accept our feeble song",
+    "keywords": [
+      "lord",
+      "accept",
+      "feeble",
+      "song"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "lord",
+      "accept",
+      "our",
+      "feeble",
+      "song",
+      "thomas",
+      "kelly",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "lord accept our feeble song lord accept our feeble song thomas kelly unknown praise lord accept feeble song"
+  }
+}

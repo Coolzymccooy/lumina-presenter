@@ -1,0 +1,95 @@
+{
+  "status": "approved",
+  "id": "rejoice-the-lord-is-king",
+  "title": "Rejoice, the Lord is King",
+  "alternateTitles": [],
+  "firstLine": "Rejoice, the Lord is King,",
+  "meter": "6.6.6.6.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Darwall"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Wesley (1707–1788).",
+  "tuneAttribution": "Tune: John Darwall (1731–1789).",
+  "publicDomainBasis": "Charles Wesley (1707–1788), John Darwall (1731–1789). All public domain.",
+  "searchKeywords": [
+    "rejoice",
+    "lord",
+    "king"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Rejoice, the Lord is King,\nYour Lord and King adore;\nMortals, give thanks and sing\nAnd triumph evermore:"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "His kingdom cannot fail;\nHe rules o’er earth and heav’n;\nThe keys of death and hell\nAre to our Jesus giv’n:"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Jesus, the Savior reigns,\nThe God of truth and love:\nWhen He had purged our stains\nHe took His seat above:"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "He sits at God’s right hand\nTill all His foes submit,\nAnd bow to His command,\nAnd fall beneath His feet:"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "rejoice the lord is king",
+    "normalizedFirstLine": "rejoice the lord is king",
+    "keywords": [
+      "rejoice",
+      "lord",
+      "king"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "rejoice",
+      "the",
+      "lord",
+      "is",
+      "king",
+      "charles",
+      "wesley",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "rejoice the lord is king rejoice the lord is king charles wesley unknown praise rejoice lord king"
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "status": "approved",
+  "id": "lord-jesus-when-we-think-of-thee",
+  "title": "Lord Jesus! when we think of Thee",
+  "alternateTitles": [],
+  "firstLine": "Lord Jesus! when we think of Thee,",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "James George Deck",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Moore's Psalm-Singer's Pocket Companion"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: James George Deck (1807–1884).",
+  "tuneAttribution": "Tune: Moore's Psalm-Singer's Pocket Companion.",
+  "publicDomainBasis": "James George Deck (1807–1884), Moore's Psalm-Singer's Pocket Companion. All public domain.",
+  "searchKeywords": [
+    "lord",
+    "jesus",
+    "when",
+    "think",
+    "thee"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Lord Jesus! when we think of Thee,\nOf all Thy love and grace,\nOur spirits long and fain would see\nThy beauty face to face."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "And though the wilderness we tread,\nA barren, thirsty ground,\nWith thorns and briars overspread,\nWhere foes and snares abound;"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Yet in Thy love such depths we see,\nOur hearts o’erflow with praise—\nContent ourselves, while, Lord to Thee\nA joyful song we raise."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Our Lord, our Life, our Rest, our Shield,\nOur Rock, our Food, our Light;\nEach thought of Thee doth constant yield\nUnchanging, fresh delight."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Blest Savior, keep our spirit stayed,\nHard following after Thee,\nTill we, in victory displayed,\nThy face in glory see."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "lord jesus when we think of thee",
+    "normalizedFirstLine": "lord jesus when we think of thee",
+    "keywords": [
+      "lord",
+      "jesus",
+      "when",
+      "think",
+      "thee"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "lord",
+      "jesus",
+      "when",
+      "we",
+      "think",
+      "of",
+      "thee",
+      "james",
+      "george",
+      "deck",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "lord jesus when we think of thee lord jesus when we think of thee james george deck unknown praise lord jesus when think thee"
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "status": "approved",
+  "id": "master-speak-thy-servant-heareth",
+  "title": "Master, speak! Thy servant heareth",
+  "alternateTitles": [],
+  "firstLine": "Master, speak! Thy servant heareth,",
+  "meter": "8.7.8.7.7.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Frances Ridley Havergal",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lowell Mason"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Frances Ridley Havergal (1836–1879).",
+  "tuneAttribution": "Tune: Lowell Mason (1792–1872).",
+  "publicDomainBasis": "Frances Ridley Havergal (1836–1879), Lowell Mason (1792–1872). All public domain.",
+  "searchKeywords": [
+    "master",
+    "speak",
+    "servant",
+    "heareth"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Master, speak! Thy servant heareth,\nWaiting for Thy gracious word,\nLonging for Thy voice that cheereth\nMaster, let it now be heard.\nI am list’ning, Lord, for Thee;\nWhat hast Thou to say to me?"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Often through my heart is pealing\nMany another voice than Thine,\nMany an unwilled echo stealing\nFrom the walls of this Thy shrine.\nLet Thy longed-for accents fall;\nMaster, speak! and silence all."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Master, speak! though least and lowest,\nLet me not unheard depart;\nMaster, speak! for oh, Thou knowest\nAll the yearning of my heart.\nKnowest all its truest need;\nSpeak! and make me blest indeed."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Master, speak! and make me ready,\nWhen Thy voice is truly heard,\nWith obedience glad and steady,\nStill to follow every word\nI am listening, Lord, for Thee:\nMaster, speak, oh, speak to me!"
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Speak to me by name, O Master,\nLet me know it is to me;\nSpeak, that I may follow faster,\nWith a step more firm and free,\nWhere the Shepherd leads the flock\nIn the shadow of the Rock!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "master speak thy servant heareth",
+    "normalizedFirstLine": "master speak thy servant heareth",
+    "keywords": [
+      "master",
+      "speak",
+      "servant",
+      "heareth"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "master",
+      "speak",
+      "thy",
+      "servant",
+      "heareth",
+      "frances",
+      "ridley",
+      "havergal",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "master speak thy servant heareth master speak thy servant heareth frances ridley havergal unknown praise master speak servant heareth"
+  }
+}

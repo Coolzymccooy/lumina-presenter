@@ -1,0 +1,105 @@
+{
+  "status": "approved",
+  "id": "we-have-a-most-glorious-king",
+  "title": "We have a most glorious King",
+  "alternateTitles": [],
+  "firstLine": "We have a most glorious King;",
+  "meter": "8.8.8.8.D.(A)",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lewis Edson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Lewis Edson (1748–1820).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Lewis Edson (1748–1820). All public domain.",
+  "searchKeywords": [
+    "have",
+    "most",
+    "glorious",
+    "king"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "We have a most glorious King;\nThe heavens, He says, are His throne;\nAll worlds are His mighty domain,\nAll kingdoms His scepter shall own.\nHe dwells with His people below,\nHe loves in their trials to share;\nWe dwell with the King for His work,\nHis burden we willingly bear."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "I’m dwelling with Jesus my King;\nI’ve found where He dwells with His own;\nI’ve opened the door of my heart;\nHe’s made it His temple and throne.\nLike Mary I sit at His feet,\nLike John I recline on His breast;\nHis presence is fulness of joy,\nHis bosom is infinite rest."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "I dwell with the King for His work,\nI’ve part in His glorious plan\nTo bring in His kingdom to earth\nAnd tell His salvation to man.\nThe world has its work and rewards,\nI count them but folly and loss;\nMy business is only His work,\nMy message is only His cross."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "I dwell with the King for His work,\nThe work, it is His and not mine;\nHe plans and prepares it for me\nAnd fills me with power divine.\nSo duty is changed to delight,\nAnd prayer into praise as I sing;\nI dwell with my King for His work\nAnd work in the strength of my King."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "We’ll dwell with the King for His work\nAnd work thru each day of the year.\nPerhaps ere it passes, the King\nIn glory Himself shall appear.\nOh, then in some closer embrace,\nOh, then in some nobler employ\nWe’ll dwell with the King for His work\nIn endless, ineffable joy!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "we have a most glorious king",
+    "normalizedFirstLine": "we have a most glorious king",
+    "keywords": [
+      "have",
+      "most",
+      "glorious",
+      "king"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "we",
+      "have",
+      "most",
+      "glorious",
+      "king",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "we have a most glorious king we have a most glorious king albert benjamin simpson unknown praise have most glorious king"
+  }
+}

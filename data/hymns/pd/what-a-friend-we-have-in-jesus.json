@@ -1,0 +1,53 @@
+{
+  "status": "approved",
+  "id": "what-a-friend-we-have-in-jesus",
+  "title": "What a Friend We Have in Jesus",
+  "alternateTitles": [],
+  "firstLine": "What a friend we have in Jesus, all our sins and griefs to bear",
+  "meter": "8.7.8.7 D",
+  "hymnalNumbers": { "UMH": 526, "SBC": 526, "LW": 438, "ELW": 742 },
+  "authors": [
+    { "name": "Joseph M. Scriven", "role": "text" },
+    { "name": "Charles C. Converse", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "CONVERSE", "composer": "Charles C. Converse", "alternateNames": ["ERIE", "What a Friend"] }
+  ],
+  "themes": ["prayer", "comfort", "guidance"],
+  "scriptureThemes": ["John 15:13-15", "Philippians 4:6-7", "1 Peter 5:7"],
+  "textAttribution": "Text: Joseph M. Scriven, c. 1855.",
+  "tuneAttribution": "Tune: CONVERSE by Charles C. Converse, 1868.",
+  "publicDomainBasis": "Joseph M. Scriven (1819–1886), Charles C. Converse (1832–1918). Text c. 1855, tune 1868. Both public domain.",
+  "searchKeywords": ["friend", "prayer", "burden", "peace", "privilege", "carry"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "prayer",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "either",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 38,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "What a friend we have in Jesus, all our sins and griefs to bear!\nWhat a privilege to carry everything to God in prayer!\nO what peace we often forfeit, O what needless pain we bear,\nAll because we do not carry everything to God in prayer."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Have we trials and temptations? Is there trouble anywhere?\nWe should never be discouraged; take it to the Lord in prayer.\nCan we find a friend so faithful, who will all our sorrows share?\nJesus knows our every weakness; take it to the Lord in prayer."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Are we weak and heavy laden, cumbered with a load of care?\nPrecious Savior, still our refuge; take it to the Lord in prayer.\nDo thy friends despise, forsake thee? Take it to the Lord in prayer;\nIn His arms He'll take and shield thee; thou wilt find a solace there."
+    }
+  ]
+}

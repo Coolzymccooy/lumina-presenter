@@ -1,0 +1,112 @@
+{
+  "status": "approved",
+  "id": "something-every-heart-is-loving",
+  "title": "Something every heart is loving",
+  "alternateTitles": [],
+  "firstLine": "Something every heart is loving:",
+  "meter": "8.7.8.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Gerhardt Tersteegen",
+      "role": "text"
+    },
+    {
+      "name": "Emma Frances Shuttleworth Bevan",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Stainer"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Gerhardt Tersteegen (1697–1769), Emma Frances Shuttleworth Bevan (1827–1909).",
+  "tuneAttribution": "Tune: John Stainer (1840–1901).",
+  "publicDomainBasis": "Gerhardt Tersteegen (1697–1769), Emma Frances Shuttleworth Bevan (1827–1909), John Stainer (1840–1901). All public domain.",
+  "searchKeywords": [
+    "something",
+    "every",
+    "heart",
+    "loving"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Something every heart is loving:\nIf not Jesus, none can rest;\nLord, my heart to Thee is given;\nTake it, for it loves Thee best."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Thus I cast the world behind me;\nJesus most beloved shall be;\nBeauteous more than all things beauteous,\nHe alone is joy to me."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Bright with all eternal radiance\nIs the glory of Thy face;\nThou art loving, sweet, and tender,\nFull of pity, full of grace."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "When I hated, Thou didst love me,\nShedd’st for me Thy precious blood;\nStill Thou lovest, lovest ever,\nShall I not love Thee, my God?"
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Keep my heart still faithful to Thee,\nThat my earthly life may be\nBut a shadow to that glory\nOf my hidden life in Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "something every heart is loving",
+    "normalizedFirstLine": "something every heart is loving",
+    "keywords": [
+      "something",
+      "every",
+      "heart",
+      "loving"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "something",
+      "every",
+      "heart",
+      "is",
+      "loving",
+      "gerhardt",
+      "tersteegen",
+      "emma",
+      "frances",
+      "shuttleworth",
+      "bevan",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "something every heart is loving something every heart is loving gerhardt tersteegen emma frances shuttleworth bevan unknown praise something every heart loving"
+  }
+}

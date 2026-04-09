@@ -1,0 +1,60 @@
+{
+  "status": "approved",
+  "id": "my-faith-looks-up-to-thee",
+  "title": "My Faith Looks Up to Thee",
+  "alternateTitles": [],
+  "firstLine": "My faith looks up to Thee, Thou Lamb of Calvary, Savior divine",
+  "meter": "6.6.4.6.6.6.4",
+  "hymnalNumbers": { "UMH": 452, "SBC": 416, "LW": 390 },
+  "authors": [
+    { "name": "Ray Palmer", "role": "text" },
+    { "name": "Lowell Mason", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "OLIVET", "composer": "Lowell Mason", "alternateNames": ["My Faith Looks Up to Thee"] }
+  ],
+  "themes": ["prayer", "surrender", "assurance"],
+  "scriptureThemes": ["Hebrews 12:2", "Romans 5:1", "John 1:29"],
+  "textAttribution": "Text: Ray Palmer, 1830.",
+  "tuneAttribution": "Tune: OLIVET by Lowell Mason, 1832.",
+  "publicDomainBasis": "Ray Palmer (1808–1887), Lowell Mason (1792–1872). Text 1830, tune 1832. Both public domain.",
+  "searchKeywords": ["faith", "calvary", "savior", "zeal", "inspire", "fire", "devotion"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "prayer",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 30,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "My faith looks up to Thee,\nThou Lamb of Calvary,\nSavior divine!\nNow hear me while I pray,\nTake all my guilt away,\nO let me from this day\nBe wholly Thine!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "May Thy rich grace impart\nStrength to my fainting heart,\nMy zeal inspire!\nAs Thou hast died for me,\nO may my love to Thee\nPure, warm, and changeless be,\nA living fire!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "While life's dark maze I tread,\nAnd griefs around me spread,\nBe Thou my guide;\nBid darkness turn to day,\nWipe sorrow's tears away,\nNor let me ever stray\nFrom Thee aside."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "When ends life's transient dream,\nWhen death's cold, sullen stream\nShall o'er me roll;\nBlest Savior, then in love,\nFear and distrust remove;\nO bear me safe above,\nA ransomed soul!"
+    }
+  ]
+}

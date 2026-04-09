@@ -1,0 +1,102 @@
+{
+  "status": "approved",
+  "id": "hail-to-the-lord-s-anointed",
+  "title": "Hail to the Lord’s Anointed",
+  "alternateTitles": [],
+  "firstLine": "Hail to the Lord’s Anointed,",
+  "meter": "7.6.7.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "James Montgomery",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Johann Cruger"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: James Montgomery (1771–1854).",
+  "tuneAttribution": "Tune: Johann Cruger (1598–1662).",
+  "publicDomainBasis": "James Montgomery (1771–1854), Johann Cruger (1598–1662). All public domain.",
+  "searchKeywords": [
+    "hail",
+    "lord",
+    "anointed"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Hail to the Lord’s Anointed,\nGreat David’s greater Son!\nHail, in the time appointed,\nHis reign on earth begun!\nHe comes to break oppression,\nTo set the captive free;\nTo take away transgression,\nAnd rule in equity."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "He shall come down like showers\nUpon the fruitful earth;\nAnd love, joy, hope, like flowers,\nSpring in His path to birth:\nBefore Him on the mountains\nShall peace, the herald, go;\nAnd righteousness, in fountains,\nFrom hill to valley flow."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Kings shall fall down before Him,\nAnd gold and incense bring;\nAll nations shall adore Him,\nHis praise all people sing;\nFor He shall have dominion\nO’er river, sea, and shore,\nFar as the eagle’s pinion,\nOr dove’s light wing can soar."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "To Him shall prayer unceasing\nAnd daily vows ascend;\nHis kingdom still increasing,\nA kingdom without end.\nThe mountain dews shall nourish\nA seed in weakness sown,\nWhose fruit shall spread and flourish,\nAnd shake like Lebanon."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "O’er every foe victorious\nHe on His throne shall rest,\nFrom age to age more glorious,\nAll-blessing and all-blest.\nThe tide of time shall never\nHis covenant remove;\nHis Name shall stand forever,\nHis changeless Name of Love."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "hail to the lord s anointed",
+    "normalizedFirstLine": "hail to the lord s anointed",
+    "keywords": [
+      "hail",
+      "lord",
+      "anointed"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "hail",
+      "to",
+      "the",
+      "lord",
+      "anointed",
+      "james",
+      "montgomery",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "hail to the lord s anointed hail to the lord s anointed james montgomery unknown praise hail lord anointed"
+  }
+}

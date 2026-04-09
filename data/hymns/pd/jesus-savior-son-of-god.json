@@ -1,0 +1,108 @@
+{
+  "status": "approved",
+  "id": "jesus-savior-son-of-god",
+  "title": "Jesus, Savior, Son of God",
+  "alternateTitles": [],
+  "firstLine": "Jesus, Savior, Son of God,",
+  "meter": "7.7.7.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Bickersteth's Christian Psalmody",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Benjamin Milgrove"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Bickersteth's Christian Psalmody.",
+  "tuneAttribution": "Tune: Benjamin Milgrove (1731–1810).",
+  "publicDomainBasis": "Bickersteth's Christian Psalmody, Benjamin Milgrove (1731–1810). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "savior"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Jesus, Savior, Son of God,\nBearer of the sinner’s load,\nBreaker of the captive’s chain,\nCleanser of the guilty’s stain."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Thou the sinner’s death hast died,\nThou for us wast crucified;\nFor our sins Thy flesh was torn,\nThou our penalty hast borne."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Savior, Surety, Lamb of God,\nThou hast bought us with Thy blood;\nThou hast wiped the debt away,\nNothing left for us to pay;"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Nothing left for us to bear,\nNothing left for us to share\nBut the pardon and the bliss,\nBut the love, the light, the peace."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "I to Thee will look and live,\nAnd, in looking, praises give;\nLooking lightens, looking heals,\nLooking all the gladness seals."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Jesus, Savior, Son of God,\nBearer of the sinner’s load,\nI would rise to Thee above,\nI would look, and praise, and love."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "jesus savior son of god",
+    "normalizedFirstLine": "jesus savior son of god",
+    "keywords": [
+      "jesus",
+      "savior"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "jesus",
+      "savior",
+      "son",
+      "of",
+      "god",
+      "bickersteths",
+      "christian",
+      "psalmody",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "jesus savior son of god jesus savior son of god bickersteths christian psalmody unknown praise jesus savior"
+  }
+}

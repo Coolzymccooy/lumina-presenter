@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "come-thou-fount-of-every-blessing-revised",
+  "title": "Come, Thou Fount of every blessing (revised)",
+  "alternateTitles": [],
+  "firstLine": "Come, Thou Fount of every blessing,",
+  "meter": "8.7.8.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Robert Robinson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Wyeth"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Robert Robinson (1735–1790).",
+  "tuneAttribution": "Tune: John Wyeth (1770–1858).",
+  "publicDomainBasis": "Robert Robinson (1735–1790), John Wyeth (1770–1858). All public domain.",
+  "searchKeywords": [
+    "come",
+    "thou",
+    "fount",
+    "every",
+    "blessing",
+    "revised"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Come, Thou Fount of every blessing,\nTune my heart to sing Thy grace;\nStreams of mercy, never ceasing,\nCall for songs of loudest praise.\nJesus sought me when a stranger,\nWand’ring from the face of God;\nHe, to save my soul from danger,\nInterposed His precious blood."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Oh, to grace how great a debtor\nDaily I’m constrained to be!\nLet that grace, Lord, like a fetter,\nBind my wand’ring heart to Thee.\nProne to wander, Lord, I feel it;\nProne to leave the God I love:\nTake my heart, oh, take and seal it\nWith Thy Spirit from above."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Now that I’ve obtained salvation,\nBeen from sins and death set free,\nLet me live a life uncommon,\nManifest God’s Son through me.\nHere I raise my Ebenezer;\nHere by Thy great help I’ve come,\nAnd I hope, by Thy good pleasure,\nSafely to arrive at home."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "come thou fount of every blessing revised",
+    "normalizedFirstLine": "come thou fount of every blessing",
+    "keywords": [
+      "come",
+      "thou",
+      "fount",
+      "every",
+      "blessing",
+      "revised"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "come",
+      "thou",
+      "fount",
+      "of",
+      "every",
+      "blessing",
+      "revised",
+      "robert",
+      "robinson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "come thou fount of every blessing revised come thou fount of every blessing robert robinson unknown praise come thou fount every blessing revised"
+  }
+}

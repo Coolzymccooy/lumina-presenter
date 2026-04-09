@@ -1,0 +1,95 @@
+{
+  "status": "approved",
+  "id": "she-only-touched-the-hem-of-his-garment-healing",
+  "title": "She only touched the hem of His garment (healing)",
+  "alternateTitles": [],
+  "firstLine": "She only touched the hem of His garment",
+  "meter": "8.6.8.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "George Frederick Root",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "George Frederick Root"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: George Frederick Root (1820–1895).",
+  "tuneAttribution": "Tune: George Frederick Root (1820–1895).",
+  "publicDomainBasis": "George Frederick Root (1820–1895), George Frederick Root (1820–1895). All public domain.",
+  "searchKeywords": [
+    "only",
+    "touched",
+    "garment",
+    "healing"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "She only touched the hem of His garment\nAs to His side she stole,\nAmid the crowd that gathered around Him;\nAnd straightway she was whole."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "She came in fear and trembling before Him,\nShe knew her Lord had come,\nShe felt that from Him virtue had healed her,\nThe mighty deed was done."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "He turned with “Daughter, be of good comfort,\nThy faith hath made thee whole”;\nAnd peace that passeth all understanding\nWith gladness filled her soul."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "she only touched the hem of his garment healing",
+    "normalizedFirstLine": "she only touched the hem of his garment",
+    "keywords": [
+      "only",
+      "touched",
+      "garment",
+      "healing"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "she",
+      "only",
+      "touched",
+      "the",
+      "hem",
+      "of",
+      "his",
+      "garment",
+      "healing",
+      "george",
+      "frederick",
+      "root",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "she only touched the hem of his garment healing she only touched the hem of his garment george frederick root unknown praise only touched garment healing"
+  }
+}

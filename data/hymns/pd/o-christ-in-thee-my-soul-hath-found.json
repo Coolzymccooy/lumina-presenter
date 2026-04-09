@@ -1,0 +1,103 @@
+{
+  "status": "approved",
+  "id": "o-christ-in-thee-my-soul-hath-found",
+  "title": "O Christ, in Thee my soul hath found",
+  "alternateTitles": [],
+  "firstLine": "O Christ, in Thee my soul hath found,",
+  "meter": "8.6.8.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Emma Frances Shuttleworth Bevan",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James McGranahan"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Emma Frances Shuttleworth Bevan (1827–1909).",
+  "tuneAttribution": "Tune: James McGranahan (1840–1907).",
+  "publicDomainBasis": "Emma Frances Shuttleworth Bevan (1827–1909), James McGranahan (1840–1907). All public domain.",
+  "searchKeywords": [
+    "christ",
+    "thee",
+    "soul",
+    "hath",
+    "found"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O Christ, in Thee my soul hath found,\nAnd found in Thee alone,\nThe peace, the joy I sought so long,\nThe bliss till now unknown."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "I sighed for rest and happiness,\nI yearned for them, not Thee;\nBut, while I passed my Savior by,\nHis love laid hold on me."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "I tried the broken cisterns, Lord,\nBut, ah, the waters failed!\nE’en as I stooped to drink they fled,\nAnd mocked me as I wailed."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "The pleasures lost I sadly mourned,\nBut never wept for Thee,\nTill grace the sightless eyes received,\nThy loveliness to see."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o christ in thee my soul hath found",
+    "normalizedFirstLine": "o christ in thee my soul hath found",
+    "keywords": [
+      "christ",
+      "thee",
+      "soul",
+      "hath",
+      "found"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "christ",
+      "in",
+      "thee",
+      "my",
+      "soul",
+      "hath",
+      "found",
+      "emma",
+      "frances",
+      "shuttleworth",
+      "bevan",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o christ in thee my soul hath found o christ in thee my soul hath found emma frances shuttleworth bevan unknown praise christ thee soul hath found"
+  }
+}

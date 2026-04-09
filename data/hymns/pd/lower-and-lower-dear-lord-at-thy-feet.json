@@ -1,0 +1,93 @@
+{
+  "status": "approved",
+  "id": "lower-and-lower-dear-lord-at-thy-feet",
+  "title": "Lower and lower, dear Lord, at Thy feet",
+  "alternateTitles": [],
+  "firstLine": "Lower and lower, dear Lord, at Thy feet,",
+  "meter": "10.10.10.10. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Eliza Edmunds Hewitt",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William James Kirkpatrick"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Eliza Edmunds Hewitt (1851–1920).",
+  "tuneAttribution": "Tune: William James Kirkpatrick (1838–1921).",
+  "publicDomainBasis": "Eliza Edmunds Hewitt (1851–1920), William James Kirkpatrick (1838–1921). All public domain.",
+  "searchKeywords": [
+    "lower",
+    "dear",
+    "lord",
+    "feet"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Lower and lower, dear Lord, at Thy feet,\nSeeking Thy Spirit, Thy mercy so sweet;\nDown in our need, blessed Master, we fall,\nLower and lower; be Thou all in all."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Lower and lower, dear Savior, we pray,\nLosing the self-life still more every day;\nWeak and unworthy, we’re looking above:\nEmpty us wholly; then fill us with love."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Lower and lower; yet higher we rise\nLifted in Christ, freed from all the earth ties:\nHumbly we follow the way of the cross.\nThen, crowns of glory, and gain for all loss."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "lower and lower dear lord at thy feet",
+    "normalizedFirstLine": "lower and lower dear lord at thy feet",
+    "keywords": [
+      "lower",
+      "dear",
+      "lord",
+      "feet"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "lower",
+      "and",
+      "dear",
+      "lord",
+      "at",
+      "thy",
+      "feet",
+      "eliza",
+      "edmunds",
+      "hewitt",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "lower and lower dear lord at thy feet lower and lower dear lord at thy feet eliza edmunds hewitt unknown praise lower dear lord feet"
+  }
+}

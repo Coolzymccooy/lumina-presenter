@@ -1,0 +1,91 @@
+{
+  "status": "approved",
+  "id": "o-let-us-rejoice-in-the-lord-evermore",
+  "title": "O let us rejoice in the Lord evermore",
+  "alternateTitles": [],
+  "firstLine": "O let us rejoice in the Lord evermore,",
+  "meter": "11.9.11.9. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Albert Benjamin Simpson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Albert Benjamin Simpson (1843–1919).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Albert Benjamin Simpson (1843–1919). All public domain.",
+  "searchKeywords": [
+    "rejoice",
+    "lord",
+    "evermore"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O let us rejoice in the Lord evermore,\nThough all things around us be trying,\nThough floods of affliction like sea billows roar,\nIt’s better to sing than be sighing."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "O let us rejoice in the Lord evermore,\nWhen the darts of the tempter are flying,\nFor Satan still dreads, as he oft did of yore,\nOur singing much more than our sighing."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "O let us rejoice in the Lord evermore,\nWhen sickness upon us is stealing,\nNo cordial like gladness our strength can restore,\nFor joy is the fountain of healing."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o let us rejoice in the lord evermore",
+    "normalizedFirstLine": "o let us rejoice in the lord evermore",
+    "keywords": [
+      "rejoice",
+      "lord",
+      "evermore"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "let",
+      "us",
+      "rejoice",
+      "in",
+      "the",
+      "lord",
+      "evermore",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o let us rejoice in the lord evermore o let us rejoice in the lord evermore albert benjamin simpson unknown praise rejoice lord evermore"
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "status": "approved",
+  "id": "our-blest-redeemer-ere-he-breathed",
+  "title": "Our blest Redeemer ere He breathed",
+  "alternateTitles": [],
+  "firstLine": "Our blest Redeemer ere He breathed",
+  "meter": "8.6.8.4.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Harriet Auber",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Bacchus Dykes"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Harriet Auber (1773–1862).",
+  "tuneAttribution": "Tune: John Bacchus Dykes (1823–1876).",
+  "publicDomainBasis": "Harriet Auber (1773–1862), John Bacchus Dykes (1823–1876). All public domain.",
+  "searchKeywords": [
+    "blest",
+    "redeemer",
+    "breathed"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Our blest Redeemer ere He breathed\nHis tender last farewell,\nA guide, a comforter, bequeathed\nWith us to dwell."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "He came sweet influence to impart,\nA gracious, willing guest,\nWhile He can find one humble heart\nWherein to rest."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "And His that gentle voice we hear,\nSoft as the breath of even,\nThat checks each fault, that calms each fear\nWith peace of heav’n."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "And every virtue we possess,\nAnd every victory won,\nAnd every thought of holiness,\nAre His alone."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Lord, in Thy purity and grace,\nOur weakness pitying see;\nOh, make our heart Thy dwelling place,\nAnd worthier Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "our blest redeemer ere he breathed",
+    "normalizedFirstLine": "our blest redeemer ere he breathed",
+    "keywords": [
+      "blest",
+      "redeemer",
+      "breathed"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "our",
+      "blest",
+      "redeemer",
+      "ere",
+      "he",
+      "breathed",
+      "harriet",
+      "auber",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "our blest redeemer ere he breathed our blest redeemer ere he breathed harriet auber unknown praise blest redeemer breathed"
+  }
+}

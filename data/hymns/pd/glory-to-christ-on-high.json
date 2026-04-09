@@ -1,0 +1,95 @@
+{
+  "status": "approved",
+  "id": "glory-to-christ-on-high",
+  "title": "Glory to Christ on high",
+  "alternateTitles": [],
+  "firstLine": "Glory to Christ on high!",
+  "meter": "6.6.4.6.6.6.4.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "James Allen",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Felice de Giardini"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: James Allen (1734–1804).",
+  "tuneAttribution": "Tune: Felice de Giardini (1716–1796).",
+  "publicDomainBasis": "James Allen (1734–1804), Felice de Giardini (1716–1796). All public domain.",
+  "searchKeywords": [
+    "glory",
+    "christ",
+    "high"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Glory to Christ on high!\nLet praises fill the sky!\nPraise ye His name:\nHe all our sorrows bore;\nAngels His name—adore,\nAnd saints cry evermore,\n“Worthy the Lamb!”"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "All they around the throne\nCheerfully join in one,\nPraising His name:\nWe who have known His blood\nSealing our peace with God,\nSpread His dear name abroad;\nWorthy the Lamb!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Join all the human race\nOur Lord, God’s Christ, to bless,\nPraise ye His name:\nIn Him we will rejoice,\nMaking a cheerful noise,\nSaying with heart and voice,\n“Worthy the Lamb!”"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Though we must change our place,\nOur hearts shall never cease\nPraising His name:\nTo Him we’ll tribute bring,\nLaud Him, our gracious King,\nAnd without ceasing, sing,\n“Worthy the Lamb!”"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "glory to christ on high",
+    "normalizedFirstLine": "glory to christ on high",
+    "keywords": [
+      "glory",
+      "christ",
+      "high"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "glory",
+      "to",
+      "christ",
+      "on",
+      "high",
+      "james",
+      "allen",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "glory to christ on high glory to christ on high james allen unknown praise glory christ high"
+  }
+}

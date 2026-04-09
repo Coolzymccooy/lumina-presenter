@@ -93,7 +93,7 @@ import { SermonRecorderPanel } from './components/SermonRecorderPanel';
 import type { SermonSummary } from './services/sermonSummaryService';
 import { FilesPanel } from './components/builder/FilesPanel';
 import { subscribeMacros, seedStarterMacrosIfEmpty } from './services/macroRegistry';
-import { getArchivedSermons, deleteArchivedSermon, type ArchivedSermon } from './services/sermonArchive';
+import { archiveSermon, getArchivedSermons, deleteArchivedSermon, type ArchivedSermon } from './services/sermonArchive';
 import type { MacroDefinition, MacroAuditEntry } from './types/macros';
 import { matchTriggers, type MacroExecutionContext } from './services/macroEngine';
 import { nanoid } from 'nanoid';
@@ -5263,16 +5263,22 @@ function App() {
 
     if (content.summary) {
       title = content.summary.title || 'Sermon';
-      slideItems = [
-        { id: `${stamp}-0`, content: content.summary.mainTheme, label: 'Theme' },
-        ...content.summary.keyPoints.map((pt, i) => ({
-          id: `${stamp}-${i + 1}`,
-          content: pt,
-          label: `Point ${i + 1}`,
-        })),
-      ];
+      slideItems = [];
+      // Slide 1: main theme
+      if (content.summary.mainTheme) {
+        slideItems.push({ id: `${stamp}-theme`, content: content.summary.mainTheme, label: 'Theme' });
+      }
+      // Slide 2: all key points on ONE slide (numbered list)
+      if (content.summary.keyPoints.length > 0) {
+        const pointsContent = content.summary.keyPoints.map((pt, i) => `${i + 1}. ${pt}`).join('\n');
+        slideItems.push({ id: `${stamp}-points`, content: pointsContent, label: 'Key Points' });
+      }
+      // Slide 3: call to action
       if (content.summary.callToAction) {
         slideItems.push({ id: `${stamp}-cta`, content: content.summary.callToAction, label: 'Call to Action' });
+      }
+      if (!slideItems.length) {
+        slideItems = [{ id: `${stamp}-0`, content: title, label: 'Sermon' }];
       }
     } else {
       const words = content.transcript.split(/\s+/).filter(Boolean);
@@ -5304,30 +5310,49 @@ function App() {
         fontSize: 'large' as const,
       },
       metadata: { source: 'manual', createdAt: Date.now() },
-    }, 'system');
+    }, 'user');
     addItem(sermonItem);
     goLive(sermonItem, 0);
+  }, [finalizeGeneratedItemBackground, addItem, goLive]);
 
-    // Audience ticker (non-fatal)
-    const audienceLines = content.summary
-      ? [
-          `SERMON: ${content.summary.title}`,
-          `THEME: ${content.summary.mainTheme}`,
-          '',
-          ...content.summary.keyPoints.map((p, i) => `${i + 1}. ${p}`),
-          ...(content.summary.callToAction ? ['', `ACTION: ${content.summary.callToAction}`] : []),
-        ]
-      : [content.transcript];
-    try {
-      await submitAudienceMessage(workspaceId, {
-        category: 'testimony',
-        text: audienceLines.join('\n'),
-        name: 'Sermon Recap',
-      });
-    } catch {
-      // non-fatal
+  // Build a sermon item (same as flash but without goLive — for inserting into runsheet)
+  const buildSermonItem = useCallback((summary: SermonSummary) => {
+    const stamp = Date.now().toString(36);
+    const title = summary.title || 'Sermon';
+    const slideItems: { id: string; content: string; label: string }[] = [];
+    if (summary.mainTheme) slideItems.push({ id: `${stamp}-theme`, content: summary.mainTheme, label: 'Theme' });
+    if (summary.keyPoints.length > 0) {
+      const pointsContent = summary.keyPoints.map((pt, i) => `${i + 1}. ${pt}`).join('\n');
+      slideItems.push({ id: `${stamp}-points`, content: pointsContent, label: 'Key Points' });
     }
-  }, [workspaceId, finalizeGeneratedItemBackground, addItem, goLive]);
+    if (summary.callToAction) slideItems.push({ id: `${stamp}-cta`, content: summary.callToAction, label: 'Call to Action' });
+    if (!slideItems.length) slideItems.push({ id: `${stamp}-0`, content: title, label: 'Sermon' });
+    return finalizeGeneratedItemBackground({
+      id: `${stamp}-sermon`,
+      title,
+      type: ItemType.ANNOUNCEMENT,
+      slides: slideItems,
+      theme: { backgroundUrl: DEFAULT_BACKGROUNDS[2], fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'large' as const },
+      metadata: { source: 'manual', createdAt: Date.now() },
+    }, 'user');
+  }, [finalizeGeneratedItemBackground]);
+
+  const handleSermonProjectToScreen = useCallback((summary: SermonSummary) => {
+    const item = buildSermonItem(summary);
+    addItem(item);
+    goLive(item, 0);
+  }, [buildSermonItem, addItem, goLive]);
+
+  const handleSermonInsertToRunsheet = useCallback((summary: SermonSummary) => {
+    const item = buildSermonItem(summary);
+    addItem(item);
+  }, [buildSermonItem, addItem]);
+
+  const handleSermonSave = useCallback(async (transcript: string, summary: SermonSummary) => {
+    const wc = transcript.trim().split(/\s+/).filter(Boolean).length;
+    const saved = await archiveSermon(summary, wc, workspaceId);
+    if (saved) setArchivedSermons((prev) => [saved, ...prev]);
+  }, [workspaceId]);
 
   const selectPresenterPreviewItem = useCallback((itemId: string) => {
     setSelectedItemId(itemId);
@@ -8218,6 +8243,8 @@ function App() {
                 archivedSermonsLoading={archivedSermonsLoading}
                 onRefreshSermons={handleRefreshSermons}
                 onCopySermon={handleCopySermon}
+                onProjectSermon={(item) => handleSermonProjectToScreen(item.summary)}
+                onInsertSermon={(item) => handleSermonInsertToRunsheet(item.summary)}
                 onDeleteSermon={async (id) => {
                   await deleteArchivedSermon(id, workspaceId);
                   setArchivedSermons((prev) => prev.filter((s) => s.id !== id));
@@ -9750,6 +9777,7 @@ function App() {
           <SermonRecorderPanel
             onClose={() => setShowSermonRecorder(false)}
             onFlashToScreen={handleSermonFlashToScreen}
+            onSave={handleSermonSave}
           />
         </div>
       )}

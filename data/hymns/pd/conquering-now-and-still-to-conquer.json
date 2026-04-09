@@ -1,0 +1,90 @@
+{
+  "status": "approved",
+  "id": "conquering-now-and-still-to-conquer",
+  "title": "Conquering now and still to conquer",
+  "alternateTitles": [],
+  "firstLine": "Conquering now and still to conquer,",
+  "meter": "9.7.9.7.8.7.8.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Robson Sweney"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: John Robson Sweney (1837–1899).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), John Robson Sweney (1837–1899). All public domain.",
+  "searchKeywords": [
+    "conquering",
+    "still",
+    "conquer"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Conquering now and still to conquer,\nRideth a King in His might,\nLeading the host of all the faithful\nInto the midst of the fight;\nSee them with courage advancing,\nClad in their brilliant array,\nShouting the name of their Leader,\nHear them exultingly say:"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Conquering now and still to conquer,\nWho is this wonderful King?\nWhence are the armies which He leadeth\nWhile of His glory they sing?\nHe is our Lord and Redeemer,\nSavior and Monarch divine;\nThey are the stars that forever\nBright in His kingdom will shine."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Conquering now and still to conquer,\nJesus, Thou Ruler of all,\nThrones and their scepters all shall perish,\nCrowns and their splendor shall fall,\nYet shall the armies Thou leadest\nFaithful and true to the last,\nFind in Thy kingdom eternal\nRest, when their warfare is past."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "conquering now and still to conquer",
+    "normalizedFirstLine": "conquering now and still to conquer",
+    "keywords": [
+      "conquering",
+      "still",
+      "conquer"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "conquering",
+      "now",
+      "and",
+      "still",
+      "to",
+      "conquer",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "conquering now and still to conquer conquering now and still to conquer fanny jane crosby unknown praise conquering still conquer"
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "status": "approved",
+  "id": "far-far-away-in-heathen-darkness-dwelling",
+  "title": "Far, far away, in heathen darkness dwelling",
+  "alternateTitles": [],
+  "firstLine": "Far, far away, in heathen darkness dwelling,",
+  "meter": "11.10.11.10. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "James McGranahan",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James McGranahan"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: James McGranahan (1840–1907).",
+  "tuneAttribution": "Tune: James McGranahan (1840–1907).",
+  "publicDomainBasis": "James McGranahan (1840–1907), James McGranahan (1840–1907). All public domain.",
+  "searchKeywords": [
+    "away",
+    "heathen",
+    "darkness",
+    "dwelling"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Far, far away, in heathen darkness dwelling,\nMillions of souls forever may be lost;\nWho, who will go, salvation’s story telling,\nLooking to Jesus, counting not the cost?"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "See o’er the world, wide open doors inviting:\nSoldiers of Christ, arise and enter in!\nChristians, awake! your forces all uniting,\nSend forth the Gospel, break the chains of sin."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "“Why will ye die?” the voice of God is calling,\n“Why will ye die?” re-echo in His name:\nJesus hath died to save from death appalling,\nLife and salvation therefore go proclaim."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "far far away in heathen darkness dwelling",
+    "normalizedFirstLine": "far far away in heathen darkness dwelling",
+    "keywords": [
+      "away",
+      "heathen",
+      "darkness",
+      "dwelling"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "far",
+      "away",
+      "in",
+      "heathen",
+      "darkness",
+      "dwelling",
+      "james",
+      "mcgranahan",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "far far away in heathen darkness dwelling far far away in heathen darkness dwelling james mcgranahan unknown praise away heathen darkness dwelling"
+  }
+}

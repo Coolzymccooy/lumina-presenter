@@ -1,0 +1,99 @@
+{
+  "status": "approved",
+  "id": "hark-the-voice-of-love-and-mercy",
+  "title": "Hark! the voice of love and mercy",
+  "alternateTitles": [],
+  "firstLine": "Hark! the voice of love and mercy",
+  "meter": "8.7.8.7.8.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Jonathan Evans",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Henry Thomas Smart"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Jonathan Evans (1749–1809).",
+  "tuneAttribution": "Tune: Henry Thomas Smart (1813–1879).",
+  "publicDomainBasis": "Jonathan Evans (1749–1809), Henry Thomas Smart (1813–1879). All public domain.",
+  "searchKeywords": [
+    "hark",
+    "voice",
+    "love",
+    "mercy"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Hark! the voice of love and mercy\nSounds aloud from Calvary;\nSee, it rends the rocks asunder,\nShakes the earth, and veils the sky:\n“It is finished!” “It is finished!”\nHear the dying Savior cry."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "“It is finished!” Oh, what pleasure\nDo these charming words afford!\nHeavenly blessings without measure\nFlow to us from Christ, the Lord:\n“It is finished!” “It is finished!”\nSaints, the dying words record."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Finished all the types and shadows\nOf the ceremonial law!\nFinished all that God had promised;\nDeath and hell no more shall awe:\n“It is finished!” “It is finished!”\nSaints, from hence your comfort draw."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Tune your harps anew, ye seraphs,\nJoin to sing the pleasing theme;\nAll on earth and all in heaven\nJoin to praise Immanuel’s name:\nHallelujah! Hallelujah!\nGlory to the bleeding Lamb!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "hark the voice of love and mercy",
+    "normalizedFirstLine": "hark the voice of love and mercy",
+    "keywords": [
+      "hark",
+      "voice",
+      "love",
+      "mercy"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "hark",
+      "the",
+      "voice",
+      "of",
+      "love",
+      "and",
+      "mercy",
+      "jonathan",
+      "evans",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "hark the voice of love and mercy hark the voice of love and mercy jonathan evans unknown praise hark voice love mercy"
+  }
+}

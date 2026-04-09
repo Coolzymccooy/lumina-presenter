@@ -1,0 +1,102 @@
+{
+  "status": "approved",
+  "id": "he-lives-the-great-redeemer-lives",
+  "title": "He lives, the great Redeemer lives",
+  "alternateTitles": [],
+  "firstLine": "He lives, the great Redeemer lives,",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Anne Steele",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "George Hews"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Anne Steele (1716–1778).",
+  "tuneAttribution": "Tune: George Hews (1806–1873).",
+  "publicDomainBasis": "Anne Steele (1716–1778), George Hews (1806–1873). All public domain.",
+  "searchKeywords": [
+    "lives",
+    "great",
+    "redeemer"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "He lives, the great Redeemer lives,\nWhat joy the blest assurance gives!\nAnd now, before His Father, God,\nPleads the full merits of His blood."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Repeated crimes awake our fears,\nAnd Justice armed with frowns appears;\nBut in the Savior’s lovely face\nSweet Mercy smiles, and all is peace."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Hence, then, ye black, despairing thoughts;\nAbove our fears, above our faults,\nHis mighty intercessions rise,\nAnd guilt recedes, and terror dies."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "In every dark, distressful hour,\nWhen sin and Satan join their power,\nLet this dear hope repel the dart,\nThat Jesus bears us on His heart."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Great Advocate, almighty Friend!\nOn Him our humble hopes depend;\nOur cause can never, never fail,\nFor Jesus pleads, and must prevail."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "he lives the great redeemer lives",
+    "normalizedFirstLine": "he lives the great redeemer lives",
+    "keywords": [
+      "lives",
+      "great",
+      "redeemer"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "he",
+      "lives",
+      "the",
+      "great",
+      "redeemer",
+      "anne",
+      "steele",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "he lives the great redeemer lives he lives the great redeemer lives anne steele unknown praise lives great redeemer"
+  }
+}

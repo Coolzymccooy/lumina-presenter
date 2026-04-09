@@ -1,0 +1,101 @@
+{
+  "status": "approved",
+  "id": "i-love-thy-kingdom-lord",
+  "title": "I love Thy kingdom, Lord",
+  "alternateTitles": [],
+  "firstLine": "I love Thy kingdom, Lord,",
+  "meter": "6.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Timothy Dwight",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Aaron Williams"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Timothy Dwight (1752–1817).",
+  "tuneAttribution": "Tune: Aaron Williams (1731–1776).",
+  "publicDomainBasis": "Timothy Dwight (1752–1817), Aaron Williams (1731–1776). All public domain.",
+  "searchKeywords": [
+    "love",
+    "kingdom",
+    "lord"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I love Thy kingdom, Lord,\nThe house of Thine abode,\nThe Church our blest Redeemer bought\nWith His own precious blood."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "I love the Church, O God!\nHer walls before Thee stand,\nDear as the apple of Thine eye\nAnd graven on Thy hand."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "For her my tears shall fall,\nFor her my prayers ascend;\nTo her my cares and toils be given\nTill toils and cares shall end."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Beyond my highest joy\nI prize her heavenly ways,\nHer sweet communion, solemn vows,\nHer hymns of love and praise."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Sure as Thy truth shall last,\nTo Zion shall be given\nThe brightest glories earth can yield,\nAnd brighter bliss of heaven."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i love thy kingdom lord",
+    "normalizedFirstLine": "i love thy kingdom lord",
+    "keywords": [
+      "love",
+      "kingdom",
+      "lord"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "love",
+      "thy",
+      "kingdom",
+      "lord",
+      "timothy",
+      "dwight",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i love thy kingdom lord i love thy kingdom lord timothy dwight unknown praise love kingdom lord"
+  }
+}

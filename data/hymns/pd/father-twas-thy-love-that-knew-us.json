@@ -1,0 +1,95 @@
+{
+  "status": "approved",
+  "id": "father-twas-thy-love-that-knew-us",
+  "title": "Father, ’twas Thy love that knew us",
+  "alternateTitles": [],
+  "firstLine": "Father, ’twas Thy love that knew us",
+  "meter": "8.7.8.7.8.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "James George Deck",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Philip Paul Bliss"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: James George Deck (1807–1884).",
+  "tuneAttribution": "Tune: Philip Paul Bliss (1838–1876).",
+  "publicDomainBasis": "James George Deck (1807–1884), Philip Paul Bliss (1838–1876). All public domain.",
+  "searchKeywords": [
+    "father",
+    "twas",
+    "love",
+    "that",
+    "knew"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Father, ’twas Thy love that knew us\nEarth’s foundation long before:\nThat same love to Jesus drew us\nBy its sweet constraining pow’r,\nAnd will keep us, and will keep us,\nSafely now, and evermore,\nSafely now, and evermore."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Now that changeless love enfolds us,\nAll its wealth on us bestows;\nWhile its pow’r unchanging holds us\nIn a holy calm repose.\nGod and Father, God and Father,\nUnto Thee our worship flows,\nUnto Thee our worship flows."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "God of love, our souls adore Thee!\nWe would still Thy grace proclaim,\nTill we cast our crowns before Thee,\nAnd in glory praise Thy name;\nPraise and worship, praise and worship\nBe to God and to the Lamb!\nBe to God and to the Lamb!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "father twas thy love that knew us",
+    "normalizedFirstLine": "father twas thy love that knew us",
+    "keywords": [
+      "father",
+      "twas",
+      "love",
+      "that",
+      "knew"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "father",
+      "twas",
+      "thy",
+      "love",
+      "that",
+      "knew",
+      "us",
+      "james",
+      "george",
+      "deck",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "father twas thy love that knew us father twas thy love that knew us james george deck unknown praise father twas love that knew"
+  }
+}

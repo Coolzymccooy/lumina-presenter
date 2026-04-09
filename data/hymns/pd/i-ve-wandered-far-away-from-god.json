@@ -1,0 +1,111 @@
+{
+  "status": "approved",
+  "id": "i-ve-wandered-far-away-from-god",
+  "title": "I’ve wandered far away from God",
+  "alternateTitles": [],
+  "firstLine": "I’ve wandered far away from God,",
+  "meter": "8.5.8.5. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William James Kirkpatrick",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William James Kirkpatrick"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William James Kirkpatrick (1838–1921).",
+  "tuneAttribution": "Tune: William James Kirkpatrick (1838–1921).",
+  "publicDomainBasis": "William James Kirkpatrick (1838–1921), William James Kirkpatrick (1838–1921). All public domain.",
+  "searchKeywords": [
+    "wandered",
+    "away",
+    "from"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I’ve wandered far away from God,\nNow I’m coming home;\nThe paths of sin too long I’ve trod,\nLord, I’m coming home."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "I’ve wasted many precious years,\nNow I’m coming home;\nI now repent with bitter tears,\nLord, I’m coming home."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "I’m tired of sin and straying, Lord,\nNow I’m coming home;\nI’ll trust Thy love, believe Thy word;\nLord, I’m coming home."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "My soul is sick, my heart is sore,\nNow I’m coming home;\nMy strength renew, my hope restore:\nLord, I’m coming home."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "My only hope, my only plea,\nNow I’m coming home;\nThat Jesus died, and died for me;\nLord, I’m coming home."
+    },
+    {
+      "id": "chorus-5",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 6,
+      "text": "I need His cleansing blood, I know,\nNow I’m coming home;\nO wash me whiter than the snow;\nLord, I’m coming home."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i ve wandered far away from god",
+    "normalizedFirstLine": "i ve wandered far away from god",
+    "keywords": [
+      "wandered",
+      "away",
+      "from"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "ve",
+      "wandered",
+      "far",
+      "away",
+      "from",
+      "god",
+      "william",
+      "james",
+      "kirkpatrick",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i ve wandered far away from god i ve wandered far away from god william james kirkpatrick unknown praise wandered away from"
+  }
+}
