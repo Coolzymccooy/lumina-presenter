@@ -31,10 +31,11 @@ export interface SermonRecorderPanelProps {
 
 // ── Waveform bar visualizer ────────────────────────────────────────────────
 
-const BAR_COUNT = 20;
+const BAR_COUNT = 32;
 
 const WaveformBars: React.FC<{ level: number; active: boolean }> = ({ level, active }) => {
-  const barsRef = useRef<number[]>(Array.from({ length: BAR_COUNT }, () => 0.1));
+  // Each bar tracks its own smoothed value (simulates independent frequency bands)
+  const barsRef = useRef<number[]>(Array.from({ length: BAR_COUNT }, () => 0.04));
   const frameRef = useRef<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -49,25 +50,43 @@ const WaveformBars: React.FC<{ level: number; active: boolean }> = ({ level, act
       const H = canvas.height;
       ctx.clearRect(0, 0, W, H);
 
-      // Shift bars left, push new value
-      barsRef.current.shift();
-      const noise = active ? (Math.random() - 0.5) * 0.12 : 0;
-      barsRef.current.push(Math.max(0.04, Math.min(1, active ? level + noise : 0.04)));
-
       const barW = W / BAR_COUNT;
-      const gap = 2;
+      const gap = 3;
+      const centerY = H / 2;
 
       barsRef.current.forEach((val, i) => {
-        const barH = Math.max(4, val * H * 0.9);
+        // Each bar has a unique frequency character — inner bars react more, outer less
+        const freqBias = 1 - Math.abs(i - BAR_COUNT / 2) / (BAR_COUNT / 2) * 0.4;
+        const randomNoise = active ? (Math.random() - 0.5) * 0.35 : 0;
+        const target = active
+          ? Math.max(0.04, Math.min(1, level * freqBias * 1.4 + randomNoise))
+          : 0.04;
+        // Smooth toward target — faster attack, slower decay
+        const speed = target > val ? 0.55 : 0.25;
+        barsRef.current[i] = val + (target - val) * speed;
+        const v = barsRef.current[i];
+
+        const halfH = Math.max(3, v * centerY * 0.96);
         const x = i * barW + gap / 2;
-        const y = (H - barH) / 2;
-        const alpha = active ? 0.5 + val * 0.5 : 0.2;
-        ctx.fillStyle = active
-          ? `rgba(239, 68, 68, ${alpha})`   // red when recording
-          : `rgba(113, 113, 122, ${alpha})`; // zinc when idle
-        const r = Math.min(3, (barW - gap) / 2);
+        const bW = barW - gap;
+        const r = Math.min(bW / 2, 3);
+
+        if (active) {
+          // Gradient: bright red core → deep red edges
+          const grad = ctx.createLinearGradient(x, centerY - halfH, x, centerY + halfH);
+          const alpha = 0.55 + v * 0.45;
+          grad.addColorStop(0,    `rgba(220, 38, 38, ${alpha * 0.7})`);
+          grad.addColorStop(0.35, `rgba(239, 68, 68, ${alpha})`);
+          grad.addColorStop(0.5,  `rgba(252, 100, 100, ${Math.min(1, alpha * 1.15)})`);
+          grad.addColorStop(0.65, `rgba(239, 68, 68, ${alpha})`);
+          grad.addColorStop(1,    `rgba(220, 38, 38, ${alpha * 0.7})`);
+          ctx.fillStyle = grad;
+        } else {
+          ctx.fillStyle = `rgba(63, 63, 70, 0.5)`;
+        }
+
         ctx.beginPath();
-        ctx.roundRect(x, y, barW - gap, barH, r);
+        ctx.roundRect(x, centerY - halfH, bW, halfH * 2, r);
         ctx.fill();
       });
 
@@ -83,10 +102,9 @@ const WaveformBars: React.FC<{ level: number; active: boolean }> = ({ level, act
   return (
     <canvas
       ref={canvasRef}
-      width={200}
-      height={40}
-      className="w-full h-10"
-      style={{ imageRendering: 'pixelated' }}
+      width={384}
+      height={72}
+      className="w-full h-16 rounded-lg"
     />
   );
 };
@@ -173,7 +191,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   }, []);
 
   const [recState, recActions] = useSermonRecorder({ locale, accentHint, audioDeviceId });
-  const { phase, liveTranscript, interimText, transcript, elapsedSeconds, micLevel, error, sttStatus } = recState;
+  const { phase, liveTranscript, interimText, cloudTranscript, transcript, elapsedSeconds, micLevel, error, sttStatus, chunkError } = recState;
 
   const sttWarning = (() => {
     if (sttStatus === 'idle' || sttStatus === 'active') return null;
@@ -264,7 +282,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   const panelPad = compact ? 'p-3' : 'p-4';
 
   return (
-    <div className="flex flex-col bg-zinc-950 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden w-full">
+    <div className="flex flex-col h-full bg-zinc-950 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden w-full">
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-800 flex-shrink-0">
@@ -303,7 +321,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
       </div>
 
       {/* ── Body ── */}
-      <div className={`flex flex-col gap-3 ${panelPad} flex-1 overflow-y-auto`}>
+      <div className={`flex flex-col gap-3 ${panelPad} flex-1 min-h-0 overflow-y-auto`}>
 
         {/* Waveform + controls */}
         {phase !== 'done' && phase !== 'error' && (
@@ -414,23 +432,39 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
           </div>
         )}
 
-        {/* Live transcript (during recording/paused) */}
-        {(isActive || phase === 'transcribing') && !sttWarning && (
+        {/* Live transcript (during recording/paused/transcribing) */}
+        {(isActive || phase === 'transcribing') && (
           <div
             ref={transcriptScrollRef}
-            className="rounded-xl bg-zinc-900/60 border border-zinc-800 px-3 py-2.5 max-h-32 overflow-y-auto text-sm leading-relaxed"
+            className="rounded-xl bg-zinc-900/60 border border-zinc-800 px-3 py-2.5 max-h-32 overflow-y-auto text-sm leading-relaxed space-y-1"
           >
-            {!liveTranscript && !interimText ? (
-              <span className="text-zinc-600 italic text-[11px]">
-                {isLive ? 'Listening — transcript will appear here...' : 'Paused.'}
-              </span>
-            ) : (
+            {liveTranscript || interimText ? (
+              // Web Speech API is delivering results — show them
               <>
                 <span className="text-zinc-200">{liveTranscript}</span>
                 {interimText && (
                   <span className="text-zinc-500 italic"> {interimText}</span>
                 )}
               </>
+            ) : cloudTranscript ? (
+              // Gemini chunk result — primary source when Web Speech isn't available
+              <>
+                <p className="text-zinc-200 text-[12px] leading-relaxed">{cloudTranscript}</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 mt-1">
+                  via Gemini · updates every 12 s
+                </p>
+              </>
+            ) : chunkError ? (
+              // Gemini is failing — show the error so user isn't left wondering
+              <div className="space-y-1">
+                <p className="text-amber-400 text-[11px] font-semibold">Gemini transcription error</p>
+                <p className="text-zinc-500 text-[10px]">{chunkError}</p>
+                <p className="text-zinc-600 text-[10px] italic">Audio is still recording — try Stop &amp; Transcribe.</p>
+              </div>
+            ) : (
+              <span className="text-zinc-600 italic text-[11px]">
+                {isLive ? 'Recording — transcript will appear in ~12 seconds...' : 'Paused.'}
+              </span>
             )}
           </div>
         )}

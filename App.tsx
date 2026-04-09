@@ -73,6 +73,7 @@ import {
   saveServerSessionState,
   saveWorkspaceSettings,
   saveWorkspaceSnapshot,
+  submitAudienceMessage,
   uploadWorkspaceMedia,
 } from './services/serverApi';
 import { parsePptxFile } from './services/pptxImport';
@@ -88,6 +89,8 @@ import { dispatchAetherBridgeEvent, type AetherBridgeEvent } from './services/ae
 import { MacroPanel } from './components/MacroPanel';
 import { BuilderPreviewPanel } from './components/builder/BuilderPreviewPanel';
 import { StageWorkspace } from './components/builder/StageWorkspace';
+import { SermonRecorderPanel } from './components/SermonRecorderPanel';
+import type { SermonSummary } from './services/sermonSummaryService';
 import { FilesPanel } from './components/builder/FilesPanel';
 import { subscribeMacros, seedStarterMacrosIfEmpty } from './services/macroRegistry';
 import { getArchivedSermons, deleteArchivedSermon, type ArchivedSermon } from './services/sermonArchive';
@@ -1284,6 +1287,7 @@ function App() {
     const saved = initialSavedState;
     return saved?.viewMode || 'BUILDER';
   });
+  const [showSermonRecorder, setShowSermonRecorder] = useState(false);
   const [isRightDockOpen, setIsRightDockOpen] = useState(false);
   const [sidebarPinned, setSidebarPinned] = useState<boolean>(() => {
     const saved = initialSavedState;
@@ -5250,6 +5254,81 @@ function App() {
     goLive(presenterPreviewItem, presenterPreviewSlideIndex);
   }, [presenterPreviewItem, presenterPreviewSlideIndex]);
 
+  const handleSermonFlashToScreen = useCallback(async (content: { transcript: string; summary?: SermonSummary }) => {
+    const stamp = Date.now().toString(36);
+
+    // Build slides from summary key points or raw transcript chunks
+    let title = 'Sermon Recap';
+    let slideItems: { id: string; content: string; label: string }[];
+
+    if (content.summary) {
+      title = content.summary.title || 'Sermon';
+      slideItems = [
+        { id: `${stamp}-0`, content: content.summary.mainTheme, label: 'Theme' },
+        ...content.summary.keyPoints.map((pt, i) => ({
+          id: `${stamp}-${i + 1}`,
+          content: pt,
+          label: `Point ${i + 1}`,
+        })),
+      ];
+      if (content.summary.callToAction) {
+        slideItems.push({ id: `${stamp}-cta`, content: content.summary.callToAction, label: 'Call to Action' });
+      }
+    } else {
+      const words = content.transcript.split(/\s+/).filter(Boolean);
+      const PER_SLIDE = 30;
+      slideItems = [];
+      for (let i = 0; i < words.length; i += PER_SLIDE) {
+        slideItems.push({
+          id: `${stamp}-${slideItems.length}`,
+          content: words.slice(i, i + PER_SLIDE).join(' '),
+          label: `Part ${slideItems.length + 1}`,
+        });
+      }
+      if (!slideItems.length) {
+        slideItems = [{ id: `${stamp}-0`, content: content.transcript, label: 'Sermon' }];
+      }
+    }
+
+    // Add to run sheet and go live
+    const sermonItem = finalizeGeneratedItemBackground({
+      id: `${stamp}-sermon`,
+      title,
+      type: ItemType.ANNOUNCEMENT,
+      slides: slideItems,
+      theme: {
+        backgroundUrl: DEFAULT_BACKGROUNDS[2],
+        fontFamily: 'sans-serif',
+        textColor: '#ffffff',
+        shadow: true,
+        fontSize: 'large' as const,
+      },
+      metadata: { source: 'manual', createdAt: Date.now() },
+    }, 'system');
+    addItem(sermonItem);
+    goLive(sermonItem, 0);
+
+    // Audience ticker (non-fatal)
+    const audienceLines = content.summary
+      ? [
+          `SERMON: ${content.summary.title}`,
+          `THEME: ${content.summary.mainTheme}`,
+          '',
+          ...content.summary.keyPoints.map((p, i) => `${i + 1}. ${p}`),
+          ...(content.summary.callToAction ? ['', `ACTION: ${content.summary.callToAction}`] : []),
+        ]
+      : [content.transcript];
+    try {
+      await submitAudienceMessage(workspaceId, {
+        category: 'testimony',
+        text: audienceLines.join('\n'),
+        name: 'Sermon Recap',
+      });
+    } catch {
+      // non-fatal
+    }
+  }, [workspaceId, finalizeGeneratedItemBackground, addItem, goLive]);
+
   const selectPresenterPreviewItem = useCallback((itemId: string) => {
     setSelectedItemId(itemId);
     setPresenterFocusArea('schedule');
@@ -8302,6 +8381,8 @@ function App() {
         onSeekForward={() => triggerSeek(10)}
         onSeekBackward={() => triggerSeek(-10)}
         onToggleMute={() => setOutputMuted(prev => !prev)}
+        showSermonRecorder={showSermonRecorder}
+        onToggleSermonRecorder={() => setShowSermonRecorder(v => !v)}
       />
     ) : (
             <div className="flex-1 flex flex-col lg:flex-row bg-black min-w-0 overflow-hidden">
@@ -9662,6 +9743,16 @@ function App() {
         workspaceId={workspaceId}
         user={user}
       />
+
+      {/* Sermon recorder — persistent fixed overlay, survives tab switches */}
+      {showSermonRecorder && (
+        <div className="fixed top-16 right-4 z-[200] w-96 max-h-[85vh] overflow-hidden rounded-2xl shadow-2xl">
+          <SermonRecorderPanel
+            onClose={() => setShowSermonRecorder(false)}
+            onFlashToScreen={handleSermonFlashToScreen}
+          />
+        </div>
+      )}
     </div>
 );
 }

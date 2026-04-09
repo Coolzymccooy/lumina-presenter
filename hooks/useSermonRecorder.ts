@@ -51,6 +51,8 @@ export interface SermonRecorderState {
    *  'unavailable' if the browser doesn't support it,
    *  or an error code string (e.g. 'network', 'not-allowed') */
   sttStatus: 'idle' | 'active' | 'unavailable' | string;
+  /** Last cloud transcription error (chunk upload or final); null when ok */
+  chunkError: string | null;
 }
 
 export interface SermonRecorderActions {
@@ -91,7 +93,7 @@ const getAnalyserLevel = (analyser: AnalyserNode): number => {
   return Math.max(0, Math.min(1, (rmsDb + 72) / 52));
 };
 
-const CHUNK_UPLOAD_INTERVAL_MS = 30_000; // upload every 30s for interim cloud transcript
+const CHUNK_UPLOAD_INTERVAL_MS = 12_000; // upload every 12s — primary live transcript source in Electron
 const TIMER_INTERVAL_MS = 1_000;
 
 export const useSermonRecorder = (
@@ -106,6 +108,7 @@ export const useSermonRecorder = (
   const [micLevel, setMicLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [sttStatus, setSttStatus] = useState<SermonRecorderState['sttStatus']>('idle');
+  const [chunkError, setChunkError] = useState<string | null>(null);
 
   // refs — stable across renders
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -251,8 +254,11 @@ export const useSermonRecorder = (
         accentHint,
       });
       if (result.ok && result.transcript) {
-        // Merge cloud corrections: cloud transcript becomes the reference
-        setCloudTranscript(result.transcript);
+        setCloudTranscript(prev => prev ? `${prev} ${result.transcript}` : result.transcript);
+        setChunkError(null);
+      } else if (!result.ok) {
+        const failResult = result as { ok: false; message: string; error: string };
+        setChunkError(failResult.message || failResult.error || 'Cloud transcription failed.');
       }
     }, CHUNK_UPLOAD_INTERVAL_MS);
   }, [locale]);
@@ -261,6 +267,7 @@ export const useSermonRecorder = (
   const start = useCallback(async () => {
     setError(null);
     setSttStatus('idle');
+    setChunkError(null);
     setPhase('recording');
     setLiveTranscript('');
     setCloudTranscript('');
@@ -452,6 +459,7 @@ export const useSermonRecorder = (
     micLevel,
     error,
     sttStatus,
+    chunkError,
   };
 
   const actions: SermonRecorderActions = {
