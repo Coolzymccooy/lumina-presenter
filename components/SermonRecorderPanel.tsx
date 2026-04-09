@@ -12,29 +12,28 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   useSermonRecorder,
-  type SermonRecorderLocale,
   type SermonAccentHint,
+  type SermonRecorderLocale,
 } from '../hooks/useSermonRecorder';
 import {
-  summarizeSermon,
   canSummarize,
+  summarizeSermon,
   type SermonSummary,
 } from '../services/sermonSummaryService';
 
 export interface SermonRecorderPanelProps {
   onClose: () => void;
   onFlashToScreen: (content: { transcript: string; summary?: SermonSummary }) => void;
+  onSave?: (transcript: string, summary: SermonSummary) => Promise<void>;
   onAddToSchedule?: (text: string) => void;
   locale?: SermonRecorderLocale;
   compact?: boolean;
 }
 
-// ── Waveform bar visualizer ────────────────────────────────────────────────
-
-const BAR_COUNT = 20;
+const BAR_COUNT = 32;
 
 const WaveformBars: React.FC<{ level: number; active: boolean }> = ({ level, active }) => {
-  const barsRef = useRef<number[]>(Array.from({ length: BAR_COUNT }, () => 0.1));
+  const barsRef = useRef<number[]>(Array.from({ length: BAR_COUNT }, () => 0.04));
   const frameRef = useRef<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -49,25 +48,40 @@ const WaveformBars: React.FC<{ level: number; active: boolean }> = ({ level, act
       const H = canvas.height;
       ctx.clearRect(0, 0, W, H);
 
-      // Shift bars left, push new value
-      barsRef.current.shift();
-      const noise = active ? (Math.random() - 0.5) * 0.12 : 0;
-      barsRef.current.push(Math.max(0.04, Math.min(1, active ? level + noise : 0.04)));
-
       const barW = W / BAR_COUNT;
-      const gap = 2;
+      const gap = 3;
+      const centerY = H / 2;
 
       barsRef.current.forEach((val, i) => {
-        const barH = Math.max(4, val * H * 0.9);
+        const freqBias = 1 - Math.abs(i - BAR_COUNT / 2) / (BAR_COUNT / 2) * 0.4;
+        const randomNoise = active ? (Math.random() - 0.5) * 0.35 : 0;
+        const target = active
+          ? Math.max(0.04, Math.min(1, level * freqBias * 1.4 + randomNoise))
+          : 0.04;
+        const speed = target > val ? 0.55 : 0.25;
+        barsRef.current[i] = val + (target - val) * speed;
+        const v = barsRef.current[i];
+
+        const halfH = Math.max(3, v * centerY * 0.96);
         const x = i * barW + gap / 2;
-        const y = (H - barH) / 2;
-        const alpha = active ? 0.5 + val * 0.5 : 0.2;
-        ctx.fillStyle = active
-          ? `rgba(239, 68, 68, ${alpha})`   // red when recording
-          : `rgba(113, 113, 122, ${alpha})`; // zinc when idle
-        const r = Math.min(3, (barW - gap) / 2);
+        const bW = barW - gap;
+        const r = Math.min(bW / 2, 3);
+
+        if (active) {
+          const grad = ctx.createLinearGradient(x, centerY - halfH, x, centerY + halfH);
+          const alpha = 0.55 + v * 0.45;
+          grad.addColorStop(0, `rgba(220, 38, 38, ${alpha * 0.7})`);
+          grad.addColorStop(0.35, `rgba(239, 68, 68, ${alpha})`);
+          grad.addColorStop(0.5, `rgba(252, 100, 100, ${Math.min(1, alpha * 1.15)})`);
+          grad.addColorStop(0.65, `rgba(239, 68, 68, ${alpha})`);
+          grad.addColorStop(1, `rgba(220, 38, 38, ${alpha * 0.7})`);
+          ctx.fillStyle = grad;
+        } else {
+          ctx.fillStyle = 'rgba(63, 63, 70, 0.5)';
+        }
+
         ctx.beginPath();
-        ctx.roundRect(x, y, barW - gap, barH, r);
+        ctx.roundRect(x, centerY - halfH, bW, halfH * 2, r);
         ctx.fill();
       });
 
@@ -83,23 +97,18 @@ const WaveformBars: React.FC<{ level: number; active: boolean }> = ({ level, act
   return (
     <canvas
       ref={canvasRef}
-      width={200}
-      height={40}
-      className="w-full h-10"
-      style={{ imageRendering: 'pixelated' }}
+      width={384}
+      height={72}
+      className="w-full h-16 rounded-lg"
     />
   );
 };
-
-// ── Elapsed time formatter ─────────────────────────────────────────────────
 
 const formatTime = (seconds: number): string => {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
-
-// ── Summary display (inline) ───────────────────────────────────────────────
 
 const InlineSummary: React.FC<{ summary: SermonSummary }> = ({ summary }) => (
   <div className="mt-3 rounded-xl bg-purple-950/30 border border-purple-800/40 px-3 py-3 space-y-2.5 text-xs">
@@ -142,11 +151,10 @@ const InlineSummary: React.FC<{ summary: SermonSummary }> = ({ summary }) => (
   </div>
 );
 
-// ── Main component ─────────────────────────────────────────────────────────
-
 export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   onClose,
   onFlashToScreen,
+  onSave,
   onAddToSchedule,
   locale = 'en-GB',
   compact = false,
@@ -155,14 +163,15 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   const [audioDeviceId, setAudioDeviceId] = useState<string | undefined>(undefined);
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
 
-  // Enumerate audioinput devices; re-enumerate on plug/unplug
   useEffect(() => {
     let alive = true;
     const enumerate = async () => {
       try {
         const all = await navigator.mediaDevices.enumerateDevices();
         if (alive) setAudioDevices(all.filter((d) => d.kind === 'audioinput'));
-      } catch { /* unsupported context */ }
+      } catch {
+        // unsupported context
+      }
     };
     enumerate();
     navigator.mediaDevices.addEventListener?.('devicechange', enumerate);
@@ -173,65 +182,116 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   }, []);
 
   const [recState, recActions] = useSermonRecorder({ locale, accentHint, audioDeviceId });
-  const { phase, liveTranscript, interimText, transcript, elapsedSeconds, micLevel, error } = recState;
+  const {
+    phase,
+    liveTranscript,
+    interimText,
+    cloudTranscript,
+    transcript,
+    elapsedSeconds,
+    micLevel,
+    error,
+    sttStatus,
+    chunkError,
+  } = recState;
+
+  const sttWarning = (() => {
+    if (sttStatus === 'idle' || sttStatus === 'active') return null;
+    if (sttStatus === 'unavailable') return 'Live captions are unavailable here. Audio is still being recorded and Gemini will keep generating transcript updates.';
+    if (sttStatus === 'network') return 'Live captions need HTTPS. Audio is still being recorded and Gemini will keep generating transcript updates.';
+    if (sttStatus === 'not-allowed' || sttStatus === 'service-not-allowed') return 'Speech recognition was blocked. Audio is still being recorded and Gemini will keep generating transcript updates.';
+    return `Live captions are unavailable (${sttStatus}). Audio is still being recorded and Gemini will keep generating transcript updates.`;
+  })();
 
   const [editableTranscript, setEditableTranscript] = useState('');
   const [isEditing, setIsEditing] = useState(false);
-
   const [summary, setSummary] = useState<SermonSummary | null>(null);
   const [summarizing, setSummarizing] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
-
   const [flashDone, setFlashDone] = useState(false);
+  const [saveDone, setSaveDone] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const transcriptScrollRef = useRef<HTMLDivElement>(null);
 
-  // When recording stops and transcript arrives, seed the editable field
   useEffect(() => {
-    if (phase === 'done' && transcript) {
-      setEditableTranscript(transcript);
+    if (phase === 'done') {
+      setEditableTranscript(transcript || '');
       setSummary(null);
       setSummaryError(null);
+      setIsEditing(false);
     }
   }, [phase, transcript]);
 
-  // Auto-scroll transcript while recording
   useEffect(() => {
     if (transcriptScrollRef.current) {
       transcriptScrollRef.current.scrollTop = transcriptScrollRef.current.scrollHeight;
     }
-  }, [liveTranscript, interimText]);
+  }, [cloudTranscript, liveTranscript, interimText]);
 
-  // Commit edits back to hook when user finishes editing
+  const resetEditorState = useCallback(() => {
+    setEditableTranscript('');
+    setIsEditing(false);
+    setSummary(null);
+    setSummaryError(null);
+    setFlashDone(false);
+    setSaveDone(false);
+  }, []);
+
+  const handleStartRecording = useCallback(() => {
+    resetEditorState();
+    void recActions.start();
+  }, [recActions, resetEditorState]);
+
   const handleEditBlur = useCallback(() => {
     recActions.setTranscript(editableTranscript);
     setIsEditing(false);
   }, [editableTranscript, recActions]);
 
+  const handleClearTranscript = useCallback(() => {
+    recActions.clearTranscript();
+    setEditableTranscript('');
+    setSummary(null);
+    setSummaryError(null);
+    setIsEditing(false);
+  }, [recActions]);
+
+  const currentTranscript = isEditing ? editableTranscript : (editableTranscript || transcript);
+
   const handleSummarize = useCallback(async () => {
-    const text = isEditing ? editableTranscript : transcript;
+    const text = currentTranscript.trim();
     if (!canSummarize(text)) return;
     setSummarizing(true);
     setSummaryError(null);
     setSummary(null);
-    const result = await summarizeSermon(text, locale === 'en-GB' ? 'uk' : 'standard');
+    const result = await summarizeSermon(text, accentHint);
     setSummarizing(false);
     if (result.ok && result.summary) {
       setSummary(result.summary);
     } else {
       setSummaryError(result.error || 'Summarization failed.');
     }
-  }, [editableTranscript, isEditing, locale, transcript]);
+  }, [accentHint, currentTranscript]);
 
   const handleFlash = useCallback(() => {
-    const text = isEditing ? editableTranscript : transcript;
+    const text = currentTranscript.trim();
     onFlashToScreen({ transcript: text, summary: summary ?? undefined });
     setFlashDone(true);
     setTimeout(() => setFlashDone(false), 2500);
-  }, [editableTranscript, isEditing, onFlashToScreen, summary, transcript]);
+  }, [currentTranscript, onFlashToScreen, summary]);
+
+  const handleSave = useCallback(async () => {
+    if (!onSave || !summary) return;
+    setSaving(true);
+    await onSave(currentTranscript.trim(), summary);
+    setSaving(false);
+    setSaveDone(true);
+    setTimeout(() => setSaveDone(false), 3000);
+  }, [currentTranscript, onSave, summary]);
 
   const handleAddToSchedule = useCallback(() => {
     if (!onAddToSchedule) return;
+    const text = currentTranscript.trim();
     const lines: string[] = [];
     if (summary) {
       lines.push(`SERMON: ${summary.title}`, `THEME: ${summary.mainTheme}`, '');
@@ -241,24 +301,20 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
       lines.push(`SCRIPTURES: ${summary.scripturesReferenced.join(' · ') || 'None detected'}`);
       lines.push(`CALL TO ACTION: ${summary.callToAction}`);
     } else {
-      lines.push(transcript);
+      lines.push(text);
     }
     onAddToSchedule(lines.join('\n'));
-  }, [onAddToSchedule, summary, transcript]);
+  }, [currentTranscript, onAddToSchedule, summary]);
 
   const isActive = phase === 'recording' || phase === 'paused';
   const isDone = phase === 'done';
   const isLive = phase === 'recording';
-  const activeTranscript = isDone && isEditing ? editableTranscript : (isDone ? editableTranscript : transcript);
-  const wordCount = activeTranscript.trim().split(/\s+/).filter(Boolean).length;
+  const wordCount = currentTranscript.trim().split(/\s+/).filter(Boolean).length;
   const canFlash = isDone && wordCount > 0;
-
   const panelPad = compact ? 'p-3' : 'p-4';
 
   return (
-    <div className="flex flex-col bg-zinc-950 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden w-full">
-
-      {/* ── Header ── */}
+    <div className="flex flex-col h-full bg-zinc-950 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden w-full">
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-800 flex-shrink-0">
         <div className="flex items-center gap-2">
           <div
@@ -294,19 +350,14 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
         </button>
       </div>
 
-      {/* ── Body ── */}
-      <div className={`flex flex-col gap-3 ${panelPad} flex-1 overflow-y-auto`}>
-
-        {/* Waveform + controls */}
+      <div className={`flex flex-col gap-3 ${panelPad} flex-1 min-h-0 overflow-y-auto`}>
         {phase !== 'done' && phase !== 'error' && (
           <div className="space-y-2">
             <WaveformBars level={micLevel} active={isLive} />
 
-            {/* Controls row */}
             <div className="flex items-center gap-2">
               {phase === 'idle' && (
                 <div className="flex-1 space-y-2">
-                  {/* Audio device picker */}
                   {audioDevices.length > 1 && (
                     <select
                       value={audioDeviceId ?? ''}
@@ -321,7 +372,6 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
                       ))}
                     </select>
                   )}
-                  {/* Accent hint */}
                   <select
                     value={accentHint}
                     onChange={(e) => setAccentHint(e.target.value as SermonAccentHint)}
@@ -335,7 +385,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
                     <option value="kenyan">Kenyan English</option>
                   </select>
                   <button
-                    onClick={recActions.start}
+                    onClick={handleStartRecording}
                     className="w-full py-2 rounded-lg bg-red-700/80 hover:bg-red-600 text-white text-[11px] font-bold tracking-wide transition-colors"
                   >
                     Start Recording
@@ -386,12 +436,11 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
           </div>
         )}
 
-        {/* Error state */}
         {phase === 'error' && (
           <div className="rounded-xl bg-red-950/40 border border-red-800/50 px-3 py-3 space-y-2">
             <p className="text-red-300 text-[11px] font-semibold">{error || 'An error occurred.'}</p>
             <button
-              onClick={recActions.start}
+              onClick={handleStartRecording}
               className="text-[10px] font-bold text-red-200 border border-red-700/50 px-3 py-1.5 rounded-lg hover:bg-red-900/40 transition-colors"
             >
               Try Again
@@ -399,31 +448,48 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
           </div>
         )}
 
-        {/* Live transcript (during recording/paused) */}
+        {sttWarning && isActive && (
+          <div className="rounded-lg bg-amber-950/40 border border-amber-700/50 px-3 py-2 text-[10px] text-amber-300 leading-relaxed">
+            {sttWarning}
+          </div>
+        )}
+
+        {chunkError && (
+          <div className="rounded-lg bg-amber-950/30 border border-amber-800/50 px-3 py-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-amber-300">Transcription warning</p>
+            <p className="mt-1 text-[11px] leading-relaxed text-zinc-300">{chunkError}</p>
+          </div>
+        )}
+
         {(isActive || phase === 'transcribing') && (
           <div
             ref={transcriptScrollRef}
-            className="rounded-xl bg-zinc-900/60 border border-zinc-800 px-3 py-2.5 max-h-32 overflow-y-auto text-sm leading-relaxed"
+            className="rounded-xl bg-zinc-900/60 border border-zinc-800 px-3 py-2.5 max-h-32 overflow-y-auto text-sm leading-relaxed space-y-1"
           >
-            {!liveTranscript && !interimText ? (
-              <span className="text-zinc-600 italic text-[11px]">
-                {isLive ? 'Listening — transcript will appear here...' : 'Paused.'}
-              </span>
-            ) : (
+            {liveTranscript || interimText ? (
               <>
                 <span className="text-zinc-200">{liveTranscript}</span>
                 {interimText && (
                   <span className="text-zinc-500 italic"> {interimText}</span>
                 )}
               </>
+            ) : cloudTranscript ? (
+              <>
+                <p className="text-zinc-200 text-[12px] leading-relaxed">{cloudTranscript}</p>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-600 mt-1">
+                  via Gemini · updates every 12 s
+                </p>
+              </>
+            ) : (
+              <span className="text-zinc-600 italic text-[11px]">
+                {isLive ? 'Recording — transcript will appear in about 12 seconds...' : 'Paused.'}
+              </span>
             )}
           </div>
         )}
 
-        {/* Done — editable transcript + summary */}
         {isDone && (
           <div className="space-y-2">
-            {/* Transcript label + word count */}
             <div className="flex items-center justify-between">
               <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Transcript</span>
               <div className="flex items-center gap-2">
@@ -441,7 +507,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
                   {isEditing ? 'Done' : 'Edit'}
                 </button>
                 <button
-                  onClick={recActions.clearTranscript}
+                  onClick={handleClearTranscript}
                   className="text-[9px] font-bold text-zinc-600 hover:text-red-400 transition-colors"
                   title="Clear transcript"
                 >
@@ -450,7 +516,6 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
               </div>
             </div>
 
-            {/* Transcript area */}
             {isEditing ? (
               <textarea
                 value={editableTranscript}
@@ -471,19 +536,18 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
               </div>
             )}
 
-            {/* Summarize controls */}
             <div className="space-y-1.5">
               <div className="flex gap-2">
                 <button
                   onClick={handleSummarize}
-                  disabled={summarizing || !canSummarize(isEditing ? editableTranscript : transcript)}
+                  disabled={summarizing || !canSummarize(currentTranscript)}
                   className="flex-1 py-2 rounded-lg text-[11px] font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-purple-900/50 hover:bg-purple-800/70 border border-purple-700/50 text-purple-200"
-                  title={canSummarize(isEditing ? editableTranscript : transcript) ? '' : 'Need at least 80 words to summarize'}
+                  title={canSummarize(currentTranscript) ? '' : 'Need at least 40 words to summarize'}
                 >
                   {summarizing ? 'Summarizing...' : summary ? 'Re-summarize' : 'Summarize with AI'}
                 </button>
                 <button
-                  onClick={recActions.start}
+                  onClick={handleStartRecording}
                   className="py-2 px-3 rounded-lg border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 text-[11px] font-bold transition-colors"
                   title="Record again"
                 >
@@ -496,27 +560,41 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
               )}
             </div>
 
-            {/* Inline summary */}
             {summary && <InlineSummary summary={summary} />}
           </div>
         )}
       </div>
 
-      {/* ── Footer actions (visible when done) ── */}
       {isDone && (
-        <div className="border-t border-zinc-800 px-4 py-2.5 flex gap-2 flex-shrink-0">
-          {onAddToSchedule && (
-            <button
-              onClick={handleAddToSchedule}
-              className="flex-1 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold transition-colors"
-            >
-              Add to Schedule
-            </button>
-          )}
+        <div className="border-t border-zinc-800 px-4 py-2.5 flex flex-col gap-2 flex-shrink-0">
+          <div className="flex gap-2">
+            {onSave && summary && (
+              <button
+                onClick={handleSave}
+                disabled={saving || saveDone}
+                className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-60 ${
+                  saveDone
+                    ? 'bg-emerald-900/50 border border-emerald-700/50 text-emerald-300'
+                    : 'bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300'
+                }`}
+                title="Save sermon summary to the Sermons archive"
+              >
+                {saving ? 'Saving...' : saveDone ? 'Saved ✓' : 'Save to Files'}
+              </button>
+            )}
+            {onAddToSchedule && (
+              <button
+                onClick={handleAddToSchedule}
+                className="flex-1 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-bold transition-colors"
+              >
+                Add to Schedule
+              </button>
+            )}
+          </div>
           <button
             onClick={handleFlash}
             disabled={!canFlash}
-            className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`w-full py-1.5 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
               flashDone
                 ? 'bg-emerald-900/50 border border-emerald-700/50 text-emerald-300'
                 : 'bg-red-900/50 hover:bg-red-800/70 border border-red-700/50 text-red-200'

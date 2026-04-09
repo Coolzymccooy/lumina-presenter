@@ -17,7 +17,7 @@ export interface SermonSummaryResult {
 }
 
 // Minimum words required to attempt summarization
-const MIN_WORDS_FOR_SUMMARY = 80;
+const MIN_WORDS_FOR_SUMMARY = 40;
 
 export const canSummarize = (transcript: string): boolean =>
   transcript.trim().split(/\s+/).filter(Boolean).length >= MIN_WORDS_FOR_SUMMARY;

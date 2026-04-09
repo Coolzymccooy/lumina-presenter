@@ -1047,6 +1047,48 @@ const checkTranscribeRateLimit = (bucketKey) => {
   return { allowed: true, retryAfterMs: 0 };
 };
 
+const SERMON_ACCENT_HINTS = new Set([
+  "standard",
+  "uk",
+  "nigerian",
+  "ghanaian",
+  "southafrican",
+  "kenyan",
+]);
+
+const normalizeSermonAccentHint = (value, locale = "en-US") => {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (SERMON_ACCENT_HINTS.has(normalized)) return normalized;
+  return locale === "en-GB" ? "uk" : "standard";
+};
+
+const buildSermonTranscriptionPrompt = (locale, accentHintRaw) => {
+  const accentHint = normalizeSermonAccentHint(accentHintRaw, locale);
+  const localeInstruction = locale === "en-GB"
+    ? "Use British English spelling and punctuation."
+    : "Use American English spelling and punctuation.";
+
+  const accentInstruction = accentHint === "uk"
+    ? "Recognise British English phrasing and pronunciation faithfully."
+    : accentHint === "nigerian"
+      ? "Recognise Nigerian English and Nigerian Pidgin faithfully. Do not flatten local expressions into Standard English."
+      : accentHint === "ghanaian"
+        ? "Recognise Ghanaian English and Ghanaian Pidgin faithfully. Preserve local expressions as spoken."
+        : accentHint === "southafrican"
+          ? "Recognise South African English faithfully, including common Afrikaans, Zulu, Xhosa, or Sotho-influenced words when spoken."
+          : accentHint === "kenyan"
+            ? "Recognise Kenyan English faithfully, including Swahili or Sheng code-switching when spoken."
+            : "Recognise clear spoken English faithfully without inventing missing words.";
+
+  return [
+    "Transcribe this church sermon audio.",
+    "Return plain transcript text only, with no timestamps, bullets, or speaker labels.",
+    localeInstruction,
+    accentInstruction,
+    "Preserve Bible references, quoted phrases, and code-switching exactly as spoken.",
+  ].join(" ");
+};
+
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "lumina-server-api", db: DB_PATH, now: now() });
 });
@@ -1448,7 +1490,7 @@ ${sermonText}`,
 
 app.post("/api/ai/summarize-sermon", async (req, res) => {
   const transcript = String(req.body?.transcript || "").trim();
-  const accentHint = String(req.body?.accentHint || "standard").trim();
+  const accentHint = normalizeSermonAccentHint(req.body?.accentHint, "en-US");
   if (!transcript) return res.status(400).json({ ok: false, error: "TRANSCRIPT_REQUIRED" });
   const wordCount = transcript.split(/\s+/).filter(Boolean).length;
   if (wordCount < 40) {
@@ -1700,6 +1742,7 @@ Label every section clearly.`;
 
 app.post("/api/ai/transcribe-sermon-chunk", async (req, res) => {
   const locale = String(req.body?.locale || "").trim();
+  const accentHint = normalizeSermonAccentHint(req.body?.accentHint, locale || "en-US");
   const mimeType = String(req.body?.mimeType || "").trim().toLowerCase();
   const audioBase64Raw = parseBase64Payload(req.body?.audioBase64);
   const workspaceId = String(req.body?.workspaceId || "").trim();
@@ -1773,9 +1816,7 @@ app.post("/api/ai/transcribe-sermon-chunk", async (req, res) => {
   const geminiMimeType = mimeType.includes(";") ? mimeType.split(";")[0].trim() : mimeType;
 
   try {
-    const speechPrompt = locale === "en-GB"
-      ? "Transcribe this church speech audio in British English. Return plain transcript text only."
-      : "Transcribe this church speech audio in American English. Return plain transcript text only.";
+    const speechPrompt = buildSermonTranscriptionPrompt(locale, accentHint);
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
@@ -1800,6 +1841,7 @@ app.post("/api/ai/transcribe-sermon-chunk", async (req, res) => {
       ok: true,
       transcript,
       locale,
+      accentHint,
       bytes: audioBuffer.length,
     });
   } catch (error) {
@@ -1835,9 +1877,9 @@ app.post("/api/ai/transcribe-sermon-audio", sermonAudioUpload.single("audio"), a
 
   const rawMime = String(req.body?.mimeType || audioFile.mimetype || "audio/webm").trim().toLowerCase();
   const locale = String(req.body?.locale || "en-US").trim();
+  const accentHint = normalizeSermonAccentHint(req.body?.accentHint, locale);
   // Strip codec params for Gemini
   const geminiMimeType = rawMime.includes(";") ? rawMime.split(";")[0].trim() : rawMime;
-  const accentHint = locale === "en-GB" ? "British" : "American";
 
   const ai = ensureGoogleAiClient(res);
   if (!ai) {
@@ -1845,7 +1887,7 @@ app.post("/api/ai/transcribe-sermon-audio", sermonAudioUpload.single("audio"), a
     return;
   }
 
-  const speechPrompt = `Transcribe this church sermon audio in ${accentHint} English. Return plain transcript text only, no timestamps, no speaker labels.`;
+  const speechPrompt = buildSermonTranscriptionPrompt(locale, accentHint);
 
   try {
     const fileStat = fs.statSync(audioFile.path);
