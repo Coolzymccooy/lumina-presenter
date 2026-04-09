@@ -93,7 +93,7 @@ const getAnalyserLevel = (analyser: AnalyserNode): number => {
   return Math.max(0, Math.min(1, (rmsDb + 72) / 52));
 };
 
-const CHUNK_UPLOAD_INTERVAL_MS = 20_000; // upload every 20s — primary live transcript source in Electron
+const CHUNK_UPLOAD_INTERVAL_MS = 12_000;
 const TIMER_INTERVAL_MS = 1_000;
 
 export const useSermonRecorder = (
@@ -155,11 +155,10 @@ export const useSermonRecorder = (
   const startSpeechRecognition = useCallback(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     // In Electron, webkitSpeechRecognition exists (Chromium) but cannot connect to
-    // Google's speech servers — it lacks the auth credentials Chrome has. This causes
-    // repeated "OnSizeReceived failed with Error: -2" errors in the console every ~0.77s.
+    // Google's speech servers — it lacks the auth credentials Chrome has.
     // Skip Web Speech entirely in Electron; Gemini chunk transcription handles it instead.
-    const isElectron = typeof navigator !== 'undefined' &&
-      navigator.userAgent.toLowerCase().includes('electron');
+    const isElectron = typeof navigator !== 'undefined'
+      && navigator.userAgent.toLowerCase().includes('electron');
     if (!SR || isElectron) {
       setSttStatus('unavailable');
       return;
@@ -191,13 +190,11 @@ export const useSermonRecorder = (
 
     rec.onerror = (e: any) => {
       const code: string = e?.error || 'unknown';
-      // 'no-speech' is non-fatal and expected during pauses — don't surface it
       if (code !== 'no-speech') {
         setSttStatus(code);
       }
     };
     rec.onend = () => {
-      // Auto-restart while still recording (browser kills after ~60s silence)
       if (speechRecRef.current === rec && phaseRef.current === 'recording') {
         try { rec.start(); } catch { /* ignore */ }
       }
@@ -217,29 +214,22 @@ export const useSermonRecorder = (
 
   // ── Cleanup ──────────────────────────────────────────────────────────────
   const cleanup = useCallback(() => {
-    // timer
     if (timerRef.current !== null) {
       window.clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    // chunk upload timer
     if (chunkUploadTimerRef.current !== null) {
       window.clearInterval(chunkUploadTimerRef.current);
       chunkUploadTimerRef.current = null;
     }
-    // visualizer
     stopVizLoop();
-    // speech
     stopSpeechRecognition();
-    // audio graph
     try { analyserRef.current?.disconnect(); } catch { /* no-op */ }
     analyserRef.current = null;
     try { audioCtxRef.current?.close(); } catch { /* no-op */ }
     audioCtxRef.current = null;
-    // mic stream
     stopStreamSafely(micStreamRef.current);
     micStreamRef.current = null;
-    // media recorder
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       try { mediaRecorderRef.current.stop(); } catch { /* no-op */ }
     }
@@ -253,21 +243,16 @@ export const useSermonRecorder = (
     if (chunkUploadTimerRef.current !== null) return;
     chunkUploadTimerRef.current = window.setInterval(async () => {
       if (phaseRef.current !== 'recording') return;
-
-      // Respect quota cooldown — skip this tick if still paused
       if (Date.now() < chunkUploadPausedUntilRef.current) return;
 
       const allChunks = audioChunksRef.current;
-      // Only send audio recorded since the last successful upload (delta)
       const newChunks = allChunks.slice(lastChunkIdxRef.current);
       if (newChunks.length === 0) return;
 
       const blob = new Blob(newChunks, { type: mimeTypeRef.current });
-      if (blob.size < 8192) return; // too small to bother
+      if (blob.size < 8192) return;
 
-      // Snapshot the index before the async call — on success we'll advance to here
       const snapshotIdx = allChunks.length;
-
       const result = await transcribeSermonChunk({
         audioBase64: await blobToBase64(blob),
         mimeType: mimeTypeRef.current as any,
@@ -275,21 +260,21 @@ export const useSermonRecorder = (
         accentHint,
       });
 
-      if (result.ok && result.transcript) {
-        lastChunkIdxRef.current = snapshotIdx; // advance only on success
-        setCloudTranscript(prev => prev ? `${prev} ${result.transcript}` : result.transcript);
-        setChunkError(null);
-      } else if (!result.ok) {
-        const failResult = result as { ok: false; message: string; error: string; mode: string; retryAfterMs: number };
-        setChunkError(failResult.message || failResult.error || 'Cloud transcription failed.');
-        // Quota/cooldown: pause future ticks until the cooldown expires
-        if (failResult.mode === 'cooldown' && failResult.retryAfterMs > 0) {
-          chunkUploadPausedUntilRef.current = Date.now() + failResult.retryAfterMs;
+      if (result.ok) {
+        if (result.transcript) {
+          lastChunkIdxRef.current = snapshotIdx;
+          setCloudTranscript((prev) => prev ? `${prev} ${result.transcript}` : result.transcript);
+          setChunkError(null);
         }
-        // Transient error: don't advance lastChunkIdx so we retry the same window next tick
+      } else {
+        const failed = result as Extract<typeof result, { ok: false }>;
+        setChunkError(failed.message || failed.error || 'Cloud transcription failed.');
+        if (failed.mode === 'cooldown' && failed.retryAfterMs > 0) {
+          chunkUploadPausedUntilRef.current = Date.now() + failed.retryAfterMs;
+        }
       }
     }, CHUNK_UPLOAD_INTERVAL_MS);
-  }, [locale, accentHint]);
+  }, [accentHint, locale]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
   const start = useCallback(async () => {
@@ -319,11 +304,16 @@ export const useSermonRecorder = (
       }
       micStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
     } catch (err: any) {
-      // If exact deviceId failed, retry with default mic
       if (audioDeviceId && err?.name === 'OverconstrainedError') {
         try {
           micStream = await navigator.mediaDevices.getUserMedia({
-            audio: { channelCount: 1, sampleRate: 48000, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+            audio: {
+              channelCount: 1,
+              sampleRate: 48000,
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
           });
         } catch (fallbackErr) {
           const msg = fallbackErr instanceof Error ? fallbackErr.message : 'Microphone access denied.';
@@ -341,23 +331,30 @@ export const useSermonRecorder = (
 
     micStreamRef.current = micStream;
 
-    // ── AudioContext + processing chain ──────────────────────────────────────
-    // Chain: source → highpass (80Hz cuts PA rumble) → compressor (handles
-    // volume swings common in preaching) → analyser (for visualizer)
-    // Separate destination stream for MediaRecorder captures processed audio.
-    const ctx = new AudioContext({ sampleRate: 48000 });
+    const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext) as
+      | (new (contextOptions?: AudioContextOptions) => AudioContext)
+      | undefined;
+    if (!AudioCtx) {
+      setError('AudioContext is not supported in this browser.');
+      setPhase('error');
+      stopStreamSafely(micStream);
+      micStreamRef.current = null;
+      return;
+    }
+
+    const ctx = new AudioCtx({ sampleRate: 48000 });
     audioCtxRef.current = ctx;
+    if (ctx.state === 'suspended') {
+      await ctx.resume().catch(() => undefined);
+    }
 
     const source = ctx.createMediaStreamSource(micStream);
 
-    // High-pass filter: remove low-frequency PA rumble below 80Hz
     const hpf = ctx.createBiquadFilter();
     hpf.type = 'highpass';
     hpf.frequency.value = 80;
     hpf.Q.value = 0.7;
 
-    // Dynamics compressor: tame loud peaks, lift quiet sections
-    // threshold: -24dB, knee: 10, ratio: 4:1, fast attack, medium release
     const compressor = ctx.createDynamicsCompressor();
     compressor.threshold.value = -24;
     compressor.knee.value = 10;
@@ -369,13 +366,11 @@ export const useSermonRecorder = (
     analyser.fftSize = 256;
     analyserRef.current = analyser;
 
-    // Wire: source → hpf → compressor → analyser
     source.connect(hpf);
     hpf.connect(compressor);
     compressor.connect(analyser);
     startVizLoop();
 
-    // ── MediaRecorder — record from processed stream via MediaStreamDestination ──
     const destination = ctx.createMediaStreamDestination();
     compressor.connect(destination);
     const processedStream = destination.stream;
@@ -388,19 +383,20 @@ export const useSermonRecorder = (
         audioChunksRef.current.push(e.data);
       }
     };
-    recorder.start(1000); // 1s chunks for crash resilience
+    recorder.onerror = () => {
+      cleanup();
+      setError('Recording failed. Try another microphone or browser.');
+      setPhase('error');
+    };
+    recorder.start(1000);
 
-    // ── Elapsed timer ──
     timerRef.current = window.setInterval(() => {
       setElapsedSeconds((s) => s + 1);
     }, TIMER_INTERVAL_MS);
 
-    // ── Speech recognition ──
     startSpeechRecognition();
-
-    // ── Periodic cloud chunk upload ──
     scheduleChunkUpload();
-  }, [startVizLoop, startSpeechRecognition, scheduleChunkUpload]);
+  }, [audioDeviceId, startSpeechRecognition, scheduleChunkUpload, startVizLoop]);
 
   const pause = useCallback(() => {
     if (mediaRecorderRef.current?.state === 'recording') {
@@ -425,10 +421,9 @@ export const useSermonRecorder = (
       setElapsedSeconds((s) => s + 1);
     }, TIMER_INTERVAL_MS);
     setPhase('recording');
-  }, [startVizLoop, startSpeechRecognition]);
+  }, [startSpeechRecognition, startVizLoop]);
 
   const stop = useCallback(async () => {
-    // Stop MediaRecorder and collect remaining chunks
     await new Promise<void>((resolve) => {
       const rec = mediaRecorderRef.current;
       if (!rec || rec.state === 'inactive') {
@@ -453,26 +448,27 @@ export const useSermonRecorder = (
 
     try {
       const result = await transcribeSermonAudio(blob, mimeType, locale, accentHint);
-      if (result.ok && result.transcript) {
-        setCloudTranscript(result.transcript);
-        setChunkError(null);
-      } else if (!result.ok) {
-        // Surface final transcription errors so the user knows why there's no transcript
-        setChunkError((result as any).error === 'QUOTA_EXCEEDED'
-          ? 'Gemini quota reached — transcript unavailable. Try again in a minute.'
-          : ((result as any).message || 'Final transcription failed.'));
+      if (result.ok) {
+        if (result.transcript) {
+          setCloudTranscript(result.transcript);
+          setChunkError(null);
+        }
+      } else {
+        const failed = result as Extract<typeof result, { ok: false }>;
+        setChunkError(failed.error || 'Final transcription failed.');
       }
     } catch (err: any) {
       setChunkError(err?.message || 'Final transcription failed unexpectedly.');
     }
 
     setPhase('done');
-  }, [cleanup, locale]);
+  }, [accentHint, cleanup, locale]);
 
   const clearTranscript = useCallback(() => {
     setLiveTranscript('');
     setCloudTranscript('');
     setInterimText('');
+    setChunkError(null);
     liveTranscriptRef.current = '';
   }, []);
 
@@ -482,7 +478,6 @@ export const useSermonRecorder = (
     liveTranscriptRef.current = text;
   }, []);
 
-  // Merged best transcript
   const transcript = cloudTranscript || liveTranscript;
 
   const state: SermonRecorderState = {
@@ -510,7 +505,7 @@ export const useSermonRecorder = (
   return [state, actions];
 };
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
 const blobToBase64 = (blob: Blob): Promise<string> =>
   new Promise((resolve, reject) => {
