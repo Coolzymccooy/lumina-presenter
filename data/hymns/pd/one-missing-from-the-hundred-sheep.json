@@ -1,0 +1,79 @@
+{
+  "status": "approved",
+  "id": "one-missing-from-the-hundred-sheep",
+  "title": "One missing from the hundred sheep",
+  "alternateTitles": [],
+  "firstLine": "One missing from the hundred sheep;",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Elizabeth Cecelia Douglas Clephane",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Ira David Sankey"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Elizabeth Cecelia Douglas Clephane (1830–1869).",
+  "tuneAttribution": "Tune: Ira David Sankey (1840–1908).",
+  "publicDomainBasis": "Elizabeth Cecelia Douglas Clephane (1830–1869), Ira David Sankey (1840–1908). All public domain.",
+  "searchKeywords": [
+    "missing",
+    "from",
+    "hundred",
+    "sheep"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "One missing from the hundred sheep;\nGood Shepherd Jesus grieved;\nThough path was rugged, rough, and steep,\nHe sought to save that sheep.\nLost sheep, turn back! Turn back, lost sheep!\nAhead are traps and fearsome beasts!\nOh, hurry back, immediately!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "one missing from the hundred sheep",
+    "normalizedFirstLine": "one missing from the hundred sheep",
+    "keywords": [
+      "missing",
+      "from",
+      "hundred",
+      "sheep"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "one",
+      "missing",
+      "from",
+      "the",
+      "hundred",
+      "sheep",
+      "elizabeth",
+      "cecelia",
+      "douglas",
+      "clephane",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "one missing from the hundred sheep one missing from the hundred sheep elizabeth cecelia douglas clephane unknown praise missing from hundred sheep"
+  }
+}

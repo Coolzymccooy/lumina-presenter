@@ -1,0 +1,97 @@
+{
+  "status": "approved",
+  "id": "tis-midnight-and-on-olive-s-brow",
+  "title": "Tis midnight, and on Olive’s brow",
+  "alternateTitles": [],
+  "firstLine": "’Tis midnight, and on Olive’s brow",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Bingham Tappan",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Batchelder Bradbury"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Bingham Tappan (1794–1849).",
+  "tuneAttribution": "Tune: William Batchelder Bradbury (1816–1868).",
+  "publicDomainBasis": "William Bingham Tappan (1794–1849), William Batchelder Bradbury (1816–1868). All public domain.",
+  "searchKeywords": [
+    "midnight",
+    "olive",
+    "brow"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "’Tis midnight, and on Olive’s brow\nThe star is dimmed that lately shone;\n’Tis midnight in the garden now,\nThe suff’ring Savior prays alone."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "’Tis midnight, and from all removed,\nThe Savior wrestles lone with fears—\nE’en that disciple whom He loved\nHeeds not his Master’s grief and tears."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "’Tis midnight, and for other’s guilt\nThe Man of Sorrows weeps in blood;\nYet He that hath in anguish knelt\nIs not forsaken by His God."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "’Tis midnight, and from ether-plains\nIs borne the song that angels know\nUnheard by mortals are the strains\nThat sweetly soothe the Savior’s woe."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "tis midnight and on olive s brow",
+    "normalizedFirstLine": "tis midnight and on olive s brow",
+    "keywords": [
+      "midnight",
+      "olive",
+      "brow"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "tis",
+      "midnight",
+      "and",
+      "on",
+      "olive",
+      "brow",
+      "william",
+      "bingham",
+      "tappan",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "tis midnight and on olive s brow tis midnight and on olive s brow william bingham tappan unknown praise midnight olive brow"
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "status": "approved",
+  "id": "come-in-o-come-the-door-stands-open-now",
+  "title": "Come in, O come! the door stands open now",
+  "alternateTitles": [],
+  "firstLine": "Come in, O come! the door stands open now;",
+  "meter": "10.10.10.10.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Handley Carr Glyn Moule",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Frederick Cook Atkinson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Handley Carr Glyn Moule (1841–1920).",
+  "tuneAttribution": "Tune: Frederick Cook Atkinson (1841–1896).",
+  "publicDomainBasis": "Handley Carr Glyn Moule (1841–1920), Frederick Cook Atkinson (1841–1896). All public domain.",
+  "searchKeywords": [
+    "come",
+    "door",
+    "stands",
+    "open"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Come in, O come! the door stands open now;\nI knew Thy voice; Lord Jesus, it was Thou.\nThe sun has set long since the storms begin;\n’Tis time for Thee, my Savior, O come in!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Alas, ill-ordered shows the dreary room;\nThe household stuff lies heaped amidst the gloom,\nThe table empty stands, the couch undressed;\nAh, what a welcome for th’ Eternal Guest!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Yet welcome, and tonight; this doleful scene\nIs e’en itself my cause to hail Thee in;\nThis dark confusion e’en at once demands\nThine own bright presence, Lord, and ord’ring hands."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "I seek no more to alter things, or mend,\nBefore the coming of so great a Friend;\nAll were at best unseemly; and ’twere ill\nBeyond all else to keep Thee waiting still."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Come, not to find, but make this troubled heart\nA dwelling worthy of Thee as Thou art;\nTo chase the gloom, the terror, and the sin:\nCome, all Thyself, yea come, Lord Jesus, in!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "come in o come the door stands open now",
+    "normalizedFirstLine": "come in o come the door stands open now",
+    "keywords": [
+      "come",
+      "door",
+      "stands",
+      "open"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "come",
+      "in",
+      "the",
+      "door",
+      "stands",
+      "open",
+      "now",
+      "handley",
+      "carr",
+      "glyn",
+      "moule",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "come in o come the door stands open now come in o come the door stands open now handley carr glyn moule unknown praise come door stands open"
+  }
+}

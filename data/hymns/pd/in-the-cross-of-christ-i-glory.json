@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "in-the-cross-of-christ-i-glory",
+  "title": "In the cross of Christ I glory",
+  "alternateTitles": [],
+  "firstLine": "In the cross of Christ I glory,",
+  "meter": "8.7.8.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Bowring",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Ithamar Conkey"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Bowring (1792–1872).",
+  "tuneAttribution": "Tune: Ithamar Conkey (1815–1867).",
+  "publicDomainBasis": "John Bowring (1792–1872), Ithamar Conkey (1815–1867). All public domain.",
+  "searchKeywords": [
+    "cross",
+    "christ",
+    "glory"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "In the cross of Christ I glory,\nTow’ring o’er the wrecks of time;\nAll the light of sacred story\nGathers round its head sublime."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "When the woes of life o’ertake me,\nHopes deceive, and fears annoy,\nNever shall the cross forsake me,\nLo! It glows with peace and joy."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "When the sun of bliss is beaming\nLight and love upon my way,\nFrom the cross the radiance streaming\nAdds more luster to the day."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Bane and blessing, pain and pleasure,\nBy the cross are sanctified;\nPeace is there that knows no measure,\nJoys that through all time abide."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "in the cross of christ i glory",
+    "normalizedFirstLine": "in the cross of christ i glory",
+    "keywords": [
+      "cross",
+      "christ",
+      "glory"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "in",
+      "the",
+      "cross",
+      "of",
+      "christ",
+      "glory",
+      "john",
+      "bowring",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "in the cross of christ i glory in the cross of christ i glory john bowring unknown praise cross christ glory"
+  }
+}

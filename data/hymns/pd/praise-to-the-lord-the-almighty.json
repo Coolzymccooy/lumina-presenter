@@ -1,0 +1,68 @@
+{
+  "status": "approved",
+  "id": "praise-to-the-lord-the-almighty",
+  "title": "Praise to the Lord, the Almighty",
+  "alternateTitles": ["Lobe den Herren"],
+  "firstLine": "Praise to the Lord, the Almighty, the King of creation!",
+  "meter": "14.14.4.7.8",
+  "hymnalNumbers": { "UMH": 139, "SBC": 14, "LW": 444, "ELW": 858 },
+  "authors": [
+    { "name": "Joachim Neander", "role": "text", "notes": "Original German, 1680." },
+    { "name": "Catherine Winkworth", "role": "translator", "notes": "English translation, 1863." },
+    { "name": "Stralsund Gesangbuch", "role": "tune", "notes": "Traditional German melody, 1665." }
+  ],
+  "tunes": [
+    { "name": "LOBE DEN HERREN", "alternateNames": ["Praise to the Lord"] }
+  ],
+  "themes": ["praise", "majesty", "thanksgiving"],
+  "scriptureThemes": ["Psalm 103:1-5", "Psalm 150", "Deuteronomy 10:21"],
+  "textAttribution": "Text: Joachim Neander, 1680; tr. Catherine Winkworth, 1863.",
+  "tuneAttribution": "Tune: LOBE DEN HERREN, Stralsund Gesangbuch, 1665.",
+  "publicDomainBasis": "Joachim Neander (1650–1680), Catherine Winkworth (1827–1878). Original text 1680, English translation 1863. Tune is a 17th-century German melody. All public domain.",
+  "searchKeywords": ["almighty", "king", "creation", "shelter", "prosper", "hallelujah"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "either",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 42,
+  "allowThreeLineSlides": true,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Praise to the Lord, the Almighty, the King of creation!\nO my soul, praise Him, for He is thy health and salvation!\nAll ye who hear, now to His temple draw near;\nPraise Him in glad adoration."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Praise to the Lord, who o'er all things so wondrously reigneth,\nShelters thee under His wings, yea, so gently sustaineth!\nHast thou not seen how thy desires e'er have been\nGranted in what He ordaineth?"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Praise to the Lord, who doth prosper thy work and defend thee;\nSurely His goodness and mercy here daily attend thee.\nPonder anew what the Almighty can do,\nIf with His love He befriend thee."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Praise to the Lord, who with marvelous wisdom hath made thee,\nDecked thee with health and with loving hand guided and stayed thee.\nHow oft in grief hath not He brought thee relief,\nSpreading His wings for to shade thee."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Praise to the Lord, O let all that is in me adore Him!\nAll that hath life and breath, come now with praises before Him.\nLet the Amen sound from His people again,\nGladly for aye we adore Him."
+    }
+  ]
+}

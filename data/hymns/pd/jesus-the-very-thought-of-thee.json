@@ -1,0 +1,125 @@
+{
+  "status": "approved",
+  "id": "jesus-the-very-thought-of-thee",
+  "title": "Jesus, the very thought of Thee",
+  "alternateTitles": [],
+  "firstLine": "Jesus, the very thought of Thee",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Bernard of Clairvaux",
+      "role": "text"
+    },
+    {
+      "name": "Edward Caswall",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Bacchus Dykes"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Bernard of Clairvaux (1090–1153), Edward Caswall (1814–1878).",
+  "tuneAttribution": "Tune: John Bacchus Dykes (1823–1876).",
+  "publicDomainBasis": "Bernard of Clairvaux (1090–1153), Edward Caswall (1814–1878), John Bacchus Dykes (1823–1876). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "very",
+    "thought",
+    "thee"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Jesus, the very thought of Thee\nWith sweetness fills my breast;\nBut sweeter far Thy face to see,\nAnd in Thy presence rest."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Nor voice can sing, nor heart can frame,\nNor can the memory find\nA sweeter sound than Thy blest Name,\nO Savior of mankind!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "O Hope of every contrite heart,\nO Joy of all the meek,\nTo those who fall, how kind Thou art!\nHow good to those who seek!"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "But what to those who find? Ah, this\nNor tongue nor pen can show;\nThe love of Jesus, what it is\nNone but His loved ones know."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "O Jesus! light of all below!\nThou fount of life and fire!\nSurpassing all the joys we know,\nAnd all we can desire."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "No other source have we but Thee,\nSoul-thirst to satisfy.\nExhaustless spring! the waters free!\nAll other streams are dry."
+    },
+    {
+      "id": "v7",
+      "type": "verse",
+      "label": "Verse 7",
+      "order": 7,
+      "text": "Jesus, our only Joy be Thou,\nAs Thou our Prize wilt be;\nJesus, be Thou our Glory now,\nAnd through eternity."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "jesus the very thought of thee",
+    "normalizedFirstLine": "jesus the very thought of thee",
+    "keywords": [
+      "jesus",
+      "very",
+      "thought",
+      "thee"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "jesus",
+      "the",
+      "very",
+      "thought",
+      "of",
+      "thee",
+      "bernard",
+      "clairvaux",
+      "edward",
+      "caswall",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "jesus the very thought of thee jesus the very thought of thee bernard of clairvaux edward caswall unknown praise jesus very thought thee"
+  }
+}

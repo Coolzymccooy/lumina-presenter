@@ -1,0 +1,107 @@
+{
+  "status": "approved",
+  "id": "my-god-my-portion-and-my-love",
+  "title": "My God, my Portion, and my Love",
+  "alternateTitles": [],
+  "firstLine": "My God, my Portion, and my Love,",
+  "meter": "8.6.8.6. with repeat.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Isaac Watts",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Thomas Hastings"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Isaac Watts (1674–1748).",
+  "tuneAttribution": "Tune: Thomas Hastings (1784–1872).",
+  "publicDomainBasis": "Isaac Watts (1674–1748), Thomas Hastings (1784–1872). All public domain.",
+  "searchKeywords": [
+    "portion",
+    "love"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "My God, my Portion, and my Love,\nMy everlasting All,\nI’ve none but Thee in heav’n above,\nOr on this earthly ball,\nOr on this earthly ball."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "What empty things are all the skies,\nAnd this inferior clod!\nThere’s nothing here deserves my joys,\nThere’s nothing like my God,\nThere’s nothing like my God."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "To Thee I owe my wealth, and friends,\nAnd health, and safe abode;\nThanks to Thy name for meaner things,\nBut they are not my God,\nBut they are not my God."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "How vain a toy is glittering wealth,\nIf once compared to Thee!\nOr what’s my safety, or my health,\nOr all my friends to me,\nOr all my friends to me."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Were I possessor of the earth,\nAnd called the stars my own,\nWithout Thy graces and Thyself,\nI were a wretch undone,\nI were a wretch undone."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Let others stretch their arms like seas,\nAnd grasp in all the shore;\nGrant me the visits of Thy grace,\nAnd I desire no more,\nAnd I desire no more."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "my god my portion and my love",
+    "normalizedFirstLine": "my god my portion and my love",
+    "keywords": [
+      "portion",
+      "love"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "my",
+      "god",
+      "portion",
+      "and",
+      "love",
+      "isaac",
+      "watts",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "my god my portion and my love my god my portion and my love isaac watts unknown praise portion love"
+  }
+}

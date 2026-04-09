@@ -1,0 +1,94 @@
+{
+  "status": "approved",
+  "id": "when-this-passing-world-is-done",
+  "title": "When this passing world is done",
+  "alternateTitles": [],
+  "firstLine": "When this passing world is done,",
+  "meter": "7.7.7.7.7.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Robert Murray McCheyne",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Richard Redhead"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Robert Murray McCheyne (1813–1843).",
+  "tuneAttribution": "Tune: Richard Redhead (1820–1901).",
+  "publicDomainBasis": "Robert Murray McCheyne (1813–1843), Richard Redhead (1820–1901). All public domain.",
+  "searchKeywords": [
+    "when",
+    "this",
+    "passing",
+    "world",
+    "done"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "When this passing world is done,\nWhen has sunk yon glaring sun,\nWhen we stand with Christ on high,\nLooking o’er life’s history;\nThen, Lord, shall I fully know,\nNot till then, how much I owe."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "When I stand before the throne\nDressed in beauty not my own,\nWhen I see Thee as Thou art,\nLove Thee with unsinning heart;\nThen, Lord, shall I fully know,\nNot till then, how much I owe."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "E’en on earth, as through a glass\nDarkly, let Thy glory pass;\nMake forgiveness feel so sweet;\nMake Thy Spirit’s help so meet:\nE’en on earth, Lord, make me know\nSomething of how much I owe."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "when this passing world is done",
+    "normalizedFirstLine": "when this passing world is done",
+    "keywords": [
+      "when",
+      "this",
+      "passing",
+      "world",
+      "done"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "when",
+      "this",
+      "passing",
+      "world",
+      "is",
+      "done",
+      "robert",
+      "murray",
+      "mccheyne",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "when this passing world is done when this passing world is done robert murray mccheyne unknown praise when this passing world done"
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "in-some-way-or-other-the-lord-will-provide",
+  "title": "In some way or other the Lord will provide",
+  "alternateTitles": [],
+  "firstLine": "In some way or other the Lord will provide.",
+  "meter": "11.12.11.11.11.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Martha Walker Cook",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Philip Phillips"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Martha Walker Cook (1806–1874).",
+  "tuneAttribution": "Tune: Philip Phillips (1834–1895).",
+  "publicDomainBasis": "Martha Walker Cook (1806–1874), Philip Phillips (1834–1895). All public domain.",
+  "searchKeywords": [
+    "some",
+    "other",
+    "lord",
+    "will",
+    "provide"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "In some way or other the Lord will provide.\nIt may not be my way, it may not be thy way;\nAnd yet in His own way, “the Lord will provide.”"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "At some time or other the Lord will provide:\nIt may not be my time, it may not be thy time;\nAnd yet in His own time, “the Lord will provide.”"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Despond then no longer; the Lord will provide:\nAnd this be the token—no word He hath spoken\nWas ever yet broken: “The Lord will provide.”"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "March on then right boldly: the sea shall divide;\nThe pathway made glorious, with shoutings victorious,\nWe’ll join in the chorus, “The Lord will provide.”"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "in some way or other the lord will provide",
+    "normalizedFirstLine": "in some way or other the lord will provide",
+    "keywords": [
+      "some",
+      "other",
+      "lord",
+      "will",
+      "provide"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "in",
+      "some",
+      "way",
+      "or",
+      "other",
+      "the",
+      "lord",
+      "will",
+      "provide",
+      "martha",
+      "walker",
+      "cook",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "in some way or other the lord will provide in some way or other the lord will provide martha walker cook unknown praise some other lord will provide"
+  }
+}

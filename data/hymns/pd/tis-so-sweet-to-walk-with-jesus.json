@@ -1,0 +1,121 @@
+{
+  "status": "approved",
+  "id": "tis-so-sweet-to-walk-with-jesus",
+  "title": "Tis so sweet to walk with Jesus",
+  "alternateTitles": [],
+  "firstLine": "’Tis so sweet to walk with Jesus,",
+  "meter": "8.7.8.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Albert Benjamin Simpson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Albert Benjamin Simpson (1843–1919).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Albert Benjamin Simpson (1843–1919). All public domain.",
+  "searchKeywords": [
+    "sweet",
+    "walk",
+    "with",
+    "jesus"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "’Tis so sweet to walk with Jesus,\nStep by step and day by day;\nStepping in His very footprints,\nWalking with Him all the way."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "’Tis so safe to walk with Jesus,\nLeaning hard upon His arm,\nFollowing closely where He leads us,\nNone can hurt and naught can harm."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Step by step I’ll walk with Jesus,\nJust a moment at a time,\nHeights I have not wings to soar to,\nStep by step my feet can climb."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "All the way I’ll walk with Jesus,\nThrough the sunshine, through the gloom,\nThough His blood-marked steps may lead me\nTo the garden, to the tomb."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Here a while we walk with Jesus,\nBut the time will not be long\nTill the night shall change to morning,\nAnd the sorrow into song."
+    },
+    {
+      "id": "chorus-5",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 6,
+      "text": "Then, with all who walked with Jesus,\nWe shall walk with Him in white,\nWhile He turns our grief to gladness,\nAnd our darkness into light."
+    },
+    {
+      "id": "chorus-6",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 7,
+      "text": "Jesus, keep me closer—closer,\nStep by step, and day by day;\nStepping in Thy very footprints,\nWalking with Thee all the way."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "tis so sweet to walk with jesus",
+    "normalizedFirstLine": "tis so sweet to walk with jesus",
+    "keywords": [
+      "sweet",
+      "walk",
+      "with",
+      "jesus"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "tis",
+      "so",
+      "sweet",
+      "to",
+      "walk",
+      "with",
+      "jesus",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "tis so sweet to walk with jesus tis so sweet to walk with jesus albert benjamin simpson unknown praise sweet walk with jesus"
+  }
+}

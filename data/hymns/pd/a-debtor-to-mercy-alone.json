@@ -1,0 +1,88 @@
+{
+  "status": "approved",
+  "id": "a-debtor-to-mercy-alone",
+  "title": "A debtor to mercy alone",
+  "alternateTitles": [],
+  "firstLine": "A debtor to mercy alone,",
+  "meter": "8.8.8.8.D.(A)",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Augustus Montague Toplady",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lewis Edson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Augustus Montague Toplady (1740–1778).",
+  "tuneAttribution": "Tune: Lewis Edson (1748–1820).",
+  "publicDomainBasis": "Augustus Montague Toplady (1740–1778), Lewis Edson (1748–1820). All public domain.",
+  "searchKeywords": [
+    "debtor",
+    "mercy",
+    "alone"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "A debtor to mercy alone,\nOf covenant mercy I sing,\nNor fear, with God’s righteousness on,\nMy person and off’rings to bring.\nThe terrors of law and of God\nWith me can have nothing to do;\nMy Savior’s obedience and blood\nHide all my transgressions from view."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "The work which His goodness began,\nThe arm of His strength will complete;\nHis promise is Yea and Amen,\nAnd never was forfeited yet.\nThings future, nor things that are now,\nNot all things below or above,\nCan make Him His purpose forego,\nOr sever my soul from His love."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "My name from the palms of His hands\nEternity will not erase;\nImprest on His heart, it remains\nIn marks of indelible grace.\nYes! I to the end shall endure,\nAs sure as the earnest is giv’n;\nMore happy, but not more secure,\nWhen all earthly ties have been riv’n."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "a debtor to mercy alone",
+    "normalizedFirstLine": "a debtor to mercy alone",
+    "keywords": [
+      "debtor",
+      "mercy",
+      "alone"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "debtor",
+      "to",
+      "mercy",
+      "alone",
+      "augustus",
+      "montague",
+      "toplady",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "a debtor to mercy alone a debtor to mercy alone augustus montague toplady unknown praise debtor mercy alone"
+  }
+}

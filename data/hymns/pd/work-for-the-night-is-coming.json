@@ -1,0 +1,91 @@
+{
+  "status": "approved",
+  "id": "work-for-the-night-is-coming",
+  "title": "Work, for the night is coming",
+  "alternateTitles": [],
+  "firstLine": "Work, for the night is coming,",
+  "meter": "7.6.7.5.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Anna Louisa Walker Coghill",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lowell Mason"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Anna Louisa Walker Coghill (1836–1907).",
+  "tuneAttribution": "Tune: Lowell Mason (1792–1872).",
+  "publicDomainBasis": "Anna Louisa Walker Coghill (1836–1907), Lowell Mason (1792–1872). All public domain.",
+  "searchKeywords": [
+    "work",
+    "night",
+    "coming"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Work, for the night is coming,\nWork through the morning hours;\nWork while the dew is sparkling,\nWork ’mid springing flowers;\nWork when the day grows brighter,\nWork in the glowing sun;\nWork, for the night is coming,\nWhen man’s work is done."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Work, for the night is coming,\nWork through the sunny noon;\nFill brightest hours with labor,\nRest comes sure and soon.\nGive every flying minute,\nSomething to keep in store;\nWork, for the night is coming,\nWhen man works no more."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Work, for the night is coming,\nUnder the sunset skies;\nWhile their bright tints are glowing,\nWork, for daylight flies.\nWork till the last beam fadeth,\nFadeth to shine no more;\nWork, while the night is darkening,\nWhen man’s work is o’er."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "work for the night is coming",
+    "normalizedFirstLine": "work for the night is coming",
+    "keywords": [
+      "work",
+      "night",
+      "coming"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "work",
+      "for",
+      "the",
+      "night",
+      "is",
+      "coming",
+      "anna",
+      "louisa",
+      "walker",
+      "coghill",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "work for the night is coming work for the night is coming anna louisa walker coghill unknown praise work night coming"
+  }
+}

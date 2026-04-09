@@ -1,0 +1,90 @@
+{
+  "status": "approved",
+  "id": "god-our-father-we-adore-thee",
+  "title": "God, our Father, we adore Thee",
+  "alternateTitles": [],
+  "firstLine": "God, our Father, we adore Thee!",
+  "meter": "8.7.8.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "George West Frazer",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Zundel"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: George West Frazer (1840–1896).",
+  "tuneAttribution": "Tune: John Zundel (1815–1882).",
+  "publicDomainBasis": "George West Frazer (1840–1896), John Zundel (1815–1882). All public domain.",
+  "searchKeywords": [
+    "father",
+    "adore",
+    "thee"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "God, our Father, we adore Thee!\nWe, Thy children, bless Thy Name!\nChosen in the Christ before Thee,\nWe are “holy without blame.”\nWe adore Thee! we adore Thee!\nAbba’s praises we proclaim!\nWe adore Thee! we adore Thee!\nAbba’s praises we proclaim!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Son Eternal, we adore Thee!\nLamb upon the throne on high!\nLamb of God, we bow before Thee,\nThou hast brought Thy people nigh!\nWe adore Thee! we adore Thee!\nSon of God, Who came to die!\nWe adore Thee! we adore Thee!\nSon of God, Who came to die!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Father, Son and Holy Spirit—\nThree in One! we give Thee praise!\nFor the riches we inherit,\nHeart and voice to Thee we raise!\nWe adore Thee! we adore Thee!\nThee we bless, through endless days!\nWe adore Thee! we adore Thee!\nThee we bless, through endless days!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "god our father we adore thee",
+    "normalizedFirstLine": "god our father we adore thee",
+    "keywords": [
+      "father",
+      "adore",
+      "thee"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "god",
+      "our",
+      "father",
+      "we",
+      "adore",
+      "thee",
+      "george",
+      "west",
+      "frazer",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "god our father we adore thee god our father we adore thee george west frazer unknown praise father adore thee"
+  }
+}

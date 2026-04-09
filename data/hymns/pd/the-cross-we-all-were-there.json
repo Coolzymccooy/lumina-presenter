@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "the-cross-we-all-were-there",
+  "title": "The cross—we all were there",
+  "alternateTitles": [],
+  "firstLine": "The cross—we all were there,",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Horatius Bonar",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James McGranahan"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Horatius Bonar (1808–1889).",
+  "tuneAttribution": "Tune: James McGranahan (1840–1907).",
+  "publicDomainBasis": "Horatius Bonar (1808–1889), James McGranahan (1840–1907). All public domain.",
+  "searchKeywords": [
+    "cross",
+    "were",
+    "there"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "The cross—we all were there,\nHallelujah! hallelujah!\nFor all that death did share!\nHallelujah! hallelujah!\nGod there upon it died,\nAnd man and all beside\nWere wholly crucified—\nHallelujah for the cross!"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "The cross, it holdeth fast,\nHallelujah! hallelujah!\nAll things upon it cast,\nHallelujah! hallelujah!\nTwo arms extended strong\nHold those who there belong;\nWe’re through with self—our song:\nHallelujah for the cross!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 3,
+      "text": "’Tis there man died in God,\nHallelujah! hallelujah!\nThere ceased this human clod,\nHallelujah! hallelujah!\nWith joy we all declare,\nWe’re terminated there!\nWe’ll sing now and fore’er,\nHallelujah for the cross!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 4,
+      "text": "’Tis there man died in God,\nHallelujah! hallelujah!\nFulfilling thus His plan,\nHallelujah! hallelujah!\nThrough death He was released\nAnd now He has increased;\nHis life is our rich feast—\nHallelujah for the cross!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "the cross we all were there",
+    "normalizedFirstLine": "the cross we all were there",
+    "keywords": [
+      "cross",
+      "were",
+      "there"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "the",
+      "cross",
+      "we",
+      "all",
+      "were",
+      "there",
+      "horatius",
+      "bonar",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "the cross we all were there the cross we all were there horatius bonar unknown praise cross were there"
+  }
+}

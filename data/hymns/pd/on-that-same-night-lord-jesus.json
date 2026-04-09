@@ -1,0 +1,108 @@
+{
+  "status": "approved",
+  "id": "on-that-same-night-lord-jesus",
+  "title": "On that same night, Lord Jesus",
+  "alternateTitles": [],
+  "firstLine": "On that same night, Lord Jesus,",
+  "meter": "7.6.7.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "George West Frazer",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Reginald Heber"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: George West Frazer (1840–1896).",
+  "tuneAttribution": "Tune: Reginald Heber (1783–1826).",
+  "publicDomainBasis": "George West Frazer (1840–1896), Reginald Heber (1783–1826). All public domain.",
+  "searchKeywords": [
+    "that",
+    "same",
+    "night",
+    "lord",
+    "jesus"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "On that same night, Lord Jesus,\nWhen all around Thee joined\nTo cast its darkest shadow\nAcross Thy holy mind,\nWe hear Thy voice, blest Savior,\n“This do, remember me”,\nWith grateful hearts responding,\nWe do remember Thee."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "The depth of all Thy suffering\nNo heart could e’er conceive,\nThe cup of wrath o’erflowing\nFor us Thou didst receive;\nAnd, oh, of God forsaken\nOn the accursed tree;\nWith grateful hearts, Lord Jesus,\nWe now remember Thee."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "We think of all the darkness\nWhich round Thy spirit pressed,\nOf all those waves and billows,\nWhich rolled across Thy breast.\nOh, there Thy grace unbounded\nAnd perfect love we see;\nWith joy and sorrow mingling,\nWe would remember Thee."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "We know Thee now as risen,\nThe Firstborn from the dead;\nWe see Thee now ascended,\nThe Church’s glorious Head.\nIn Thee by grace accepted,\nThe heart and mind set free\nTo think of all Thy sorrow,\nAnd thus remember Thee."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Till Thou shalt come in glory,\nAnd call us hence away,\nTo rest in all the brightness\nOf that unclouded day,\nWe show Thy death, Lord Jesus,\nAnd here would seek to be\nMore to Thy death conformed,\nWhile we remember Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "on that same night lord jesus",
+    "normalizedFirstLine": "on that same night lord jesus",
+    "keywords": [
+      "that",
+      "same",
+      "night",
+      "lord",
+      "jesus"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "on",
+      "that",
+      "same",
+      "night",
+      "lord",
+      "jesus",
+      "george",
+      "west",
+      "frazer",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "on that same night lord jesus on that same night lord jesus george west frazer unknown praise that same night lord jesus"
+  }
+}

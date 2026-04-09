@@ -1,0 +1,106 @@
+{
+  "status": "approved",
+  "id": "cleansed-in-our-savior-s-precious-blood",
+  "title": "Cleansed in our Savior’s precious blood",
+  "alternateTitles": [],
+  "firstLine": "Cleansed in our Savior’s precious blood,",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Spencer Walton",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Daniel Brink Towner"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Spencer Walton (1850–1906).",
+  "tuneAttribution": "Tune: Daniel Brink Towner (1850–1919).",
+  "publicDomainBasis": "William Spencer Walton (1850–1906), Daniel Brink Towner (1850–1919). All public domain.",
+  "searchKeywords": [
+    "cleansed",
+    "savior",
+    "precious",
+    "blood"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Cleansed in our Savior’s precious blood,\nFilled with the fulness of our God,\nWalking by faith the path He trod,\nHallelujah! Hallelujah!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Leaning our heads on Jesus’ breast,\nKnowing the joy of that sweet rest,\nFinding in Him the chief, the best,\nHallelujah! Hallelujah!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Kept by His pow’r from day to day,\nHeld by His hand, we cannot stray,\nGlory to glory all the way,\nHallelujah! Hallelujah!"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Living in us His own pure life,\nGiving us rest from inward strife,\nFrom strength to strength, from death to life,\nHallelujah! Hallelujah!"
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "O what a Savior we have found;\nWell may we make the world resound\nWith one continual joyous sound,\nHallelujah! Hallelujah!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "cleansed in our savior s precious blood",
+    "normalizedFirstLine": "cleansed in our savior s precious blood",
+    "keywords": [
+      "cleansed",
+      "savior",
+      "precious",
+      "blood"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "cleansed",
+      "in",
+      "our",
+      "savior",
+      "precious",
+      "blood",
+      "william",
+      "spencer",
+      "walton",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "cleansed in our savior s precious blood cleansed in our savior s precious blood william spencer walton unknown praise cleansed savior precious blood"
+  }
+}

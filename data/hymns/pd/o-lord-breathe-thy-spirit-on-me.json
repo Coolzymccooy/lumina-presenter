@@ -1,0 +1,118 @@
+{
+  "status": "approved",
+  "id": "o-lord-breathe-thy-spirit-on-me",
+  "title": "O Lord, breathe Thy Spirit on me",
+  "alternateTitles": [],
+  "firstLine": "O Lord, breathe Thy Spirit on me,",
+  "meter": "8.7.8.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Albert Benjamin Simpson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Albert Benjamin Simpson (1843–1919).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Albert Benjamin Simpson (1843–1919). All public domain.",
+  "searchKeywords": [
+    "lord",
+    "breathe",
+    "spirit"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O Lord, breathe Thy Spirit on me,\nTeach me how to breathe Thee in;\nHelp me pour into Thy bosom\nAll my life of self and sin."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "I am breathing out my own life,\nThat I may be filled with Thine;\nLetting go my strength and weakness,\nBreathing in Thy life divine."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Breathing out my sinful nature,\nThou hast borne it all for me;\nBreathing in Thy cleansing fulness,\nFinding all my life in Thee."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "I am breathing out my sorrow,\nOn Thy kind and gentle breast;\nBreathing in Thy joy and comfort,\nBreathing in Thy peace and rest."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "I am breathing out my sickness,\nThou hast borne its burden too;\nI am breathing in Thy healing,\nEver promised, ever new."
+    },
+    {
+      "id": "chorus-5",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 6,
+      "text": "I am breathing out my longings\nIn Thy listening, loving ear;\nI am breathing in Thy answers,\nStilling every doubt and fear."
+    },
+    {
+      "id": "chorus-6",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 7,
+      "text": "I am breathing every moment,\nDrawing all my life from Thee;\nBreath by breath I live upon Thee,\nLord, Thy Spirit breathe in me."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o lord breathe thy spirit on me",
+    "normalizedFirstLine": "o lord breathe thy spirit on me",
+    "keywords": [
+      "lord",
+      "breathe",
+      "spirit"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "lord",
+      "breathe",
+      "thy",
+      "spirit",
+      "on",
+      "me",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o lord breathe thy spirit on me o lord breathe thy spirit on me albert benjamin simpson unknown praise lord breathe spirit"
+  }
+}

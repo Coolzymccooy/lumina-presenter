@@ -1,0 +1,93 @@
+{
+  "status": "approved",
+  "id": "am-i-a-soldier-of-the-cross",
+  "title": "Am I a soldier of the Cross",
+  "alternateTitles": [],
+  "firstLine": "Am I a soldier of the Cross—",
+  "meter": "8.6.8.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Isaac Watts",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Ira David Sankey"
+    }
+  ],
+  "themes": [
+    "surrender"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Isaac Watts (1674–1748).",
+  "tuneAttribution": "Tune: Ira David Sankey (1840–1908).",
+  "publicDomainBasis": "Isaac Watts (1674–1748), Ira David Sankey (1840–1908). All public domain.",
+  "searchKeywords": [
+    "soldier",
+    "cross"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Am I a soldier of the Cross—\nA follower of the Lamb?\nAnd shall I fear to own His cause,\nOr blush to speak His name?"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Must I be carried to the skies\nOn flowery beds of ease,\nWhile others fought to win the prize\nAnd sailed through bloody seas?"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Are there no foes for me to face?\nMust I not stem the flood?\nIs this vile world a friend to grace,\nTo help me on to God?"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Since I must fight if I would reign,\nIncrease my courage, Lord!\nI’ll bear the toil, endure the pain,\nSupported by Thy Word."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "am i a soldier of the cross",
+    "normalizedFirstLine": "am i a soldier of the cross",
+    "keywords": [
+      "soldier",
+      "cross"
+    ],
+    "themes": [
+      "surrender"
+    ],
+    "tokens": [
+      "am",
+      "soldier",
+      "of",
+      "the",
+      "cross",
+      "isaac",
+      "watts",
+      "unknown",
+      "surrender"
+    ],
+    "searchableText": "am i a soldier of the cross am i a soldier of the cross isaac watts unknown surrender soldier cross"
+  }
+}

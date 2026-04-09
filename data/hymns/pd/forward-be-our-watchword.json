@@ -1,0 +1,78 @@
+{
+  "status": "approved",
+  "id": "forward-be-our-watchword",
+  "title": "Forward! be our watchword",
+  "alternateTitles": [],
+  "firstLine": "“Forward!” be our watchword,",
+  "meter": "6.5.6.5.T.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Henry Alford",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Franz Joseph Haydn"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Henry Alford (1810–1871).",
+  "tuneAttribution": "Tune: Franz Joseph Haydn (1732–1809).",
+  "publicDomainBasis": "Henry Alford (1810–1871), Franz Joseph Haydn (1732–1809). All public domain.",
+  "searchKeywords": [
+    "forward",
+    "watchword"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "“Forward!” be our watchword,\nSteps and voices joined;\nSeek the things before us,\nNot a look behind;\nBurns the fiery pillar\nAt our army’s head;\nWho shall dream of shrinking,\nBy our Captain led?\nForward through the desert,\nThrough the toil and fight;\nHeaven’s Kingdom waits us,\nForward into light."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Glories upon glories\nHath our God prepared,\nBy the souls that love Him,\nOne day to be shared:\nEye hath not beheld them,\nEar hath never heard;\nNor of these hath uttered\nThought or speech or word;\nForward, marching forward\nWhere the kingdom’s bright,\nTill the veil be lifted,\nTill our faith be sight!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "forward be our watchword",
+    "normalizedFirstLine": "forward be our watchword",
+    "keywords": [
+      "forward",
+      "watchword"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "forward",
+      "be",
+      "our",
+      "watchword",
+      "henry",
+      "alford",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "forward be our watchword forward be our watchword henry alford unknown praise forward watchword"
+  }
+}

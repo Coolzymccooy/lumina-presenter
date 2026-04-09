@@ -1,0 +1,105 @@
+{
+  "status": "approved",
+  "id": "thy-holy-spirit-lord-alone",
+  "title": "Thy Holy Spirit, Lord, alone",
+  "alternateTitles": [],
+  "firstLine": "Thy Holy Spirit, Lord, alone",
+  "meter": "8.6.8.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William James Kirkpatrick"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: William James Kirkpatrick (1838–1921).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), William James Kirkpatrick (1838–1921). All public domain.",
+  "searchKeywords": [
+    "holy",
+    "spirit",
+    "lord",
+    "alone"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Thy Holy Spirit, Lord, alone\nCan meet our need today;\nHis might alone empow’ring us\nCan bring us neath Thy sway."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Thy Holy Spirit, Lord, alone\nCan grant us Thy desire;\nHis power alone can turn our heart\nAnd light the sacred fire."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Thy Holy Spirit, Lord, can give\nThe gifts we seek to share;\nHis pow’r can signs and wonders work\nAnd stir up holy fear."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Thy Holy Spirit, Lord, can bring\nThe show’r we need this hour;\nAnd while we seek, Lord Jesus, come\nIn motivating power."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Thy Spirit of pow’r with might,\nSend in our midst, we pray,\nAnd like a rushing, mighty wind\nSweep over our souls today."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "thy holy spirit lord alone",
+    "normalizedFirstLine": "thy holy spirit lord alone",
+    "keywords": [
+      "holy",
+      "spirit",
+      "lord",
+      "alone"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "thy",
+      "holy",
+      "spirit",
+      "lord",
+      "alone",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "thy holy spirit lord alone thy holy spirit lord alone fanny jane crosby unknown praise holy spirit lord alone"
+  }
+}

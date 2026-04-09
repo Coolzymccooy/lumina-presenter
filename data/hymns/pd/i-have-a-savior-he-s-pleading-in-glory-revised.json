@@ -1,0 +1,109 @@
+{
+  "status": "approved",
+  "id": "i-have-a-savior-he-s-pleading-in-glory-revised",
+  "title": "I have a Savior, He’s pleading in glory (revised)",
+  "alternateTitles": [],
+  "firstLine": "I have a Savior, He’s pleading in glory,",
+  "meter": "11.11.12.11. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Samuel O'Malley Clough",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Ira David Sankey"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Samuel O'Malley Clough (1837–1910).",
+  "tuneAttribution": "Tune: Ira David Sankey (1840–1908).",
+  "publicDomainBasis": "Samuel O'Malley Clough (1837–1910), Ira David Sankey (1840–1908). All public domain.",
+  "searchKeywords": [
+    "have",
+    "savior",
+    "pleading",
+    "glory",
+    "revised"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I have a Savior, He’s pleading in glory,\nA dear loving Savior, though earth-friends be few;\nAnd now He is watching in tenderness o’er me,\nBut oh, that my Savior were your Savior too!"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "I have a Father: to me He has given\nA hope for eternity, blessed and true;\nHe’ll call me one day to the kingdom of heaven,\nBut, oh, that He’d let me bring you with me too!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 3,
+      "text": "I have a joy like the sea billows swelling—\nMy Savior’s borne off all my sins, through and through,\nAnd now He is even right here in me dwelling;\nBut, oh, that my Savior this joy would give you!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 4,
+      "text": "I have a peace: it is calm as a river,\nA peace that the friends of this world never knew;\nMy Savior alone is its Author and Giver,\nAnd, oh, could I know it was given to you!"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 5,
+      "text": "When Jesus has found you, tell friends with elation\nThat my loving Savior is your Savior, too;\nThen pray that your Savior may bring them salvation,\nAnd prayer will be answered—’twas answered for you!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i have a savior he s pleading in glory revised",
+    "normalizedFirstLine": "i have a savior he s pleading in glory",
+    "keywords": [
+      "have",
+      "savior",
+      "pleading",
+      "glory",
+      "revised"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "have",
+      "savior",
+      "he",
+      "pleading",
+      "in",
+      "glory",
+      "revised",
+      "samuel",
+      "omalley",
+      "clough",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i have a savior he s pleading in glory revised i have a savior he s pleading in glory samuel omalley clough unknown praise have savior pleading glory revised"
+  }
+}

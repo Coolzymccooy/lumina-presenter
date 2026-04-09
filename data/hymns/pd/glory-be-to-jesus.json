@@ -1,0 +1,113 @@
+{
+  "status": "approved",
+  "id": "glory-be-to-jesus",
+  "title": "Glory be to Jesus",
+  "alternateTitles": [],
+  "firstLine": "Glory be to Jesus,",
+  "meter": "6.5.6.5.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Edward Caswall",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Friedrich Filitz"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Edward Caswall (1814–1878).",
+  "tuneAttribution": "Tune: Friedrich Filitz (1804–1876).",
+  "publicDomainBasis": "Edward Caswall (1814–1878), Friedrich Filitz (1804–1876). All public domain.",
+  "searchKeywords": [
+    "glory",
+    "jesus"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Glory be to Jesus,\nWho in bitter pains\nPoured for me the life-blood\nFrom His sacred veins."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Grace and life eternal\nIn that Blood I find;\nBlest be His compassion,\nInfinitely kind."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Blest through endless ages\nBe the precious stream,\nWhich from endless torments\nDid the world redeem."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Abel’s blood for vengeance\nPleaded to the skies;\nBut the blood of Jesus\nFor our pardon cries."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "It the conscience sprinkles,\nFrees our guilty hearts;\nSatan in confusion\nTerror-struck departs."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Oft as earth exulting\nWafts its praise on high,\nAngel-hosts rejoicing\nMake their glad reply."
+    },
+    {
+      "id": "v7",
+      "type": "verse",
+      "label": "Verse 7",
+      "order": 7,
+      "text": "Lift ye then your voices;\nSwell the mighty flood;\nLouder still and louder\nPraise the precious blood."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "glory be to jesus",
+    "normalizedFirstLine": "glory be to jesus",
+    "keywords": [
+      "glory",
+      "jesus"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "glory",
+      "be",
+      "to",
+      "jesus",
+      "edward",
+      "caswall",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "glory be to jesus glory be to jesus edward caswall unknown praise glory jesus"
+  }
+}

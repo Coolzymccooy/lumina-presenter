@@ -1,0 +1,111 @@
+{
+  "status": "approved",
+  "id": "o-thou-in-whose-presence-my-soul-takes-delight",
+  "title": "O Thou, in whose presence my soul takes delight",
+  "alternateTitles": [],
+  "firstLine": "O Thou, in whose presence my soul takes delight,",
+  "meter": "11.8.11.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Joseph Swain",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Freeman Lewis"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Joseph Swain (1761–1796).",
+  "tuneAttribution": "Tune: Freeman Lewis (1780–1859).",
+  "publicDomainBasis": "Joseph Swain (1761–1796), Freeman Lewis (1780–1859). All public domain.",
+  "searchKeywords": [
+    "thou",
+    "whose",
+    "presence",
+    "soul",
+    "takes",
+    "delight"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O Thou, in whose presence my soul takes delight,\nOn whom in affliction I call,\nMy comfort by day and my song in the night,\nMy hope, my salvation, my all!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Where dost Thou, dear Shepherd, resort with Thy sheep,\nTo feed them in pastures of love;\nSay, why in the valley of death should I weep,\nOr alone in this wilderness rove?"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Oh, why should I wander, an alien from Thee,\nOr cry in the desert for bread?\nThy foes will rejoice when my sorrows they see,\nAnd smile at the tears I have shed."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Ye daughters of Zion, declare, have you seen\nThe Star that on Israel shone?\nSay, if in your tents my Beloved has been,\nAnd where with His flocks He is gone."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Dear Shepherd! I hear, and will follow Thy call;\nI know the sweet sound of Thy voice;\nRestore and defend me, for Thou art my all,\nAnd in Thee I’ll ever rejoice."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o thou in whose presence my soul takes delight",
+    "normalizedFirstLine": "o thou in whose presence my soul takes delight",
+    "keywords": [
+      "thou",
+      "whose",
+      "presence",
+      "soul",
+      "takes",
+      "delight"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "thou",
+      "in",
+      "whose",
+      "presence",
+      "my",
+      "soul",
+      "takes",
+      "delight",
+      "joseph",
+      "swain",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o thou in whose presence my soul takes delight o thou in whose presence my soul takes delight joseph swain unknown praise thou whose presence soul takes delight"
+  }
+}

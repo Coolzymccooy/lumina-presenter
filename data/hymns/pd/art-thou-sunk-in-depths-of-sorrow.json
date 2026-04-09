@@ -1,0 +1,100 @@
+{
+  "status": "approved",
+  "id": "art-thou-sunk-in-depths-of-sorrow",
+  "title": "Art thou sunk in depths of sorrow",
+  "alternateTitles": [],
+  "firstLine": "Art thou sunk in depths of sorrow",
+  "meter": "8.7.8.7.D. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Albert Benjamin Simpson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Albert Benjamin Simpson (1843–1919).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Albert Benjamin Simpson (1843–1919). All public domain.",
+  "searchKeywords": [
+    "thou",
+    "sunk",
+    "depths",
+    "sorrow"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Art thou sunk in depths of sorrow\nWhere no arm can reach so low?\nThere is One whose arms almighty\nReach beyond thy deepest woe.\nGod th’ Eternal is thy refuge,\nLet it still thy wild alarms;\nUnderneath thy deepest sorrow,\nAre the everlasting arms."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Other arms grow faint and weary,\nThese can never faint, nor fail;\nOthers reach our mounts of blessing,\nThese our lowest loneliest vale.\nO that all might know His friendship!\nO that all might see His charms!\nO that all might have beneath them\nJesus’ everlasting arms."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Underneath us, O how easy;\nWe have not to mount on high,\nBut to sink into His fulness,\nAnd in trustful weakness lie.\nAnd we find our humbling failures\nSave us from the strength that harms!\nWe may fail, but underneath us\nAre the everlasting arms."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Arms of Jesus! fold me closer,\nTo Thy strong and loving breast,\nTill my spirit on Thy bosom\nFinds its everlasting rest;\nAnd when time’s last sands are sinking,\nShield my heart from all alarms,\nSoftly whispering, “Underneath thee,\nAre the everlasting arms.”"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "art thou sunk in depths of sorrow",
+    "normalizedFirstLine": "art thou sunk in depths of sorrow",
+    "keywords": [
+      "thou",
+      "sunk",
+      "depths",
+      "sorrow"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "art",
+      "thou",
+      "sunk",
+      "in",
+      "depths",
+      "of",
+      "sorrow",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "art thou sunk in depths of sorrow art thou sunk in depths of sorrow albert benjamin simpson unknown praise thou sunk depths sorrow"
+  }
+}

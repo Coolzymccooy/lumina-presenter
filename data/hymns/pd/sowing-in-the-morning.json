@@ -1,0 +1,82 @@
+{
+  "status": "approved",
+  "id": "sowing-in-the-morning",
+  "title": "Sowing in the morning",
+  "alternateTitles": [],
+  "firstLine": "Sowing in the morning, sowing seeds of kindness,",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Knowles Shaw",
+      "role": "text"
+    }
+  ],
+  "tunes": [],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Knowles Shaw (1834–1878).",
+  "tuneAttribution": "Tune: Unknown.",
+  "publicDomainBasis": "Knowles Shaw (1834–1878). All public domain.",
+  "searchKeywords": [
+    "sowing",
+    "morning"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Sowing in the morning, sowing seeds of kindness,\nSowing in the noontide and the dewy eve;\nWaiting for the harvest, and the time of reaping,\nWe shall come rejoicing, bringing in the sheaves."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Sowing in the sunshine, sowing in the shadows,\nFearing neither clouds nor winter’s chilling breeze;\nBy and by, the harvest and the labor ended,\nWe shall come rejoicing, bringing in the sheaves."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Going forth with weeping, sowing for the Master,\nTho’, the loss sustained, our spirit often grieves;\nWhen our weeping’s over, He will bid us welcome,\nWe shall come rejoicing, bringing in the sheaves."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "sowing in the morning",
+    "normalizedFirstLine": "sowing in the morning sowing seeds of kindness",
+    "keywords": [
+      "sowing",
+      "morning"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "sowing",
+      "in",
+      "the",
+      "morning",
+      "seeds",
+      "of",
+      "kindness",
+      "knowles",
+      "shaw",
+      "praise"
+    ],
+    "searchableText": "sowing in the morning sowing in the morning sowing seeds of kindness knowles shaw praise sowing morning"
+  }
+}

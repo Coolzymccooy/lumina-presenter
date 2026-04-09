@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "breathe-on-us-lord-of-life",
+  "title": "Breathe on us, Lord of life",
+  "alternateTitles": [],
+  "firstLine": "Breathe on us, Lord of life,",
+  "meter": "6.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Edwin Hatch",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Robert Jackson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Edwin Hatch (1835–1889).",
+  "tuneAttribution": "Tune: Robert Jackson (1842–1914).",
+  "publicDomainBasis": "Edwin Hatch (1835–1889), Robert Jackson (1842–1914). All public domain.",
+  "searchKeywords": [
+    "breathe",
+    "lord",
+    "life"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Breathe on us, Lord of life,\nFill us with life anew,\nThat we may love what Thou dost love,\nAnd do what Thou wouldst do."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Breathe on us, Lord of life.\nUntil our hearts are pure,\nUntil with Thee we will one will,\nTo do or to endure."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Breathe on us, Lord of life,\nTill we are wholly Thine,\nTill all this earthly part of us\nGlows with Thy fire divine."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Breathe on us, Lord of life,\nSo shall we never die,\nBut live with Thee the perfect life\nOf Thine eternity."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "breathe on us lord of life",
+    "normalizedFirstLine": "breathe on us lord of life",
+    "keywords": [
+      "breathe",
+      "lord",
+      "life"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "breathe",
+      "on",
+      "us",
+      "lord",
+      "of",
+      "life",
+      "edwin",
+      "hatch",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "breathe on us lord of life breathe on us lord of life edwin hatch unknown praise breathe lord life"
+  }
+}

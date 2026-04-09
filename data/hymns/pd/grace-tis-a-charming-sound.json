@@ -1,0 +1,115 @@
+{
+  "status": "approved",
+  "id": "grace-tis-a-charming-sound",
+  "title": "Grace! ’tis a charming sound",
+  "alternateTitles": [],
+  "firstLine": "Grace! ’tis a charming sound,",
+  "meter": "6.6.8.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Philip Doddridge",
+      "role": "text"
+    },
+    {
+      "name": "Augustus Montague Toplady",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Ira David Sankey"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Philip Doddridge (1702–1751), Augustus Montague Toplady (1740–1778).",
+  "tuneAttribution": "Tune: Ira David Sankey (1840–1908).",
+  "publicDomainBasis": "Philip Doddridge (1702–1751), Augustus Montague Toplady (1740–1778), Ira David Sankey (1840–1908). All public domain.",
+  "searchKeywords": [
+    "grace",
+    "charming",
+    "sound"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Grace! ’tis a charming sound,\nHarmonious to the ear;\nHeav’n with the echo shall resound,\nAnd all the earth shall hear."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "’Twas grace that wrote my name\nIn life’s eternal book;\n’Twas grace that gave me to the Lamb,\nWho all my sorrows took."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Grace taught my wandering feet\nTo tread the pilgrim road;\nAnd new supplies each hour I meet\nWhile pressing on to God."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Grace taught my heart to pray,\nAnd made my eyes o’erflow;\n’Tis grace which kept me to this day,\nAnd will not let me go."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Grace all the work shall crown\nThrough everlasting days;\nIt lays in love the topmost stone,\nAnd well deserves the praise."
+    },
+    {
+      "id": "chorus-5",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 6,
+      "text": "Oh, let that grace inspire\nMy heart with strength divine;\nMay all my powers to Thee aspire,\nAnd all my days be Thine."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "grace tis a charming sound",
+    "normalizedFirstLine": "grace tis a charming sound",
+    "keywords": [
+      "grace",
+      "charming",
+      "sound"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "grace",
+      "tis",
+      "charming",
+      "sound",
+      "philip",
+      "doddridge",
+      "augustus",
+      "montague",
+      "toplady",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "grace tis a charming sound grace tis a charming sound philip doddridge augustus montague toplady unknown praise grace charming sound"
+  }
+}

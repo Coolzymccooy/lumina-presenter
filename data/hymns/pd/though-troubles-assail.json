@@ -1,0 +1,114 @@
+{
+  "status": "approved",
+  "id": "though-troubles-assail",
+  "title": "Though troubles assail",
+  "alternateTitles": [],
+  "firstLine": "Though troubles assail,",
+  "meter": "5.5.5.5.6.5.6.5.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Newton",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Croft"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Newton (1725–1807).",
+  "tuneAttribution": "Tune: William Croft (1678–1727).",
+  "publicDomainBasis": "John Newton (1725–1807), William Croft (1678–1727). All public domain.",
+  "searchKeywords": [
+    "though",
+    "troubles",
+    "assail"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Though troubles assail,\nAnd dangers affright;\nThough friends should all fail,\nAnd foes all unite,\nYet one thing secures us,\nWhatever betide:\nThe Scripture assures us,\n“The Lord will provide.”"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "The birds, without barn\nOr storehouse, are fed;\nFrom them let us learn\nTo trust for our bread;\nHis saints what is fitting\nShall ne’er be denied,\nSo long as ’tis written,\n“The Lord will provide.”"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "His call we obey,\nLike Abram of old,\nNot knowing our way,\nBut faith makes us bold;\nFor though we are strangers,\nWe have a good Guide;\nAnd trust in all dangers:\n“The Lord will provide.”"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "When Satan appears\nTo stop up our path,\nAnd fills us with fears,\nWe triumph by faith;\nHe cannot take from us,\nThough oft he has tried,\nThe heart-cheering promise,\n“The Lord will provide.”"
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "He tells us we’re weak,\nOur hope is in vain;\nThe good that we seek\nWe ne’er shall obtain;\nBut when such suggestions\nOur faith thus have tried,\nThis answers all questions,\n“The Lord will provide.”"
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "No strength of our own,\nNor goodness we claim;\nOur trust is all thrown\nOn Jesus’ dear name.\nIn this our strong tower\nFor safety we hide;\nThe Lord is our power,\n“The Lord will provide.”"
+    },
+    {
+      "id": "v7",
+      "type": "verse",
+      "label": "Verse 7",
+      "order": 7,
+      "text": "When life sinks apace,\nAnd death is in view,\nThe word of His grace\nShall comfort us through;\nNot fearing or doubting,\nWith Christ on our side,\nWe hope to die shouting,\n“The Lord will provide.”"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "though troubles assail",
+    "normalizedFirstLine": "though troubles assail",
+    "keywords": [
+      "though",
+      "troubles",
+      "assail"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "though",
+      "troubles",
+      "assail",
+      "john",
+      "newton",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "though troubles assail though troubles assail john newton unknown praise though troubles assail"
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "status": "approved",
+  "id": "around-thy-table-holy-lord",
+  "title": "Around Thy table, holy Lord",
+  "alternateTitles": [],
+  "firstLine": "Around Thy table, holy Lord,",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Mary Bowley Peters",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Henry Havergal"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Mary Bowley Peters (1813–1856).",
+  "tuneAttribution": "Tune: William Henry Havergal (1793–1870).",
+  "publicDomainBasis": "Mary Bowley Peters (1813–1856), William Henry Havergal (1793–1870). All public domain.",
+  "searchKeywords": [
+    "around",
+    "table",
+    "holy",
+    "lord"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Around Thy table, holy Lord,\nIn fellowship we meet,\nObedient to Thy gracious word,\nThis feast of love to eat."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Here every one that loves Thy name,\nOur willing hearts embrace;\nOur source of life and hope the same,\nAll debtors to Thy grace."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Commune with each at this blest hour,\nThy peace, Thy joy impart;\nThy thoughts of love, of truth, of pow’r,\nImpress upon each heart."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "around thy table holy lord",
+    "normalizedFirstLine": "around thy table holy lord",
+    "keywords": [
+      "around",
+      "table",
+      "holy",
+      "lord"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "around",
+      "thy",
+      "table",
+      "holy",
+      "lord",
+      "mary",
+      "bowley",
+      "peters",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "around thy table holy lord around thy table holy lord mary bowley peters unknown praise around table holy lord"
+  }
+}

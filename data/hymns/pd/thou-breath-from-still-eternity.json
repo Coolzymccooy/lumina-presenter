@@ -1,0 +1,107 @@
+{
+  "status": "approved",
+  "id": "thou-breath-from-still-eternity",
+  "title": "Thou Breath from still eternity",
+  "alternateTitles": [],
+  "firstLine": "Thou Breath from still eternity",
+  "meter": "8.8.8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Gerhard Tersteegen",
+      "role": "text"
+    },
+    {
+      "name": "Emma Frances Shuttleworth Bevan",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Gerhard Tersteegen"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Gerhard Tersteegen (1697–1769), Emma Frances Shuttleworth Bevan (1827–1909).",
+  "tuneAttribution": "Tune: Gerhard Tersteegen (1697–1769).",
+  "publicDomainBasis": "Gerhard Tersteegen (1697–1769), Emma Frances Shuttleworth Bevan (1827–1909), Gerhard Tersteegen (1697–1769). All public domain.",
+  "searchKeywords": [
+    "thou",
+    "breath",
+    "from",
+    "still",
+    "eternity"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Thou Breath from still eternity\nBreathe o’er my spirit’s barren land—\nThe pine tree and the myrtle tree\nShall spring amid the desert sand;\nAnd where Thy living water flows\nThe waste shall blossom as the rose."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "May I in will and deed and word\nObey Thee as a little child;\nAnd keep me in Thy love, my Lord,\nFor ever holy, undefiled;\nWithin me teach, and strive, and pray,\nLest I should choose my own wild way."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Thy Spirit, Stream by Thee, the Son,\nIs opened to us crystal pure,\nForth flowing from the heavenly throne\nTo waiting hearts and spirits poor;\nAthirst and weary do I sink\nBeside Thy waters, there to drink."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "My spirit turns to Thee and clings,\nAll else forsaking, unto Thee;\nForgetting all created things,\nRemembering only “God in me.”\nThy living Stream, Thy gracious Rain,\nNone wait for these, and wait in vain."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "thou breath from still eternity",
+    "normalizedFirstLine": "thou breath from still eternity",
+    "keywords": [
+      "thou",
+      "breath",
+      "from",
+      "still",
+      "eternity"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "thou",
+      "breath",
+      "from",
+      "still",
+      "eternity",
+      "gerhard",
+      "tersteegen",
+      "emma",
+      "frances",
+      "shuttleworth",
+      "bevan",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "thou breath from still eternity thou breath from still eternity gerhard tersteegen emma frances shuttleworth bevan unknown praise thou breath from still eternity"
+  }
+}

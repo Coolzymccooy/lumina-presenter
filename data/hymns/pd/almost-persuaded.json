@@ -1,0 +1,101 @@
+{
+  "status": "approved",
+  "id": "almost-persuaded",
+  "title": "Almost persuaded",
+  "alternateTitles": [],
+  "firstLine": "“Almost persuaded” now to believe;",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Philip Paul Bliss",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Philip Paul Bliss"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Philip Paul Bliss (1838–1876).",
+  "tuneAttribution": "Tune: Philip Paul Bliss (1838–1876).",
+  "publicDomainBasis": "Philip Paul Bliss (1838–1876), Philip Paul Bliss (1838–1876). All public domain.",
+  "searchKeywords": [
+    "almost",
+    "persuaded"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "“Almost persuaded” now to believe;\n“Almost persuaded” Christ to receive;\nSeems now some soul to say,\n“Go, Spirit, go Thy way,\nSome more convenient day\non Thee I’ll call.”"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "“Almost persuaded,” come, come today;\n“Almost persuaded,” turn not away;\nJesus invites you here,\nAngels are ling’ring near,\nPrayers rise from hearts so dear;\nO wand’rer, come!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Oh, be persuaded! Christ never fails—\nOh, be persuaded! His blood avails—\nCan save from every sin,\nCleanse you without, within—\nWill you not let Him in?\nOpen the door!"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "“Almost persuaded,” harvest is past!\n“Almost persuaded,” doom comes at last;\n“Almost” cannot avail;\n“Almost” is but to fail!\nSad, sad that bitter wail—\n“Almost—but lost!”"
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Be now persuaded, oh, sinner, hear!\nBe now persuaded, Jesus is near;\nHis voice is pleading still,\nTurn now with heart and will,\nPeace will your spirit fill—\nOh, turn today!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "almost persuaded",
+    "normalizedFirstLine": "almost persuaded now to believe",
+    "keywords": [
+      "almost",
+      "persuaded"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "almost",
+      "persuaded",
+      "now",
+      "to",
+      "believe",
+      "philip",
+      "paul",
+      "bliss",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "almost persuaded almost persuaded now to believe philip paul bliss unknown praise almost persuaded"
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "status": "approved",
+  "id": "take-my-life-and-let-it-be",
+  "title": "Take my life, and let it be",
+  "alternateTitles": [],
+  "firstLine": "Take my life, and let it be",
+  "meter": "7.7.7.7. with repeat.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Frances Ridley Havergal",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Henri Abraham Cesar Malan"
+    }
+  ],
+  "themes": [
+    "surrender"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Frances Ridley Havergal (1836–1879).",
+  "tuneAttribution": "Tune: Henri Abraham Cesar Malan (1787–1864).",
+  "publicDomainBasis": "Frances Ridley Havergal (1836–1879), Henri Abraham Cesar Malan (1787–1864). All public domain.",
+  "searchKeywords": [
+    "take",
+    "life"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Take my life, and let it be\nConsecrated, Lord, to Thee;\nTake my moments and my days,\nLet them flow in ceaseless praise,\nLet them flow in ceaseless praise."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Take my hands, and let them move\nAt the impulse of Thy love;\nTake my feet and let them be\nSwift and beautiful for Thee,\nSwift and beautiful for Thee."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Take my voice, and let me sing\nAlways, only, for my King;\nTake my lips, and let them be\nFilled with messages from Thee,\nFilled with messages from Thee."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Take my silver and my gold;\nNot a mite would I withhold;\nTake my intellect, and use\nEvery power as Thou shalt choose,\nEvery power as Thou shalt choose."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Take my will, and make it Thine;\nIt shall be no longer mine.\nTake my heart; it is Thine own;\nIt shall be Thy royal throne,\nIt shall be Thy royal throne."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Take my love; my Lord, I pour\nAt Thy feet its treasure-store.\nTake myself, and I will be\nEver, only, all for Thee,\nEver, only, all for Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "take my life and let it be",
+    "normalizedFirstLine": "take my life and let it be",
+    "keywords": [
+      "take",
+      "life"
+    ],
+    "themes": [
+      "surrender"
+    ],
+    "tokens": [
+      "take",
+      "my",
+      "life",
+      "and",
+      "let",
+      "it",
+      "be",
+      "frances",
+      "ridley",
+      "havergal",
+      "unknown",
+      "surrender"
+    ],
+    "searchableText": "take my life and let it be take my life and let it be frances ridley havergal unknown surrender take life"
+  }
+}

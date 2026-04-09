@@ -1,0 +1,107 @@
+{
+  "status": "approved",
+  "id": "with-broken-heart-and-contrite-sigh",
+  "title": "With broken heart and contrite sigh",
+  "alternateTitles": [],
+  "firstLine": "With broken heart and contrite sigh,",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Cornelius Elven",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Batchelder Bradbury"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Cornelius Elven (1797–1873).",
+  "tuneAttribution": "Tune: William Batchelder Bradbury (1816–1868).",
+  "publicDomainBasis": "Cornelius Elven (1797–1873), William Batchelder Bradbury (1816–1868). All public domain.",
+  "searchKeywords": [
+    "with",
+    "broken",
+    "heart",
+    "contrite",
+    "sigh"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "With broken heart and contrite sigh,\nA trembling sinner, Lord, I cry;\nThy pard’ning grace is rich and free:\nO God, be merciful to me!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "I smite upon my troubled breast,\nWith deep and conscious guilt oppressed;\nChrist and His cross my only plea:\nO God, be merciful to me!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Far off I stand with tearful eyes,\nNor dare uplift them to the skies;\nBut Thou dost all my anguish see,\nO God, be merciful to me!"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "With alms, or deeds that I have done,\nNot one sin’s pardon can be won;\nTo Calvary alone I flee;\nO God, be merciful to me!"
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "And when redeemed from sin and hell,\nWith all the ransomed throng I dwell,\nMy raptured song shall ever be,\nGod has been merciful to me!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "with broken heart and contrite sigh",
+    "normalizedFirstLine": "with broken heart and contrite sigh",
+    "keywords": [
+      "with",
+      "broken",
+      "heart",
+      "contrite",
+      "sigh"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "with",
+      "broken",
+      "heart",
+      "and",
+      "contrite",
+      "sigh",
+      "cornelius",
+      "elven",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "with broken heart and contrite sigh with broken heart and contrite sigh cornelius elven unknown praise with broken heart contrite sigh"
+  }
+}

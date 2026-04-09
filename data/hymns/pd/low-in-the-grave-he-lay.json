@@ -1,0 +1,85 @@
+{
+  "status": "approved",
+  "id": "low-in-the-grave-he-lay",
+  "title": "Low in the grave He lay",
+  "alternateTitles": [],
+  "firstLine": "Low in the grave He lay—",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Robert Lowry",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Robert Lowry"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Robert Lowry (1826–1899).",
+  "tuneAttribution": "Tune: Robert Lowry (1826–1899).",
+  "publicDomainBasis": "Robert Lowry (1826–1899), Robert Lowry (1826–1899). All public domain.",
+  "searchKeywords": [
+    "grave"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Low in the grave He lay—\nJesus my Savior!\nWaiting the coming day—\nJesus my Lord!"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Vainly they watch His bed—\nJesus, my Savior!\nVainly they seal the dead—\nJesus my Lord!"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Death cannot keep his prey—\nJesus, my Savior!\nHe tore the bars away—\nJesus my Lord!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "low in the grave he lay",
+    "normalizedFirstLine": "low in the grave he lay",
+    "keywords": [
+      "grave"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "low",
+      "in",
+      "the",
+      "grave",
+      "he",
+      "lay",
+      "robert",
+      "lowry",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "low in the grave he lay low in the grave he lay robert lowry unknown praise grave"
+  }
+}

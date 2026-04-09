@@ -1,0 +1,94 @@
+{
+  "status": "approved",
+  "id": "make-me-a-captive-lord",
+  "title": "Make me a captive, Lord",
+  "alternateTitles": [],
+  "firstLine": "Make me a captive, Lord.",
+  "meter": "6.6.8.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "George Matheson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "George Job Elvey"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: George Matheson (1842–1906).",
+  "tuneAttribution": "Tune: George Job Elvey (1816–1893).",
+  "publicDomainBasis": "George Matheson (1842–1906), George Job Elvey (1816–1893). All public domain.",
+  "searchKeywords": [
+    "make",
+    "captive",
+    "lord"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Make me a captive, Lord.\nAnd then I shall be free;\nForce me to render up my sword,\nAnd I shall conq’ror be.\nI sink in life’s alarms\nWhen by myself I stand,\nImprison me within Thine arms,\nAnd strong shall be my hand."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "My heart is weak and poor\nUntil it master find:\nIt has no spring of action sure,\nIt varies with the wind;\nIt cannot freely move\nTill Thou hast wrought its chain;\nEnslave it with Thy matchless love,\nAnd deathless it shall reign."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "My power is faint and low\nTill I have learned to serve:\nIt wants the needed fire to glow,\nIt wants the breeze to nerve;\nIt cannot drive the world\nUntil itself be driven;\nIts flag can only be unfurled\nWhen Thou shalt breathe from heaven."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "My will is not my own\nTill Thou hast made it Thine;\nIf it would reach the monarch’s throne\nIt must its crown resign;\nIt only stands unbent\nAmid the clashing strife,\nWhen on Thy bosom it has leant,\nAnd found in Thee its life."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "make me a captive lord",
+    "normalizedFirstLine": "make me a captive lord",
+    "keywords": [
+      "make",
+      "captive",
+      "lord"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "make",
+      "me",
+      "captive",
+      "lord",
+      "george",
+      "matheson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "make me a captive lord make me a captive lord george matheson unknown praise make captive lord"
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "status": "approved",
+  "id": "my-spirit-soul-and-body",
+  "title": "My spirit, soul, and body",
+  "alternateTitles": [],
+  "firstLine": "My spirit, soul, and body,",
+  "meter": "7.6.7.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Mary Dagworthy James",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Phoebe Palmer Knapp"
+    }
+  ],
+  "themes": [
+    "surrender"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Mary Dagworthy James (1810–1883).",
+  "tuneAttribution": "Tune: Phoebe Palmer Knapp (1839–1908).",
+  "publicDomainBasis": "Mary Dagworthy James (1810–1883), Phoebe Palmer Knapp (1839–1908). All public domain.",
+  "searchKeywords": [
+    "spirit",
+    "soul",
+    "body"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "My spirit, soul, and body,\nDear Lord, I give to Thee,\nA consecrated offering,\nThine evermore to be."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Lord Jesus, mighty Savior,\nI trust in Thy great name;\nI look for Thy salvation,\nThy promise now I claim."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 3,
+      "text": "Now, Lord, I yield my members,\nFrom sin’s dominion free,\nFor warfare and for triumph,\nAs weapons unto Thee."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 4,
+      "text": "Oh, blissful self-surrender,\nTo live, my Lord, by Thee;\nNow, Son of God, my Savior,\nLive out Thy life in me."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 5,
+      "text": "I’m Thine, O dear Lord Jesus,\nWashed in Thy precious blood,\nSealed by Thy Holy Spirit,\nA sacrifice to God."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "my spirit soul and body",
+    "normalizedFirstLine": "my spirit soul and body",
+    "keywords": [
+      "spirit",
+      "soul",
+      "body"
+    ],
+    "themes": [
+      "surrender"
+    ],
+    "tokens": [
+      "my",
+      "spirit",
+      "soul",
+      "and",
+      "body",
+      "mary",
+      "dagworthy",
+      "james",
+      "unknown",
+      "surrender"
+    ],
+    "searchableText": "my spirit soul and body my spirit soul and body mary dagworthy james unknown surrender spirit soul body"
+  }
+}

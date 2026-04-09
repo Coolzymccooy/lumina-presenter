@@ -1,0 +1,97 @@
+{
+  "status": "approved",
+  "id": "oh-safe-to-the-rock-that-is-higher-than-i",
+  "title": "Oh, safe to the Rock that is higher than I",
+  "alternateTitles": [],
+  "firstLine": "Oh, safe to the Rock that is higher than I,",
+  "meter": "11.11.11.11. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Orcutt Cushing",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Ira David Sankey"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Orcutt Cushing (1823–1902).",
+  "tuneAttribution": "Tune: Ira David Sankey (1840–1908).",
+  "publicDomainBasis": "William Orcutt Cushing (1823–1902), Ira David Sankey (1840–1908). All public domain.",
+  "searchKeywords": [
+    "safe",
+    "rock",
+    "that",
+    "higher",
+    "than"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Oh, safe to the Rock that is higher than I,\nMy soul in its conflicts and sorrows would fly,\nSo sinful, so weary, Thine, Thine would I be,\nThou blest Rock of Ages, I’m hiding in Thee."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "In the calm of the noontide, in sorrow’s lone hour,\nIn times when temptation casts o’er me its power;\nIn the tempests of life, on its wide, heaving sea,\nThou blest Rock of Ages, I’m hiding in Thee."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "How oft in the conflict, when pressed by the foe,\nI have fled to my Refuge and breathed out my woe,,\nHow often, when trials like sea-billows roll,\nHave I hidden in Thee, O Thou Rock of my soul."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "oh safe to the rock that is higher than i",
+    "normalizedFirstLine": "oh safe to the rock that is higher than i",
+    "keywords": [
+      "safe",
+      "rock",
+      "that",
+      "higher",
+      "than"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "oh",
+      "safe",
+      "to",
+      "the",
+      "rock",
+      "that",
+      "is",
+      "higher",
+      "than",
+      "william",
+      "orcutt",
+      "cushing",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "oh safe to the rock that is higher than i oh safe to the rock that is higher than i william orcutt cushing unknown praise safe rock that higher than"
+  }
+}

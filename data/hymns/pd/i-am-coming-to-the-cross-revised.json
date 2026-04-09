@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "i-am-coming-to-the-cross-revised",
+  "title": "I am coming to the cross (revised)",
+  "alternateTitles": [],
+  "firstLine": "I am coming to the cross;",
+  "meter": "7.7.7.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William McDonald",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Gustavus Fischer"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William McDonald (1820–1901).",
+  "tuneAttribution": "Tune: William Gustavus Fischer (1835–1912).",
+  "publicDomainBasis": "William McDonald (1820–1901), William Gustavus Fischer (1835–1912). All public domain.",
+  "searchKeywords": [
+    "coming",
+    "cross",
+    "revised"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I am coming to the cross;\nI am poor and weak and blind;\nI am counting all but dross;\nI shall full salvation find."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Long I yearned for Jesus’ grace,\nYet sin ruled my heart within;\nBut today Christ gently says,\n“I’ll remove your every sin.”"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 3,
+      "text": "Jesus fills my heart within;\nRenews spirit, body, soul.\nHis blood washes every sin;\nHis redemption makes me whole."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Here I give my all to Thee—\nFriends and time and earthly store,\nSoul and body Thine to be—\nWholly Thine forevermore."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i am coming to the cross revised",
+    "normalizedFirstLine": "i am coming to the cross",
+    "keywords": [
+      "coming",
+      "cross",
+      "revised"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "am",
+      "coming",
+      "to",
+      "the",
+      "cross",
+      "revised",
+      "william",
+      "mcdonald",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i am coming to the cross revised i am coming to the cross william mcdonald unknown praise coming cross revised"
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "status": "approved",
+  "id": "fore-er-victorious-cross",
+  "title": "Fore’er victorious cross",
+  "alternateTitles": [],
+  "firstLine": "Fore’er victorious cross!",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Horatius Bonar",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James McGranahan"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Horatius Bonar (1808–1889).",
+  "tuneAttribution": "Tune: James McGranahan (1840–1907).",
+  "publicDomainBasis": "Horatius Bonar (1808–1889), James McGranahan (1840–1907). All public domain.",
+  "searchKeywords": [
+    "fore",
+    "victorious",
+    "cross"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Fore’er victorious cross!\nHallelujah! Hallelujah!\nAll foes meet total loss!\nHallelujah! Hallelujah!\nO’er Hades’ fierceness hurled,\nO’er hateful, churning world,\nO’er flesh’s powers unfurled—\nBoast triumphant in the cross!"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "The cross is life to me.\nHallelujah! Hallelujah!\nIt grants authority.\nHallelujah! Hallelujah!\nSelf, feelings, rise in vain;\nEarth’s powers can’t remain;\nAll enemies are slain!\nOvercoming by the cross!"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "This banner, joyfully—\nHallelujah! Hallelujah!\nI’ll raise eternally—\nHallelujah! Hallelujah!\nMy weakness turns to might,\nDepression to delight,\nDark gloom to glory bright—\nLiberated by the cross!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "fore er victorious cross",
+    "normalizedFirstLine": "fore er victorious cross",
+    "keywords": [
+      "fore",
+      "victorious",
+      "cross"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "fore",
+      "er",
+      "victorious",
+      "cross",
+      "horatius",
+      "bonar",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "fore er victorious cross fore er victorious cross horatius bonar unknown praise fore victorious cross"
+  }
+}

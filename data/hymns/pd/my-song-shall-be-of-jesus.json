@@ -1,0 +1,90 @@
+{
+  "status": "approved",
+  "id": "my-song-shall-be-of-jesus",
+  "title": "My song shall be of Jesus",
+  "alternateTitles": [],
+  "firstLine": "My song shall be of Jesus;",
+  "meter": "7.6.7.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "song",
+    "shall",
+    "jesus"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "My song shall be of Jesus;\nHis mercy crowns my days,\nHe fills my cup with blessings,\nAnd tunes my heart to praise.\nMy song shall be of Jesus,\nThe precious Lamb of God,\nWho gave Himself my ransom,\nAnd bought me with His blood."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "My song shall be of Jesus\nWhen, sitting at His feet,\nI call to mind His goodness\nIn meditation sweet:\nMy song shall be of Jesus,\nWhatever ill betide;\nI’ll sing the grace that saves me,\nAnd keeps me at His side."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "My song shall be of Jesus\nWhile pressing on my way\nTo reach the blissful kingdom\nOf pure and perfect day:\nAnd when my soul shall enter\nThat realm of splendor fair,\nA song of praise to Jesus\nI’ll sing forever there."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "my song shall be of jesus",
+    "normalizedFirstLine": "my song shall be of jesus",
+    "keywords": [
+      "song",
+      "shall",
+      "jesus"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "my",
+      "song",
+      "shall",
+      "be",
+      "of",
+      "jesus",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "my song shall be of jesus my song shall be of jesus fanny jane crosby unknown praise song shall jesus"
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "the-great-physician-now-is-near",
+  "title": "The Great Physician now is near",
+  "alternateTitles": [],
+  "firstLine": "The Great Physician now is near,",
+  "meter": "8.7.8.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Hunter",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Hart Stockton"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Hunter (1811–1877).",
+  "tuneAttribution": "Tune: John Hart Stockton (1813–1877).",
+  "publicDomainBasis": "William Hunter (1811–1877), John Hart Stockton (1813–1877). All public domain.",
+  "searchKeywords": [
+    "great",
+    "physician",
+    "near"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "The Great Physician now is near,\nThe sympathizing Jesus;\nHe speaks the drooping heart to cheer,\nOh, hear the voice of Jesus!"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Your many sins are all forgiv’n,\nOh, hear the voice of Jesus;\nThe veil ’twixt you and God is riven,\nRedemption wrought by Jesus."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "All glory to the dying Lamb!\nI now believe in Jesus;\nI love the blessed Savior’s name,\nI love the name of Jesus."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "His name dispels my guilt and fear,\nNo other name but Jesus;\nOh, how my soul delights to hear\nThe precious name of Jesus!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "the great physician now is near",
+    "normalizedFirstLine": "the great physician now is near",
+    "keywords": [
+      "great",
+      "physician",
+      "near"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "the",
+      "great",
+      "physician",
+      "now",
+      "is",
+      "near",
+      "william",
+      "hunter",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "the great physician now is near the great physician now is near william hunter unknown praise great physician near"
+  }
+}

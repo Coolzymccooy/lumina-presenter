@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "christ-delivered-me-when-bound",
+  "title": "Christ delivered me when bound",
+  "alternateTitles": [],
+  "firstLine": "Christ delivered me when bound,",
+  "meter": "7.7.7.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Cowper",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Bacchus Dykes"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Cowper (1731–1800).",
+  "tuneAttribution": "Tune: John Bacchus Dykes (1823–1876).",
+  "publicDomainBasis": "William Cowper (1731–1800), John Bacchus Dykes (1823–1876). All public domain.",
+  "searchKeywords": [
+    "christ",
+    "delivered",
+    "when",
+    "bound"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Christ delivered me when bound,\nAnd when bleeding, healed my wound;\nSought me wand’ring, set me right,\nTurned my darkness into light."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Can a woman’s tender care\nCease towards the child she bare?\nYes, she may forgetful be;\nYet will He remember me."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "His is an unchanging love,\nHigher than the heights above;\nDeeper than the depths beneath,\nFree and faithful, strong as death."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "I shall see His glory soon,\nWhen the work of grace is done;\nPartner of His throne shall be;\nSuch is His great love for me!"
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Lord, it is my chief complaint\nThat my love is weak and faint;\nYet I love Thee, and adore:\nOh for grace to love Thee more."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "christ delivered me when bound",
+    "normalizedFirstLine": "christ delivered me when bound",
+    "keywords": [
+      "christ",
+      "delivered",
+      "when",
+      "bound"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "christ",
+      "delivered",
+      "me",
+      "when",
+      "bound",
+      "william",
+      "cowper",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "christ delivered me when bound christ delivered me when bound william cowper unknown praise christ delivered when bound"
+  }
+}

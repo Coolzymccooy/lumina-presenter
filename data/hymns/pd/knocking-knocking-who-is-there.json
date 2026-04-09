@@ -1,0 +1,86 @@
+{
+  "status": "approved",
+  "id": "knocking-knocking-who-is-there",
+  "title": "Knocking, knocking, who is there?",
+  "alternateTitles": [],
+  "firstLine": "Knocking, knocking, who is there?",
+  "meter": "7.7.8.7.8.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Harriet Beecher Stowe",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "George Frederick Root"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Harriet Beecher Stowe (1812–1896).",
+  "tuneAttribution": "Tune: George Frederick Root (1820–1895).",
+  "publicDomainBasis": "Harriet Beecher Stowe (1812–1896), George Frederick Root (1820–1895). All public domain.",
+  "searchKeywords": [
+    "knocking",
+    "there"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Knocking, knocking, who is there?\nWaiting, waiting, O how fair!\n’Tis a Pilgrim, strange and kingly,\nNever such was seen before;\nAh! my soul, for such a wonder\nWilt thou not undo the door?\nWilt thou not undo the door?"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Knocking, knocking, still He’s there,\nWaiting, waiting, wondrous fair;\nBut the door is hard to open,\nFor the weeds and ivy vine\nWith their dark and clinging tendrils\nEver round the hinges twice,\nEver round the hinges twice."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Knocking, knocking what! still there?\nWaiting, waiting, grand and fair;\nYea, the wounded hand still knocketh,\nAnd beneath the thorn-wreath’d hair\nBeam the patient eyes, so tender,\nOf thy Savior waiting there;\nWilt thou keep him waiting there?"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "knocking knocking who is there",
+    "normalizedFirstLine": "knocking knocking who is there",
+    "keywords": [
+      "knocking",
+      "there"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "knocking",
+      "who",
+      "is",
+      "there",
+      "harriet",
+      "beecher",
+      "stowe",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "knocking knocking who is there knocking knocking who is there harriet beecher stowe unknown praise knocking there"
+  }
+}

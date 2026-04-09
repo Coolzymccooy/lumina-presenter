@@ -1,0 +1,99 @@
+{
+  "status": "approved",
+  "id": "fill-me-with-thy-gracious-spirit",
+  "title": "Fill me with Thy gracious Spirit",
+  "alternateTitles": [],
+  "firstLine": "Fill me with Thy gracious Spirit,",
+  "meter": "8.7.8.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Elwood Haines Stokes",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Robson Sweney"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Elwood Haines Stokes (1815–1895).",
+  "tuneAttribution": "Tune: John Robson Sweney (1837–1899).",
+  "publicDomainBasis": "Elwood Haines Stokes (1815–1895), John Robson Sweney (1837–1899). All public domain.",
+  "searchKeywords": [
+    "fill",
+    "with",
+    "gracious",
+    "spirit"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Fill me with Thy gracious Spirit,\nFill my longing spirit now;\nFill me with Thy hallowed presence,\nCome, dear Lord, and fill me now!"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Thou can’st fill me with Thy Spirit,\nThough I cannot tell Thee how;\nBut I need Thee, greatly need Thee;\nCome, dear Lord, and fill me now!"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "I am weakness, full of weakness;\nAt Thy sacred feet I bow;\nBy Thy blest, eternal Spirit,\nFill with strength, and fill me now!"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Cleanse and comfort, bless and save me;\nFill my broken spirit now!\nThou art comforting and saving,\nThou art sweetly filling now."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "fill me with thy gracious spirit",
+    "normalizedFirstLine": "fill me with thy gracious spirit",
+    "keywords": [
+      "fill",
+      "with",
+      "gracious",
+      "spirit"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "fill",
+      "me",
+      "with",
+      "thy",
+      "gracious",
+      "spirit",
+      "elwood",
+      "haines",
+      "stokes",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "fill me with thy gracious spirit fill me with thy gracious spirit elwood haines stokes unknown praise fill with gracious spirit"
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "status": "approved",
+  "id": "christ-from-whom-all-blessings-flow",
+  "title": "Christ, from whom all blessings flow",
+  "alternateTitles": [],
+  "firstLine": "Christ, from whom all blessings flow,",
+  "meter": "7.7.7.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Justin Heinrich Knecht"
+    }
+  ],
+  "themes": [
+    "prayer"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Wesley (1707–1788).",
+  "tuneAttribution": "Tune: Justin Heinrich Knecht (1752–1817).",
+  "publicDomainBasis": "Charles Wesley (1707–1788), Justin Heinrich Knecht (1752–1817). All public domain.",
+  "searchKeywords": [
+    "christ",
+    "from",
+    "whom",
+    "blessings",
+    "flow"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "prayer",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Christ, from whom all blessings flow,\nPerfecting the saints below,\nHear us, who Thy nature share,\nWho Thy mystic body are."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Join us, in one spirit join,\nLet us still receive of Thine;\nStill for more on Thee we call,\nThou who fillest all in all."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Move, and actuate, and guide:\nDivers gifts to each divide;\nPlaced according to Thy will,\nLet us all our work fulfil."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Sweetly may we all agree,\nTouched with loving sympathy;\nKindly for each other care,\nEvery member feel its share."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Love, like death, hath all destroyed,\nRendered all distinctions void;\nNames, and sects, and parties fall:\nThou, O Christ, art all in all."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "christ from whom all blessings flow",
+    "normalizedFirstLine": "christ from whom all blessings flow",
+    "keywords": [
+      "christ",
+      "from",
+      "whom",
+      "blessings",
+      "flow"
+    ],
+    "themes": [
+      "prayer"
+    ],
+    "tokens": [
+      "christ",
+      "from",
+      "whom",
+      "all",
+      "blessings",
+      "flow",
+      "charles",
+      "wesley",
+      "unknown",
+      "prayer"
+    ],
+    "searchableText": "christ from whom all blessings flow christ from whom all blessings flow charles wesley unknown prayer christ from whom blessings flow"
+  }
+}

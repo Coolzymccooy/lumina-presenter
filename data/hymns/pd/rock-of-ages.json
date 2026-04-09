@@ -1,0 +1,60 @@
+{
+  "status": "approved",
+  "id": "rock-of-ages",
+  "title": "Rock of Ages, Cleft for Me",
+  "alternateTitles": ["Rock of Ages"],
+  "firstLine": "Rock of Ages, cleft for me, let me hide myself in Thee",
+  "meter": "7.7.7.7.7.7",
+  "hymnalNumbers": { "UMH": 361, "SBC": 258, "LW": 361, "ELW": 623 },
+  "authors": [
+    { "name": "Augustus M. Toplady", "role": "text" },
+    { "name": "Thomas Hastings", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "TOPLADY", "composer": "Thomas Hastings" }
+  ],
+  "themes": ["grace", "assurance", "surrender"],
+  "scriptureThemes": ["Exodus 33:22", "Isaiah 26:4", "1 Corinthians 10:4"],
+  "textAttribution": "Text: Augustus M. Toplady, 1776.",
+  "tuneAttribution": "Tune: TOPLADY by Thomas Hastings, 1830.",
+  "publicDomainBasis": "Augustus M. Toplady (1740–1778), Thomas Hastings (1784–1872). Text published 1776, tune 1830. Both public domain.",
+  "searchKeywords": ["rock", "refuge", "cleanse", "hide", "salvation", "blood"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "grace",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 32,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Rock of Ages, cleft for me,\nLet me hide myself in Thee;\nLet the water and the blood,\nFrom Thy wounded side which flowed,\nBe of sin the double cure;\nSave from wrath and make me pure."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Not the labor of my hands\nCan fulfill Thy law's demands;\nCould my zeal no respite know,\nCould my tears forever flow,\nAll for sin could not atone;\nThou must save, and Thou alone."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Nothing in my hand I bring,\nSimply to the cross I cling;\nNaked, come to Thee for dress;\nHelpless, look to Thee for grace;\nFoul, I to the fountain fly;\nWash me, Savior, or I die."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "While I draw this fleeting breath,\nWhen mine eyes shall close in death,\nWhen I soar to worlds unknown,\nSee Thee on Thy judgment throne,\nRock of Ages, cleft for me,\nLet me hide myself in Thee."
+    }
+  ]
+}

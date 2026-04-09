@@ -1,0 +1,67 @@
+{
+  "status": "approved",
+  "id": "all-hail-the-power-of-jesus-name",
+  "title": "All Hail the Power of Jesus' Name",
+  "alternateTitles": [],
+  "firstLine": "All hail the power of Jesus' name! Let angels prostrate fall",
+  "meter": "CM with repeat",
+  "hymnalNumbers": { "UMH": 154, "SBC": 97, "LW": 272, "ELW": 634 },
+  "authors": [
+    { "name": "Edward Perronet", "role": "text" },
+    { "name": "Oliver Holden", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "CORONATION", "composer": "Oliver Holden", "alternateNames": ["All Hail the Power"] }
+  ],
+  "themes": ["praise", "majesty", "victory"],
+  "scriptureThemes": ["Philippians 2:9-11", "Revelation 19:16", "Acts 4:12"],
+  "textAttribution": "Text: Edward Perronet, 1779; alt. John Rippon, 1787.",
+  "tuneAttribution": "Tune: CORONATION by Oliver Holden, 1793.",
+  "publicDomainBasis": "Edward Perronet (1726–1792), Oliver Holden (1765–1844). Text 1779, tune 1793. Both public domain.",
+  "searchKeywords": ["crown", "king", "angels", "prostrate", "coronation", "lord of all"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "either",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "All hail the power of Jesus' name!\nLet angels prostrate fall;\nBring forth the royal diadem,\nAnd crown Him Lord of all.\nBring forth the royal diadem,\nAnd crown Him Lord of all!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Ye chosen seed of Israel's race,\nYe ransomed from the fall,\nHail Him who saves you by His grace,\nAnd crown Him Lord of all.\nHail Him who saves you by His grace,\nAnd crown Him Lord of all!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Ye sinners, whose love can ne'er forget\nThe wormwood and the gall,\nGo spread your trophies at His feet,\nAnd crown Him Lord of all.\nGo spread your trophies at His feet,\nAnd crown Him Lord of all!"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Let every kindred, every tribe\nOn this terrestrial ball,\nTo Him all majesty ascribe,\nAnd crown Him Lord of all.\nTo Him all majesty ascribe,\nAnd crown Him Lord of all!"
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "O that with yonder sacred throng\nWe at His feet may fall!\nWe'll join the everlasting song,\nAnd crown Him Lord of all.\nWe'll join the everlasting song,\nAnd crown Him Lord of all!"
+    }
+  ]
+}

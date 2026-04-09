@@ -1,0 +1,95 @@
+{
+  "status": "approved",
+  "id": "no-condemnation-precious-word",
+  "title": "No condemnation! precious word",
+  "alternateTitles": [],
+  "firstLine": "“No condemnation!” precious word!",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Robert Cleaver Chapman",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Neil Dougall"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Robert Cleaver Chapman (1803–1902).",
+  "tuneAttribution": "Tune: Neil Dougall (1776–1862).",
+  "publicDomainBasis": "Robert Cleaver Chapman (1803–1902), Neil Dougall (1776–1862). All public domain.",
+  "searchKeywords": [
+    "condemnation",
+    "precious",
+    "word"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "“No condemnation!” precious word!\nConsider it, my soul!\nThy sins were all on Jesus laid,\nHis stripes have made thee whole."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "In God’s own presence now for us\nThe Savior doth appear;\nThe saints, as jewels on His heart,\nJesus doth ever bear."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "“No condemnation!” O my soul,\n’Tis God that speaks the word;\nPerfect in comeliness art thou\nIn Christ, the risen Lord."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Teach me, O God, to fix mine eyes\nOn Christ, the spotless Lamb,\nSo shall I love Thy precious will,\nAnd glorify His name."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "no condemnation precious word",
+    "normalizedFirstLine": "no condemnation precious word",
+    "keywords": [
+      "condemnation",
+      "precious",
+      "word"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "no",
+      "condemnation",
+      "precious",
+      "word",
+      "robert",
+      "cleaver",
+      "chapman",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "no condemnation precious word no condemnation precious word robert cleaver chapman unknown praise condemnation precious word"
+  }
+}

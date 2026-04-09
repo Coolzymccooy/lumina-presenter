@@ -1,0 +1,95 @@
+{
+  "status": "approved",
+  "id": "the-whole-world-was-lost-in-the-darkness-of-sin",
+  "title": "The whole world was lost in the darkness of sin",
+  "alternateTitles": [],
+  "firstLine": "The whole world was lost in the darkness of sin;",
+  "meter": "11.8.11.8. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Philip Paul Bliss",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Philip Paul Bliss"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Philip Paul Bliss (1838–1876).",
+  "tuneAttribution": "Tune: Philip Paul Bliss (1838–1876).",
+  "publicDomainBasis": "Philip Paul Bliss (1838–1876), Philip Paul Bliss (1838–1876). All public domain.",
+  "searchKeywords": [
+    "whole",
+    "world",
+    "lost",
+    "darkness"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "The whole world was lost in the darkness of sin;\nThe light of the world is Jesus;\nLike sunshine at noonday His glory shone in,\nThe light of the world is Jesus."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "No darkness have we who in Jesus abide,\nThe light of the world is Jesus;\nWe walk in the light when we follow our Guide,\nThe light of the world is Jesus."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Ye dwellers in darkness with sin-blinded eyes,\nThe light of the world is Jesus;\nGo, wash, at His bidding, and light will arise;\nThe light of the world is Jesus."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "the whole world was lost in the darkness of sin",
+    "normalizedFirstLine": "the whole world was lost in the darkness of sin",
+    "keywords": [
+      "whole",
+      "world",
+      "lost",
+      "darkness"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "the",
+      "whole",
+      "world",
+      "was",
+      "lost",
+      "in",
+      "darkness",
+      "of",
+      "sin",
+      "philip",
+      "paul",
+      "bliss",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "the whole world was lost in the darkness of sin the whole world was lost in the darkness of sin philip paul bliss unknown praise whole world lost darkness"
+  }
+}

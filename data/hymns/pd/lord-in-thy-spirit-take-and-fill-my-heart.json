@@ -1,0 +1,110 @@
+{
+  "status": "approved",
+  "id": "lord-in-thy-spirit-take-and-fill-my-heart",
+  "title": "Lord, in Thy Spirit, take and fill my heart",
+  "alternateTitles": [],
+  "firstLine": "Lord, in Thy Spirit, take and fill my heart;",
+  "meter": "10.10.10.10.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "George Croly",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Frederick Cook Atkinson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: George Croly (1780–1860).",
+  "tuneAttribution": "Tune: Frederick Cook Atkinson (1841–1896).",
+  "publicDomainBasis": "George Croly (1780–1860), Frederick Cook Atkinson (1841–1896). All public domain.",
+  "searchKeywords": [
+    "lord",
+    "spirit",
+    "take",
+    "fill",
+    "heart"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Lord, in Thy Spirit, take and fill my heart;\nWean it from earth, through all its pulses move;\nInto my spirit all Thy grace impart,\nAnd make me love Thee as I ought to love."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "I ask no dream, no prophet ecstasies,\nNo sudden rending of the veil of clay,\nNo angel visitant, no opening skies;\nBut take the dimness of my soul away."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Hast Thou not bid us love Thee, God and King?\nAll, all Thine own—soul, heart and strength and mind.\nI see Thy cross—there teach my heart to cling.\nOh, let me seek Thee, and, oh, let me find."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Teach me to feel that Thou art always nigh;\nTeach me the struggles of the soul to bear,\nTo check the rising doubt, the rebel sigh;\nTeach me the patience of unanswered prayer."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Teach me to love Thee with a virgin love,\nOne holy passion filling all my frame;\nThus all the riches of Thyself to prove,\nMy heart an altar, and Thy love the flame."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "lord in thy spirit take and fill my heart",
+    "normalizedFirstLine": "lord in thy spirit take and fill my heart",
+    "keywords": [
+      "lord",
+      "spirit",
+      "take",
+      "fill",
+      "heart"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "lord",
+      "in",
+      "thy",
+      "spirit",
+      "take",
+      "and",
+      "fill",
+      "my",
+      "heart",
+      "george",
+      "croly",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "lord in thy spirit take and fill my heart lord in thy spirit take and fill my heart george croly unknown praise lord spirit take fill heart"
+  }
+}

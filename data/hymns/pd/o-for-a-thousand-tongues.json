@@ -1,0 +1,74 @@
+{
+  "status": "approved",
+  "id": "o-for-a-thousand-tongues",
+  "title": "O For a Thousand Tongues to Sing",
+  "alternateTitles": [],
+  "firstLine": "O for a thousand tongues to sing my great Redeemer's praise",
+  "meter": "CM",
+  "hymnalNumbers": { "UMH": 57, "SBC": 216, "LW": 265, "ELW": 886 },
+  "authors": [
+    { "name": "Charles Wesley", "role": "text" },
+    { "name": "Carl G. Gläser", "role": "tune", "notes": "Arranged by Lowell Mason." }
+  ],
+  "tunes": [
+    { "name": "AZMON", "composer": "Carl G. Gläser", "alternateNames": ["O For a Thousand Tongues"] }
+  ],
+  "themes": ["praise", "grace", "thanksgiving"],
+  "scriptureThemes": ["Psalm 96:1-3", "Revelation 5:9-10", "Acts 4:12"],
+  "textAttribution": "Text: Charles Wesley, 1739.",
+  "tuneAttribution": "Tune: AZMON by Carl G. Gläser, 1828; arr. Lowell Mason, 1839.",
+  "publicDomainBasis": "Charles Wesley (1707–1788), Carl G. Gläser (1784–1829). Text 1739, tune 1828. Both public domain.",
+  "searchKeywords": ["thousand tongues", "redeemer", "praise", "glory", "name"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "either",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O for a thousand tongues to sing\nMy great Redeemer's praise,\nThe glories of my God and King,\nThe triumphs of His grace!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "My gracious Master and my God,\nAssist me to proclaim,\nTo spread through all the earth abroad\nThe honors of Thy name."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Jesus! the name that charms our fears,\nThat bids our sorrows cease;\n'Tis music in the sinner's ears,\n'Tis life, and health, and peace."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "He breaks the power of canceled sin,\nHe sets the prisoner free;\nHis blood can make the foulest clean,\nHis blood availed for me."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Hear Him, ye deaf; His praise, ye dumb,\nYour loosened tongues employ;\nYe blind, behold your Savior come;\nAnd leap, ye lame, for joy."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Glory to God, and praise and love\nBe ever, ever given,\nBy saints below and saints above,\nThe church in earth and heaven."
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "status": "approved",
+  "id": "begin-the-day-with-god",
+  "title": "Begin the day with God",
+  "alternateTitles": [],
+  "firstLine": "Begin the day with God!",
+  "meter": "6.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Horatius Bonar",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Hans Georg Nageli"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Horatius Bonar (1808–1889).",
+  "tuneAttribution": "Tune: Hans Georg Nageli (1773–1836).",
+  "publicDomainBasis": "Horatius Bonar (1808–1889), Hans Georg Nageli (1773–1836). All public domain.",
+  "searchKeywords": [
+    "begin",
+    "with"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Begin the day with God!\nHe is thy Sun and Day!\nHis is the radiance of thy dawn;\nTo Him address thy lay."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Sing a new song at morn!\nJoin the glad woods and hills;\nJoin the fresh winds and seas and plains,\nJoin the bright flowers and rills."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Sing thy first song to God!\nNot to thy fellow men;\nNot to the creatures of His hand,\nBut to the glorious One."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Take thy first walk with God!\nLet Him go forth with thee;\nBy stream, or sea, or mountain path,\nSeek still His company."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Thy first transaction be\nWith God Himself above;\nSo shall thy business prosper well\nAnd all the day be love."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "begin the day with god",
+    "normalizedFirstLine": "begin the day with god",
+    "keywords": [
+      "begin",
+      "with"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "begin",
+      "the",
+      "day",
+      "with",
+      "god",
+      "horatius",
+      "bonar",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "begin the day with god begin the day with god horatius bonar unknown praise begin with"
+  }
+}

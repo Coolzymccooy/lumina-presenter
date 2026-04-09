@@ -1,0 +1,114 @@
+{
+  "status": "approved",
+  "id": "god-s-christ-who-is-my-righteousness",
+  "title": "God’s Christ, who is my righteousness",
+  "alternateTitles": [],
+  "firstLine": "God’s Christ, who is my righteousness,",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Nicolaus L. Zinzendorf",
+      "role": "text"
+    },
+    {
+      "name": "John Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Ludwig van Beethoven"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Nicolaus L. Zinzendorf (1700–1760), John Wesley (1703–1791).",
+  "tuneAttribution": "Tune: Ludwig van Beethoven (1770–1827).",
+  "publicDomainBasis": "Nicolaus L. Zinzendorf (1700–1760), John Wesley (1703–1791), Ludwig van Beethoven (1770–1827). All public domain.",
+  "searchKeywords": [
+    "christ",
+    "righteousness"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "God’s Christ, who is my righteousness,\nMy beauty is, my glorious dress;\nMidst flaming worlds, in this arrayed,\nWith joy shall I lift up my head."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Lord, I believe Thy precious blood,\nWhich, at the mercy seat of God,\nForever doth for sinners plead,\nFor me, e’en for my soul, was shed."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Lord, I believe were sinners more\nThan sands upon the ocean shore,\nThou hast for all a ransom paid,\nFor all a full redemption made."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Bold can I stand in every way,\nFor who aught to my charge shall lay?\nFully, by Thee, absolved I am\nFrom sin and fear, from guilt and shame."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "This spotless robe the same appears,\nWhen ruined nature sinks in years;\nNo age can change its glorious hue,\nIts glory is forever new."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Thou God of power, Thou God of love,\nLet all Thy saints Thy mercy prove;\nOur beauty this, our glorious dress,\nJesus the Lord, our Righteousness."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "god s christ who is my righteousness",
+    "normalizedFirstLine": "god s christ who is my righteousness",
+    "keywords": [
+      "christ",
+      "righteousness"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "god",
+      "christ",
+      "who",
+      "is",
+      "my",
+      "righteousness",
+      "nicolaus",
+      "zinzendorf",
+      "john",
+      "wesley",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "god s christ who is my righteousness god s christ who is my righteousness nicolaus l zinzendorf john wesley unknown praise christ righteousness"
+  }
+}

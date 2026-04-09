@@ -1,0 +1,67 @@
+{
+  "status": "approved",
+  "id": "amazing-grace",
+  "title": "Amazing Grace",
+  "alternateTitles": ["Amazing Grace! How Sweet the Sound"],
+  "firstLine": "Amazing grace! how sweet the sound",
+  "meter": "CM",
+  "hymnalNumbers": { "UMH": 378, "SBC": 104, "LW": 362, "ELW": 779 },
+  "authors": [
+    { "name": "John Newton", "role": "text" },
+    { "name": "Traditional American melody", "role": "tune", "notes": "Commonly sung to NEW BRITAIN." }
+  ],
+  "tunes": [
+    { "name": "NEW BRITAIN", "meter": "CM" }
+  ],
+  "themes": ["grace", "assurance", "comfort"],
+  "scriptureThemes": ["Ephesians 2:8-9", "Luke 15:24", "John 9:25"],
+  "textAttribution": "Text: John Newton.",
+  "tuneAttribution": "Tune: NEW BRITAIN, public-domain American melody.",
+  "publicDomainBasis": "John Newton (1725–1807). Text first published 1779 in Olney Hymns. Tune NEW BRITAIN is a traditional American melody.",
+  "searchKeywords": ["grace", "salvation", "testimony", "mercy"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "grace",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "either",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 32,
+  "allowThreeLineSlides": true,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Amazing grace! how sweet the sound,\nThat saved a wretch like me!\nI once was lost, but now am found;\nWas blind, but now I see."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "'Twas grace that taught my heart to fear,\nAnd grace my fears relieved;\nHow precious did that grace appear\nThe hour I first believed."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Through many dangers, toils, and snares,\nI have already come;\n'Tis grace hath brought me safe thus far,\nAnd grace will lead me home."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "The Lord has promised good to me,\nHis word my hope secures;\nHe will my shield and portion be\nAs long as life endures."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "When we've been there ten thousand years,\nBright shining as the sun,\nWe've no less days to sing God's praise\nThan when we first begun."
+    }
+  ]
+}

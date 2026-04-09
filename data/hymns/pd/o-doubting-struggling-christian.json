@@ -1,0 +1,94 @@
+{
+  "status": "approved",
+  "id": "o-doubting-struggling-christian",
+  "title": "O doubting, struggling Christian",
+  "alternateTitles": [],
+  "firstLine": "O doubting, struggling Christian,",
+  "meter": "7.6.7.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Albert Benjamin Simpson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Albert Benjamin Simpson (1843–1919).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Albert Benjamin Simpson (1843–1919). All public domain.",
+  "searchKeywords": [
+    "doubting",
+    "struggling",
+    "christian"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O doubting, struggling Christian,\nWhy thus in anguish pray?\nO cease to doubt and struggle,\nThere is a better way."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Give up thy will to Jesus,\nAnd trust Him though He slay;\nHush all thy fears and questions,\nAnd settle it today."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "O soul so tossed with tempest,\nUpon His promise stay;\nCast out faith’s strong sheet anchor,\nAnd settle it today."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Lord, I give up the struggle,\nTo Thee commit my way;\nI trust Thy word forever,\nAnd settle it today."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o doubting struggling christian",
+    "normalizedFirstLine": "o doubting struggling christian",
+    "keywords": [
+      "doubting",
+      "struggling",
+      "christian"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "doubting",
+      "struggling",
+      "christian",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o doubting struggling christian o doubting struggling christian albert benjamin simpson unknown praise doubting struggling christian"
+  }
+}

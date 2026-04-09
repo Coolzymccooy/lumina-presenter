@@ -63,7 +63,7 @@ export const HymnLibrary: React.FC<HymnLibraryProps> = ({
 
   const syncResults = useMemo(() => (
     deferredQuery.trim()
-      ? searchCatalogHymns(deferredQuery, { limit: 25 }).map((entry) => entry.hymn)
+      ? searchCatalogHymns(deferredQuery, { limit: 200 }).map((entry) => entry.hymn)
       : [...DEFAULT_VISIBLE_HYMNS].sort((left, right) => left.title.localeCompare(right.title))
   ), [deferredQuery]);
 
@@ -197,11 +197,13 @@ export const HymnLibrary: React.FC<HymnLibraryProps> = ({
                     {ccliSearching && (
                       <span className="text-[9px] text-amber-400 animate-pulse">CCLI…</span>
                     )}
-                    <div className="text-[10px] text-zinc-600">{results.length}</div>
+                    <div className="text-[10px] text-zinc-400">
+                      {deferredQuery.trim() ? `${results.length} results` : `${DEFAULT_VISIBLE_HYMNS.length} hymns`}
+                    </div>
                   </div>
                 </div>
               </div>
-              <div data-testid="hymn-results" className="max-h-[18rem] overflow-y-auto custom-scrollbar">
+              <div data-testid="hymn-results" className="max-h-[60vh] overflow-y-auto custom-scrollbar">
                 {results.map((hymn) => (
                   <button
                     key={hymn.id}
@@ -446,7 +448,7 @@ export const HymnLibrary: React.FC<HymnLibraryProps> = ({
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Hymn Library</div>
-            <div className="mt-1 text-xs text-zinc-400">25 bundled hymns with structured generation.</div>
+            <div className="mt-1 text-xs text-zinc-400">{DEFAULT_VISIBLE_HYMNS.length} bundled hymns with structured generation.</div>
           </div>
           <div className="shrink-0 rounded-full border border-emerald-700/60 bg-emerald-950/30 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-300">
             Bundled

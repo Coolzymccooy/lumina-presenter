@@ -1,0 +1,109 @@
+{
+  "status": "approved",
+  "id": "i-am-crucified-with-christ",
+  "title": "I am crucified with Christ",
+  "alternateTitles": [],
+  "firstLine": "I am crucified with Christ,",
+  "meter": "8.7.8.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Albert Benjamin Simpson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Albert Benjamin Simpson (1843–1919).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Albert Benjamin Simpson (1843–1919). All public domain.",
+  "searchKeywords": [
+    "crucified",
+    "with",
+    "christ"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I am crucified with Christ,\nAnd the cross hath set me free;\nI have ris’n again with Christ,\nAnd He lives and reigns in me."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Mystery hid from ancient ages!\nBut at length to faith made plain:\nChrist in me the Hope of Glory,\nTell it o’er and o’er again."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "This the secret nature hideth,\nHarvest grows from buried grain;\nA poor tree with better grafted,\nRicher, sweeter life doth gain."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "This the secret of the holy,\nNot our holiness, but Him;\nO Lord! empty us and fill us,\nWith Thy fulness to the brim."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "This the balm for pain and sickness,\nJust to all our strength to die,\nAnd to find His life and fulness,\nAll our being’s need supply."
+    },
+    {
+      "id": "chorus-5",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 6,
+      "text": "This the story of the Master,\nThru the Cross, He reached the Throne,\nAnd like Him our path to glory,\nEver leads through death alone."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i am crucified with christ",
+    "normalizedFirstLine": "i am crucified with christ",
+    "keywords": [
+      "crucified",
+      "with",
+      "christ"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "am",
+      "crucified",
+      "with",
+      "christ",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i am crucified with christ i am crucified with christ albert benjamin simpson unknown praise crucified with christ"
+  }
+}

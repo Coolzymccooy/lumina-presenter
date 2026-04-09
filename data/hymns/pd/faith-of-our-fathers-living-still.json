@@ -1,0 +1,99 @@
+{
+  "status": "approved",
+  "id": "faith-of-our-fathers-living-still",
+  "title": "Faith of our fathers, living still",
+  "alternateTitles": [],
+  "firstLine": "Faith of our fathers, living still",
+  "meter": "8.8.8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Frederick William Faber",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Henri Frederick Hemy"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Frederick William Faber (1814–1863).",
+  "tuneAttribution": "Tune: Henri Frederick Hemy (1818–1888), James George Walton (1821–1905).",
+  "publicDomainBasis": "Frederick William Faber (1814–1863), Henri Frederick Hemy (1818–1888), James George Walton (1821–1905). All public domain.",
+  "searchKeywords": [
+    "faith",
+    "fathers",
+    "living",
+    "still"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Faith of our fathers, living still\nIn spite of dungeon, fire and sword,\nO how our hearts beat high with joy\nWhene’er we hear that glorious word!\nFaith of our fathers! holy faith!\nWe will be true to thee till death!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Our fathers, chained in prisons dark,\nWere still in heart and conscience free;\nAnd blest would be their children’s fate,\nIf they, like them should die for thee:\nFaith of our fathers! holy faith!\nWe will be true to thee till death!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Faith of our fathers, we will strive\nTo win all nations unto thee;\nAnd through the truth that comes from God\nMankind shall then indeed be free.\nFaith of our fathers! holy faith!\nWe will be true to thee till death!"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Faith of our fathers, we will love\nBoth friend and foe in all our strife,\nAnd preach thee, too, as love knows how\nBy kindly words and virtuous life.\nFaith of our fathers! holy faith!\nWe will be true to thee till death!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "faith of our fathers living still",
+    "normalizedFirstLine": "faith of our fathers living still",
+    "keywords": [
+      "faith",
+      "fathers",
+      "living",
+      "still"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "faith",
+      "of",
+      "our",
+      "fathers",
+      "living",
+      "still",
+      "frederick",
+      "william",
+      "faber",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "faith of our fathers living still faith of our fathers living still frederick william faber unknown praise faith fathers living still"
+  }
+}

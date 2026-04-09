@@ -1,0 +1,98 @@
+{
+  "status": "approved",
+  "id": "lord-of-glory-we-adore-thee",
+  "title": "Lord of glory, we adore Thee",
+  "alternateTitles": [],
+  "firstLine": "Lord of glory, we adore Thee!",
+  "meter": "8.7.8.7.7.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Richard Holden",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lowell Mason"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Richard Holden (1828–1886).",
+  "tuneAttribution": "Tune: Lowell Mason (1792–1872).",
+  "publicDomainBasis": "Richard Holden (1828–1886), Lowell Mason (1792–1872). All public domain.",
+  "searchKeywords": [
+    "lord",
+    "glory",
+    "adore",
+    "thee"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Lord of glory, we adore Thee!\nChrist of God, ascended high!\nHeart and soul we bow before Thee,\nGlorious now beyond the sky:\nThee we worship, Thee we praise—\nExcellent in all Thy ways."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Anointed King, with glory crownèd,\nRightful Heir and Lord of all!\nOnce rejected, scorned, disownèd,\nE’en by those Thou cam’st to call:\nThee we honor, Thee adore—\nGlorious now and evermore."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Lord of life! to death once subject;\nBlesser, yet a curse once made;\nOf Thy Father’s heart the object,\nYet in depths of anguish laid;\nThee we gaze on, Thee recall—\nBearing here our sorrows all."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Royal robes shall soon invest Thee,\nRoyal splendors crown Thy brow;\nChrist of God, our souls confess Thee\nKing and Sov’reign even now!\nThee we rev’rence, Thee obey—\nOwn Thee Lord and Christ alway."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "lord of glory we adore thee",
+    "normalizedFirstLine": "lord of glory we adore thee",
+    "keywords": [
+      "lord",
+      "glory",
+      "adore",
+      "thee"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "lord",
+      "of",
+      "glory",
+      "we",
+      "adore",
+      "thee",
+      "richard",
+      "holden",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "lord of glory we adore thee lord of glory we adore thee richard holden unknown praise lord glory adore thee"
+  }
+}

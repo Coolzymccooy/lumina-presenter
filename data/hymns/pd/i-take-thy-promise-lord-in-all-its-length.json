@@ -1,0 +1,116 @@
+{
+  "status": "approved",
+  "id": "i-take-thy-promise-lord-in-all-its-length",
+  "title": "I take Thy promise, Lord, in all its length",
+  "alternateTitles": [],
+  "firstLine": "I take Thy promise, Lord, in all its length,",
+  "meter": "10.10.10.10.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Henry Legh Richmond Deck",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Claude Goudimel"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Henry Legh Richmond Deck (1853–1910).",
+  "tuneAttribution": "Tune: Claude Goudimel (1514–1572).",
+  "publicDomainBasis": "Henry Legh Richmond Deck (1853–1910), Claude Goudimel (1514–1572). All public domain.",
+  "searchKeywords": [
+    "take",
+    "promise",
+    "lord",
+    "length"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I take Thy promise, Lord, in all its length,\nAnd breadth and fulness, as my daily strength;\nInto life’s future fearless I may gaze,\nFor, Savior, Thou art with me all the days."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Days may be coming fraught with loss and change,\nNew scenes surround my life and fancies strange;\nI thank Thee that no day can ever break,\nSavior, when Thou wilt leave me or forsake."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "There may be days of darkness and distress,\nWhen sin has power to tempt, and care to press,\nYet in the darkest day I will not fear,\nFor, ’mid the shadows, Thou wilt still be near."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Days there may be of joy and deep delight,\nWhen earth seems fairest, and her skies most bright,\nThen draw me closer to Thee, lest I rest\nElsewhere, my Savior, than upon Thy breast."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "And all the other days that make my life,\nMarked by no special joy or grief or strife,\nDays filled with quiet duties, trivial care,\nBurdens too small for other hearts to share;"
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Spend Thou these days with me, all shall be Thine,\nSo shall the darkest hour with glory shine.\nThen when these earthly years have passed away,\nLet me be with Thee in the perfect day."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i take thy promise lord in all its length",
+    "normalizedFirstLine": "i take thy promise lord in all its length",
+    "keywords": [
+      "take",
+      "promise",
+      "lord",
+      "length"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "take",
+      "thy",
+      "promise",
+      "lord",
+      "in",
+      "all",
+      "its",
+      "length",
+      "henry",
+      "legh",
+      "richmond",
+      "deck",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i take thy promise lord in all its length i take thy promise lord in all its length henry legh richmond deck unknown praise take promise lord length"
+  }
+}

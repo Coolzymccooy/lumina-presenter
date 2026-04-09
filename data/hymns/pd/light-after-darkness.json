@@ -1,0 +1,87 @@
+{
+  "status": "approved",
+  "id": "light-after-darkness",
+  "title": "Light after darkness",
+  "alternateTitles": [],
+  "firstLine": "Light after darkness,",
+  "meter": "5.4.5.4.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Frances Ridley Havergal",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Ira David Sankey"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Frances Ridley Havergal (1836–1879).",
+  "tuneAttribution": "Tune: Ira David Sankey (1840–1908).",
+  "publicDomainBasis": "Frances Ridley Havergal (1836–1879), Ira David Sankey (1840–1908). All public domain.",
+  "searchKeywords": [
+    "light",
+    "after",
+    "darkness"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Light after darkness,\nGain after loss,\nStrength after weakness\nCrown after cross;\nSweet after bitter,\nHope after fears,\nHome after wand’ring,\nPraise after tears."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Sheaves after sowing,\nSun after rain,\nSight after mystery,\nPeace after pain;\nJoy after sorrow,\nCalm after blast,\nRest after weariness,\nSweet rest at last."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Near after distant,\nGleam after gloom,\nLove after loneliness,\nLife after tomb;\nAfter long agony,\nRapture of bliss,\nRight was the pathway,\nLeading to this."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "light after darkness",
+    "normalizedFirstLine": "light after darkness",
+    "keywords": [
+      "light",
+      "after",
+      "darkness"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "light",
+      "after",
+      "darkness",
+      "frances",
+      "ridley",
+      "havergal",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "light after darkness light after darkness frances ridley havergal unknown praise light after darkness"
+  }
+}

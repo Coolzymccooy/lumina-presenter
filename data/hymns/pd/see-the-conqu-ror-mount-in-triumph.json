@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "see-the-conqu-ror-mount-in-triumph",
+  "title": "See the Conqu’ror mount in triumph",
+  "alternateTitles": [],
+  "firstLine": "See the Conqu’ror mount in triumph,",
+  "meter": "8.7.8.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Christopher Wordsworth",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Arthur Seymour Sullivan"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Christopher Wordsworth (1807–1885).",
+  "tuneAttribution": "Tune: Arthur Seymour Sullivan (1842–1900).",
+  "publicDomainBasis": "Christopher Wordsworth (1807–1885), Arthur Seymour Sullivan (1842–1900). All public domain.",
+  "searchKeywords": [
+    "conqu",
+    "mount",
+    "triumph"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "See the Conqu’ror mount in triumph,\nSee the King in royal state\nRiding on the clouds His chariot\nTo His heav’nly palace gate;\nHark! The choirs of angel voices\nJoyful hallelujahs sing,\nAnd the portals high are lifted\nTo receive, to receive, to receive\ntheir heav’nly King."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Who is this that comes in glory,\nWith the trump of jubilee?\nLord of battles, God of armies,\nHe has gained the victory;\nHe who on the cross did suffer,\nHe who from the grave arose,\nHe has vanquished sin and Satan,\nHe by death, He by death, He by\ndeath has spoiled His foes."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "While He lifts His hands in blessing\nHe is parted from His friends;\nWhile their eager eyes behold Him,\nHe upon the clouds ascends;\nHe who walked with God and pleased Him,\nPreaching truth and doom to come,\nHe, our Enoch, is translated\nTo His home, to His home, to His\neverlasting home."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Now our heavenly Aaron enters,\nWith His blood, within the veil;\nJoshua now is come to Canaan,\nAnd the kings before Him quail;\nNow He plants the tribes of Israel\nIn their promised resting-place;\nNow our great Elijah offers\nOf His grace, of His grace,\ndouble portion of His grace."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "He has raised our human nature\nOn the clouds to God’s right hand;\nThere we sit in heav’nly places,\nThere with Him in glory stand.\nJesus reigns, adored by angels;\nMan with God is on the throne;\nMighty Lord, in Thine ascension\nWe by faith, we by faith, we by\nfaith behold our own."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "see the conqu ror mount in triumph",
+    "normalizedFirstLine": "see the conqu ror mount in triumph",
+    "keywords": [
+      "conqu",
+      "mount",
+      "triumph"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "see",
+      "the",
+      "conqu",
+      "ror",
+      "mount",
+      "in",
+      "triumph",
+      "christopher",
+      "wordsworth",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "see the conqu ror mount in triumph see the conqu ror mount in triumph christopher wordsworth unknown praise conqu mount triumph"
+  }
+}

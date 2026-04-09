@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "the-god-of-love-my-shepherd-is",
+  "title": "The God of love, my Shepherd is",
+  "alternateTitles": [],
+  "firstLine": "The God of love, my Shepherd is,",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Henry Williams Baker",
+      "role": "text"
+    }
+  ],
+  "tunes": [],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Henry Williams Baker (1821–1877).",
+  "tuneAttribution": "Tune: Unknown.",
+  "publicDomainBasis": "Henry Williams Baker (1821–1877). All public domain.",
+  "searchKeywords": [
+    "love",
+    "shepherd"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "The God of love, my Shepherd is,\nGrace He doth give, me He doth feed;\nO He is mine and I am His,\nWhat else I lack? What else I need?"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "He lays me down in pastures green,\nAnd leads me to waters of rest;\nNo greater satisfaction seen,\nHere I enjoy fellowship blest."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "He brings me home, though oft I stray,\nRestores my soul, His will to take;\nI yet may fall, He guides the way,\nOn righteous path, for His name’s sake."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "How marvelous, how could it be\nTo walk without evil to fear;\nYour rod and staff, they comfort me:\nMy boast is in Your presence dear."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "You’ve spread for me a table feast\nTo confound my adversaries;\nMy cup runs o’er; oil has not ceased;\nMy head anoint; O Lord, increase."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Your wondrous love, eternal, sweet,\nWith me abides till all my days,\nAnd in Your house, with joy replete,\nI’ll ever dwell, with endless praise."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "the god of love my shepherd is",
+    "normalizedFirstLine": "the god of love my shepherd is",
+    "keywords": [
+      "love",
+      "shepherd"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "the",
+      "god",
+      "of",
+      "love",
+      "my",
+      "shepherd",
+      "is",
+      "henry",
+      "williams",
+      "baker",
+      "praise"
+    ],
+    "searchableText": "the god of love my shepherd is the god of love my shepherd is henry williams baker praise love shepherd"
+  }
+}

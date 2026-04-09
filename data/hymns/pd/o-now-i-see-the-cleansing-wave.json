@@ -1,0 +1,87 @@
+{
+  "status": "approved",
+  "id": "o-now-i-see-the-cleansing-wave",
+  "title": "O now I see the cleansing wave",
+  "alternateTitles": [],
+  "firstLine": "O now I see the cleansing wave!",
+  "meter": "8.6.8.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Phoebe Worrell Palmer",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Phoebe Palmer Knapp"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Phoebe Worrell Palmer (1807–1874).",
+  "tuneAttribution": "Tune: Phoebe Palmer Knapp (1839–1908).",
+  "publicDomainBasis": "Phoebe Worrell Palmer (1807–1874), Phoebe Palmer Knapp (1839–1908). All public domain.",
+  "searchKeywords": [
+    "cleansing",
+    "wave"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O now I see the cleansing wave!\nThe fountain deep and wide;\nJesus, my Lord, mighty to save,\nPoints to His wounded side."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "I see the dear Redeemer raised,\nI hear the speaking blood;\nIt speaks! My spirit is amazed!\nAnd quickened by its flood."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "I rise to walk in God’s own light\nAbove the world and sin,\nWith heart renewed and garments white\nAnd Christ enthroned within."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o now i see the cleansing wave",
+    "normalizedFirstLine": "o now i see the cleansing wave",
+    "keywords": [
+      "cleansing",
+      "wave"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "now",
+      "see",
+      "the",
+      "cleansing",
+      "wave",
+      "phoebe",
+      "worrell",
+      "palmer",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o now i see the cleansing wave o now i see the cleansing wave phoebe worrell palmer unknown praise cleansing wave"
+  }
+}

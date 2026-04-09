@@ -1,0 +1,92 @@
+{
+  "status": "approved",
+  "id": "have-you-felt-the-father-s-love",
+  "title": "Have you felt the Father’s love",
+  "alternateTitles": [],
+  "firstLine": "Have you felt the Father’s love?",
+  "meter": "7.6.7.6.D. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Philip Paul Bliss",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Philip Paul Bliss"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Philip Paul Bliss (1838–1876).",
+  "tuneAttribution": "Tune: Philip Paul Bliss (1838–1876).",
+  "publicDomainBasis": "Philip Paul Bliss (1838–1876), Philip Paul Bliss (1838–1876). All public domain.",
+  "searchKeywords": [
+    "have",
+    "felt",
+    "father",
+    "love"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Have you felt the Father’s love?\nStill there’s more to follow;\nAnd His mercy have you proved?\nStill there’s more to follow.\nOh, the love the Father shows,\nStill there’s more to follow;\nFreely He His love bestows,\nStill there’s more to follow."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Have you felt the Savior near?\nStill there’s more to follow;\nDoes His blessed presence cheer?\nStill there’s more to follow.\nOh, the grace that Jesus shows,\nStill there’s more to follow;\nFreely He His grace bestows,\nStill there’s more to follow."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Have you felt the Spirit’s power?\nStill there’s more to follow;\nFalling like the gentle shower?\nStill there’s more to follow.\nOh, the power the Spirit shows,\nStill there’s more to follow;\nFreely He His power bestows,\nStill there’s more to follow."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "have you felt the father s love",
+    "normalizedFirstLine": "have you felt the father s love",
+    "keywords": [
+      "have",
+      "felt",
+      "father",
+      "love"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "have",
+      "you",
+      "felt",
+      "the",
+      "father",
+      "love",
+      "philip",
+      "paul",
+      "bliss",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "have you felt the father s love have you felt the father s love philip paul bliss unknown praise have felt father love"
+  }
+}

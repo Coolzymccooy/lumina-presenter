@@ -1,0 +1,95 @@
+{
+  "status": "approved",
+  "id": "himself-he-could-not-save",
+  "title": "Himself He could not save",
+  "alternateTitles": [],
+  "firstLine": "Himself He could not save,",
+  "meter": "6.6.6.6.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Midlane",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James McGranahan"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Midlane (1825–1909).",
+  "tuneAttribution": "Tune: James McGranahan (1840–1907).",
+  "publicDomainBasis": "Albert Midlane (1825–1909), James McGranahan (1840–1907). All public domain.",
+  "searchKeywords": [
+    "himself",
+    "could",
+    "save"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Himself He could not save,\nHe on the cross must die,\nOr mercy could not come\nTo ruined sinners nigh;\nYes, Christ, the Son of God, must bleed,\nThat sinners might from sin be freed."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Himself He could not save,\nFor justice must be done;\nOur sins’ full weight must fall\nUpon the sinless One;\nFor nothing less can God accept\nIn payment of that fearful debt."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Himself He could not save,\nFor He the Surety stood\nFor all who now rely\nUpon His precious blood;\nHe bore the penalty of guilt\nWhen on the cross His blood was spilt."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Himself He could not save,\nWhat wondrous love is this!\nIn love Himself He gave,\nThere ne’er was love like His!\nSuch love should melt a heart of stone,\nTill praise flows forth to Him alone!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "himself he could not save",
+    "normalizedFirstLine": "himself he could not save",
+    "keywords": [
+      "himself",
+      "could",
+      "save"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "himself",
+      "he",
+      "could",
+      "not",
+      "save",
+      "albert",
+      "midlane",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "himself he could not save himself he could not save albert midlane unknown praise himself could save"
+  }
+}

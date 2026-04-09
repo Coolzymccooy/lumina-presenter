@@ -1,0 +1,103 @@
+{
+  "status": "approved",
+  "id": "blest-be-the-tie-that-binds",
+  "title": "Blest be the tie that binds",
+  "alternateTitles": [],
+  "firstLine": "Blest be the tie that binds",
+  "meter": "6.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Fawcett",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Hans Georg Nageli"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Fawcett (1740–1817).",
+  "tuneAttribution": "Tune: Hans Georg Nageli (1773–1836).",
+  "publicDomainBasis": "John Fawcett (1740–1817), Hans Georg Nageli (1773–1836). All public domain.",
+  "searchKeywords": [
+    "blest",
+    "that",
+    "binds"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Blest be the tie that binds\nOur hearts in Christian love;\nThe fellowship our spirit finds\nIs like to that above."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Before our Father’s throne,\nWe pour our ardent prayers;\nOur fears, our hopes, our aims are one—\nOur comforts and our cares."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "We share our mutual woes;\nOur mutual burdens bear;\nAnd often for each other flows\nThe sympathizing tear."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "When we asunder part,\nIt gives us inward pain;\nBut we shall still be joined in heart,\nAnd hope to meet again."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "From sorrow, toil, and pain,\nAnd sin we shall be free;\nAnd perfect love and oneness reign\nThrough all eternity."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "blest be the tie that binds",
+    "normalizedFirstLine": "blest be the tie that binds",
+    "keywords": [
+      "blest",
+      "that",
+      "binds"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "blest",
+      "be",
+      "the",
+      "tie",
+      "that",
+      "binds",
+      "john",
+      "fawcett",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "blest be the tie that binds blest be the tie that binds john fawcett unknown praise blest that binds"
+  }
+}

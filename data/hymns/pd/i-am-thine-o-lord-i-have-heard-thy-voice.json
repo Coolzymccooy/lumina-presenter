@@ -1,0 +1,102 @@
+{
+  "status": "approved",
+  "id": "i-am-thine-o-lord-i-have-heard-thy-voice",
+  "title": "I am Thine, O Lord, I have heard Thy voice",
+  "alternateTitles": [],
+  "firstLine": "I am Thine, O Lord, I have heard Thy voice,",
+  "meter": "10.7.10.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "thine",
+    "lord",
+    "have",
+    "heard",
+    "voice"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I am Thine, O Lord, I have heard Thy voice,\nAnd it told Thy love to me;\nBut I long to rise in the arms of faith,\nAnd be closer drawn to Thee."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Consecrate me now to Thy service, Lord,\nBy the pow’r of grace divine;\nLet my soul look up with a steadfast hope,\nAnd my will be lost in Thine."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "O the pure delight of a single hour\nThat before Thy throne I spend,\nWhen I kneel in prayer, and with Thee, my God,\nI commune as friend with friend!"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "There are depths of love that I yet may know\nEre Thee face to face I see;\nThere are heights of joy that I yet may reach\nEre I rest in peace with Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i am thine o lord i have heard thy voice",
+    "normalizedFirstLine": "i am thine o lord i have heard thy voice",
+    "keywords": [
+      "thine",
+      "lord",
+      "have",
+      "heard",
+      "voice"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "am",
+      "thine",
+      "lord",
+      "have",
+      "heard",
+      "thy",
+      "voice",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i am thine o lord i have heard thy voice i am thine o lord i have heard thy voice fanny jane crosby unknown praise thine lord have heard voice"
+  }
+}

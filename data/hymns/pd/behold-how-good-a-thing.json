@@ -1,0 +1,108 @@
+{
+  "status": "approved",
+  "id": "behold-how-good-a-thing",
+  "title": "Behold how good a thing",
+  "alternateTitles": [],
+  "firstLine": "Behold how good a thing",
+  "meter": "6.6.6.6.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lewis Edson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Wesley (1707–1788).",
+  "tuneAttribution": "Tune: Lewis Edson (1748–1820).",
+  "publicDomainBasis": "Charles Wesley (1707–1788), Lewis Edson (1748–1820). All public domain.",
+  "searchKeywords": [
+    "behold",
+    "good",
+    "thing"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Behold how good a thing\nIt is to dwell in peace;\nHow pleasing to our King,\nThis fruit of righteousness;\nWhen brethren all in one agree,\nThey know the joy of unity!\nThey know the joy of unity!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "When all are sweetly joined\n(True followers of the Lamb),\nThey’re one in heart and mind,\nThey think and speak the same;\nWhen all in love together dwell;\nThe comfort is unspeakable!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Where unity takes place,\nThe joys of heav’n we prove;\nThis is the gospel grace,\nThe unction from above;\nThe Spirit on all saints is shed,\nDescending swift from Christ the Head."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Where unity is found,\nThe sweet anointing grace\nExtends to all around,\nAnd shines from every face;\nTo every praising saint it comes,\nAnd fills him with divine perfumes."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "On all His chosen ones\nThe precious oil comes down:\nAnointing as it runs,\nAnointing on and on.\nE’en to His skirts (the meanest name\nThat longs to love the bleeding Lamb)."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "From Aaron’s beard it rolls,\n(Those nearest to His face),\nThe humble, trembling souls\nWho know abundant grace;\nThe grace, the grace for all is free,\nFor, lo, it reaches now to me!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "behold how good a thing",
+    "normalizedFirstLine": "behold how good a thing",
+    "keywords": [
+      "behold",
+      "good",
+      "thing"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "behold",
+      "how",
+      "good",
+      "thing",
+      "charles",
+      "wesley",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "behold how good a thing behold how good a thing charles wesley unknown praise behold good thing"
+  }
+}

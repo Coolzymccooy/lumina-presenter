@@ -1,0 +1,90 @@
+{
+  "status": "approved",
+  "id": "o-jesus-lord-tis-joy-to-know",
+  "title": "O, Jesus, Lord, ’tis joy to know",
+  "alternateTitles": [],
+  "firstLine": "O, Jesus, Lord, ’tis joy to know",
+  "meter": "8.8.6.8.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "James George Deck",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lowell Mason"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: James George Deck (1807–1884).",
+  "tuneAttribution": "Tune: Lowell Mason (1792–1872).",
+  "publicDomainBasis": "James George Deck (1807–1884), Lowell Mason (1792–1872). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "lord",
+    "know"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O, Jesus, Lord, ’tis joy to know\nThy path is o’er of shame and woe,\nBy Thee so meekly trod.\nAll finished is Thy work of toil,\nThou reapest now the fruit and spoil,\nExalted by our God."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Thy holy head, once bound with thorns,\nThe crown of glory now adorns;\nThy seat, the Father’s throne.\nO Lord, e’en now we sing Thy praise,\nOurs the eternal song to raise,\nWorthy the Lord alone!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "We triumph in Thy triumphs, Lord,\nThy joys our deepest joys afford,\nThe fruit of love divine.\nWhile sorrowing, suff’ring, toiling here,\nHow does the thought our spirits cheer,\nThe throne of glory’s Thine!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o jesus lord tis joy to know",
+    "normalizedFirstLine": "o jesus lord tis joy to know",
+    "keywords": [
+      "jesus",
+      "lord",
+      "know"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "jesus",
+      "lord",
+      "tis",
+      "joy",
+      "to",
+      "know",
+      "james",
+      "george",
+      "deck",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o jesus lord tis joy to know o jesus lord tis joy to know james george deck unknown praise jesus lord know"
+  }
+}

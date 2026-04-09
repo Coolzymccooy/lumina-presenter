@@ -1,0 +1,106 @@
+{
+  "status": "approved",
+  "id": "still-still-with-thee-when-purple-morning-breaketh",
+  "title": "Still, still with Thee, when purple morning breaketh",
+  "alternateTitles": [],
+  "firstLine": "Still, still with Thee, when purple morning breaketh,",
+  "meter": "11.10.11.10.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Harriet Beecher Stowe",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Felix Mendelssohn"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Harriet Beecher Stowe (1812–1896).",
+  "tuneAttribution": "Tune: Felix Mendelssohn (1809–1847).",
+  "publicDomainBasis": "Harriet Beecher Stowe (1812–1896), Felix Mendelssohn (1809–1847). All public domain.",
+  "searchKeywords": [
+    "still",
+    "with",
+    "thee",
+    "when",
+    "purple",
+    "morning",
+    "breaketh"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Still, still with Thee, when purple morning breaketh,\nWhen the bird waketh, and the shadows flee;\nFairer than morning, lovelier than daylight,\nDawns the sweet consciousness, I am with Thee."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "As in the dawning, o’er the waveless ocean,\nThe image of the morning star doth rest,\nSo in this stillness Thou beholdest only\nThine image in the waters of my breast."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "When sinks the soul, subdued by toil, to slumber,\nIts closing eye looks up to Thee in prayer;\nSweet the repose, beneath Thy wings o’ershadowing,\nBut sweeter still to wake and find Thee there."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "So shall it be at last, in that bright morning\nWhen the soul waketh, and life’s shadows flee;\nOh, in that hour, fairer than daylight’s dawning,\nShall rise the glorious thought, I am with Thee!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "still still with thee when purple morning breaketh",
+    "normalizedFirstLine": "still still with thee when purple morning breaketh",
+    "keywords": [
+      "still",
+      "with",
+      "thee",
+      "when",
+      "purple",
+      "morning",
+      "breaketh"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "still",
+      "with",
+      "thee",
+      "when",
+      "purple",
+      "morning",
+      "breaketh",
+      "harriet",
+      "beecher",
+      "stowe",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "still still with thee when purple morning breaketh still still with thee when purple morning breaketh harriet beecher stowe unknown praise still with thee when purple morning breaketh"
+  }
+}

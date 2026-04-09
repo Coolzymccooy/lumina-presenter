@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "revive-thy-work-dear-lord",
+  "title": "Revive Thy work, dear Lord",
+  "alternateTitles": [],
+  "firstLine": "Revive Thy work, dear Lord!",
+  "meter": "6.6.8.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Midlane",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "prayer"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Midlane (1825–1909).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "Albert Midlane (1825–1909), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "revive",
+    "work",
+    "dear",
+    "lord"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "prayer",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Revive Thy work, dear Lord!\nThy mighty arm make bare;\nMove in the hearts and wake the souls,\nAnd make Thy presence dear."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Revive Thy work, dear Lord!\nDisturb this sleep of death;\nQuicken the smouldering embers now\nBy Thine almighty breath."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Revive Thy work, dear Lord!\nCreate soul-thirst for Thee;\nAnd hungering for the Bread of Life,\nO may our spirits be!"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Revive Thy work, dear Lord!\nAnd give abounding joy;\nO fill our hearts with perfect love,\nAnd burn out all alloy!"
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Revive Thy work, dear Lord!\nRepeat Thy deeds of grace;\nThy mighty name be magnified,\nTo Thee be all the praise."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "revive thy work dear lord",
+    "normalizedFirstLine": "revive thy work dear lord",
+    "keywords": [
+      "revive",
+      "work",
+      "dear",
+      "lord"
+    ],
+    "themes": [
+      "prayer"
+    ],
+    "tokens": [
+      "revive",
+      "thy",
+      "work",
+      "dear",
+      "lord",
+      "albert",
+      "midlane",
+      "unknown",
+      "prayer"
+    ],
+    "searchableText": "revive thy work dear lord revive thy work dear lord albert midlane unknown prayer revive work dear lord"
+  }
+}

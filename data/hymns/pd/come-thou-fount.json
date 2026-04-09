@@ -1,0 +1,53 @@
+{
+  "status": "approved",
+  "id": "come-thou-fount",
+  "title": "Come, Thou Fount of Every Blessing",
+  "alternateTitles": [],
+  "firstLine": "Come, thou Fount of every blessing, tune my heart to sing Thy grace",
+  "meter": "8.7.8.7 D",
+  "hymnalNumbers": { "UMH": 400, "SBC": 98, "ELW": 807 },
+  "authors": [
+    { "name": "Robert Robinson", "role": "text" },
+    { "name": "Wyeth's Repository of Sacred Music", "role": "tune", "notes": "Traditional American melody, 1813." }
+  ],
+  "tunes": [
+    { "name": "NETTLETON", "alternateNames": ["Come Thou Fount"] }
+  ],
+  "themes": ["grace", "praise", "guidance"],
+  "scriptureThemes": ["1 Samuel 7:12", "Romans 5:8", "Ephesians 2:4-5"],
+  "textAttribution": "Text: Robert Robinson, 1758.",
+  "tuneAttribution": "Tune: NETTLETON, traditional American melody, arr. 1813.",
+  "publicDomainBasis": "Robert Robinson (1735–1790). Text written 1758. Tune NETTLETON is a traditional American folk melody. Both public domain.",
+  "searchKeywords": ["fount", "blessing", "grace", "wandering", "prone", "ebenezer"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "grace",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "either",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 38,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Come, thou Fount of every blessing, tune my heart to sing Thy grace;\nStreams of mercy, never ceasing, call for songs of loudest praise.\nTeach me some melodious sonnet, sung by flaming tongues above;\nPraise the mount! I'm fixed upon it, mount of Thy redeeming love."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Here I raise mine Ebenezer; hither by Thy help I'm come;\nAnd I hope, by Thy good pleasure, safely to arrive at home.\nJesus sought me when a stranger, wandering from the fold of God;\nHe, to rescue me from danger, interposed His precious blood."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "O to grace how great a debtor daily I'm constrained to be!\nLet Thy goodness, like a fetter, bind my wandering heart to Thee.\nProne to wander, Lord, I feel it, prone to leave the God I love;\nHere's my heart, O take and seal it; seal it for Thy courts above."
+    }
+  ]
+}

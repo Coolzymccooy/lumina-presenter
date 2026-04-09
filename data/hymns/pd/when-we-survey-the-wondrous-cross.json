@@ -1,0 +1,105 @@
+{
+  "status": "approved",
+  "id": "when-we-survey-the-wondrous-cross",
+  "title": "When we survey the wondrous cross",
+  "alternateTitles": [],
+  "firstLine": "When we survey the wondrous cross",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Isaac Watts",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Edward Miller"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Isaac Watts (1674–1748).",
+  "tuneAttribution": "Tune: Edward Miller (1735–1807).",
+  "publicDomainBasis": "Isaac Watts (1674–1748), Edward Miller (1735–1807). All public domain.",
+  "searchKeywords": [
+    "when",
+    "survey",
+    "wondrous",
+    "cross"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "When we survey the wondrous cross\nOn which the Lord of glory died,\nOur richest gain we count but loss,\nAnd pour contempt on all our pride."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Our God forbid that we should boast,\nSave in the death of Christ, our Lord;\nAll the vain things that charm us most,\nWe’d sacrifice them to His blood."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "There from His head, His hands, His feet,\nSorrow and love flowed mingled down;\nDid e’er such love and sorrow meet,\nOr thorns compose so rich a crown?"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "His dying crimson, from His head\nSpreads o’er His body on the tree;\nTo all the world then am I dead,\nAnd all the world is dead to me."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Were the whole realm of nature ours,\nThat were an offering far too small;\nLove that transcends our highest pow’rs,\nDemands our heart, our life, our all."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "when we survey the wondrous cross",
+    "normalizedFirstLine": "when we survey the wondrous cross",
+    "keywords": [
+      "when",
+      "survey",
+      "wondrous",
+      "cross"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "when",
+      "we",
+      "survey",
+      "the",
+      "wondrous",
+      "cross",
+      "isaac",
+      "watts",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "when we survey the wondrous cross when we survey the wondrous cross isaac watts unknown praise when survey wondrous cross"
+  }
+}

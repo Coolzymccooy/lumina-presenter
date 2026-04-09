@@ -1,0 +1,90 @@
+{
+  "status": "approved",
+  "id": "safe-in-the-arms-of-jesus",
+  "title": "Safe in the arms of Jesus",
+  "alternateTitles": [],
+  "firstLine": "Safe in the arms of Jesus,",
+  "meter": "7.6.7.6.D. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "safe",
+    "arms",
+    "jesus"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Safe in the arms of Jesus,\nSafe on His gentle breast,\nThere by His love o’ershaded,\nSweetly my soul doth rest.\nHark! ’tis a song of heaven\nBorne in the sweetest voice,\nEchoed by saints in spirit,\nMaking my heart rejoice."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Safe in the arms of Jesus,\nSafe from corroding care,\nSafe from the world’s temptations,\nSin cannot harm me there.\nFree from the blight of sorrow,\nFree from my doubts and fears;\nOnly a few more trials,\nOnly a few more tears."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Jesus, my heart’s dear Refuge,\nJesus has died for me;\nFirm on the Rock of Ages\nEver my trust shall be.\nHere let me wait with patience,\nWait till the night is o’er,\nWait till I see the morning\nBreak on the golden shore."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "safe in the arms of jesus",
+    "normalizedFirstLine": "safe in the arms of jesus",
+    "keywords": [
+      "safe",
+      "arms",
+      "jesus"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "safe",
+      "in",
+      "the",
+      "arms",
+      "of",
+      "jesus",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "safe in the arms of jesus safe in the arms of jesus fanny jane crosby unknown praise safe arms jesus"
+  }
+}

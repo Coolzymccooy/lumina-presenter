@@ -1,0 +1,61 @@
+{
+  "status": "approved",
+  "id": "a-mighty-fortress",
+  "title": "A Mighty Fortress Is Our God",
+  "alternateTitles": ["Ein feste Burg ist unser Gott"],
+  "firstLine": "A mighty fortress is our God, a bulwark never failing",
+  "meter": "8.7.8.7.6.6.6.6.7",
+  "hymnalNumbers": { "UMH": 110, "SBC": 8, "LW": 298, "ELW": 504 },
+  "authors": [
+    { "name": "Martin Luther", "role": "text", "notes": "Original German, 1529." },
+    { "name": "Frederick H. Hedge", "role": "translator", "notes": "English translation, 1853." },
+    { "name": "Martin Luther", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "EIN FESTE BURG", "composer": "Martin Luther", "alternateNames": ["A Mighty Fortress"] }
+  ],
+  "themes": ["victory", "praise", "majesty"],
+  "scriptureThemes": ["Psalm 46", "Ephesians 6:10-18", "Romans 8:31"],
+  "textAttribution": "Text: Martin Luther, 1529; tr. Frederick H. Hedge, 1853.",
+  "tuneAttribution": "Tune: EIN FESTE BURG by Martin Luther, 1529.",
+  "publicDomainBasis": "Martin Luther (1483–1546), Frederick H. Hedge (1805–1890). Original text 1529, English translation 1853. Both public domain.",
+  "searchKeywords": ["fortress", "refuge", "strength", "battle", "victory", "reformation"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "victory",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 40,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "A mighty fortress is our God, a bulwark never failing;\nOur helper He, amid the flood of mortal ills prevailing.\nFor still our ancient foe doth seek to work us woe;\nHis craft and power are great, and armed with cruel hate,\nOn earth is not his equal."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Did we in our own strength confide, our striving would be losing,\nWere not the right man on our side, the man of God's own choosing.\nDost ask who that may be? Christ Jesus, it is He;\nLord Sabaoth, His name, from age to age the same,\nAnd He must win the battle."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "And though this world, with devils filled, should threaten to undo us,\nWe will not fear, for God hath willed His truth to triumph through us.\nThe prince of darkness grim, we tremble not for him;\nHis rage we can endure, for lo, his doom is sure,\nOne little word shall fell him."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "That word above all earthly powers, no thanks to them, abideth;\nThe Spirit and the gifts are ours through Him who with us sideth.\nLet goods and kindred go, this mortal life also;\nThe body they may kill: God's truth abideth still,\nHis kingdom is forever."
+    }
+  ]
+}

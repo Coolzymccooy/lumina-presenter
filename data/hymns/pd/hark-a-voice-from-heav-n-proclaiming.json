@@ -1,0 +1,114 @@
+{
+  "status": "approved",
+  "id": "hark-a-voice-from-heav-n-proclaiming",
+  "title": "Hark! a voice from heav’n proclaiming",
+  "alternateTitles": [],
+  "firstLine": "Hark! a voice from heav’n proclaiming,",
+  "meter": "8.3.8.3. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Albert Benjamin Simpson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Albert Benjamin Simpson (1843–1919).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Albert Benjamin Simpson (1843–1919). All public domain.",
+  "searchKeywords": [
+    "hark",
+    "voice",
+    "from",
+    "heav",
+    "proclaiming"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Hark! a voice from heav’n proclaiming,\n“It is done.”\nFaith repeats the echo claiming,\n“It is done.”"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Hear the bleeding Savior crying,\n“It is done.”\nClaim His finished work, replying,\n“It is done.”"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Yield thyself in consecration,\n“It is done.”\nTake the Lord for full salvation,\n“It is done.”"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Claim the promise of His healing,\n“It is done.”\nTrust without a sign or feeling,\n“It is done.”"
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Say of every promised blessing,\n“It is done.”\nRest upon His word, confessing,\n“It is done.”"
+    },
+    {
+      "id": "chorus-5",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 6,
+      "text": "This the secret of receiving,\n“It is done.”\nTake Him at His word believing,\n“It is done.”"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "hark a voice from heav n proclaiming",
+    "normalizedFirstLine": "hark a voice from heav n proclaiming",
+    "keywords": [
+      "hark",
+      "voice",
+      "from",
+      "heav",
+      "proclaiming"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "hark",
+      "voice",
+      "from",
+      "heav",
+      "proclaiming",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "hark a voice from heav n proclaiming hark a voice from heav n proclaiming albert benjamin simpson unknown praise hark voice from heav proclaiming"
+  }
+}

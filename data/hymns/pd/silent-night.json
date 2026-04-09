@@ -1,0 +1,54 @@
+{
+  "status": "approved",
+  "id": "silent-night",
+  "title": "Silent Night, Holy Night",
+  "alternateTitles": ["Stille Nacht"],
+  "firstLine": "Silent night, holy night, all is calm, all is bright",
+  "meter": "Irregular",
+  "hymnalNumbers": { "UMH": 239, "SBC": 88, "LW": 68, "ELW": 281 },
+  "authors": [
+    { "name": "Joseph Mohr", "role": "text", "notes": "Original German, 1816." },
+    { "name": "John F. Young", "role": "translator", "notes": "English translation, 1863." },
+    { "name": "Franz X. Gruber", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "STILLE NACHT", "composer": "Franz X. Gruber", "alternateNames": ["Silent Night"] }
+  ],
+  "themes": ["reflection", "comfort", "praise"],
+  "scriptureThemes": ["Luke 2:7-14", "Isaiah 9:6", "Matthew 1:23"],
+  "textAttribution": "Text: Joseph Mohr, 1816; tr. John F. Young, 1863.",
+  "tuneAttribution": "Tune: STILLE NACHT by Franz X. Gruber, 1818.",
+  "publicDomainBasis": "Joseph Mohr (1792–1848), Franz X. Gruber (1787–1863), John F. Young (1820–1885). Text 1816, tune 1818. All public domain.",
+  "searchKeywords": ["christmas", "silent", "holy", "night", "savior", "infant", "calm"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "reflection",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 32,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Silent night, holy night,\nAll is calm, all is bright\n'Round yon virgin mother and Child.\nHoly Infant, so tender and mild,\nSleep in heavenly peace,\nSleep in heavenly peace."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Silent night, holy night,\nShepherds quake at the sight;\nGlories stream from heaven afar,\nHeav'nly hosts sing Alleluia!\nChrist the Savior is born,\nChrist the Savior is born!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Silent night, holy night,\nSon of God, love's pure light;\nRadiant beams from Thy holy face\nWith the dawn of redeeming grace,\nJesus, Lord, at Thy birth,\nJesus, Lord, at Thy birth."
+    }
+  ]
+}

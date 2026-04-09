@@ -1,0 +1,86 @@
+{
+  "status": "approved",
+  "id": "hallelujah-he-is-risen",
+  "title": "Hallelujah, He is risen",
+  "alternateTitles": [],
+  "firstLine": "Hallelujah, “He is risen!”",
+  "meter": "8.7.8.7.8.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Philip Paul Bliss",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Philip Paul Bliss"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Philip Paul Bliss (1838–1876).",
+  "tuneAttribution": "Tune: Philip Paul Bliss (1838–1876).",
+  "publicDomainBasis": "Philip Paul Bliss (1838–1876), Philip Paul Bliss (1838–1876). All public domain.",
+  "searchKeywords": [
+    "hallelujah",
+    "risen"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Hallelujah, “He is risen!”\nJesus is gone up on high!\nBurst the bars of death asunder;\nAngels shout, and men reply:\nHe is risen, He is risen,\nLiving now, no more to die."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Hallelujah He is risen!\nOur exalted Head to be;\nSends the witness of the Spirit\nThat our Advocate is He:\nHe is risen, He is risen,\nJustified in Him are we."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Hallelujah, He is risen!\nDeath for aye has lost his sting;\nChrist, Himself the Resurrection,\nFrom the grave “His own” will bring:\nHe is risen, He is risen,\nLiving Lord and coming King."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "hallelujah he is risen",
+    "normalizedFirstLine": "hallelujah he is risen",
+    "keywords": [
+      "hallelujah",
+      "risen"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "hallelujah",
+      "he",
+      "is",
+      "risen",
+      "philip",
+      "paul",
+      "bliss",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "hallelujah he is risen hallelujah he is risen philip paul bliss unknown praise hallelujah risen"
+  }
+}

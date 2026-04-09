@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "sinners-jesus-will-receive",
+  "title": "Sinners Jesus will receive",
+  "alternateTitles": [],
+  "firstLine": "Sinners Jesus will receive;",
+  "meter": "7.7.7.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Erdmann Neumeister",
+      "role": "text"
+    },
+    {
+      "name": "Emma Frances Shuttleworth Bevan",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James McGranahan"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Erdmann Neumeister (1671–1756), Emma Frances Shuttleworth Bevan (1827–1909).",
+  "tuneAttribution": "Tune: James McGranahan (1840–1907).",
+  "publicDomainBasis": "Erdmann Neumeister (1671–1756), Emma Frances Shuttleworth Bevan (1827–1909), James McGranahan (1840–1907). All public domain.",
+  "searchKeywords": [
+    "sinners",
+    "jesus",
+    "will",
+    "receive"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Sinners Jesus will receive;\nSound this word of grace to all\nWho the heavenly pathway leave,\nAll who linger, all who fall."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Come, and He will give you rest;\nTrust Him for His word is plain;\nHe will take the sinfulest;\nChrist receiveth sinful men."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Now my heart condemns me not,\nPure before the law I stand;\nHe who cleansed me from all spot,\nSatisfied its last demand."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Christ receiveth sinful men,\nEven me with all my sin;\nPurged from every spot and stain,\nGlory I shall enter in."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "sinners jesus will receive",
+    "normalizedFirstLine": "sinners jesus will receive",
+    "keywords": [
+      "sinners",
+      "jesus",
+      "will",
+      "receive"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "sinners",
+      "jesus",
+      "will",
+      "receive",
+      "erdmann",
+      "neumeister",
+      "emma",
+      "frances",
+      "shuttleworth",
+      "bevan",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "sinners jesus will receive sinners jesus will receive erdmann neumeister emma frances shuttleworth bevan unknown praise sinners jesus will receive"
+  }
+}

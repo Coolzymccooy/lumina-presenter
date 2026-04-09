@@ -1,0 +1,79 @@
+{
+  "status": "approved",
+  "id": "glory-glory-to-the-father",
+  "title": "Glory, glory to the Father",
+  "alternateTitles": [],
+  "firstLine": "Glory, glory to the Father!",
+  "meter": "8.7.8.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Margaret Jenkins Harris",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Margaret Jenkins Harris"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Margaret Jenkins Harris (1865–1919).",
+  "tuneAttribution": "Tune: Margaret Jenkins Harris (1865–1919).",
+  "publicDomainBasis": "Margaret Jenkins Harris (1865–1919), Margaret Jenkins Harris (1865–1919). All public domain.",
+  "searchKeywords": [
+    "glory",
+    "father"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Glory, glory to the Father!\nGlory, glory to the Son!\nGlory, glory to the Spirit!\nGlory to the Three in One!"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Praise the Father who has purposed!\nPraise the Son who all has done!\nPraise the Spirit who transmitteth!\nPraise the Three who work as one!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "glory glory to the father",
+    "normalizedFirstLine": "glory glory to the father",
+    "keywords": [
+      "glory",
+      "father"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "glory",
+      "to",
+      "the",
+      "father",
+      "margaret",
+      "jenkins",
+      "harris",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "glory glory to the father glory glory to the father margaret jenkins harris unknown praise glory father"
+  }
+}

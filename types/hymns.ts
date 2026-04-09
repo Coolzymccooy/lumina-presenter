@@ -122,6 +122,8 @@ export interface Hymn {
   alternateTitles: string[];
   firstLine: string;
   meter?: string;
+  /** Hymnal book numbers, e.g. { 'UMH': 57, 'SBC': 104, 'LW': 362 } */
+  hymnalNumbers?: Record<string, number>;
   authors: HymnAuthor[];
   tunes: HymnTune[];
   themes: HymnThemeCategory[];
@@ -141,6 +143,7 @@ export interface HymnMetadataRecord {
   alternateTitles: string[];
   firstLine: string;
   meter?: string;
+  hymnalNumbers?: Record<string, number>;
   authors: HymnAuthor[];
   tunes: HymnTune[];
   themes: HymnThemeCategory[];

@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "christ-is-coming-let-creation",
+  "title": "Christ is coming! let creation",
+  "alternateTitles": [],
+  "firstLine": "Christ is coming! let creation",
+  "meter": "8.7.8.7.8.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Ross MacDuff",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Francis Wade"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Ross MacDuff (1818–1895).",
+  "tuneAttribution": "Tune: John Francis Wade (1711–1786).",
+  "publicDomainBasis": "John Ross MacDuff (1818–1895), John Francis Wade (1711–1786). All public domain.",
+  "searchKeywords": [
+    "christ",
+    "coming",
+    "creation"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Christ is coming! let creation\nFrom her groans and travail cease,\nLet the glorious proclamation\nHope restore, and faith increase.\nChrist is coming! Christ is coming!\nCome, Thou blessed Prince of Peace."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Earth can now but tell the story\nOf Thy bitter cross and pain;\nShe shall yet behold Thy glory\nWhen Thou comest back to reign.\nChrist is coming! Christ is coming!\nLet each heart repeat the strain."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Long Thy people have been pining\nFor Thy peace and rest, and Thee,\nSoon, in heav’nly glory shining,\nTheir Restorer shall they see.\nChrist is coming! Christ is coming!\nHaste the joyous jubilee."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "With that blessed hope before us,\nLet no harp remain unstrung;\nLet the mighty advent chorus\nOnward roll on every tongue.\nChrist is coming! Christ is coming!\nCome, Lord Jesus, quickly come."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "christ is coming let creation",
+    "normalizedFirstLine": "christ is coming let creation",
+    "keywords": [
+      "christ",
+      "coming",
+      "creation"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "christ",
+      "is",
+      "coming",
+      "let",
+      "creation",
+      "john",
+      "ross",
+      "macduff",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "christ is coming let creation christ is coming let creation john ross macduff unknown praise christ coming creation"
+  }
+}

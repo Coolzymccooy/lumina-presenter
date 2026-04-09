@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "i-will-sing-of-my-redeemer",
+  "title": "I will sing of my Redeemer",
+  "alternateTitles": [],
+  "firstLine": "I will sing of my Redeemer,",
+  "meter": "8.7.8.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Philip Paul Bliss",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James McGranahan"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Philip Paul Bliss (1838–1876).",
+  "tuneAttribution": "Tune: James McGranahan (1840–1907).",
+  "publicDomainBasis": "Philip Paul Bliss (1838–1876), James McGranahan (1840–1907). All public domain.",
+  "searchKeywords": [
+    "will",
+    "sing",
+    "redeemer"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I will sing of my Redeemer,\nAnd His wondrous love to me;\nOn the cruel cross He suffered,\nFrom the curse to set me free."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "I will tell the wondrous story,\nHow my lost estate to save,\nIn His boundless love and mercy,\nHe the ransom freely gave."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "I will praise my dear Redeemer,\nHis triumphant pow’r I’ll tell,\nHow the victory He giveth\nOver sin, and death, and hell."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "I will sing of my Redeemer,\nAnd His heav’nly love to me;\nHe from death to life hath brought me,\nSon of God with Him to be."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i will sing of my redeemer",
+    "normalizedFirstLine": "i will sing of my redeemer",
+    "keywords": [
+      "will",
+      "sing",
+      "redeemer"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "will",
+      "sing",
+      "of",
+      "my",
+      "redeemer",
+      "philip",
+      "paul",
+      "bliss",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i will sing of my redeemer i will sing of my redeemer philip paul bliss unknown praise will sing redeemer"
+  }
+}

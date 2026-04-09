@@ -1,0 +1,87 @@
+{
+  "status": "approved",
+  "id": "holy-holy-holy-lord-god-almighty",
+  "title": "Holy, Holy, Holy, Lord God Almighty",
+  "alternateTitles": [],
+  "firstLine": "Holy, Holy, Holy, Lord God Almighty!",
+  "meter": "12.13.12.10.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Reginald Heber",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Bacchus Dykes"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Reginald Heber (1783–1826).",
+  "tuneAttribution": "Tune: John Bacchus Dykes (1823–1876).",
+  "publicDomainBasis": "Reginald Heber (1783–1826), John Bacchus Dykes (1823–1876). All public domain.",
+  "searchKeywords": [
+    "holy",
+    "lord",
+    "almighty"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Holy, Holy, Holy, Lord God Almighty!\nUnto everlasting days our song shall rise to Thee;\nHoly, Holy, Holy, Merciful and Mighty!\nGod in Three Persons, blessed Trinity!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Holy, Holy, Holy! all the saints adore Thee;\nHeaven’s elders cast their crowns down by the glassy sea;\nCherubim and seraphim worship too before Thee,\nWho wert, and art, and evermore shalt be."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Holy, Holy, Holy! though the darkness hide Thee,\nThough the eye of sinful man Thy glory may not see,\nOnly Thou art holy, there is none beside Thee\nPerfect in power, in love, and purity."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "holy holy holy lord god almighty",
+    "normalizedFirstLine": "holy holy holy lord god almighty",
+    "keywords": [
+      "holy",
+      "lord",
+      "almighty"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "holy",
+      "lord",
+      "god",
+      "almighty",
+      "reginald",
+      "heber",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "holy holy holy lord god almighty holy holy holy lord god almighty reginald heber unknown praise holy lord almighty"
+  }
+}

@@ -1,0 +1,90 @@
+{
+  "status": "approved",
+  "id": "my-heart-is-fixed-eternal-god",
+  "title": "My heart is fixed, eternal God",
+  "alternateTitles": [],
+  "firstLine": "My heart is fixed, eternal God,",
+  "meter": "8.6.8.6.8.8.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Richard Jukes",
+      "role": "text"
+    }
+  ],
+  "tunes": [],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Richard Jukes (1804–1867).",
+  "tuneAttribution": "Tune: Unknown.",
+  "publicDomainBasis": "Richard Jukes (1804–1867). All public domain.",
+  "searchKeywords": [
+    "heart",
+    "fixed",
+    "eternal"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "My heart is fixed, eternal God,\nFixed on Thee, fixed on Thee;\nAnd my immortal choice is made,\nChrist for me, Christ for me;\nHe is my prophet, priest, and king,\nWho did for me salvation bring,\nAnd while I’ve breath I mean to sing,\nChrist for me, Christ for me."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "In Him I see the Godhead shine,\nChrist for me, Christ for me;\nHe is the majesty divine,\nChrist for me, Christ for me;\nThe Father’s well-beloved Son,\nCo-partner of His royal throne,\nWho bore the guilt of man alone,\nChrist for me, Christ for me."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Let others boast of heaps of gold,\nChrist for me, Christ for me;\nHis riches never can be told,\nChrist for me, Christ for me;\nYour gold will waste and wear away,\nYour honors perish in a day;\nMy portion never can decay,\nChrist for me, Christ for me."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "In pining sickness, or in health,\nChrist for me, Christ for me;\nIn deepest poverty or wealth,\nChrist for me, Christ for me;\nAnd in that all-important day,\nWhen I the summons must obey,\nAnd pass from this dark world away,\nChrist for me, Christ for me."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "my heart is fixed eternal god",
+    "normalizedFirstLine": "my heart is fixed eternal god",
+    "keywords": [
+      "heart",
+      "fixed",
+      "eternal"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "my",
+      "heart",
+      "is",
+      "fixed",
+      "eternal",
+      "god",
+      "richard",
+      "jukes",
+      "praise"
+    ],
+    "searchableText": "my heart is fixed eternal god my heart is fixed eternal god richard jukes praise heart fixed eternal"
+  }
+}

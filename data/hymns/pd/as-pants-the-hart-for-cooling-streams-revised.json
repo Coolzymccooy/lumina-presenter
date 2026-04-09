@@ -1,0 +1,113 @@
+{
+  "status": "approved",
+  "id": "as-pants-the-hart-for-cooling-streams-revised",
+  "title": "As pants the hart for cooling streams (revised)",
+  "alternateTitles": [],
+  "firstLine": "As pants the hart for cooling streams",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "N. Tate",
+      "role": "text"
+    },
+    {
+      "name": "N. Brady",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Hugh Wilson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: N. Tate (1652–1715), N. Brady (1639–1726).",
+  "tuneAttribution": "Tune: Hugh Wilson (1766–1824).",
+  "publicDomainBasis": "N. Tate (1652–1715), N. Brady (1639–1726), Hugh Wilson (1766–1824). All public domain.",
+  "searchKeywords": [
+    "pants",
+    "hart",
+    "cooling",
+    "streams",
+    "revised"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "As pants the hart for cooling streams\nWhen heated in the chase,\nSo longs my soul, O God, for Thee,\nAnd Thy refreshing grace."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "O living God, my God, for Thee\nMy thirsty heart doth pine;\nOh, to draw nigh and thoroughly\nEnjoy Thyself divine!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "My life, my strength, my dwelling place\nThou art, O God, to me;\nIn Christ Thou art enjoyed as grace\nAnd fully gained by me."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Thy smile is my salvation blest;\nNow all my hope’s in Thee;\nThy presence is my sole request—\nOh, grace me bountif’lly!"
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "I pant, as hart for cooling brook;\nOh, grant Thyself, I plead;\nTo Thee alone, O Lord, I look,\nFor Thou art all I need."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "as pants the hart for cooling streams revised",
+    "normalizedFirstLine": "as pants the hart for cooling streams",
+    "keywords": [
+      "pants",
+      "hart",
+      "cooling",
+      "streams",
+      "revised"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "as",
+      "pants",
+      "the",
+      "hart",
+      "for",
+      "cooling",
+      "streams",
+      "revised",
+      "tate",
+      "brady",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "as pants the hart for cooling streams revised as pants the hart for cooling streams n tate n brady unknown praise pants hart cooling streams revised"
+  }
+}

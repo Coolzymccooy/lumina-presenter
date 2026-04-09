@@ -1,0 +1,134 @@
+{
+  "status": "approved",
+  "id": "prayer-is-the-incense-of-a-holy-heart",
+  "title": "Prayer is the incense of a holy heart",
+  "alternateTitles": [],
+  "firstLine": "Prayer is the incense of a holy heart",
+  "meter": "10.10.10.10.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Claude Goudimel"
+    }
+  ],
+  "themes": [
+    "prayer"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Claude Goudimel (1514–1572).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Claude Goudimel (1514–1572). All public domain.",
+  "searchKeywords": [
+    "prayer",
+    "incense",
+    "holy",
+    "heart"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "prayer",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Prayer is the incense of a holy heart\nRising to God from bruised and broken things,\nWhen kindled by the Spirit’s burning breath\nAnd upward borne by faith’s ascending wings."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Prayer is the perfume of the plants of grace,\nThe flowers of patience, faith, and suffering love,\nTreasured in “vials full of odors sweet,”\nGod breathes their fragrance in His courts above."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Prayer is th’ ascending vapor which supplies\nThe showers of blessing, and the stream that flows\nThrough earth’s dry places, till on every side\n“The wilderness shall blossom as the rose.”"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Prayer is the heavenly telephone that brings\nThe distant near, till heaven to earth comes down,\nAnd in our Father’s ear and heart we may\nOur burdens tell and all our sorrows drown."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Prayer is the wireless telegraph that sends\nIts heart throbs on the ether waves of heaven;\nIt finds the heart of God, and back to earth\nThe answering thrill to faith and love are given."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Prayer is the golden pipes the Spirit fills,\nWhich feed the lamps of God with oil divine,\nAnd, as with one accord we wait and pray,\nThe Spirit fills, the lamps with brightness shine."
+    },
+    {
+      "id": "v7",
+      "type": "verse",
+      "label": "Verse 7",
+      "order": 7,
+      "text": "Prayer is the mightiest force of earth and heaven,\nPrayer is the very dynamite of God;\nIt moves the hand that all things moves, and turns\nThe living wheels that sweep through earth abroad."
+    },
+    {
+      "id": "v8",
+      "type": "verse",
+      "label": "Verse 8",
+      "order": 8,
+      "text": "Teach us to pray! Move on our hearts, O Lord,\nTill Thine own passion all our being move!\nTeach us! Pray in us, till our prayer shall be\nChrist in us praying to the Christ above!"
+    },
+    {
+      "id": "v9",
+      "type": "verse",
+      "label": "Verse 9",
+      "order": 9,
+      "text": "Teach us to pray! Reveal Thy will to us,\nTill Thine own purpose all our being move!\nTeach us! Pray in us, till our prayer shall be\nGod in us answering to the God above!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "prayer is the incense of a holy heart",
+    "normalizedFirstLine": "prayer is the incense of a holy heart",
+    "keywords": [
+      "prayer",
+      "incense",
+      "holy",
+      "heart"
+    ],
+    "themes": [
+      "prayer"
+    ],
+    "tokens": [
+      "prayer",
+      "is",
+      "the",
+      "incense",
+      "of",
+      "holy",
+      "heart",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown"
+    ],
+    "searchableText": "prayer is the incense of a holy heart prayer is the incense of a holy heart albert benjamin simpson unknown prayer prayer incense holy heart"
+  }
+}

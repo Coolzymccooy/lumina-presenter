@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "lord-jesus-thou-dost-keep-thy-child",
+  "title": "Lord Jesus, Thou dost keep Thy child",
+  "alternateTitles": [],
+  "firstLine": "Lord Jesus, Thou dost keep Thy child",
+  "meter": "8.8.6.8.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Jean Sophia Pigott",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lowell Mason"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Jean Sophia Pigott (1845–1882).",
+  "tuneAttribution": "Tune: Lowell Mason (1792–1872).",
+  "publicDomainBasis": "Jean Sophia Pigott (1845–1882), Lowell Mason (1792–1872). All public domain.",
+  "searchKeywords": [
+    "lord",
+    "jesus",
+    "thou",
+    "dost",
+    "keep",
+    "child"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Lord Jesus, Thou dost keep Thy child\nThru sunshine or thru tempests wild;\nJesus, I trust in Thee:\nThine is such wondrous pow’r to save;\nThine is the mighty love that gave\nIts all on Calvary."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "O glorious Savior, Thee I praise;\nTo Thee my new glad song I raise,\nAnd tell of what Thou art.\nThy grace is boundless in its store;\nThy face of love shines evermore;\nThou givest me Thy heart."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Upon Thy promises I stand,\nTrusting in Thee: Thine own right hand\nDoth keep and comfort me;\nMy soul doth triumph in Thy word;\nThine, Thine be all the praise, dear Lord,\nAs Thine the victory."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Love perfecteth what it begins;\nThy power doth save me from my sins;\nThy grace upholdeth me.\nThis life of trust, how glad, how sweet;\nMy need and Thy great fulness meet,\nAnd I have all in Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "lord jesus thou dost keep thy child",
+    "normalizedFirstLine": "lord jesus thou dost keep thy child",
+    "keywords": [
+      "lord",
+      "jesus",
+      "thou",
+      "dost",
+      "keep",
+      "child"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "lord",
+      "jesus",
+      "thou",
+      "dost",
+      "keep",
+      "thy",
+      "child",
+      "jean",
+      "sophia",
+      "pigott",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "lord jesus thou dost keep thy child lord jesus thou dost keep thy child jean sophia pigott unknown praise lord jesus thou dost keep child"
+  }
+}

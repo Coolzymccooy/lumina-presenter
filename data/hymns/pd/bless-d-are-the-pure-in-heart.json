@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "bless-d-are-the-pure-in-heart",
+  "title": "Bless’d are the pure in heart",
+  "alternateTitles": [],
+  "firstLine": "Bless’d are the pure in heart,",
+  "meter": "6.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Keble",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Charles Lockhart"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Keble (1792–1866).",
+  "tuneAttribution": "Tune: Charles Lockhart (1745–1815).",
+  "publicDomainBasis": "John Keble (1792–1866), Charles Lockhart (1745–1815). All public domain.",
+  "searchKeywords": [
+    "bless",
+    "pure",
+    "heart"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Bless’d are the pure in heart,\nFor they shall see our God;\nThe secret of the Lord is theirs,\nTheir heart is Christ’s abode."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "The Lord, who left the heavens,\nOur life and peace to bring,\nTo dwell in lowliness with men,\nTheir pattern and their King."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "He to the lowly soul\nDoth still Himself impart,\nAnd for His dwelling and His throne\nChooseth the pure in heart."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Lord, we Thy presence seek;\nMay ours this blessing be;\nGive us a pure and lowly heart,\nA temple meet for Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "bless d are the pure in heart",
+    "normalizedFirstLine": "bless d are the pure in heart",
+    "keywords": [
+      "bless",
+      "pure",
+      "heart"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "bless",
+      "are",
+      "the",
+      "pure",
+      "in",
+      "heart",
+      "john",
+      "keble",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "bless d are the pure in heart bless d are the pure in heart john keble unknown praise bless pure heart"
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "status": "approved",
+  "id": "o-word-of-god-incarnate",
+  "title": "O Word of God incarnate",
+  "alternateTitles": [],
+  "firstLine": "O Word of God incarnate,",
+  "meter": "7.6.7.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Walsham How",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Walsham How (1823–1897).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "William Walsham How (1823–1897), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "word",
+    "incarnate"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O Word of God incarnate,\nO Wisdom from on high,\nO Truth unchanged, unchanging,\nO Light of our dark sky,\nWe praise Thee for the radiance\nThat from the hallowed page,\nA lantern to our footsteps,\nShines on from age to age."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "The Church from her dear Master\nReceived the gift divine,\nAnd still that light she lifteth\nO’er all the earth to shine:\nIt is the golden treasure\nWhere gems of truth are stored;\nIt is the heaven-drawn picture\nOf Christ, the living Word."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "It floateth like a banner\nBefore God’s host unfurled;\nIt shineth like a beacon\nAbove the darkling world;\nIt is the chart and compass\nThat, o’er life’s surging sea,\n’Mid mists and rocks and quicksands\nStill guide, O Christ, to Thee."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "O make Thy Church, dear Savior,\nA lampstand of pure gold,\nTo bear before the nations\nThy light, that all behold;\nO teach Thy wandering pilgrims\nBy this their path to trace,\nTill, clouds and darkness ended,\nThey see Thee face to face."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o word of god incarnate",
+    "normalizedFirstLine": "o word of god incarnate",
+    "keywords": [
+      "word",
+      "incarnate"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "word",
+      "of",
+      "god",
+      "incarnate",
+      "william",
+      "walsham",
+      "how",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o word of god incarnate o word of god incarnate william walsham how unknown praise word incarnate"
+  }
+}

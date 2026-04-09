@@ -1,0 +1,97 @@
+{
+  "status": "approved",
+  "id": "we-sing-the-praise-of-him-who-died",
+  "title": "We sing the praise of Him who died",
+  "alternateTitles": [],
+  "firstLine": "We sing the praise of Him who died,",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Thomas Kelly",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Ludwig van Beethoven"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Thomas Kelly (1769–1855).",
+  "tuneAttribution": "Tune: Ludwig van Beethoven (1770–1827).",
+  "publicDomainBasis": "Thomas Kelly (1769–1855), Ludwig van Beethoven (1770–1827). All public domain.",
+  "searchKeywords": [
+    "sing",
+    "praise",
+    "died"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "We sing the praise of Him who died,\nOf Him who died upon the Cross;\nThe sinner’s hope let men deride,\nFor this we count the world but loss."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Inscribed upon the Cross we see\nIn shining letters, God is love!\nHe bears our sins upon the tree,\nHe brings us mercy from above."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "The Cross: it takes our guilt away;\nIt holds the fainting spirit up;\nIt cheers with hope the gloomy day,\nAnd sweetens every bitter cup."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "The balm of life, the cure of woe,\nThe measure and the pledge of love,\nThe sinner’s refuge here below,\nThe angels’ theme in heav’n above."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "we sing the praise of him who died",
+    "normalizedFirstLine": "we sing the praise of him who died",
+    "keywords": [
+      "sing",
+      "praise",
+      "died"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "we",
+      "sing",
+      "the",
+      "praise",
+      "of",
+      "him",
+      "who",
+      "died",
+      "thomas",
+      "kelly",
+      "unknown"
+    ],
+    "searchableText": "we sing the praise of him who died we sing the praise of him who died thomas kelly unknown praise sing praise died"
+  }
+}

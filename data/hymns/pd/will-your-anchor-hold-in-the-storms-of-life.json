@@ -1,0 +1,106 @@
+{
+  "status": "approved",
+  "id": "will-your-anchor-hold-in-the-storms-of-life",
+  "title": "Will your anchor hold in the storms of life",
+  "alternateTitles": [],
+  "firstLine": "Will your anchor hold in the storms of life,",
+  "meter": "10.9.10.9. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Priscilla Jane Owens",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William James Kirkpatrick"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Priscilla Jane Owens (1829–1907).",
+  "tuneAttribution": "Tune: William James Kirkpatrick (1838–1921).",
+  "publicDomainBasis": "Priscilla Jane Owens (1829–1907), William James Kirkpatrick (1838–1921). All public domain.",
+  "searchKeywords": [
+    "will",
+    "your",
+    "anchor",
+    "hold",
+    "storms",
+    "life"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Will your anchor hold in the storms of life,\nWhen the clouds unfold their wings of strife?\nWhen the strong tides lift, and the cables strain,\nWill your anchor drift or firm remain?"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "It is safely moored, ’twill the storm withstand,\nFor ’tis well secured by the Savior’s hand;\nAnd the cables passed from His heart to mine,\nCan defy the blast, through strength divine."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "It will firmly hold in the straits of fear,\nWhen the breakers have told the reef is near;\nThough the tempest rave and the wild winds blow,\nNot an angry wave shall our bark o’erflow."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "It will surely hold in the floods of death,\nWhen the waters cold chill our latest breath;\nOn the rising tide it can never fail,\nWhile our hopes abide within the veil."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "will your anchor hold in the storms of life",
+    "normalizedFirstLine": "will your anchor hold in the storms of life",
+    "keywords": [
+      "will",
+      "your",
+      "anchor",
+      "hold",
+      "storms",
+      "life"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "will",
+      "your",
+      "anchor",
+      "hold",
+      "in",
+      "the",
+      "storms",
+      "of",
+      "life",
+      "priscilla",
+      "jane",
+      "owens",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "will your anchor hold in the storms of life will your anchor hold in the storms of life priscilla jane owens unknown praise will your anchor hold storms life"
+  }
+}

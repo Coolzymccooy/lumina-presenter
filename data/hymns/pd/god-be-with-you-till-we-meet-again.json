@@ -1,0 +1,101 @@
+{
+  "status": "approved",
+  "id": "god-be-with-you-till-we-meet-again",
+  "title": "God be with you till we meet again",
+  "alternateTitles": [],
+  "firstLine": "God be with you till we meet again;",
+  "meter": "9.8.8.9. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Jeremiah Eames Rankin",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Gould Tomer"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Jeremiah Eames Rankin (1828–1904).",
+  "tuneAttribution": "Tune: William Gould Tomer (1833–1896).",
+  "publicDomainBasis": "Jeremiah Eames Rankin (1828–1904), William Gould Tomer (1833–1896). All public domain.",
+  "searchKeywords": [
+    "with",
+    "till",
+    "meet",
+    "again"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "God be with you till we meet again;\nBy His counsels guide, uphold you,\nWith His sheep in love enfold you;\nGod be with you till we meet again."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "God be with you till we meet again!\n’Neath His wings protecting hide you,\nDaily manna still provide you;\nGod be with you till we meet again!"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "God be with you till we meet again!\nWhen life’s perils thick confound you,\nPut His arms unfailing round you;\nGod be with you till we meet again!"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "God be with you till we meet again!\nKeep love’s banner floating o’er you,\nSmite death’s threatening wave before you;\nGod be with you till we meet again!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "god be with you till we meet again",
+    "normalizedFirstLine": "god be with you till we meet again",
+    "keywords": [
+      "with",
+      "till",
+      "meet",
+      "again"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "god",
+      "be",
+      "with",
+      "you",
+      "till",
+      "we",
+      "meet",
+      "again",
+      "jeremiah",
+      "eames",
+      "rankin",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "god be with you till we meet again god be with you till we meet again jeremiah eames rankin unknown praise with till meet again"
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "come-ye-disconsolate-where-er-ye-languish",
+  "title": "Come, ye disconsolate, where’er ye languish",
+  "alternateTitles": [],
+  "firstLine": "Come, ye disconsolate, where’er ye languish;",
+  "meter": "11.10.11.10.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Thomas Moore",
+      "role": "text"
+    },
+    {
+      "name": "Thomas Hastings",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Samuel Webbe"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Thomas Moore (1779–1852), Thomas Hastings (1784–1872).",
+  "tuneAttribution": "Tune: Samuel Webbe (1740–1816).",
+  "publicDomainBasis": "Thomas Moore (1779–1852), Thomas Hastings (1784–1872), Samuel Webbe (1740–1816). All public domain.",
+  "searchKeywords": [
+    "come",
+    "disconsolate",
+    "where",
+    "languish"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Come, ye disconsolate, where’er ye languish;\nCome to the mercy-seat, fervently kneel;\nHere bring your wounded hearts, here tell your anguish,\nEarth has no sorrow that heaven cannot heal."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Joy of the comfortless, light of the straying,\nHope of the penitent, fadeless and pure;\nHere speaks the Comforter, tenderly saying—\nEarth has no sorrow that heaven cannot cure."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Here see the Bread of Life; see waters flowing\nForth from the throne of God, pure from above;\nCome to the feast of love; come, ever knowing\nEarth has no sorrow but heaven can remove."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "come ye disconsolate where er ye languish",
+    "normalizedFirstLine": "come ye disconsolate where er ye languish",
+    "keywords": [
+      "come",
+      "disconsolate",
+      "where",
+      "languish"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "come",
+      "ye",
+      "disconsolate",
+      "where",
+      "er",
+      "languish",
+      "thomas",
+      "moore",
+      "hastings",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "come ye disconsolate where er ye languish come ye disconsolate where er ye languish thomas moore thomas hastings unknown praise come disconsolate where languish"
+  }
+}

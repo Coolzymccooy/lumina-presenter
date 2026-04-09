@@ -1,0 +1,99 @@
+{
+  "status": "approved",
+  "id": "thou-art-fairer-than-the-morning",
+  "title": "Thou art fairer than the morning",
+  "alternateTitles": [],
+  "firstLine": "Thou art fairer than the morning,",
+  "meter": "8.7.8.7. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Robson Sweney"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: John Robson Sweney (1837–1899).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), John Robson Sweney (1837–1899). All public domain.",
+  "searchKeywords": [
+    "thou",
+    "fairer",
+    "than",
+    "morning"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Thou art fairer than the morning,\nO my Savior and my King!\nOf Thy grandeur and Thy beauty,\nHow my soul delights to sing."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Clothed in light as with a garment,\nCrowned with majesty divine,\nLo, the scepter of dominion\nNow and ever, Lord, is Thine."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "O the greatness of Thy mercy,\nAnd the richness of Thy grace!\nO the love that in Thy kingdom\nIs preparing me a place!"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "When at last I reach the kingdom,\nWin the crown, the battle o’er,\nWith ten thousand times ten thousand\nI shall sing forevermore."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "thou art fairer than the morning",
+    "normalizedFirstLine": "thou art fairer than the morning",
+    "keywords": [
+      "thou",
+      "fairer",
+      "than",
+      "morning"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "thou",
+      "art",
+      "fairer",
+      "than",
+      "the",
+      "morning",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "thou art fairer than the morning thou art fairer than the morning fanny jane crosby unknown praise thou fairer than morning"
+  }
+}

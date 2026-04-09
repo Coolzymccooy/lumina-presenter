@@ -1,0 +1,95 @@
+{
+  "status": "approved",
+  "id": "o-god-we-see-thee-in-the-lamb",
+  "title": "O God! we see Thee in the Lamb",
+  "alternateTitles": [],
+  "firstLine": "O God! we see Thee in the Lamb",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Isaac Watts",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lowell Mason"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Isaac Watts (1674–1748).",
+  "tuneAttribution": "Tune: Lowell Mason (1792–1872).",
+  "publicDomainBasis": "Isaac Watts (1674–1748), Lowell Mason (1792–1872). All public domain.",
+  "searchKeywords": [
+    "thee",
+    "lamb"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O God! we see Thee in the Lamb\nTo be our hope, our joy, our rest;\nThe glories that compose Thy name\nStanding engaged to make us blest."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Thou great and good! Thou just and wise!\nHail! as our Father and our God!\nFor we are Thine by sacred ties,\nThy sons and daughters—bought with blood."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Then, Oh! to us this grace afford,\nThat far from Thee we ne’er may move;\nOur guard—the presence of the Lord;\nOur joy—Thy perfect present love."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "This gives us ever to rejoice,\nTurning to light our darkest days;\nAnd lifts on high each feeble voice,\nWhile we have breath to pray or praise."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o god we see thee in the lamb",
+    "normalizedFirstLine": "o god we see thee in the lamb",
+    "keywords": [
+      "thee",
+      "lamb"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "god",
+      "we",
+      "see",
+      "thee",
+      "in",
+      "the",
+      "lamb",
+      "isaac",
+      "watts",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o god we see thee in the lamb o god we see thee in the lamb isaac watts unknown praise thee lamb"
+  }
+}

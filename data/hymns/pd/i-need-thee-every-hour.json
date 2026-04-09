@@ -1,0 +1,76 @@
+{
+  "status": "approved",
+  "id": "i-need-thee-every-hour",
+  "title": "I Need Thee Every Hour",
+  "alternateTitles": [],
+  "firstLine": "I need Thee every hour, most gracious Lord",
+  "meter": "6.4.6.4 with refrain",
+  "hymnalNumbers": { "UMH": 397, "SBC": 461, "LW": 411 },
+  "authors": [
+    { "name": "Annie S. Hawks", "role": "text" },
+    { "name": "Robert Lowry", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "NEED", "composer": "Robert Lowry", "alternateNames": ["I Need Thee Every Hour"] }
+  ],
+  "themes": ["prayer", "surrender", "comfort"],
+  "scriptureThemes": ["John 15:5", "Philippians 4:13", "2 Corinthians 12:9"],
+  "textAttribution": "Text: Annie S. Hawks, 1872.",
+  "tuneAttribution": "Tune: NEED by Robert Lowry, 1872.",
+  "publicDomainBasis": "Annie S. Hawks (1835–1918), Robert Lowry (1826–1899). Written and published 1872. Both public domain.",
+  "searchKeywords": ["need", "hour", "gracious", "temptation", "peace", "abide"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "prayer",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 30,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I need Thee every hour,\nMost gracious Lord;\nNo tender voice like Thine\nCan peace afford."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "I need Thee, O I need Thee;\nEvery hour I need Thee!\nO bless me now, my Savior,\nI come to Thee.",
+      "repeatMode": "each-verse",
+      "visuallyDistinct": true
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 3,
+      "text": "I need Thee every hour,\nStay Thou nearby;\nTemptations lose their power\nWhen Thou art nigh."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 4,
+      "text": "I need Thee every hour,\nIn joy or pain;\nCome quickly and abide,\nOr life is vain."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 5,
+      "text": "I need Thee every hour;\nTeach me Thy will;\nAnd Thy rich promises\nIn me fulfill."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 6,
+      "text": "I need Thee every hour,\nMost Holy One;\nO make me Thine indeed,\nThou blessed Son."
+    }
+  ]
+}

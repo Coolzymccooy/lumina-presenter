@@ -1,0 +1,110 @@
+{
+  "status": "approved",
+  "id": "all-fair-within-those-children-of-the-light",
+  "title": "All fair within those children of the light",
+  "alternateTitles": [],
+  "firstLine": "All fair within those children of the light,",
+  "meter": "10.10.10.10.8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Christian Friedrich Richter",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Edward John Hopkins"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Christian Friedrich Richter (1676–1711).",
+  "tuneAttribution": "Tune: Edward John Hopkins (1818–1901).",
+  "publicDomainBasis": "Christian Friedrich Richter (1676–1711), Edward John Hopkins (1818–1901). All public domain.",
+  "searchKeywords": [
+    "fair",
+    "within",
+    "those",
+    "children",
+    "light"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "All fair within those children of the light,\nThough dark their brows beneath the desert sun;\nMysterious joys, far hidden from all sight,\nThe King of Glory giveth to each one;\nNo thought of man has pictured them,\nNo hand may touch that diadem;\nWithin God’s light His own abide\nWith hidden glory glorified."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "To earthly eyes they are as Adam’s race—\nThey wear the earthly form, and scars of pain\nOn them as on all sinners leave their trace;\nTheir outward needs are those of other men.\nAnd theirs the forms of earthly life,\nTheirs sleeping, waking, want, and strife,\nYet this they have that they despise\nWhat fairest seems to earthly eyes."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "And inwardly their life is from above,\nThe Lord’s Almighty Word hath quickened them;\nFlames kindled from the everlasting Love,\nThe children of the New Jerusalem;\nTheir brethren are the saints in light,\nAnd songs of sweetness infinite\nThey sing with them to God Most High,\nA deep and wondrous melody."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "They walk upon the earth, and dwell in heaven,\nThough pow’rless, guard the world with arms unseen;\nDeep peace to them in midst of strife is given,\nAnd all they wish they have, though poor and mean.\nStorms beat them, but may not destroy,\nFast rooted in eternal joy;\nThey walk as in the shade of death,\nYet living on in silent faith."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "When Christ their Life shall be made manifest,\nWhen He shall come with all His pow’r to rule,\nTheir glory, hidden long, shall be confessed;\nArise and shine! O bright and beautiful!\nWith Christ ye shall ascend on high,\nVictorious in His victory—\nThe hidden light shall shine afar,\nEach saint an everlasting star."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "all fair within those children of the light",
+    "normalizedFirstLine": "all fair within those children of the light",
+    "keywords": [
+      "fair",
+      "within",
+      "those",
+      "children",
+      "light"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "all",
+      "fair",
+      "within",
+      "those",
+      "children",
+      "of",
+      "the",
+      "light",
+      "christian",
+      "friedrich",
+      "richter",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "all fair within those children of the light all fair within those children of the light christian friedrich richter unknown praise fair within those children light"
+  }
+}

@@ -1,0 +1,121 @@
+{
+  "status": "approved",
+  "id": "for-the-bread-and-for-the-wine",
+  "title": "For the bread and for the wine",
+  "alternateTitles": [],
+  "firstLine": "For the bread and for the wine,",
+  "meter": "7.7.7.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Horatius Bonar",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Arthur Seymour Sullivan"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Horatius Bonar (1808–1889).",
+  "tuneAttribution": "Tune: Arthur Seymour Sullivan (1842–1900).",
+  "publicDomainBasis": "Horatius Bonar (1808–1889), Arthur Seymour Sullivan (1842–1900). All public domain.",
+  "searchKeywords": [
+    "bread",
+    "wine"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "For the bread and for the wine,\nFor the pledge that seals Him mine,\nFor the words of love divine,\nWe give Thee thanks, O Lord."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Only bread and only wine,\nYet to faith, the solemn sign\nOf the heav’nly and divine!\nWe give Thee thanks, O Lord."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "For the words that turn our eye\nTo the cross of Calvary,\nBidding us in faith draw nigh,\nWe give Thee thanks, O Lord."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "For the words that fragrance breathe\nThese plain symbols underneath,\nWords that His own peace bequeath,\nWe give Thee thanks, O Lord."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "For Thy words in Spirit, shown,\nFor Thy will to us made known,\n“Do ye this until I come,”\nWe give Thee thanks, O Lord."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Till He come we take the bread,\nType of Him on whom we feed,\nHim who liveth and was dead!\nWe give Thee thanks, O Lord."
+    },
+    {
+      "id": "v7",
+      "type": "verse",
+      "label": "Verse 7",
+      "order": 7,
+      "text": "Till He come we take the cup;\nAs we at His table sup,\nEye and heart are lifted up!\nWe give Thee thanks, O Lord."
+    },
+    {
+      "id": "v8",
+      "type": "verse",
+      "label": "Verse 8",
+      "order": 8,
+      "text": "For that coming, here foreshown,\nFor that day to man unknown,\nFor the glory and the throne,\nWe give Thee thanks, O Lord."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "for the bread and for the wine",
+    "normalizedFirstLine": "for the bread and for the wine",
+    "keywords": [
+      "bread",
+      "wine"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "for",
+      "the",
+      "bread",
+      "and",
+      "wine",
+      "horatius",
+      "bonar",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "for the bread and for the wine for the bread and for the wine horatius bonar unknown praise bread wine"
+  }
+}

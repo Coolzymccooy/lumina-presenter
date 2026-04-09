@@ -1,0 +1,97 @@
+{
+  "status": "approved",
+  "id": "rock-of-ages-cleft-for-me",
+  "title": "Rock of Ages, cleft for me",
+  "alternateTitles": [],
+  "firstLine": "Rock of Ages, cleft for me,",
+  "meter": "7.7.7.7.7.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Augustus Montague Toplady",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Thomas Hastings"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Augustus Montague Toplady (1740–1778).",
+  "tuneAttribution": "Tune: Thomas Hastings (1784–1872).",
+  "publicDomainBasis": "Augustus Montague Toplady (1740–1778), Thomas Hastings (1784–1872). All public domain.",
+  "searchKeywords": [
+    "rock",
+    "ages",
+    "cleft"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Rock of Ages, cleft for me,\nLet me hide myself in Thee;\nLet the water and the blood,\nFrom Thy riven side which flowed,\nBe of sin the double cure,\nSave me from its guilt and power."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Not the labor of my hands\nCan fulfill Thy law’s demands;\nCould my zeal no respite know,\nCould my tears forever flow,\nAll could never sin erase,\nThou must save, and save by grace."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Nothing in my hands I bring,\nSimply to Thy cross I cling;\nNaked, come to Thee for dress,\nHelpless, look to Thee for grace:\nFoul, I to the fountain fly,\nWash me, Savior, or I die."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "While I draw this fleeting breath,\nWhen mine eyes shall close in death,\nWhen I soar to worlds unknown,\nSee Thee on Thy judgment throne,\nRock of Ages, cleft for me,\nLet me hide myself in Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "rock of ages cleft for me",
+    "normalizedFirstLine": "rock of ages cleft for me",
+    "keywords": [
+      "rock",
+      "ages",
+      "cleft"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "rock",
+      "of",
+      "ages",
+      "cleft",
+      "for",
+      "me",
+      "augustus",
+      "montague",
+      "toplady",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "rock of ages cleft for me rock of ages cleft for me augustus montague toplady unknown praise rock ages cleft"
+  }
+}

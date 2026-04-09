@@ -1,0 +1,111 @@
+{
+  "status": "approved",
+  "id": "prayer-is-the-soul-s-sincere-desire",
+  "title": "Prayer is the soul’s sincere desire",
+  "alternateTitles": [],
+  "firstLine": "Prayer is the soul’s sincere desire,",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "James Montgomery",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James Walch"
+    }
+  ],
+  "themes": [
+    "prayer"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: James Montgomery (1771–1854).",
+  "tuneAttribution": "Tune: James Walch (1837–1901).",
+  "publicDomainBasis": "James Montgomery (1771–1854), James Walch (1837–1901). All public domain.",
+  "searchKeywords": [
+    "prayer",
+    "soul",
+    "sincere",
+    "desire"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "prayer",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Prayer is the soul’s sincere desire,\nUttered, or unexpressed;\nThe motion of a hidden fire\nThat trembles in the breast."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Prayer is the burden of a sigh,\nThe falling of a tear;\nThe upward glancing of an eye\nWhen none but God is near."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Prayer is the simplest form of speech\nThat infant lips can try;\nPrayer the sublimest strains that reach\nThe Majesty on high."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Prayer is the Christian’s vital breath,\nThe Christian’s native air;\nHis watchword at the gates of death;\nHe enters rest with prayer."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "The saints in prayer appear as one,\nIn word, and deed, and mind;\nWhile with the Father and the Son\nSweet fellowship they find."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "O Thou, by whom we come to God,\nThe Life, the Truth, the Way,\nThe path of prayer Thyself hast trod—\nLord, teach us how to pray."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "prayer is the soul s sincere desire",
+    "normalizedFirstLine": "prayer is the soul s sincere desire",
+    "keywords": [
+      "prayer",
+      "soul",
+      "sincere",
+      "desire"
+    ],
+    "themes": [
+      "prayer"
+    ],
+    "tokens": [
+      "prayer",
+      "is",
+      "the",
+      "soul",
+      "sincere",
+      "desire",
+      "james",
+      "montgomery",
+      "unknown"
+    ],
+    "searchableText": "prayer is the soul s sincere desire prayer is the soul s sincere desire james montgomery unknown prayer prayer soul sincere desire"
+  }
+}

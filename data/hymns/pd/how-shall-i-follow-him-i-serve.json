@@ -1,0 +1,102 @@
+{
+  "status": "approved",
+  "id": "how-shall-i-follow-him-i-serve",
+  "title": "How shall I follow Him I serve",
+  "alternateTitles": [],
+  "firstLine": "How shall I follow Him I serve?",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Josiah Conder",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Ludwig van Beethoven"
+    }
+  ],
+  "themes": [
+    "surrender"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Josiah Conder (1789–1855).",
+  "tuneAttribution": "Tune: Ludwig van Beethoven (1770–1827).",
+  "publicDomainBasis": "Josiah Conder (1789–1855), Ludwig van Beethoven (1770–1827). All public domain.",
+  "searchKeywords": [
+    "shall",
+    "follow",
+    "serve"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "How shall I follow Him I serve?\nHow shall I copy Him I love?\nNor from those blessed footsteps swerve,\nWhich lead me to His seat above?"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Privations, sorrows, bitter scorn,\nThe life of toil, the mean abode,\nThe faithless kiss, the crown of thorn—\nAre these the consecrated road?"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Lord, should my path through suff’ring lie,\nForbid it I should e’er repine;\nStill let me turn to Calvary,\nNor heed my griefs, rememb’ring Thine."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "O let me think how Thou didst leave\nUntasted every pure delight,\nTo fast, to faint, to watch, to grieve,\nThe toilsome day, the homeless night:"
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "To faint, to grieve, to die for me!\nThou camest, not Thyself to please;\nAnd, dear as earthly comforts be,\nShall I not love Thee more than these?"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "how shall i follow him i serve",
+    "normalizedFirstLine": "how shall i follow him i serve",
+    "keywords": [
+      "shall",
+      "follow",
+      "serve"
+    ],
+    "themes": [
+      "surrender"
+    ],
+    "tokens": [
+      "how",
+      "shall",
+      "follow",
+      "him",
+      "serve",
+      "josiah",
+      "conder",
+      "unknown",
+      "surrender"
+    ],
+    "searchableText": "how shall i follow him i serve how shall i follow him i serve josiah conder unknown surrender shall follow serve"
+  }
+}

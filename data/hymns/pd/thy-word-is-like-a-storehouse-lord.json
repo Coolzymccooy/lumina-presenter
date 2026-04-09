@@ -1,0 +1,104 @@
+{
+  "status": "approved",
+  "id": "thy-word-is-like-a-storehouse-lord",
+  "title": "Thy Word is like a storehouse, Lord",
+  "alternateTitles": [],
+  "firstLine": "Thy Word is like a storehouse, Lord,",
+  "meter": "8.6.8.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Edwin Hodder",
+      "role": "text"
+    },
+    {
+      "name": "Bernard Barton",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Gottfried Wilhelm Fink"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Edwin Hodder (1837–1904), Bernard Barton (1784–1849).",
+  "tuneAttribution": "Tune: Gottfried Wilhelm Fink (1783–1846).",
+  "publicDomainBasis": "Edwin Hodder (1837–1904), Bernard Barton (1784–1849), Gottfried Wilhelm Fink (1783–1846). All public domain.",
+  "searchKeywords": [
+    "word",
+    "like",
+    "storehouse",
+    "lord"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Thy Word is like a storehouse, Lord,\nWith full provision there,\nAnd everyone who seeks may come,\nIts glorious wealth to share.\nThy Word is like a deep, deep mine,\nAnd jewels rich and rare\nAre hidden in its mighty depths\nFor every searcher there."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Thy Word is like a starry host:\nA thousand rays of light\nAre seen to guide the traveler,\nAnd make his pathway bright.\nThy Word is like an armory,\nWhere soldiers may repair,\nAnd find, for life’s long battle day,\nAll needful weapons there."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "O may I love Thy precious Word,\nMay I explore the mine,\nMay I its glorious riches take,\nMay light upon me shine.\nO may I find my armor there,\nThy Word my trusty sword;\nI’ll learn to fight with every foe\nThe battle of the Lord."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Word of the ever living God,\nWill of His glorious Son;\nWithout Thee how could earth be trod,\nOr God and Christ be won?\nLord, grant us all aright to learn\nThe wisdom it imparts,\nAnd to its heav’nly teaching turn,\nWith simple, child-like hearts."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "thy word is like a storehouse lord",
+    "normalizedFirstLine": "thy word is like a storehouse lord",
+    "keywords": [
+      "word",
+      "like",
+      "storehouse",
+      "lord"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "thy",
+      "word",
+      "is",
+      "like",
+      "storehouse",
+      "lord",
+      "edwin",
+      "hodder",
+      "bernard",
+      "barton",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "thy word is like a storehouse lord thy word is like a storehouse lord edwin hodder bernard barton unknown praise word like storehouse lord"
+  }
+}

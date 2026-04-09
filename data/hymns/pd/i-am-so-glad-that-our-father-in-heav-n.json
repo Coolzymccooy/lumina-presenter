@@ -1,0 +1,94 @@
+{
+  "status": "approved",
+  "id": "i-am-so-glad-that-our-father-in-heav-n",
+  "title": "I am so glad that our Father in heav’n",
+  "alternateTitles": [],
+  "firstLine": "I am so glad that our Father in heav’n",
+  "meter": "10.10.10.10. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Philip Paul Bliss",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Philip Paul Bliss"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Philip Paul Bliss (1838–1876).",
+  "tuneAttribution": "Tune: Philip Paul Bliss (1838–1876).",
+  "publicDomainBasis": "Philip Paul Bliss (1838–1876), Philip Paul Bliss (1838–1876). All public domain.",
+  "searchKeywords": [
+    "glad",
+    "that",
+    "father",
+    "heav"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I am so glad that our Father in heav’n\nTells of His love in the Book He has giv’n;\nWonderful things in the Bible I see:\nThis is the dearest, that Jesus loves me."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Though I forget Him and wander away,\nStill He doth love me whenever I stray;\nBack to His dear loving arms would I flee,\nWhen I remember that Jesus loves me."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Oh, if there’s only one song I can sing,\nWhen in His beauty I see the great King,\nThis shall my song in eternity be:\n“Oh, what a wonder that Jesus loves me.”"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i am so glad that our father in heav n",
+    "normalizedFirstLine": "i am so glad that our father in heav n",
+    "keywords": [
+      "glad",
+      "that",
+      "father",
+      "heav"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "am",
+      "so",
+      "glad",
+      "that",
+      "our",
+      "father",
+      "in",
+      "heav",
+      "philip",
+      "paul",
+      "bliss",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i am so glad that our father in heav n i am so glad that our father in heav n philip paul bliss unknown praise glad that father heav"
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "status": "approved",
+  "id": "jesus-source-of-life-eternal",
+  "title": "Jesus! Source of life eternal",
+  "alternateTitles": [],
+  "firstLine": "Jesus! Source of life eternal!",
+  "meter": "8.7.8.7.8.8.7.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Ernest Christoph Homburg",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Batchelder Bradbury"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Ernest Christoph Homburg (1605–1681).",
+  "tuneAttribution": "Tune: William Batchelder Bradbury (1816–1868).",
+  "publicDomainBasis": "Ernest Christoph Homburg (1605–1681), William Batchelder Bradbury (1816–1868). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "source",
+    "life",
+    "eternal"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Jesus! Source of life eternal!\nJesus, Author of our breath!\nVictor o’er the hosts infernal,\nBy defeat, and shame, and death,\nThou through deepest tribulation\nDeigned to pass for our salvation:\nThousand, thousand praises be,\nLord of glory, unto Thee!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Thou, O Son of God! wert bearing\nCruel mockings, hatred, scorn;\nThou, the King of glory, wearing,\nFor our sake, the crown of thorn:\nDying, Thou didst us deliver\nFrom the chains of sin for ever;\nThousand, thousand praises be,\nPrecious Savior, unto Thee!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "All the shame men heaped upon Thee,\nThou didst patiently endure;\nNot the pains of death too bitter,\nOur redemption to procure:\nWondrous Thy humiliation\nTo accomplish our salvation:\nThousand, thousand praises be,\nPrecious Savior. unto Thee!"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Heart-felt praise and adoration,\nSavior, thus to Thee we give:\nFor Thy life’s humiliation,\nFor Thy death, whereby we live;\nAll the grief Thou wert enduring,\nAll the bliss Thou wert securing,\nEvermore the theme shall be,\nOf thanksgivings, Lord, to Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "jesus source of life eternal",
+    "normalizedFirstLine": "jesus source of life eternal",
+    "keywords": [
+      "jesus",
+      "source",
+      "life",
+      "eternal"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "jesus",
+      "source",
+      "of",
+      "life",
+      "eternal",
+      "ernest",
+      "christoph",
+      "homburg",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "jesus source of life eternal jesus source of life eternal ernest christoph homburg unknown praise jesus source life eternal"
+  }
+}

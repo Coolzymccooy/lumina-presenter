@@ -1,0 +1,92 @@
+{
+  "status": "approved",
+  "id": "we-praise-thee-o-god",
+  "title": "We praise Thee, O God",
+  "alternateTitles": [],
+  "firstLine": "We praise Thee, O God,",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Paton MacKay",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Jenkins Husband"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Paton MacKay (1839–1885).",
+  "tuneAttribution": "Tune: John Jenkins Husband (1760–1825).",
+  "publicDomainBasis": "William Paton MacKay (1839–1885), John Jenkins Husband (1760–1825). All public domain.",
+  "searchKeywords": [
+    "praise",
+    "thee"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "We praise Thee, O God,\nFor the Son of Thy love,\nFor our Savior who died and\nIs now gone above."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "We praise Thee, O God,\nFor Thy Spirit of light,\nWho has shown us our Savior,\nAnd scattered our night."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "All glory and praise\nTo Thee, Father of love,\nFor through Jesus’ redemption\nThy heart we may prove."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "We praise Thee again;\nWe are filled with Thy love,\nAnd each heart is rekindled\nWith fire from above."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "we praise thee o god",
+    "normalizedFirstLine": "we praise thee o god",
+    "keywords": [
+      "praise",
+      "thee"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "we",
+      "praise",
+      "thee",
+      "god",
+      "william",
+      "paton",
+      "mackay",
+      "unknown"
+    ],
+    "searchableText": "we praise thee o god we praise thee o god william paton mackay unknown praise praise thee"
+  }
+}

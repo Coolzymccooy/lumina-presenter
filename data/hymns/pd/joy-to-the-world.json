@@ -1,0 +1,60 @@
+{
+  "status": "approved",
+  "id": "joy-to-the-world",
+  "title": "Joy to the World",
+  "alternateTitles": ["Joy to the World! The Lord Is Come"],
+  "firstLine": "Joy to the world! the Lord is come; let earth receive her King",
+  "meter": "CM with repeat",
+  "hymnalNumbers": { "UMH": 246, "SBC": 87, "LW": 39, "ELW": 267 },
+  "authors": [
+    { "name": "Isaac Watts", "role": "text" },
+    { "name": "Lowell Mason", "role": "tune", "notes": "Adapted from Handel." }
+  ],
+  "tunes": [
+    { "name": "ANTIOCH", "composer": "Lowell Mason", "alternateNames": ["Joy to the World"] }
+  ],
+  "themes": ["praise", "thanksgiving", "majesty"],
+  "scriptureThemes": ["Psalm 98:4-9", "Luke 2:10-11", "Revelation 11:15"],
+  "textAttribution": "Text: Isaac Watts, 1719.",
+  "tuneAttribution": "Tune: ANTIOCH, arr. Lowell Mason, 1836, from G.F. Handel.",
+  "publicDomainBasis": "Isaac Watts (1674–1748), Lowell Mason (1792–1872). Text published 1719. Both public domain.",
+  "searchKeywords": ["christmas", "advent", "king", "earth", "savior", "joy"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "either",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Joy to the world! the Lord is come;\nLet earth receive her King;\nLet every heart prepare Him room,\nAnd heaven and nature sing,\nAnd heaven and nature sing,\nAnd heaven, and heaven, and nature sing."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Joy to the world! the Savior reigns;\nLet men their songs employ;\nWhile fields and floods, rocks, hills, and plains\nRepeat the sounding joy,\nRepeat the sounding joy,\nRepeat, repeat, the sounding joy."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "No more let sins and sorrows grow,\nNor thorns infest the ground;\nHe comes to make His blessings flow\nFar as the curse is found,\nFar as the curse is found,\nFar as, far as, the curse is found."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "He rules the world with truth and grace,\nAnd makes the nations prove\nThe glories of His righteousness,\nAnd wonders of His love,\nAnd wonders of His love,\nAnd wonders, wonders, of His love."
+    }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "status": "approved",
+  "id": "verily-verily",
+  "title": "Verily, verily",
+  "alternateTitles": [],
+  "firstLine": "Oh, what a Savior that He died for me!",
+  "meter": "10.10.10.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "James McGranahan",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James McGranahan"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: James McGranahan (1840–1907).",
+  "tuneAttribution": "Tune: James McGranahan (1840–1907).",
+  "publicDomainBasis": "James McGranahan (1840–1907), James McGranahan (1840–1907). All public domain.",
+  "searchKeywords": [
+    "verily"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Oh, what a Savior that He died for me!\nFrom condemnation He hath made me free;\n“He that believeth on the Son” saith He,\n“Hath everlasting life.”"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "All my iniquities on Him were laid,\nAll my indebtedness by Him was paid;\nAll who believe on Him, the Lord hath said,\n“Hath everlasting life.”"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Though poor and needy, I can trust my Lord;\nThough weak and sinful, I believe His word;\nOh, glad message; every child of God\n“Hath everlasting life.”"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Though all unworthy, yet I will not doubt;\nFor him that cometh He will not cast out:\n“He that believeth”—oh, the good news shout!\n“Hath everlasting life.”"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "verily verily",
+    "normalizedFirstLine": "oh what a savior that he died for me",
+    "keywords": [
+      "verily"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "verily",
+      "oh",
+      "what",
+      "savior",
+      "that",
+      "he",
+      "died",
+      "for",
+      "me",
+      "james",
+      "mcgranahan",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "verily verily oh what a savior that he died for me james mcgranahan unknown praise verily"
+  }
+}

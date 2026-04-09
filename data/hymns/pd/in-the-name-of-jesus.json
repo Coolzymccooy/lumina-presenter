@@ -1,0 +1,115 @@
+{
+  "status": "approved",
+  "id": "in-the-name-of-jesus",
+  "title": "In the Name of Jesus",
+  "alternateTitles": [],
+  "firstLine": "In the Name of Jesus",
+  "meter": "6.5.6.5.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Caroline Maria Noel",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Henry Monk"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Caroline Maria Noel (1817–1877).",
+  "tuneAttribution": "Tune: William Henry Monk (1823–1889).",
+  "publicDomainBasis": "Caroline Maria Noel (1817–1877), William Henry Monk (1823–1889). All public domain.",
+  "searchKeywords": [
+    "name",
+    "jesus"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "In the Name of Jesus\nEvery knee shall bow,\nEvery tongue confess Him\nKing of glory now;\n’Tis the Father’s pleasure\nWe should call Him Lord,\nWho from the beginning\nWas the Mighty Word."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "At His voice creation\nSprang at once to sight:\nAll the angel faces,\nAll the hosts of light,\nThrones and dominations,\nStars upon their way,\nAll the heav’nly orders,\nIn their great array."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Humbled for a season,\nTo receive a Name\nFrom the lips of sinners\nUnto whom He came,\nFaithfully He bore it\nSpotless to the last,\nBrought it back victorious,\nWhen from death He passed;"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Bore it up triumphant,\nWith its human light,\nThrough all ranks of creatures,\nTo the central height;\nTo the throne of Godhead,\nTo the Father’s breast,\nFilled it with the glory\nOf that perfect rest."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Name Him, brothers, name Him,\nWith love strong as death,\nBut with awe and wonder,\nAnd with bated breath;\nHe is God the Savior,\nHe is Christ the Lord,\nEver to be worshiped,\nTrusted, and adored."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "In your hearts enthrone Him;\nThere let Him subdue\nAll that is not holy,\nAll that is not true;\nCrown Him as your Captain\nIn temptation’s hour;\nLet His will enfold you\nIn its light and power."
+    },
+    {
+      "id": "v7",
+      "type": "verse",
+      "label": "Verse 7",
+      "order": 7,
+      "text": "Brothers, this Lord Jesus\nShall return again,\nWith His Father’s glory,\nWith His angel train;\nFor all wreaths of empire\nMeet upon His brow,\nAnd our hearts confess Him\nKing of glory now."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "in the name of jesus",
+    "normalizedFirstLine": "in the name of jesus",
+    "keywords": [
+      "name",
+      "jesus"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "in",
+      "the",
+      "name",
+      "of",
+      "jesus",
+      "caroline",
+      "maria",
+      "noel",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "in the name of jesus in the name of jesus caroline maria noel unknown praise name jesus"
+  }
+}

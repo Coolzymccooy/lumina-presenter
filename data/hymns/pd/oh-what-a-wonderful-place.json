@@ -1,0 +1,88 @@
+{
+  "status": "approved",
+  "id": "oh-what-a-wonderful-place",
+  "title": "Oh, What a Wonderful Place",
+  "alternateTitles": [],
+  "firstLine": "Oh, what a wonderful place",
+  "meter": "7.7.7.7.D. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Albert Benjamin Simpson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Albert Benjamin Simpson (1843–1919).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Albert Benjamin Simpson (1843–1919). All public domain.",
+  "searchKeywords": [
+    "what",
+    "wonderful",
+    "place"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Oh, what a wonderful place\nJesus has given to me!\nSaved by His glorious grace,\nI may be even as He.\nWhen with my Lord I appear,\nLike Him I know I shall be;\nBut while I walk with Him here,\nI may be even as He."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "One in His death on the tree,\nOne as He rose from the dead;\nI from the curse am as free\nE’en as my glorious head.\nOne on the throne by His side,\nOne in His sonship divine;\nOne as the Bridegroom and bride,\nOne as the branch and the vine."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "One in His merits I stand,\nOne as I pray in His name;\nAll that His worth can command,\nI can with confidence claim.\nOne in His faith and His love,\nOne in His life I may be.\nSealed by the heavenly Dove,\nI may be holy as He."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "oh what a wonderful place",
+    "normalizedFirstLine": "oh what a wonderful place",
+    "keywords": [
+      "what",
+      "wonderful",
+      "place"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "oh",
+      "what",
+      "wonderful",
+      "place",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "oh what a wonderful place oh what a wonderful place albert benjamin simpson unknown praise what wonderful place"
+  }
+}

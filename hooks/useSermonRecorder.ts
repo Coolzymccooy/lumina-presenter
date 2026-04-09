@@ -51,6 +51,8 @@ export interface SermonRecorderState {
    *  'unavailable' if the browser doesn't support it,
    *  or an error code string (e.g. 'network', 'not-allowed') */
   sttStatus: 'idle' | 'active' | 'unavailable' | string;
+  /** Last cloud transcription error (chunk upload or final); null when ok */
+  chunkError: string | null;
 }
 
 export interface SermonRecorderActions {
@@ -91,7 +93,7 @@ const getAnalyserLevel = (analyser: AnalyserNode): number => {
   return Math.max(0, Math.min(1, (rmsDb + 72) / 52));
 };
 
-const CHUNK_UPLOAD_INTERVAL_MS = 30_000; // upload every 30s for interim cloud transcript
+const CHUNK_UPLOAD_INTERVAL_MS = 20_000; // upload every 20s — primary live transcript source in Electron
 const TIMER_INTERVAL_MS = 1_000;
 
 export const useSermonRecorder = (
@@ -106,6 +108,7 @@ export const useSermonRecorder = (
   const [micLevel, setMicLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [sttStatus, setSttStatus] = useState<SermonRecorderState['sttStatus']>('idle');
+  const [chunkError, setChunkError] = useState<string | null>(null);
 
   // refs — stable across renders
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -120,6 +123,10 @@ export const useSermonRecorder = (
   const mimeTypeRef = useRef(pickMimeType());
   const liveTranscriptRef = useRef('');
   const phaseRef = useRef<SermonRecorderPhase>('idle');
+  /** Index into audioChunksRef up to which we've already uploaded — avoids re-sending old audio */
+  const lastChunkIdxRef = useRef(0);
+  /** Timestamp (ms) until which chunk uploads are paused due to quota/cooldown */
+  const chunkUploadPausedUntilRef = useRef(0);
 
   // Keep refs in sync with state so callbacks always read current values
   useEffect(() => { liveTranscriptRef.current = liveTranscript; }, [liveTranscript]);
@@ -147,7 +154,13 @@ export const useSermonRecorder = (
   // ── Web Speech API ───────────────────────────────────────────────────────
   const startSpeechRecognition = useCallback(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) {
+    // In Electron, webkitSpeechRecognition exists (Chromium) but cannot connect to
+    // Google's speech servers — it lacks the auth credentials Chrome has. This causes
+    // repeated "OnSizeReceived failed with Error: -2" errors in the console every ~0.77s.
+    // Skip Web Speech entirely in Electron; Gemini chunk transcription handles it instead.
+    const isElectron = typeof navigator !== 'undefined' &&
+      navigator.userAgent.toLowerCase().includes('electron');
+    if (!SR || isElectron) {
       setSttStatus('unavailable');
       return;
     }
@@ -240,33 +253,57 @@ export const useSermonRecorder = (
     if (chunkUploadTimerRef.current !== null) return;
     chunkUploadTimerRef.current = window.setInterval(async () => {
       if (phaseRef.current !== 'recording') return;
-      const chunks = audioChunksRef.current;
-      if (chunks.length === 0) return;
-      const blob = new Blob([...chunks], { type: mimeTypeRef.current });
+
+      // Respect quota cooldown — skip this tick if still paused
+      if (Date.now() < chunkUploadPausedUntilRef.current) return;
+
+      const allChunks = audioChunksRef.current;
+      // Only send audio recorded since the last successful upload (delta)
+      const newChunks = allChunks.slice(lastChunkIdxRef.current);
+      if (newChunks.length === 0) return;
+
+      const blob = new Blob(newChunks, { type: mimeTypeRef.current });
       if (blob.size < 8192) return; // too small to bother
+
+      // Snapshot the index before the async call — on success we'll advance to here
+      const snapshotIdx = allChunks.length;
+
       const result = await transcribeSermonChunk({
         audioBase64: await blobToBase64(blob),
         mimeType: mimeTypeRef.current as any,
         locale,
         accentHint,
       });
+
       if (result.ok && result.transcript) {
-        // Merge cloud corrections: cloud transcript becomes the reference
-        setCloudTranscript(result.transcript);
+        lastChunkIdxRef.current = snapshotIdx; // advance only on success
+        setCloudTranscript(prev => prev ? `${prev} ${result.transcript}` : result.transcript);
+        setChunkError(null);
+      } else if (!result.ok) {
+        const failResult = result as { ok: false; message: string; error: string; mode: string; retryAfterMs: number };
+        setChunkError(failResult.message || failResult.error || 'Cloud transcription failed.');
+        // Quota/cooldown: pause future ticks until the cooldown expires
+        if (failResult.mode === 'cooldown' && failResult.retryAfterMs > 0) {
+          chunkUploadPausedUntilRef.current = Date.now() + failResult.retryAfterMs;
+        }
+        // Transient error: don't advance lastChunkIdx so we retry the same window next tick
       }
     }, CHUNK_UPLOAD_INTERVAL_MS);
-  }, [locale]);
+  }, [locale, accentHint]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
   const start = useCallback(async () => {
     setError(null);
     setSttStatus('idle');
+    setChunkError(null);
     setPhase('recording');
     setLiveTranscript('');
     setCloudTranscript('');
     setInterimText('');
     setElapsedSeconds(0);
     audioChunksRef.current = [];
+    lastChunkIdxRef.current = 0;
+    chunkUploadPausedUntilRef.current = 0;
 
     let micStream: MediaStream;
     try {
@@ -418,9 +455,15 @@ export const useSermonRecorder = (
       const result = await transcribeSermonAudio(blob, mimeType, locale, accentHint);
       if (result.ok && result.transcript) {
         setCloudTranscript(result.transcript);
+        setChunkError(null);
+      } else if (!result.ok) {
+        // Surface final transcription errors so the user knows why there's no transcript
+        setChunkError((result as any).error === 'QUOTA_EXCEEDED'
+          ? 'Gemini quota reached — transcript unavailable. Try again in a minute.'
+          : ((result as any).message || 'Final transcription failed.'));
       }
-    } catch {
-      // Non-fatal — live transcript still usable
+    } catch (err: any) {
+      setChunkError(err?.message || 'Final transcription failed unexpectedly.');
     }
 
     setPhase('done');
@@ -452,6 +495,7 @@ export const useSermonRecorder = (
     micLevel,
     error,
     sttStatus,
+    chunkError,
   };
 
   const actions: SermonRecorderActions = {

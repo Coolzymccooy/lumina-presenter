@@ -1,0 +1,88 @@
+{
+  "status": "approved",
+  "id": "more-holiness-give-me",
+  "title": "More holiness give me",
+  "alternateTitles": [],
+  "firstLine": "More holiness give me,",
+  "meter": "6.5.6.5.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Philip Paul Bliss",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Horatio Richmond Palmer"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Philip Paul Bliss (1838–1876).",
+  "tuneAttribution": "Tune: Horatio Richmond Palmer (1834–1907).",
+  "publicDomainBasis": "Philip Paul Bliss (1838–1876), Horatio Richmond Palmer (1834–1907). All public domain.",
+  "searchKeywords": [
+    "more",
+    "holiness",
+    "give"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "More holiness give me,\nMore sweetness within,\nMore patience in suff’ring,\nMore sorrow for sin,\nMore faith in my Savior,\nMore sense of His care,\nMore joy in His service,\nMore freedom in prayer."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "More gratitude give me,\nMore trust in the Lord,\nMore zeal for His glory,\nMore hope in His Word,\nMore tears for His sorrows,\nMore pain at His grief,\nMore meekness in trial,\nMore praise for relief."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "More victory give me,\nMore strength to o’ercome,\nMore freedom from earth-stains,\nMore quest for the throne,\nMore fit for the kingdom,\nMore useful I’d be,\nMore blessed and holy,\nMore, Savior, like Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "more holiness give me",
+    "normalizedFirstLine": "more holiness give me",
+    "keywords": [
+      "more",
+      "holiness",
+      "give"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "more",
+      "holiness",
+      "give",
+      "me",
+      "philip",
+      "paul",
+      "bliss",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "more holiness give me more holiness give me philip paul bliss unknown praise more holiness give"
+  }
+}

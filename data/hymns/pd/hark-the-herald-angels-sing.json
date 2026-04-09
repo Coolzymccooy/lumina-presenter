@@ -1,0 +1,54 @@
+{
+  "status": "approved",
+  "id": "hark-the-herald-angels-sing",
+  "title": "Hark! The Herald Angels Sing",
+  "alternateTitles": [],
+  "firstLine": "Hark! the herald angels sing, Glory to the newborn King",
+  "meter": "7.7.7.7 D with refrain",
+  "hymnalNumbers": { "UMH": 240, "SBC": 83, "LW": 60, "ELW": 270 },
+  "authors": [
+    { "name": "Charles Wesley", "role": "text" },
+    { "name": "George Whitefield", "role": "text", "notes": "Altered the text in 1753." },
+    { "name": "Felix Mendelssohn", "role": "tune", "notes": "Adapted by William H. Cummings, 1855." }
+  ],
+  "tunes": [
+    { "name": "MENDELSSOHN", "composer": "Felix Mendelssohn", "alternateNames": ["Hark the Herald Angels Sing"] }
+  ],
+  "themes": ["praise", "thanksgiving", "grace"],
+  "scriptureThemes": ["Luke 2:13-14", "Isaiah 9:6", "John 1:14"],
+  "textAttribution": "Text: Charles Wesley, 1739; alt. George Whitefield, 1753.",
+  "tuneAttribution": "Tune: MENDELSSOHN by Felix Mendelssohn, 1840; adapt. William H. Cummings, 1855.",
+  "publicDomainBasis": "Charles Wesley (1707–1788), Felix Mendelssohn (1809–1847), William H. Cummings (1831–1915). All public domain.",
+  "searchKeywords": ["christmas", "angels", "newborn king", "glory", "incarnation", "peace"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "either",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Hark! the herald angels sing,\n\"Glory to the newborn King!\nPeace on earth, and mercy mild,\nGod and sinners reconciled.\"\nJoyful, all ye nations, rise,\nJoin the triumph of the skies;\nWith the angelic host proclaim,\n\"Christ is born in Bethlehem!\"\nHark! the herald angels sing,\n\"Glory to the newborn King!\""
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Christ, by highest heaven adored;\nChrist, the everlasting Lord!\nLate in time behold Him come,\nOffspring of the virgin's womb.\nVeiled in flesh the Godhead see;\nHail the incarnate Deity,\nPleased as man with man to dwell,\nJesus, our Emmanuel.\nHark! the herald angels sing,\n\"Glory to the newborn King!\""
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Hail the heaven-born Prince of Peace!\nHail the Sun of Righteousness!\nLight and life to all He brings,\nRisen with healing in His wings.\nMild He lays His glory by,\nBorn that man no more may die,\nBorn to raise the sons of earth,\nBorn to give them second birth.\nHark! the herald angels sing,\n\"Glory to the newborn King!\""
+    }
+  ]
+}

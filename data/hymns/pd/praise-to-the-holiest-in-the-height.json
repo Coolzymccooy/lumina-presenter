@@ -1,0 +1,117 @@
+{
+  "status": "approved",
+  "id": "praise-to-the-holiest-in-the-height",
+  "title": "Praise to the Holiest in the height",
+  "alternateTitles": [],
+  "firstLine": "Praise to the Holiest in the height,",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Henry Newman",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Bacchus Dykes"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Henry Newman (1801–1890).",
+  "tuneAttribution": "Tune: John Bacchus Dykes (1823–1876).",
+  "publicDomainBasis": "John Henry Newman (1801–1890), John Bacchus Dykes (1823–1876). All public domain.",
+  "searchKeywords": [
+    "praise",
+    "holiest",
+    "height"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Praise to the Holiest in the height,\nAnd in the depth be praise:\nIn all His words most wonderful;\nMost sure in all His ways."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "O loving wisdom of our God,\nWhen all was sin and shame,\nHe, the last Adam, to the fight\nAnd to the rescue came."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "O wisest love! that flesh and blood\nWhich did in Adam fail,\nShould strive afresh against the foe,\nShould strive and should prevail."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "And that a higher gift than grace\nShould flesh and blood refine,\nGod’s presence, and His very self\nAnd essence all-divine."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "O generous love! that He, who smote\nIn man for man the foe,\nThe double agony in man\nFor man should undergo."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "And in the garden secretly,\nAnd on the cross on high,\nShould teach His brethren, and inspire\nTo suffer and to die."
+    },
+    {
+      "id": "v7",
+      "type": "verse",
+      "label": "Verse 7",
+      "order": 7,
+      "text": "Praise to the Holiest in the height,\nAnd in the depth be praise:\nIn all His words most wonderful;\nMost sure in all His ways."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "praise to the holiest in the height",
+    "normalizedFirstLine": "praise to the holiest in the height",
+    "keywords": [
+      "praise",
+      "holiest",
+      "height"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "praise",
+      "to",
+      "the",
+      "holiest",
+      "in",
+      "height",
+      "john",
+      "henry",
+      "newman",
+      "unknown"
+    ],
+    "searchableText": "praise to the holiest in the height praise to the holiest in the height john henry newman unknown praise praise holiest height"
+  }
+}

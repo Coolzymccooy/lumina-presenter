@@ -56,6 +56,8 @@ export interface FilesPanelProps {
   archivedSermonsLoading: boolean;
   onRefreshSermons: () => void;
   onCopySermon: (item: ArchivedSermon) => void;
+  onProjectSermon: (item: ArchivedSermon) => void;
+  onInsertSermon: (item: ArchivedSermon) => void;
   onDeleteSermon: (id: string) => void;
 
   // Import
@@ -211,57 +213,134 @@ const RunSheetCard: React.FC<RunSheetCardProps> = ({
 interface SermonCardProps {
   item: ArchivedSermon;
   onCopy: () => void;
+  onProjectToScreen: () => void;
+  onInsertToRunsheet: () => void;
   onDelete: () => void;
 }
 
-const SermonCard: React.FC<SermonCardProps> = ({ item, onCopy, onDelete }) => (
-  <div className="group rounded-lg border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70 transition-all overflow-hidden">
-    <div className="px-3 py-2.5">
-      <div className="text-[11px] font-semibold text-zinc-100 leading-tight">
-        {item.summary.title || 'Untitled Sermon'}
+const SermonCard: React.FC<SermonCardProps> = ({ item, onCopy, onProjectToScreen, onInsertToRunsheet, onDelete }) => {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="group rounded-lg border border-zinc-800 bg-zinc-900/40 hover:border-zinc-700 hover:bg-zinc-900/70 transition-all overflow-hidden">
+      <div className="px-3 py-2.5">
+        <div className="flex items-start gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] font-semibold text-zinc-100 leading-tight">
+              {item.summary.title || 'Untitled Sermon'}
+            </div>
+            {item.summary.mainTheme && !expanded && (
+              <div className="text-[10px] text-zinc-400 mt-0.5 leading-snug line-clamp-2">
+                {item.summary.mainTheme}
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="shrink-0 mt-0.5 text-zinc-600 hover:text-zinc-300 transition-colors text-[9px] font-black"
+            title={expanded ? 'Collapse' : 'Show theme, key points & call to action'}
+          >
+            {expanded ? '▲' : '▼'}
+          </button>
+        </div>
+        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+          <span className="text-[9px] text-zinc-600">{formatDate(item.savedAt)}</span>
+          <span className="text-zinc-800">·</span>
+          <span className="text-[9px] text-zinc-600">{item.wordCount.toLocaleString()} words</span>
+          {item.summary.keyPoints?.length > 0 && (
+            <>
+              <span className="text-zinc-800">·</span>
+              <span className="text-[9px] text-zinc-600">{item.summary.keyPoints.length} points</span>
+            </>
+          )}
+          {item.summary.scripturesReferenced?.length > 0 && (
+            <>
+              <span className="text-zinc-800">·</span>
+              <span className="text-[9px] text-amber-600/80">
+                {item.summary.scripturesReferenced.slice(0, 2).join(', ')}
+                {item.summary.scripturesReferenced.length > 2 ? '…' : ''}
+              </span>
+            </>
+          )}
+        </div>
       </div>
-      {item.summary.mainTheme && (
-        <div className="text-[10px] text-zinc-400 mt-0.5 leading-snug line-clamp-2">
-          {item.summary.mainTheme}
+
+      {/* Expanded detail section */}
+      {expanded && (
+        <div className="px-3 pb-3 space-y-2.5 border-t border-zinc-800/60 pt-2.5">
+          {item.summary.mainTheme && (
+            <div>
+              <div className="text-[8px] font-black uppercase tracking-[0.18em] text-violet-500/70 mb-1">Theme</div>
+              <p className="text-[10px] text-zinc-200 leading-relaxed">{item.summary.mainTheme}</p>
+            </div>
+          )}
+          {item.summary.keyPoints?.length > 0 && (
+            <div>
+              <div className="text-[8px] font-black uppercase tracking-[0.18em] text-blue-500/70 mb-1">Key Points</div>
+              <ol className="space-y-1">
+                {item.summary.keyPoints.map((pt, i) => (
+                  <li key={i} className="text-[10px] text-zinc-300 leading-snug flex gap-2">
+                    <span className="text-zinc-600 font-mono shrink-0">{i + 1}.</span>
+                    <span>{pt}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+          {item.summary.callToAction && (
+            <div>
+              <div className="text-[8px] font-black uppercase tracking-[0.18em] text-emerald-500/70 mb-1">Call to Action</div>
+              <p className="text-[10px] text-zinc-300 italic leading-relaxed">{item.summary.callToAction}</p>
+            </div>
+          )}
+          {item.summary.scripturesReferenced?.length > 0 && (
+            <div>
+              <div className="text-[8px] font-black uppercase tracking-[0.18em] text-amber-500/70 mb-1">Scriptures</div>
+              <div className="flex flex-wrap gap-1">
+                {item.summary.scripturesReferenced.map((ref, i) => (
+                  <span key={i} className="text-[9px] font-mono text-amber-400/80 bg-amber-950/30 border border-amber-900/30 px-1.5 py-0.5 rounded">
+                    {ref}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
-      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-        <span className="text-[9px] text-zinc-600">{formatDate(item.savedAt)}</span>
-        <span className="text-zinc-800">·</span>
-        <span className="text-[9px] text-zinc-600">{item.wordCount.toLocaleString()} words</span>
-        {item.summary.keyPoints?.length > 0 && (
-          <>
-            <span className="text-zinc-800">·</span>
-            <span className="text-[9px] text-zinc-600">{item.summary.keyPoints.length} points</span>
-          </>
-        )}
-        {item.summary.scripturesReferenced?.length > 0 && (
-          <>
-            <span className="text-zinc-800">·</span>
-            <span className="text-[9px] text-amber-600/80">
-              {item.summary.scripturesReferenced.slice(0, 2).join(', ')}
-              {item.summary.scripturesReferenced.length > 2 ? '…' : ''}
-            </span>
-          </>
-        )}
+
+      <div className="flex border-t border-zinc-800/60 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={onProjectToScreen}
+          className="flex-1 py-1.5 text-[9px] font-bold text-red-300 hover:bg-red-950/50 transition-colors border-r border-zinc-800/60 flex items-center justify-center gap-1"
+          title="Send sermon recap to the live output screen"
+        >
+          ▶ Project
+        </button>
+        <button
+          onClick={onInsertToRunsheet}
+          className="flex-1 py-1.5 text-[9px] font-bold text-purple-300 hover:bg-purple-950/40 transition-colors border-r border-zinc-800/60 flex items-center justify-center gap-1"
+          title="Add sermon recap to run sheet without going live"
+        >
+          + Runsheet
+        </button>
+        <button
+          onClick={onCopy}
+          className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-zinc-800 transition-colors border-r border-zinc-800/60 flex items-center justify-center gap-1"
+          title="Copy sermon summary to clipboard"
+        >
+          ⧉ Copy
+        </button>
+        <button
+          onClick={onDelete}
+          className="px-3 py-1.5 text-[9px] font-bold text-rose-500 hover:bg-rose-950/40 transition-colors flex items-center justify-center"
+          title="Delete this sermon from archive"
+        >
+          ⊗
+        </button>
       </div>
     </div>
-    <div className="flex border-t border-zinc-800/60 opacity-0 group-hover:opacity-100 transition-opacity">
-      <button
-        onClick={onCopy}
-        className="flex-1 py-1.5 text-[9px] font-bold text-zinc-300 hover:bg-zinc-800 transition-colors border-r border-zinc-800/60 flex items-center justify-center gap-1"
-      >
-        <span className="text-zinc-500">⧉</span> Copy text
-      </button>
-      <button
-        onClick={onDelete}
-        className="flex-1 py-1.5 text-[9px] font-bold text-rose-500 hover:bg-rose-950/40 transition-colors flex items-center justify-center gap-1"
-      >
-        <span>⊗</span> Delete
-      </button>
-    </div>
-  </div>
-);
+  );
+};
 
 // ─── Main panel ────────────────────────────────────────────────────────────────
 
@@ -284,6 +363,8 @@ export const FilesPanel: React.FC<FilesPanelProps> = ({
   archivedSermonsLoading,
   onRefreshSermons,
   onCopySermon,
+  onProjectSermon,
+  onInsertSermon,
   onDeleteSermon,
   isImportingDeck,
   importDeckStatus,
@@ -487,6 +568,8 @@ export const FilesPanel: React.FC<FilesPanelProps> = ({
                 key={item.id}
                 item={item}
                 onCopy={() => onCopySermon(item)}
+                onProjectToScreen={() => onProjectSermon(item)}
+                onInsertToRunsheet={() => onInsertSermon(item)}
                 onDelete={() => onDeleteSermon(item.id)}
               />
             ))}

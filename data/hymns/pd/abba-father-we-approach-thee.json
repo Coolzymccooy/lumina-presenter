@@ -1,0 +1,98 @@
+{
+  "status": "approved",
+  "id": "abba-father-we-approach-thee",
+  "title": "Abba, Father, we approach Thee",
+  "alternateTitles": [],
+  "firstLine": "“Abba, Father,” we approach Thee",
+  "meter": "8.7.8.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "James George Deck",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Franz Joseph Haydn"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: James George Deck (1807–1884).",
+  "tuneAttribution": "Tune: Franz Joseph Haydn (1732–1809).",
+  "publicDomainBasis": "James George Deck (1807–1884), Franz Joseph Haydn (1732–1809). All public domain.",
+  "searchKeywords": [
+    "abba",
+    "father",
+    "approach",
+    "thee"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "“Abba, Father,” we approach Thee\nIn our Savior’s precious name.\nWe, Thy children, here assembling,\nNow the promised blessing claim.\nFrom our guilt His blood has washed us,\n’Tis through Him our souls draw nigh,\nAnd Thy Spirit too has taught us\n“Abba, Father,” thus to cry."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Once as prodigals we wandered,\nIn our folly, far from Thee;\nBut Thy grace, o’er sin abounding,\nRescued us from misery.\nClothed in garments of salvation\nAt Thy table is our place;\nWe rejoice, and Thou rejoicest,\nIn the riches of Thy grace."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Thou the prodigal hast pardoned,\n“Kissed us” with a Father’s love;\n“Killed the fatted calf,” and made us\nFit Thy purpose to approve.\n“It is meet,” we hear Thee saying,\n“We should merry be and glad;\nI have found My once-lost children,\nNow they live who once were dead.”"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "“Abba, Father,” we adore Thee,\nWhile the hosts in heaven above\nE’en in us now learn the wonders\nOf Thy wisdom, grace, and love.\nSoon before Thy throne assembled,\nAll Thy children shall proclaim\nAbba’s love shown in redemption,\nAnd how full is Abba’s name!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "abba father we approach thee",
+    "normalizedFirstLine": "abba father we approach thee",
+    "keywords": [
+      "abba",
+      "father",
+      "approach",
+      "thee"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "abba",
+      "father",
+      "we",
+      "approach",
+      "thee",
+      "james",
+      "george",
+      "deck",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "abba father we approach thee abba father we approach thee james george deck unknown praise abba father approach thee"
+  }
+}

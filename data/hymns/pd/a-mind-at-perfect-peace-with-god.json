@@ -1,0 +1,105 @@
+{
+  "status": "approved",
+  "id": "a-mind-at-perfect-peace-with-god",
+  "title": "A mind at perfect peace with God",
+  "alternateTitles": [],
+  "firstLine": "A mind at perfect peace with God;",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Horatius Bonar",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Hugh Wilson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Horatius Bonar (1808–1889).",
+  "tuneAttribution": "Tune: Hugh Wilson (1766–1824).",
+  "publicDomainBasis": "Horatius Bonar (1808–1889), Hugh Wilson (1766–1824). All public domain.",
+  "searchKeywords": [
+    "mind",
+    "perfect",
+    "peace",
+    "with"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "A mind at perfect peace with God;\nO what a word is this!\nA sinner reconciled through blood;\nThis, this indeed is peace."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "By nature and by practice far,\nHow very far from God;\nYet now by grace brought nigh to Him,\nThrough faith in Jesus’ blood."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "So nigh, so very nigh to God,\nI cannot nearer be;\nFor in the person of His Son\nI am as near as He."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "So dear, so very dear to God,\nMore dear I cannot be;\nThe love wherewith He loves the Son,\nSuch is His love to me."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Why should I ever anxious be,\nSince such a God is mine?\nHe watches o’er me night and day,\nAnd tells me “Mine is thine.”"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "a mind at perfect peace with god",
+    "normalizedFirstLine": "a mind at perfect peace with god",
+    "keywords": [
+      "mind",
+      "perfect",
+      "peace",
+      "with"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "mind",
+      "at",
+      "perfect",
+      "peace",
+      "with",
+      "god",
+      "horatius",
+      "bonar",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "a mind at perfect peace with god a mind at perfect peace with god horatius bonar unknown praise mind perfect peace with"
+  }
+}

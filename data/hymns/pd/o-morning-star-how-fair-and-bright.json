@@ -1,0 +1,84 @@
+{
+  "status": "approved",
+  "id": "o-morning-star-how-fair-and-bright",
+  "title": "O Morning Star, how fair and bright",
+  "alternateTitles": [],
+  "firstLine": "O Morning Star, how fair and bright,",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Philip Nicolai",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Philip Nicolai"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Philip Nicolai (1556–1608).",
+  "tuneAttribution": "Tune: Philip Nicolai (1556–1608).",
+  "publicDomainBasis": "Philip Nicolai (1556–1608), Philip Nicolai (1556–1608). All public domain.",
+  "searchKeywords": [
+    "morning",
+    "star",
+    "fair",
+    "bright"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O Morning Star, how fair and bright,\nThou beamest forth in truth and light!\nO Sov’reign meek and lowly,\nThou Root of Jesse, David’s Son,\nMy Lord and Master, Thou hast won\nMy heart to serve Thee solely!\nThou art holy,\nFair and glorious, all-victorious,\nRich in blessing,\nRule and might o’er all possessing."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Thou heav’nly Brightness, Light divine,\nO deep within my heart now shine,\nAnd make Thee there an altar.\nFill me with joy and strength to be\nThy member, ever joined to Thee\nIn love that cannot falter;\nToward Thee longing\nDoth possess me; turn and bless me;\nHere in sadness\nEye and heart long for Thy gladness."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o morning star how fair and bright",
+    "normalizedFirstLine": "o morning star how fair and bright",
+    "keywords": [
+      "morning",
+      "star",
+      "fair",
+      "bright"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "morning",
+      "star",
+      "how",
+      "fair",
+      "and",
+      "bright",
+      "philip",
+      "nicolai",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o morning star how fair and bright o morning star how fair and bright philip nicolai unknown praise morning star fair bright"
+  }
+}

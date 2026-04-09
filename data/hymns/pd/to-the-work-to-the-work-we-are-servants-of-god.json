@@ -1,0 +1,90 @@
+{
+  "status": "approved",
+  "id": "to-the-work-to-the-work-we-are-servants-of-god",
+  "title": "To the work! to the work! we are servants of God",
+  "alternateTitles": [],
+  "firstLine": "To the work! to the work! we are servants of God,",
+  "meter": "12.12.12.12. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "work",
+    "servants"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "To the work! to the work! we are servants of God,\nLet us follow the path that our Master has trod;\nWith the might of His power our strength to renew,\nLet us do by His grace what He calls us to do."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "To the work! to the work! let the hungry be fed;\nTo the fountain of life let the thirsty be led;\nIn the cross and its vict’ry our glory shall be,\nWhile we herald the tidings, “Salvation is free!”"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "To the work! to the work! in the strength of the Lord,\nBy the pow’r of His Name, with the light of His Word,\nAll the slaves of the darkness of Satan set free\nAnd His riches of grace in His glory we’ll see."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "to the work to the work we are servants of god",
+    "normalizedFirstLine": "to the work to the work we are servants of god",
+    "keywords": [
+      "work",
+      "servants"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "to",
+      "the",
+      "work",
+      "we",
+      "are",
+      "servants",
+      "of",
+      "god",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "to the work to the work we are servants of god to the work to the work we are servants of god fanny jane crosby unknown praise work servants"
+  }
+}

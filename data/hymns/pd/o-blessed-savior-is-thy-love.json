@@ -1,0 +1,116 @@
+{
+  "status": "approved",
+  "id": "o-blessed-savior-is-thy-love",
+  "title": "O blessed Savior, is Thy love",
+  "alternateTitles": [],
+  "firstLine": "O blessed Savior, is Thy love",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Joseph Stennett",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "George Thomas Smart"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Joseph Stennett (1663–1713).",
+  "tuneAttribution": "Tune: George Thomas Smart (1776–1867).",
+  "publicDomainBasis": "Joseph Stennett (1663–1713), George Thomas Smart (1776–1867). All public domain.",
+  "searchKeywords": [
+    "blessed",
+    "savior",
+    "love"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O blessed Savior, is Thy love\nSo great! so full! so free!\nFain would we have our thoughts, our hearts,\nOur lives, engaged with Thee."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "We love Thee for the glorious worth\nWhich in Thyself we see;\nWe love Thee for that shameful cross,\nEndured so patiently."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "No man of greater love can boast\nThan for his friend to die;\nThou for Thine enemies wast slain!\nWhat love with Thine can vie?"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Though in the very form of God,\nWith heav’nly glory crowned,\nThou didst a servant’s form assume,\nBeset with sorrow round."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Thou wouldst like wretched man be made\nIn everything but sin,\nThat we as like Thee might become\nAs we unlike had been:"
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Like Thee in strength, in meekness, love,\nIn life in ev’ry phase;\nFrom glory into glory changed,\nTill we behold Thy face."
+    },
+    {
+      "id": "v7",
+      "type": "verse",
+      "label": "Verse 7",
+      "order": 7,
+      "text": "O Lord, we treasure in our hearts\nThe mem’ry of Thy love;\nAnd ever shall Thy name to us\nA grateful odor prove."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o blessed savior is thy love",
+    "normalizedFirstLine": "o blessed savior is thy love",
+    "keywords": [
+      "blessed",
+      "savior",
+      "love"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "blessed",
+      "savior",
+      "is",
+      "thy",
+      "love",
+      "joseph",
+      "stennett",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o blessed savior is thy love o blessed savior is thy love joseph stennett unknown praise blessed savior love"
+  }
+}

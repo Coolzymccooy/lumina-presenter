@@ -1,0 +1,60 @@
+{
+  "status": "approved",
+  "id": "holy-holy-holy",
+  "title": "Holy, Holy, Holy! Lord God Almighty",
+  "alternateTitles": ["Holy Holy Holy"],
+  "firstLine": "Holy, holy, holy! Lord God Almighty!",
+  "meter": "11.12.12.10",
+  "hymnalNumbers": { "UMH": 64, "SBC": 1, "LW": 169, "ELW": 413 },
+  "authors": [
+    { "name": "Reginald Heber", "role": "text" },
+    { "name": "John B. Dykes", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "NICAEA", "composer": "John B. Dykes" }
+  ],
+  "themes": ["praise", "majesty", "holiness"],
+  "scriptureThemes": ["Revelation 4:8-11", "Isaiah 6:3", "1 Timothy 6:15-16"],
+  "textAttribution": "Text: Reginald Heber, 1826.",
+  "tuneAttribution": "Tune: NICAEA by John B. Dykes, 1861.",
+  "publicDomainBasis": "Reginald Heber (1783–1826), John B. Dykes (1823–1876). Text published 1826 (posthumously), tune composed 1861. Both public domain.",
+  "searchKeywords": ["trinity", "holy", "almighty", "worship", "adoration"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "holiness",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Holy, holy, holy! Lord God Almighty!\nEarly in the morning our song shall rise to Thee;\nHoly, holy, holy! Merciful and mighty!\nGod in three Persons, blessed Trinity!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Holy, holy, holy! All the saints adore Thee,\nCasting down their golden crowns around the glassy sea;\nCherubim and seraphim falling down before Thee,\nWhich wert, and art, and evermore shalt be."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Holy, holy, holy! Though the darkness hide Thee,\nThough the eye of sinful man Thy glory may not see,\nOnly Thou art holy; there is none beside Thee,\nPerfect in power, in love, and purity."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Holy, holy, holy! Lord God Almighty!\nAll Thy works shall praise Thy name in earth and sky and sea;\nHoly, holy, holy! Merciful and mighty!\nGod in three Persons, blessed Trinity!"
+    }
+  ]
+}

@@ -22,7 +22,11 @@
     "test:e2e:headed": "node scripts/run-e2e.mjs --headed",
     "test:e2e:ui": "node scripts/run-e2e.mjs --ui",
     "test:e2e:install": "playwright install chromium",
-    "postinstall": "electron-rebuild -f -w @stagetimerio/grandiose"
+    "postinstall": "electron-rebuild -f -w @stagetimerio/grandiose",
+    "hymn:normalize": "node scripts/normalizePdHymn.mjs data/hymns/pd/",
+    "hymn:build": "node scripts/buildPdBundle.mjs",
+    "hymn:check": "node scripts/buildPdBundle.mjs --check",
+    "hymn:import": "node scripts/importFromHymnal.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.33.0",

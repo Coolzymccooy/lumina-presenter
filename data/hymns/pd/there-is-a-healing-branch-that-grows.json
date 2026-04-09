@@ -1,0 +1,101 @@
+{
+  "status": "approved",
+  "id": "there-is-a-healing-branch-that-grows",
+  "title": "There is a healing branch that grows",
+  "alternateTitles": [],
+  "firstLine": "There is a healing branch that grows",
+  "meter": "8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Melody by Thomas Hastings"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Melody by Thomas Hastings (1784–1872).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Melody by Thomas Hastings (1784–1872). All public domain.",
+  "searchKeywords": [
+    "there",
+    "healing",
+    "branch",
+    "that",
+    "grows"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "There is a healing branch that grows\nWhere every bitter Marah flows;\nThis is our health-renewing tree.\n“I am the Lord that healeth thee.”"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "There is an old appointed way\nFor those who hearken and obey;\nAbove the gate these words we see:\n“I am the Lord that healeth thee.”"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "There is an ordinance that has stood\nSince Israel crossed the parted flood;\nIt stands today for you and me—\n“I am the Lord that healeth thee.”"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "There is a great Physician still\nWhose hand has all its ancient skill;\nAt His command our pains will flee—\n“I am the Lord that healeth thee.”"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "there is a healing branch that grows",
+    "normalizedFirstLine": "there is a healing branch that grows",
+    "keywords": [
+      "there",
+      "healing",
+      "branch",
+      "that",
+      "grows"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "there",
+      "is",
+      "healing",
+      "branch",
+      "that",
+      "grows",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "there is a healing branch that grows there is a healing branch that grows albert benjamin simpson unknown praise there healing branch that grows"
+  }
+}

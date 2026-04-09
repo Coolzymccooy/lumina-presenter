@@ -1,0 +1,97 @@
+{
+  "status": "approved",
+  "id": "saved-to-the-uttermost-i-am-the-lord-s",
+  "title": "Saved to the uttermost, I am the Lord’s",
+  "alternateTitles": [],
+  "firstLine": "Saved to the uttermost, I am the Lord’s;",
+  "meter": "10.10.10.10. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William James Kirkpatrick",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William James Kirkpatrick"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William James Kirkpatrick (1838–1921).",
+  "tuneAttribution": "Tune: William James Kirkpatrick (1838–1921).",
+  "publicDomainBasis": "William James Kirkpatrick (1838–1921), William James Kirkpatrick (1838–1921). All public domain.",
+  "searchKeywords": [
+    "saved",
+    "uttermost",
+    "lord"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Saved to the uttermost, I am the Lord’s;\nJesus my Savior salvation affords;\nGives me His Spirit a witness within,\nWhisp’ring of pardon, and saving from sin."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Saved to the uttermost; Jesus is near;\nKeeping me safely, He casteth out fear;\nTrusting His promises, how I am blest;\nLeaning upon Him, how sweet is my rest."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Saved to the uttermost: this I can say,\n“Once all was darkness, but now it is day.”\nBeautiful visions of glory I see;\nJesus in brightness revealed unto me."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Saved to the uttermost: cheerfully sing\nLoud hallelujahs to Jesus my King!\nRansomed and pardoned, redeemed by His blood,\nCleansed from unrighteousness, glory to God!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "saved to the uttermost i am the lord s",
+    "normalizedFirstLine": "saved to the uttermost i am the lord s",
+    "keywords": [
+      "saved",
+      "uttermost",
+      "lord"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "saved",
+      "to",
+      "the",
+      "uttermost",
+      "am",
+      "lord",
+      "william",
+      "james",
+      "kirkpatrick",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "saved to the uttermost i am the lord s saved to the uttermost i am the lord s william james kirkpatrick unknown praise saved uttermost lord"
+  }
+}

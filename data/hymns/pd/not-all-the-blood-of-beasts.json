@@ -1,0 +1,101 @@
+{
+  "status": "approved",
+  "id": "not-all-the-blood-of-beasts",
+  "title": "Not all the blood of beasts",
+  "alternateTitles": [],
+  "firstLine": "Not all the blood of beasts,",
+  "meter": "6.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Isaac Watts",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lowell Mason"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Isaac Watts (1674–1748).",
+  "tuneAttribution": "Tune: Lowell Mason (1792–1872).",
+  "publicDomainBasis": "Isaac Watts (1674–1748), Lowell Mason (1792–1872). All public domain.",
+  "searchKeywords": [
+    "blood",
+    "beasts"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Not all the blood of beasts,\nOn Jewish altars slain,\nCould give the guilty conscience peace,\nOr wash away its stain."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "But Christ, the heavenly Lamb,\nTakes all our sins away;\nA sacrifice of nobler name,\nAnd richer blood than they."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "My faith would lay her hand\nOn that dear head of Thine,\nWhile like a penitent I stand,\nAnd there confess my sin."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "My soul looks back to see\nThe burdens Thou didst bear\nWhen hanging on the cursed tree,\nAnd knows her guilt was there."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Believing, we rejoice\nTo see the curse remove;\nWe bless the Lamb with cheerful voice,\nAnd sing His bleeding love."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "not all the blood of beasts",
+    "normalizedFirstLine": "not all the blood of beasts",
+    "keywords": [
+      "blood",
+      "beasts"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "not",
+      "all",
+      "the",
+      "blood",
+      "of",
+      "beasts",
+      "isaac",
+      "watts",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "not all the blood of beasts not all the blood of beasts isaac watts unknown praise blood beasts"
+  }
+}

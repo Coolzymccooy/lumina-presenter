@@ -1,0 +1,95 @@
+{
+  "status": "approved",
+  "id": "hallelujah-sing-to-jesus",
+  "title": "Hallelujah! sing to Jesus",
+  "alternateTitles": [],
+  "firstLine": "Hallelujah! sing to Jesus,",
+  "meter": "8.7.8.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Chatterton Dix",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Zundel"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Chatterton Dix (1837–1898).",
+  "tuneAttribution": "Tune: John Zundel (1815–1882).",
+  "publicDomainBasis": "William Chatterton Dix (1837–1898), John Zundel (1815–1882). All public domain.",
+  "searchKeywords": [
+    "hallelujah",
+    "sing",
+    "jesus"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Hallelujah! sing to Jesus,\nHis the scepter, His the throne;\nHallelujah! His the triumph,\nHis the victory alone.\nHark, the songs of His redeemed ones\nThunder like a mighty flood:\nJesus out of every nation\nHath redeemed us by His blood."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Hallelujah! not as orphans\nAre we left in sorrow now;\nHallelujah! He is near us,\nFaith believes, nor questions how.\nThough the clouds from sight received Him\nWhen the forty days were o’er,\nShall our hearts forget His promise,\n“I am with you evermore“?"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Hallelujah! Bread of heaven,\nThou on earth our food, our stay;\nHallelujah! here the hungry\nCome to Thee from day to day.\nAdvocate and Intercessor,\nMy Redeemer pleads for me,\nOn the throne of the Almighty\nNow and to eternity."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Hallelujah! sing to Jesus,\nHis the scepter, His the throne;\nHallelujah! His the triumph,\nHis the victory alone.\nHark, the songs of His redeemed ones\nThunder like a mighty flood:\nJesus out of every nation,\nHath redeemed us by His blood."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "hallelujah sing to jesus",
+    "normalizedFirstLine": "hallelujah sing to jesus",
+    "keywords": [
+      "hallelujah",
+      "sing",
+      "jesus"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "hallelujah",
+      "sing",
+      "to",
+      "jesus",
+      "william",
+      "chatterton",
+      "dix",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "hallelujah sing to jesus hallelujah sing to jesus william chatterton dix unknown praise hallelujah sing jesus"
+  }
+}

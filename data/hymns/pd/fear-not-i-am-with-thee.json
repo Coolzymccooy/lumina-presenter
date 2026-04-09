@@ -1,0 +1,83 @@
+{
+  "status": "approved",
+  "id": "fear-not-i-am-with-thee",
+  "title": "Fear not, I am with thee",
+  "alternateTitles": [],
+  "firstLine": "“Fear not, I am with thee”;",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Eliza Edmunds Hewitt",
+      "role": "text"
+    }
+  ],
+  "tunes": [],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Eliza Edmunds Hewitt (1851–1920).",
+  "tuneAttribution": "Tune: Unknown.",
+  "publicDomainBasis": "Eliza Edmunds Hewitt (1851–1920). All public domain.",
+  "searchKeywords": [
+    "fear",
+    "with",
+    "thee"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "“Fear not, I am with thee”;\nBlessed golden ray,\nLike a star of glory,\nLighting up my way!\nThrough the clouds of midnight,\nThis bright promise shone,\n“I will never leave thee,\nNever will leave thee alone.”"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Roses fade around me,\nLilies bloom and die,\nEarthly sunbeams vanish—\nRadiant still the sky!\nJesus, Henna-flower,*\nBlooming for His own,\nJesus, heaven’s sunshine,\nNever will leave me alone."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Steps unseen before me,\nHidden dangers near;\nNearer still my Savior,\nWhispering, “Be of cheer”;\nJoys, like birds of springtime,\nTo my heart have flown,\nSinging all so sweetly,\n“He will not leave me alone.”"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "fear not i am with thee",
+    "normalizedFirstLine": "fear not i am with thee",
+    "keywords": [
+      "fear",
+      "with",
+      "thee"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "fear",
+      "not",
+      "am",
+      "with",
+      "thee",
+      "eliza",
+      "edmunds",
+      "hewitt",
+      "praise"
+    ],
+    "searchableText": "fear not i am with thee fear not i am with thee eliza edmunds hewitt praise fear with thee"
+  }
+}

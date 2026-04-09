@@ -1,0 +1,92 @@
+{
+  "status": "approved",
+  "id": "rescue-the-perishing",
+  "title": "Rescue the perishing",
+  "alternateTitles": [],
+  "firstLine": "Rescue the perishing,",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "rescue",
+    "perishing"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Rescue the perishing,\nCare for the dying,\nSnatch them in pity from sin and the grave;\nWeep o’er the erring one,\nLift up the fallen,\nTell them of Jesus the mighty to save."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Though they are slighting Him,\nStill He is waiting,\nWaiting the penitent child to receive;\nPlead with them earnestly,\nPlead with them gently;\nHe will forgive if they only believe."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Down in the human heart,\nCrushed by the tempter,\nFeelings lie buried that grace can restore;\nTouched by a loving heart,\nWakened by kindness,\nChords that are broken will vibrate once more."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Rescue the perishing,\nDuty demands it;\nStrength for thy labor the Lord will provide;\nBack to the narrow way,\nPatiently win them;\nTell the poor wand’rer a Savior has died."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "rescue the perishing",
+    "normalizedFirstLine": "rescue the perishing",
+    "keywords": [
+      "rescue",
+      "perishing"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "rescue",
+      "the",
+      "perishing",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "rescue the perishing rescue the perishing fanny jane crosby unknown praise rescue perishing"
+  }
+}

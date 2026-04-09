@@ -1,0 +1,100 @@
+{
+  "status": "approved",
+  "id": "i-am-not-skilled-to-understand",
+  "title": "I am not skilled to understand",
+  "alternateTitles": [],
+  "firstLine": "I am not skilled to understand",
+  "meter": "8.8.8.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Dora Greenwell",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William James Kirkpatrick"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Dora Greenwell (1821–1882).",
+  "tuneAttribution": "Tune: William James Kirkpatrick (1838–1921).",
+  "publicDomainBasis": "Dora Greenwell (1821–1882), William James Kirkpatrick (1838–1921). All public domain.",
+  "searchKeywords": [
+    "skilled",
+    "understand"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I am not skilled to understand\nWhat God hath willed, what God hath planned;\nI only know at His right hand\nStands One who is my Savior."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "I take Him at His word indeed:\n“Christ died for sinners”—this I read;\nFor in my heart I find a need\nOf Him to be my Savior!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "That He should leave His place on high\nAnd come for sinful man to die,\nYou count it strange? So once did I\nBefore I knew my Savior!"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "And, oh, that He fulfilled may see\nThe travail of His soul in me,\nAnd with His work contented be,\nAs I with my dear Savior!"
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Yes, living, dying, let me bring\nMy strength, my solace from this spring—\nThat He who lives to be my King\nOnce died to be my Savior!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i am not skilled to understand",
+    "normalizedFirstLine": "i am not skilled to understand",
+    "keywords": [
+      "skilled",
+      "understand"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "am",
+      "not",
+      "skilled",
+      "to",
+      "understand",
+      "dora",
+      "greenwell",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i am not skilled to understand i am not skilled to understand dora greenwell unknown praise skilled understand"
+  }
+}

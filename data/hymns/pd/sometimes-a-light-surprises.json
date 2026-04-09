@@ -1,0 +1,93 @@
+{
+  "status": "approved",
+  "id": "sometimes-a-light-surprises",
+  "title": "Sometimes a light surprises",
+  "alternateTitles": [],
+  "firstLine": "Sometimes a light surprises",
+  "meter": "7.6.7.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Cowper",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Cowper (1731–1800).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "William Cowper (1731–1800), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "sometimes",
+    "light",
+    "surprises"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Sometimes a light surprises\nThe Christian while he sings;\nIt is the Lord who rises\nWith healing in His wings;\nWhen comforts are declining,\nHe grants the soul again\nA season of clear shining,\nTo cheer it after rain."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "In holy contemplation\nWe sweetly then pursue\nThe theme of God’s salvation,\nAnd find it ever new;\nSet free from present sorrow,\nWe cheerfully can say—\nE’en let the unknown morrow\nBring with it what it may."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "It can bring with it nothing,\nBut He will bear us through;\nWho gives the lilies clothing,\nWill clothe His people too:\nBeneath the spreading heavens\nNo creature but is fed;\nAnd He, who feeds the ravens,\nWill give His children bread."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Though vine nor fig tree neither\nTheir wonted fruit shall bear;\nThough all the fields should wither\nNor flocks nor herds be there;\nYet God the same abiding,\nHis praise shall tune my voice,\nFor, while in Him confiding,\nI cannot but rejoice."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "sometimes a light surprises",
+    "normalizedFirstLine": "sometimes a light surprises",
+    "keywords": [
+      "sometimes",
+      "light",
+      "surprises"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "sometimes",
+      "light",
+      "surprises",
+      "william",
+      "cowper",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "sometimes a light surprises sometimes a light surprises william cowper unknown praise sometimes light surprises"
+  }
+}

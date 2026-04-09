@@ -1,0 +1,100 @@
+{
+  "status": "approved",
+  "id": "i-have-come-to-the-fountain-of-life",
+  "title": "I have come to the Fountain of Life",
+  "alternateTitles": [],
+  "firstLine": "I have come to the Fountain of Life,",
+  "meter": "9.8.9.8.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Albert Benjamin Simpson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Albert Benjamin Simpson (1843–1919).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Albert Benjamin Simpson (1843–1919). All public domain.",
+  "searchKeywords": [
+    "have",
+    "come",
+    "fountain",
+    "life"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I have come to the Fountain of Life,\nA fountain that flows from above;\nI have passed from the waters of strife\nAnd come to the Elim of love;\nI have drunk of the heavenly well,\nIn the depths of my being it springs.\nNo mortal can measure or tell\nThe gladness the Comforter brings."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "I have come to the Fountain of Blood\nThat for guilt and uncleanness doth flow;\nI have washed in its sin-cleansing flood\nAnd my garments are whiter than snow.\nI count not my righteousness mine—\n’Tis Jesus that lives in my soul.\nI partake of His nature divine,\nAnd in Him I am perfectly whole."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "I have come to the Fountain of Health,\nA boundless and endless supply;\n’Tis a secret man’s wisdom or wealth\nCan never discover or buy.\nBut the secret my Lord hath revealed\nIn the fountain that flows from His side,\nIn the stripes by whose pain we are healed,\nIn Himself as He comes to abide."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "I have come to the Fountain of Joy;\nHis joy is the strength of my heart.\nMy delight is unmixed with alloy,\nMy sunshine can never depart.\nThe fig tree may wither and die,\nEarth’s pleasures and prospects decline;\nBut my fountains can never be dry—\nMy portion, my joy is divine."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i have come to the fountain of life",
+    "normalizedFirstLine": "i have come to the fountain of life",
+    "keywords": [
+      "have",
+      "come",
+      "fountain",
+      "life"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "have",
+      "come",
+      "to",
+      "the",
+      "fountain",
+      "of",
+      "life",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i have come to the fountain of life i have come to the fountain of life albert benjamin simpson unknown praise have come fountain life"
+  }
+}

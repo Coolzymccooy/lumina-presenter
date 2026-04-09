@@ -1,0 +1,60 @@
+{
+  "status": "approved",
+  "id": "o-little-town-of-bethlehem",
+  "title": "O Little Town of Bethlehem",
+  "alternateTitles": [],
+  "firstLine": "O little town of Bethlehem, how still we see thee lie",
+  "meter": "8.6.8.6 D",
+  "hymnalNumbers": { "UMH": 230, "SBC": 82, "LW": 41, "ELW": 279 },
+  "authors": [
+    { "name": "Phillips Brooks", "role": "text" },
+    { "name": "Lewis H. Redner", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "ST. LOUIS", "composer": "Lewis H. Redner", "alternateNames": ["O Little Town of Bethlehem"] }
+  ],
+  "themes": ["reflection", "praise", "comfort"],
+  "scriptureThemes": ["Micah 5:2", "Luke 2:4-7", "Matthew 2:1"],
+  "textAttribution": "Text: Phillips Brooks, 1868.",
+  "tuneAttribution": "Tune: ST. LOUIS by Lewis H. Redner, 1868.",
+  "publicDomainBasis": "Phillips Brooks (1835–1893), Lewis H. Redner (1831–1908). Text and tune composed 1868 for Holy Trinity Church, Philadelphia. Both public domain.",
+  "searchKeywords": ["bethlehem", "christmas", "stable", "star", "born", "manger", "still"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "reflection",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O little town of Bethlehem,\nHow still we see thee lie!\nAbove thy deep and dreamless sleep\nThe silent stars go by.\nYet in thy dark streets shineth\nThe everlasting Light;\nThe hopes and fears of all the years\nAre met in thee tonight."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "For Christ is born of Mary,\nAnd gathered all above,\nWhile mortals sleep, the angels keep\nTheir watch of wondering love.\nO morning stars, together\nProclaim the holy birth,\nAnd praises sing to God the King,\nAnd peace to men on earth!"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "How silently, how silently,\nThe wondrous gift is given!\nSo God imparts to human hearts\nThe blessings of His heaven.\nNo ear may hear His coming,\nBut in this world of sin,\nWhere meek souls will receive Him still,\nThe dear Christ enters in."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "O holy Child of Bethlehem,\nDescend to us, we pray;\nCast out our sin, and enter in,\nBe born in us today.\nWe hear the Christmas angels\nThe great glad tidings tell;\nO come to us, abide with us,\nOur Lord Emmanuel!"
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "status": "approved",
+  "id": "christian-seek-not-yet-repose",
+  "title": "Christian, seek not yet repose",
+  "alternateTitles": [],
+  "firstLine": "Christian, seek not yet repose,",
+  "meter": "7.7.7.3.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charlotte Elliott",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Henry Monk"
+    }
+  ],
+  "themes": [
+    "prayer"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charlotte Elliott (1789–1871).",
+  "tuneAttribution": "Tune: William Henry Monk (1823–1889).",
+  "publicDomainBasis": "Charlotte Elliott (1789–1871), William Henry Monk (1823–1889). All public domain.",
+  "searchKeywords": [
+    "christian",
+    "seek",
+    "repose"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "prayer",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Christian, seek not yet repose,\nHear thy gracious Savior say;\nThou art in the midst of foes:\nWatch and pray."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Principalities and powers,\nMustering their unseen array,\nWait for thy unguarded hours:\nWatch and pray."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Gird thy heavenly armor on,\nWear it ever night and day;\nAmbushed lies the evil one:\nWatch and pray."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Hear the victors who o’ercame,\nStill they mark each warrior’s way;\nAll with one sweet voice exclaim,\nWatch and pray."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "Hear, above all, hear thy Lord,\nHim thou lovest to obey;\nHide within thy heart His word:\nWatch and pray."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Watch, as if on that alone\nHung the issue of the day;\nPray, that help may be sent down:\nWatch and pray."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "christian seek not yet repose",
+    "normalizedFirstLine": "christian seek not yet repose",
+    "keywords": [
+      "christian",
+      "seek",
+      "repose"
+    ],
+    "themes": [
+      "prayer"
+    ],
+    "tokens": [
+      "christian",
+      "seek",
+      "not",
+      "yet",
+      "repose",
+      "charlotte",
+      "elliott",
+      "unknown",
+      "prayer"
+    ],
+    "searchableText": "christian seek not yet repose christian seek not yet repose charlotte elliott unknown prayer christian seek repose"
+  }
+}

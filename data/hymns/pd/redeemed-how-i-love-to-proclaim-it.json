@@ -1,0 +1,97 @@
+{
+  "status": "approved",
+  "id": "redeemed-how-i-love-to-proclaim-it",
+  "title": "Redeemed—how I love to proclaim it",
+  "alternateTitles": [],
+  "firstLine": "Redeemed—how I love to proclaim it!",
+  "meter": "9.8.9.8. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William James Kirkpatrick"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: William James Kirkpatrick (1838–1921).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), William James Kirkpatrick (1838–1921). All public domain.",
+  "searchKeywords": [
+    "redeemed",
+    "love",
+    "proclaim"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Redeemed—how I love to proclaim it!\nRedeemed by the blood of the Lamb;\nRedeemed through His infinite mercy,\nHis child, and forever, I am."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Redeemed and so happy in Jesus,\nNo language my rapture can tell;\nI know that the light of His presence\nWith me doth continually dwell."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "I think of my blessed Redeemer,\nI think of Him all the day long;\nI sing, for I cannot be silent;\nHis love is the theme of my song."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "I know I shall see in His beauty\nThe King in whose way I delight;\nWho lovingly guardeth my footsteps,\nAnd giveth me songs in the night."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "redeemed how i love to proclaim it",
+    "normalizedFirstLine": "redeemed how i love to proclaim it",
+    "keywords": [
+      "redeemed",
+      "love",
+      "proclaim"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "redeemed",
+      "how",
+      "love",
+      "to",
+      "proclaim",
+      "it",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "redeemed how i love to proclaim it redeemed how i love to proclaim it fanny jane crosby unknown praise redeemed love proclaim"
+  }
+}

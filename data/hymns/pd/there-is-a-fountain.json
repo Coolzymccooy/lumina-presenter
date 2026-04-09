@@ -1,0 +1,67 @@
+{
+  "status": "approved",
+  "id": "there-is-a-fountain",
+  "title": "There Is a Fountain Filled with Blood",
+  "alternateTitles": [],
+  "firstLine": "There is a fountain filled with blood drawn from Emmanuel's veins",
+  "meter": "CM with repeat",
+  "hymnalNumbers": { "UMH": 622, "SBC": 253, "LW": 234 },
+  "authors": [
+    { "name": "William Cowper", "role": "text" },
+    { "name": "Traditional American melody", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "CLEANSING FOUNTAIN", "alternateNames": ["There Is a Fountain"] }
+  ],
+  "themes": ["grace", "reflection", "surrender"],
+  "scriptureThemes": ["Zechariah 13:1", "Revelation 1:5", "1 John 1:7"],
+  "textAttribution": "Text: William Cowper, c. 1772.",
+  "tuneAttribution": "Tune: CLEANSING FOUNTAIN, traditional American melody.",
+  "publicDomainBasis": "William Cowper (1731–1800). Text written c. 1772. Tune is a traditional American folk melody. Both public domain.",
+  "searchKeywords": ["fountain", "blood", "cleansing", "Emmanuel", "thief", "dying", "wash"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "grace",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "There is a fountain filled with blood\nDrawn from Emmanuel's veins;\nAnd sinners plunged beneath that flood\nLose all their guilty stains.\nLose all their guilty stains,\nLose all their guilty stains;\nAnd sinners plunged beneath that flood\nLose all their guilty stains."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "The dying thief rejoiced to see\nThat fountain in his day;\nAnd there have I, as vile as he,\nWashed all my sins away.\nWashed all my sins away,\nWashed all my sins away;\nAnd there have I, as vile as he,\nWashed all my sins away."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Dear dying Lamb, Thy precious blood\nShall never lose its power\nTill all the ransomed church of God\nBe saved, to sin no more.\nBe saved, to sin no more,\nBe saved, to sin no more;\nTill all the ransomed church of God\nBe saved, to sin no more."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "E'er since, by faith, I saw the stream\nThy flowing wounds supply,\nRedeeming love has been my theme,\nAnd shall be till I die.\nAnd shall be till I die,\nAnd shall be till I die;\nRedeeming love has been my theme,\nAnd shall be till I die."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "When this poor lisping, stammering tongue\nLies silent in the grave,\nThen in a nobler, sweeter song\nI'll sing Thy power to save.\nI'll sing Thy power to save,\nI'll sing Thy power to save;\nThen in a nobler, sweeter song\nI'll sing Thy power to save."
+    }
+  ]
+}

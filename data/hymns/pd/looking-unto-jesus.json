@@ -1,0 +1,94 @@
+{
+  "status": "approved",
+  "id": "looking-unto-jesus",
+  "title": "Looking unto Jesus",
+  "alternateTitles": [],
+  "firstLine": "Looking unto Jesus,",
+  "meter": "6.5.6.5.D. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Frances Ridley Havergal",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Frances Ridley Havergal"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Frances Ridley Havergal (1836–1879).",
+  "tuneAttribution": "Tune: Frances Ridley Havergal (1836–1879).",
+  "publicDomainBasis": "Frances Ridley Havergal (1836–1879), Frances Ridley Havergal (1836–1879). All public domain.",
+  "searchKeywords": [
+    "looking",
+    "unto",
+    "jesus"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Looking unto Jesus,\nNever need we yield!\nOver all the armor,\nFaith the battle-shield!\nStandard of salvation,\nIn our hearts unfurled,\nLet its elevation\nOvercome the world."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Look away to Jesus,\nLook away from all!\nThen we need not stumble,\nThen we shall not fall.\nFrom each snare that lureth,\nFoe or phantom grim,\nSafety this ensureth,\nLook away to Him."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Looking into Jesus,\nWond’ringly we trace\nHeights of power and glory,\nDepths of love and grace.\nVistas far unfolding\nEver stretch before,\nAs we gaze, beholding,\nEver more and more."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Looking up to Jesus\nOn the emerald throne,\nFaith shall pierce the heavens,\nWhere our King is gone.\nLord, on Thee depending,\nNow, continually,\nHeart and mind ascending,\nLet us dwell with Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "looking unto jesus",
+    "normalizedFirstLine": "looking unto jesus",
+    "keywords": [
+      "looking",
+      "unto",
+      "jesus"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "looking",
+      "unto",
+      "jesus",
+      "frances",
+      "ridley",
+      "havergal",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "looking unto jesus looking unto jesus frances ridley havergal unknown praise looking unto jesus"
+  }
+}

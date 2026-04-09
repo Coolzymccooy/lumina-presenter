@@ -1,0 +1,96 @@
+{
+  "status": "approved",
+  "id": "he-leadeth-me-o-blessed-thought",
+  "title": "He leadeth me! O blessed thought",
+  "alternateTitles": [],
+  "firstLine": "He leadeth me! O blessed thought,",
+  "meter": "8.8.8.8.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Joseph Henry Gilmore",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Batchelder Bradbury"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Joseph Henry Gilmore (1834–1918).",
+  "tuneAttribution": "Tune: William Batchelder Bradbury (1816–1868).",
+  "publicDomainBasis": "Joseph Henry Gilmore (1834–1918), William Batchelder Bradbury (1816–1868). All public domain.",
+  "searchKeywords": [
+    "leadeth",
+    "blessed",
+    "thought"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "He leadeth me! O blessed thought,\nO words with heav’nly comfort fraught;\nWhate’er I do, where’er I be,\nStill ’tis Christ’s hand that leadeth me."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Sometimes ’mid scenes of deepest gloom,\nSometimes where Eden’s bowers bloom,\nBy waters still, o’er troubled sea,\nStill ’tis His hand that leadeth me."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Lord, I would clasp Thy hand in mine,\nNor ever murmur or repine;\nContent, whatever lot I see,\nSince it is Thou that leadest me."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "And when my task on earth is done,\nWhen, by Thy grace, the vict’ry’s won,\nE’en death’s cold wave I will not flee,\nSince Thou in triumph leadest me."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "he leadeth me o blessed thought",
+    "normalizedFirstLine": "he leadeth me o blessed thought",
+    "keywords": [
+      "leadeth",
+      "blessed",
+      "thought"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "he",
+      "leadeth",
+      "me",
+      "blessed",
+      "thought",
+      "joseph",
+      "henry",
+      "gilmore",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "he leadeth me o blessed thought he leadeth me o blessed thought joseph henry gilmore unknown praise leadeth blessed thought"
+  }
+}

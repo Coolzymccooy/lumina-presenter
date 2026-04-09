@@ -1,0 +1,94 @@
+{
+  "status": "approved",
+  "id": "love-divine-all-love-excelling",
+  "title": "Love Divine, all love excelling",
+  "alternateTitles": [],
+  "firstLine": "Love Divine, all love excelling,",
+  "meter": "8.7.8.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Zundel"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Wesley (1707–1788).",
+  "tuneAttribution": "Tune: John Zundel (1815–1882).",
+  "publicDomainBasis": "Charles Wesley (1707–1788), John Zundel (1815–1882). All public domain.",
+  "searchKeywords": [
+    "love",
+    "divine",
+    "excelling"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Love Divine, all love excelling,\nJoy of heav’n, to earth come down;\nFix in us Thy humble dwelling,\nAll Thy faithful mercies crown.\nJesus, Thou art all compassion;\nPure, unbounded love Thou art;\nVisit us with Thy salvation,\nEnter every trembling heart."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Breathe, O breathe Thy loving Spirit\nInto every troubled breast;\nLet us all in Thee inherit,\nLet us find the promised rest.\nTake away the love of sinning;\nAlpha and Omega be;\nEnd of faith, as its beginning,\nSet our hearts at liberty."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Come, Almighty, to deliver,\nLet us all Thy life receive;\nMay Thy presence e’er be with us,\nNever more Thy temples leave.\nThee we would be always blessing,\nServe Thee as Thou wouldst approve,\nPray, and praise Thee without ceasing,\nGlory in Thy perfect love."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Finish, then, Thy new creation;\nPure and spotless let us be;\nLet us see Thy great salvation\nPerfectly restored in Thee;\nChanged from glory into glory\nTill with Thee we take our place,\nTill we cast our crowns before Thee,\nLost in wonder, love and praise."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "love divine all love excelling",
+    "normalizedFirstLine": "love divine all love excelling",
+    "keywords": [
+      "love",
+      "divine",
+      "excelling"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "love",
+      "divine",
+      "all",
+      "excelling",
+      "charles",
+      "wesley",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "love divine all love excelling love divine all love excelling charles wesley unknown praise love divine excelling"
+  }
+}

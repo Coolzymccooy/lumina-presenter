@@ -1,0 +1,115 @@
+{
+  "status": "approved",
+  "id": "revive-thy-work-o-lord",
+  "title": "Revive Thy work, O Lord",
+  "alternateTitles": [],
+  "firstLine": "Revive Thy work, O Lord!",
+  "meter": "6.6.8.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    },
+    {
+      "name": "Albert Midlane",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "prayer"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915), Albert Midlane (1825–1909).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), Albert Midlane (1825–1909), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "revive",
+    "work",
+    "lord"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "prayer",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Revive Thy work, O Lord!\nNow to Thy saints appear!\nOh, speak with power to every soul,\nAnd let Thy people hear!"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Revive Thy work, O Lord!\nAnd every soul inspire;\nOh, kindle in each heart, we pray,\nThe Pentecostal fire!"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Revive Thy work, O Lord!\nExalt Thy precious name!\nAnd may Thy love in every heart\nBe kindled to a flame!"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Revive Thy work, O Lord!\nAnd bless to all Thy Word!\nAnd may its pure and sacred truth\nIn living faith be heard!"
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Revive Thy work, O Lord!\nAnd make Thy servants bold;\nConvict of sin and work once more\nAs in the days of old."
+    },
+    {
+      "id": "chorus-5",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 6,
+      "text": "Revive Thy work, O Lord!\nGive Pentecostal showers!\nBe Thine the glory, Thine alone!\nThe blessing, Lord, be ours!"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "revive thy work o lord",
+    "normalizedFirstLine": "revive thy work o lord",
+    "keywords": [
+      "revive",
+      "work",
+      "lord"
+    ],
+    "themes": [
+      "prayer"
+    ],
+    "tokens": [
+      "revive",
+      "thy",
+      "work",
+      "lord",
+      "fanny",
+      "jane",
+      "crosby",
+      "albert",
+      "midlane",
+      "unknown",
+      "prayer"
+    ],
+    "searchableText": "revive thy work o lord revive thy work o lord fanny jane crosby albert midlane unknown prayer revive work lord"
+  }
+}

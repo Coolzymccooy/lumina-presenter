@@ -1,0 +1,102 @@
+{
+  "status": "approved",
+  "id": "the-church-has-waited-long",
+  "title": "The Church has waited long",
+  "alternateTitles": [],
+  "firstLine": "The Church has waited long,",
+  "meter": "6.6.8.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Horatius Bonar",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Horatius Bonar (1808–1889).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "Horatius Bonar (1808–1889), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "church",
+    "waited",
+    "long"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "The Church has waited long,\nHer absent Lord to see,\nAnd still in loneliness she waits,\nA friendless stranger she.\nAge after age has gone,\nSun after sun has set,\nAnd still in weeds of widowhood,\nShe weeps a mourner yet."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Saint after saint on earth\nHas lived, and loved, and died;\nAnd as they left us one by one,\nWe laid them side by side;\nWe laid them down to sleep,\nBut not in hope forlorn;\nWe laid them but to ripen there,\nTill the last glorious morn."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "The serpent’s brood increase,\nThe powers of hell grow bold,\nThe conflict thickens, faith is low,\nAnd love is waxing cold.\nHow long, O Lord our God,\nHoly, and true, and good,\nWilt Thou not judge Thy suffering Church,\nHer sighs, and tears, and blood?"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "We long to hear Thy voice,\nTo see Thee face to face,\nTo share Thy crown and glory then,\nAs now we share Thy grace.\nShould not the loving bride\nHer absent bridegroom mourn?\nShould she not wear the signs of grief\nUntil her Lord return?"
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "The whole creation groans,\nAnd waits to hear that voice\nThat shall her beauteousness restore,\nAnd make her wastes rejoice.\nCome, Lord, and wipe away\nThe curse, the sin, the stain,\nAnd make this blighted world of ours\nThine own fair world again."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "the church has waited long",
+    "normalizedFirstLine": "the church has waited long",
+    "keywords": [
+      "church",
+      "waited",
+      "long"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "the",
+      "church",
+      "has",
+      "waited",
+      "long",
+      "horatius",
+      "bonar",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "the church has waited long the church has waited long horatius bonar unknown praise church waited long"
+  }
+}

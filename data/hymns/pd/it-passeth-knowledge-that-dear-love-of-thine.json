@@ -1,0 +1,125 @@
+{
+  "status": "approved",
+  "id": "it-passeth-knowledge-that-dear-love-of-thine",
+  "title": "It passeth knowledge, that dear love of Thine",
+  "alternateTitles": [],
+  "firstLine": "It passeth knowledge, that dear love of Thine,",
+  "meter": "10.10.10.10.4.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Mary Shekleton",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Ira David Sankey"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Mary Shekleton (1827–1883).",
+  "tuneAttribution": "Tune: Ira David Sankey (1840–1908).",
+  "publicDomainBasis": "Mary Shekleton (1827–1883), Ira David Sankey (1840–1908). All public domain.",
+  "searchKeywords": [
+    "passeth",
+    "knowledge",
+    "that",
+    "dear",
+    "love",
+    "thine"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "It passeth knowledge, that dear love of Thine,\nMy Savior, Jesus; yet this soul of mine\nWould of Thy love in all its breadth and length,\nIts height and depth, its everlasting strength,\nKnow more and more."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "It passeth telling, that dear love of Thine,\nMy Savior, Jesus; yet these lips of mine\nWould fain proclaim to sinners, far and near,\nA love which can remove all guilty fear,\nAnd love beget."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "It passeth praises, that dear love of Thine,\nMy Savior, Jesus; yet this heart of mine\nWould sing that love, so full, so rich, so free,\nWhich brings a rebel sinner, such as me,\nNigh unto God."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "But though I cannot sing, or tell, or know\nThe fulness of Thy love, while here below,\nMy empty vessel I may freely bring;\nO Thou, who art of love the living spring,\nMy vessel fill."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "I am an empty vessel—not one thought\nOr look of love to Thee I’ve ever brought;\nYet I may come, and come again to Thee,\nWith this the empty sinner’s only plea,\nThou lovest me."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Oh, fill me, Jesus, Savior, with Thy love!\nLead, lead me to the living fount above;\nThither may I, in simple faith draw nigh,\nAnd never to another fountain fly,\nBut unto Thee."
+    },
+    {
+      "id": "v7",
+      "type": "verse",
+      "label": "Verse 7",
+      "order": 7,
+      "text": "Lord Jesus, when Thee face to face I see,\nWhen on Thy lofty throne I sit with Thee,\nThen of Thy love, in all its breadth and length,\nIts height and depth, its everlasting strength,\nMy soul shall sing."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "it passeth knowledge that dear love of thine",
+    "normalizedFirstLine": "it passeth knowledge that dear love of thine",
+    "keywords": [
+      "passeth",
+      "knowledge",
+      "that",
+      "dear",
+      "love",
+      "thine"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "it",
+      "passeth",
+      "knowledge",
+      "that",
+      "dear",
+      "love",
+      "of",
+      "thine",
+      "mary",
+      "shekleton",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "it passeth knowledge that dear love of thine it passeth knowledge that dear love of thine mary shekleton unknown praise passeth knowledge that dear love thine"
+  }
+}

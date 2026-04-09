@@ -1,0 +1,106 @@
+{
+  "status": "approved",
+  "id": "o-jesus-christ-grow-thou-in-me",
+  "title": "O Jesus Christ, grow Thou in me",
+  "alternateTitles": [],
+  "firstLine": "O Jesus Christ, grow Thou in me,",
+  "meter": "8.6.8.6.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Johann Casper Lavater",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Ada Rose Gibbs"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Johann Casper Lavater (1741–1801).",
+  "tuneAttribution": "Tune: Ada Rose Gibbs (1865–1905).",
+  "publicDomainBasis": "Johann Casper Lavater (1741–1801), Ada Rose Gibbs (1865–1905). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "christ",
+    "grow",
+    "thou"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "O Jesus Christ, grow Thou in me,\nAnd all things else recede;\nMy heart be daily nearer Thee,\nFrom sin be daily freed."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "In Thy bright beams which on me fall,\nFade every evil thought;\nThat I am nothing, Thou art all,\nI would be daily taught."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "More of Thy glory let me see,\nThou Holy, Wise, and True;\nI would Thy living image be,\nIn joy and sorrow too."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Fill me with gladness from above,\nHold me by strength divine;\nLord, let the glow of Thy great love\nThrough all my being shine."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Make this poor self grow less and less,\nBe Thou my life and aim;\nOh, make me daily through Thy grace\nMore meet to bear Thy name."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "o jesus christ grow thou in me",
+    "normalizedFirstLine": "o jesus christ grow thou in me",
+    "keywords": [
+      "jesus",
+      "christ",
+      "grow",
+      "thou"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "jesus",
+      "christ",
+      "grow",
+      "thou",
+      "in",
+      "me",
+      "johann",
+      "casper",
+      "lavater",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "o jesus christ grow thou in me o jesus christ grow thou in me johann casper lavater unknown praise jesus christ grow thou"
+  }
+}

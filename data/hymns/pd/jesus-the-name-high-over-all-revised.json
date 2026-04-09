@@ -1,0 +1,108 @@
+{
+  "status": "approved",
+  "id": "jesus-the-name-high-over-all-revised",
+  "title": "Jesus, the name high over all (revised)",
+  "alternateTitles": [],
+  "firstLine": "Jesus, the name high over all,",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Carl Gottholf Glaser"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Wesley (1707–1788).",
+  "tuneAttribution": "Tune: Carl Gottholf Glaser (1784–1829).",
+  "publicDomainBasis": "Charles Wesley (1707–1788), Carl Gottholf Glaser (1784–1829). All public domain.",
+  "searchKeywords": [
+    "jesus",
+    "name",
+    "high",
+    "over",
+    "revised"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Jesus, the name high over all,\nIn hell, or earth, or sky:\nAngels and men before it fall,\nAnd devils fear and fly."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Jesus, the name to sinners dear,\nThe name to sinners giv’n.\nIt scatters all their guilty fear;\nIt brings them peace of heav’n."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Jesus the prisoner’s fetters breaks\nAnd bruises Satan’s head;\nPow’r into strengthless souls He speaks,\nAnd life into the dead."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Oh, that the world might taste and see\nThe riches of His grace!\nThe arms of love that compass me,\nWould all mankind embrace."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "The name of Jesus, ever sure,\nSufficient, life to bear,\nSo dear, so precious, shall endure,\nMy testimony e’er."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "jesus the name high over all revised",
+    "normalizedFirstLine": "jesus the name high over all",
+    "keywords": [
+      "jesus",
+      "name",
+      "high",
+      "over",
+      "revised"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "jesus",
+      "the",
+      "name",
+      "high",
+      "over",
+      "all",
+      "revised",
+      "charles",
+      "wesley",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "jesus the name high over all revised jesus the name high over all charles wesley unknown praise jesus name high over revised"
+  }
+}

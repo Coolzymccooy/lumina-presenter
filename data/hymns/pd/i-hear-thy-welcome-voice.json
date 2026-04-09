@@ -1,0 +1,101 @@
+{
+  "status": "approved",
+  "id": "i-hear-thy-welcome-voice",
+  "title": "I hear Thy welcome voice",
+  "alternateTitles": [],
+  "firstLine": "I hear Thy welcome voice,",
+  "meter": "6.6.8.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Lewis Hartsough",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Lewis Hartsough"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Lewis Hartsough (1828–1919).",
+  "tuneAttribution": "Tune: Lewis Hartsough (1828–1919).",
+  "publicDomainBasis": "Lewis Hartsough (1828–1919), Lewis Hartsough (1828–1919). All public domain.",
+  "searchKeywords": [
+    "hear",
+    "welcome",
+    "voice"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I hear Thy welcome voice,\nThat calls me, Lord, to Thee,\nFor cleansing in Thy precious blood\nThat flowed on Calvary."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Though coming weak and vile,\nThou dost my strength assure;\nThou dost my vileness fully cleanse,\nTill spotless all, and pure."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "’Tis Jesus who confirms\nThe blessed work within,\nBy adding grace to welcomed grace,\nWhere reigned the power of sin."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "And He the witness gives\nTo loyal hearts and free,\nThat every promise is fulfilled,\nIf faith but brings the plea."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "All hail, redeeming blood!\nAll hail, life-giving grace!\nAll hail, the gift of Christ our Lord,\nOur strength and righteousness."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i hear thy welcome voice",
+    "normalizedFirstLine": "i hear thy welcome voice",
+    "keywords": [
+      "hear",
+      "welcome",
+      "voice"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "hear",
+      "thy",
+      "welcome",
+      "voice",
+      "lewis",
+      "hartsough",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i hear thy welcome voice i hear thy welcome voice lewis hartsough unknown praise hear welcome voice"
+  }
+}

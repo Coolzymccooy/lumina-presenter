@@ -1,0 +1,94 @@
+{
+  "status": "approved",
+  "id": "tell-me-the-old-old-story",
+  "title": "Tell me the old, old story",
+  "alternateTitles": [],
+  "firstLine": "Tell me the old, old story,",
+  "meter": "7.6.7.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Arabella Katherine Hankey",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Howard Doane"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Arabella Katherine Hankey (1834–1911).",
+  "tuneAttribution": "Tune: William Howard Doane (1832–1915).",
+  "publicDomainBasis": "Arabella Katherine Hankey (1834–1911), William Howard Doane (1832–1915). All public domain.",
+  "searchKeywords": [
+    "tell",
+    "story"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Tell me the old, old story,\nOf unseen things above,\nOf Jesus and His glory,\nOf Jesus and His love;\nTell me the story simply,\nAs to a little child,\nFor I am weak and weary,\nAnd helpless and defiled."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Tell me the story slowly,\nThat I may take it in—\nThat wonderful redemption,\nGod’s remedy for sin;\nTell me the story often,\nFor I forget so soon,\nThe “early dew” of morning\nHas passed away at noon."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Tell me the story softly,\nWith earnest tones and grave;\nRemember I’m the sinner\nWhom Jesus came to save;\nTell me the story always,\nIf you would really be,\nIn any time of trouble,\nA comforter to me."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Tell me the same old story,\nWhen you have cause to fear\nThat this world’s empty glory\nIs costing me too dear;\nAnd when the Lord’s bright glory\nIs dawning on my soul,\nTell me the old, old story:\n“Christ Jesus makes thee whole.”"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "tell me the old old story",
+    "normalizedFirstLine": "tell me the old old story",
+    "keywords": [
+      "tell",
+      "story"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "tell",
+      "me",
+      "the",
+      "old",
+      "story",
+      "arabella",
+      "katherine",
+      "hankey",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "tell me the old old story tell me the old old story arabella katherine hankey unknown praise tell story"
+  }
+}

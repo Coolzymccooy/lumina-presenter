@@ -1,0 +1,121 @@
+{
+  "status": "approved",
+  "id": "hast-thou-heard-him-seen-him-known-him",
+  "title": "Hast thou heard Him, seen Him, known Him",
+  "alternateTitles": [],
+  "firstLine": "Hast thou heard Him, seen Him, known Him?",
+  "meter": "8.7.8.7.D.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Ora Rowan",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William James Kirkpatrick"
+    }
+  ],
+  "themes": [
+    "surrender"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Ora Rowan (1834–1879).",
+  "tuneAttribution": "Tune: William James Kirkpatrick (1838–1921).",
+  "publicDomainBasis": "Ora Rowan (1834–1879), William James Kirkpatrick (1838–1921). All public domain.",
+  "searchKeywords": [
+    "hast",
+    "thou",
+    "heard",
+    "seen",
+    "known"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Hast thou heard Him, seen Him, known Him?\nIs not thine a captured heart?\nChief among ten thousand own Him;\nJoyful choose the better part."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Idols once they won thee, charmed thee,\nLovely things of time and sense;\nGilded thus does sin disarm thee,\nHoneyed lest thou turn thee thence."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "What has stripped the seeming beauty\nFrom the idols of the earth?\nNot a sense of right or duty,\nBut the sight of peerless worth."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Not the crushing of those idols,\nWith its bitter void and smart;\nBut the beaming of His beauty,\nThe unveiling of His heart."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Who extinguishes their taper\nTill they hail the rising sun?\nWho discards the garb of winter\nTill the summer has begun?"
+    },
+    {
+      "id": "chorus-5",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 6,
+      "text": "’Tis that look that melted Peter,\n’Tis that face that Stephen saw,\n’Tis that heart that wept with Mary,\nCan alone from idols draw:"
+    },
+    {
+      "id": "chorus-6",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 7,
+      "text": "Draw and win and fill completely,\nTill the cup o’erflow the brim;\nWhat have we to do with idols\nWho have companied with Him?"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "hast thou heard him seen him known him",
+    "normalizedFirstLine": "hast thou heard him seen him known him",
+    "keywords": [
+      "hast",
+      "thou",
+      "heard",
+      "seen",
+      "known"
+    ],
+    "themes": [
+      "surrender"
+    ],
+    "tokens": [
+      "hast",
+      "thou",
+      "heard",
+      "him",
+      "seen",
+      "known",
+      "ora",
+      "rowan",
+      "unknown",
+      "surrender"
+    ],
+    "searchableText": "hast thou heard him seen him known him hast thou heard him seen him known him ora rowan unknown surrender hast thou heard seen known"
+  }
+}

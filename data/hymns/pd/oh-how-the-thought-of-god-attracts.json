@@ -1,0 +1,131 @@
+{
+  "status": "approved",
+  "id": "oh-how-the-thought-of-god-attracts",
+  "title": "Oh, how the thought of God attracts",
+  "alternateTitles": [],
+  "firstLine": "Oh, how the thought of God attracts",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Frederick William Faber",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James Walch"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Frederick William Faber (1814–1863).",
+  "tuneAttribution": "Tune: James Walch (1837–1901).",
+  "publicDomainBasis": "Frederick William Faber (1814–1863), James Walch (1837–1901). All public domain.",
+  "searchKeywords": [
+    "thought",
+    "attracts"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Oh, how the thought of God attracts\nAnd draws the heart from earth,\nAnd sickens it of passing shows\nAnd dissipating mirth!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "’Tis not enough to save our souls,\nTo shun th’ eternal fires;\nThe thought of God will rouse the heart\nTo more sublime desires."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "God only is the creature’s home,\nThough rough and straight the road;\nYet nothing less can satisfy\nThe love that longs for God."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Oh, utter but the Name of God\nDown in your heart of hearts,\nAnd see how from the world at once\nAll tempting light departs."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "A trusting heart, a yearning eye,\nCan win their way above;\nIf mountains can be moved by faith,\nIs there less power in love?"
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "How little of that road, my soul!\nHow little hast thou gone!\nTake heart, and let the thought of God\nAllure thee further on."
+    },
+    {
+      "id": "v7",
+      "type": "verse",
+      "label": "Verse 7",
+      "order": 7,
+      "text": "The freedom from all willful sin,\nThe Christian’s daily task;\nOh! these are graces far below\nWhat longing love would ask!"
+    },
+    {
+      "id": "v8",
+      "type": "verse",
+      "label": "Verse 8",
+      "order": 8,
+      "text": "The perfect way is hard to flesh;\nIt is not hard to love;\nIf thou wert sick for want of God,\nHow swiftly wouldst thou move!"
+    },
+    {
+      "id": "v9",
+      "type": "verse",
+      "label": "Verse 9",
+      "order": 9,
+      "text": "Then keep thy conscience sensitive;\nNo inward token miss:\nAnd go where grace entices thee—\nPerfection lies in this."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "oh how the thought of god attracts",
+    "normalizedFirstLine": "oh how the thought of god attracts",
+    "keywords": [
+      "thought",
+      "attracts"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "oh",
+      "how",
+      "the",
+      "thought",
+      "of",
+      "god",
+      "attracts",
+      "frederick",
+      "william",
+      "faber",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "oh how the thought of god attracts oh how the thought of god attracts frederick william faber unknown praise thought attracts"
+  }
+}

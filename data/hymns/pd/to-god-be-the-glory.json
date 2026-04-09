@@ -1,0 +1,62 @@
+{
+  "status": "approved",
+  "id": "to-god-be-the-glory",
+  "title": "To God Be the Glory",
+  "alternateTitles": [],
+  "firstLine": "To God be the glory, great things He hath done",
+  "meter": "11.11.11.11 with refrain",
+  "hymnalNumbers": { "UMH": 98, "SBC": 4, "ELW": 852 },
+  "authors": [
+    { "name": "Fanny J. Crosby", "role": "text" },
+    { "name": "William H. Doane", "role": "tune" }
+  ],
+  "tunes": [
+    { "name": "TO GOD BE THE GLORY", "composer": "William H. Doane" }
+  ],
+  "themes": ["praise", "grace", "thanksgiving"],
+  "scriptureThemes": ["John 3:16", "Romans 5:8", "Ephesians 2:8"],
+  "textAttribution": "Text: Fanny J. Crosby, 1875.",
+  "tuneAttribution": "Tune: TO GOD BE THE GLORY by William H. Doane, 1875.",
+  "publicDomainBasis": "Fanny J. Crosby (1820–1915), William H. Doane (1832–1915). Published 1875. Both public domain.",
+  "searchKeywords": ["glory", "praise", "wonder", "redeemed", "open the gates"],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "either",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "To God be the glory, great things He hath done,\nSo loved He the world that He gave us His Son,\nWho yielded His life an atonement for sin,\nAnd opened the life-gate that all may go in."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Praise the Lord, praise the Lord,\nLet the earth hear His voice!\nPraise the Lord, praise the Lord,\nLet the people rejoice!\nO come to the Father, through Jesus the Son,\nAnd give Him the glory, great things He hath done.",
+      "repeatMode": "each-verse",
+      "visuallyDistinct": true
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 3,
+      "text": "O perfect redemption, the purchase of blood,\nTo every believer the promise of God;\nThe vilest offender who truly believes,\nThat moment from Jesus a pardon receives."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 4,
+      "text": "Great things He hath taught us, great things He hath done,\nAnd great our rejoicing through Jesus the Son;\nBut purer, and higher, and greater will be\nOur wonder, our transport, when Jesus we see."
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "status": "approved",
+  "id": "always-i-ll-be-with-you",
+  "title": "Always I’ll be with you",
+  "alternateTitles": [],
+  "firstLine": "“Always I’ll be with you”—",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Eliza Edmunds Hewitt",
+      "role": "text"
+    }
+  ],
+  "tunes": [],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Eliza Edmunds Hewitt (1851–1920).",
+  "tuneAttribution": "Tune: Unknown.",
+  "publicDomainBasis": "Eliza Edmunds Hewitt (1851–1920). All public domain.",
+  "searchKeywords": [
+    "always",
+    "with"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "“Always I’ll be with you”—\nPromise sweet to hear,\nFills my heart with comfort,\nDrives away my fear;\nThrough long night and gloomy,\nChrist my shield will be;\nHe will ne’er forsake me,\nAlways be with me."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Every flower withers;\nHis love never will.\nEarthly sunlight darkens;\nHeav’nly’s splendid still.\nHe’s like myrrh, a bundle,\n’Twixt my breasts all night.\nAlways He’ll be with me,\nTill that morning light."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Rough the way before me;\nTrials soon increase;\nBut the Lord is nearer,\nSaying, “Be at peace.”\nJoys, like birds of springtime,\nFill my heart with glee;\nCause me to sing sweetly,\n“The Lord is with me!”"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "always i ll be with you",
+    "normalizedFirstLine": "always i ll be with you",
+    "keywords": [
+      "always",
+      "with"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "always",
+      "ll",
+      "be",
+      "with",
+      "you",
+      "eliza",
+      "edmunds",
+      "hewitt",
+      "praise"
+    ],
+    "searchableText": "always i ll be with you always i ll be with you eliza edmunds hewitt praise always with"
+  }
+}

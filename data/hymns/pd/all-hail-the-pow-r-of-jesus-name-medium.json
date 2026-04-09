@@ -1,0 +1,107 @@
+{
+  "status": "approved",
+  "id": "all-hail-the-pow-r-of-jesus-name-medium",
+  "title": "All hail the pow’r of Jesus’ name (Medium)",
+  "alternateTitles": [],
+  "firstLine": "All hail the pow’r of Jesus’ name!",
+  "meter": "8.6.8.6. with repeat.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Edward Perronet",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "James Ellor"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Edward Perronet (1726–1792).",
+  "tuneAttribution": "Tune: James Ellor (1819–1899).",
+  "publicDomainBasis": "Edward Perronet (1726–1792), James Ellor (1819–1899). All public domain.",
+  "searchKeywords": [
+    "hail",
+    "jesus",
+    "name",
+    "medium"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "All hail the pow’r of Jesus’ name!\nLet angels prostrate fall,\nLet angels prostrate fall;\nBring forth the royal diadem,"
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Ye chosen seed of Israel’s race,\nYe ransomed from the fall,\nYe ransomed from the fall,\nHail Him who saves you by His grace,"
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Sinners, whose love can ne’er forget\nThe wormwood and the gall,\nThe wormwood and the gall,\nGo, spread your trophies at His feet,"
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "Let every kindred, every tribe,\nOn this terrestrial ball,\nOn this terrestrial ball,\nTo Him all majesty ascribe,"
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "O that with yonder sacred throng\nWe at His feet may fall,\nWe at His feet may fall!\nWe’ll join the everlasting song,"
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "all hail the pow r of jesus name medium",
+    "normalizedFirstLine": "all hail the pow r of jesus name",
+    "keywords": [
+      "hail",
+      "jesus",
+      "name",
+      "medium"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "all",
+      "hail",
+      "the",
+      "pow",
+      "of",
+      "jesus",
+      "name",
+      "medium",
+      "edward",
+      "perronet",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "all hail the pow r of jesus name medium all hail the pow r of jesus name edward perronet unknown praise hail jesus name medium"
+  }
+}

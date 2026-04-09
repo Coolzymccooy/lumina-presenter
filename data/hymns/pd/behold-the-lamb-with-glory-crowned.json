@@ -1,0 +1,107 @@
+{
+  "status": "approved",
+  "id": "behold-the-lamb-with-glory-crowned",
+  "title": "Behold the Lamb with glory crowned",
+  "alternateTitles": [],
+  "firstLine": "Behold the Lamb with glory crowned,",
+  "meter": "8.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Thomas Kelly",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Jeremiah Clark"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Thomas Kelly (1769–1855).",
+  "tuneAttribution": "Tune: Jeremiah Clark (1670–1707).",
+  "publicDomainBasis": "Thomas Kelly (1769–1855), Jeremiah Clark (1670–1707). All public domain.",
+  "searchKeywords": [
+    "behold",
+    "lamb",
+    "with",
+    "glory",
+    "crowned"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Behold the Lamb with glory crowned,\nTo Him all pow’r is giv’n:\nNo place too high for Him is found,\nNo place too high in heav’n."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "He fills the throne—the throne above;\nIts rights to Him belong;\nThe object of His Father’s love,\nTheme of the ransomed’s song."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Though high yet He accepts the praise\nHis people offer here;\nThe faintest, feeblest note they raise\nWill reach the Savior’s ear."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "This song be ours, we join in one\nTo celebrate the Name\nOf Him that sits upon the throne,\nAnd to exalt the Lamb."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "To Him whom men despise and slight,\nTo Him be glory giv’n;\nThe crown is His, and His by right\nThe highest place in heav’n."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "behold the lamb with glory crowned",
+    "normalizedFirstLine": "behold the lamb with glory crowned",
+    "keywords": [
+      "behold",
+      "lamb",
+      "with",
+      "glory",
+      "crowned"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "behold",
+      "the",
+      "lamb",
+      "with",
+      "glory",
+      "crowned",
+      "thomas",
+      "kelly",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "behold the lamb with glory crowned behold the lamb with glory crowned thomas kelly unknown praise behold lamb with glory crowned"
+  }
+}

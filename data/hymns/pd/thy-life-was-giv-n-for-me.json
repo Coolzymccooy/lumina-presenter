@@ -1,0 +1,107 @@
+{
+  "status": "approved",
+  "id": "thy-life-was-giv-n-for-me",
+  "title": "Thy Life was giv’n for me",
+  "alternateTitles": [],
+  "firstLine": "Thy Life was giv’n for me,",
+  "meter": "6.6.6.6.8.6.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Frances Ridley Havergal",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Philip Paul Bliss"
+    }
+  ],
+  "themes": [
+    "surrender"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Frances Ridley Havergal (1836–1879).",
+  "tuneAttribution": "Tune: Philip Paul Bliss (1838–1876).",
+  "publicDomainBasis": "Frances Ridley Havergal (1836–1879), Philip Paul Bliss (1838–1876). All public domain.",
+  "searchKeywords": [
+    "life"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "surrender",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Thy Life was giv’n for me,\nThy blood, O Lord, was shed,\nThat I might ransomed be,\nAnd quickened from the dead;\nThy Life was giv’n for me, for me;\nWhat have I giv’n for Thee?"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Long years were spent for me\nIn weariness and woe,\nThat through eternity\nThy glory I might know;\nLong years were spent for me, for me;\nHave I spent one for Thee?"
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Thy Father’s home of light,\nThy rainbow-circled throne,\nWere left for earthly night,\nFor wanderings sad and lone;\nYea, all was left for me, for me;\nHave I left aught for Thee?"
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Thou, Lord, hast borne for me\nMore than my tongue can tell\nOf bitterest agony,\nTo rescue me from hell;\nThou suff’redst all for me, for me;\nWhat have I borne for Thee?"
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "And Thou hast brought to me\nDown from Thy home above\nSalvation full and free,\nThy pardon and Thy love;\nGreat gifts, great gifts Thou broughtest me;\nWhat have I brought to Thee?"
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Oh, let my life be given,\nMy years for Thee be spent;\nWorld-fetters all be riven,\nAnd joy with suff’ring blent;\nThou gav’st Thyself for me, for me,\nI give myself to Thee."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "thy life was giv n for me",
+    "normalizedFirstLine": "thy life was giv n for me",
+    "keywords": [
+      "life"
+    ],
+    "themes": [
+      "surrender"
+    ],
+    "tokens": [
+      "thy",
+      "life",
+      "was",
+      "giv",
+      "for",
+      "me",
+      "frances",
+      "ridley",
+      "havergal",
+      "unknown",
+      "surrender"
+    ],
+    "searchableText": "thy life was giv n for me thy life was giv n for me frances ridley havergal unknown surrender life"
+  }
+}

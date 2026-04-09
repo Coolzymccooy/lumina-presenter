@@ -1,0 +1,88 @@
+{
+  "status": "approved",
+  "id": "glory-be-to-him-who-loved-us",
+  "title": "Glory be to Him who loved us",
+  "alternateTitles": [],
+  "firstLine": "Glory be to Him who loved us,",
+  "meter": "8.7.8.7.8.7.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Horatius Bonar",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Henry Thomas Smart"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Horatius Bonar (1808–1889).",
+  "tuneAttribution": "Tune: Henry Thomas Smart (1813–1879).",
+  "publicDomainBasis": "Horatius Bonar (1808–1889), Henry Thomas Smart (1813–1879). All public domain.",
+  "searchKeywords": [
+    "glory",
+    "loved"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Glory be to Him who loved us,\nWashed us from each sinful stain;\nGlory be to Him who made us\nPriests and kings with Him to reign;\nGlory, worship, laud and blessing\nTo the Lamb who once was slain."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Glory, worship, laud and blessing,\nThus the choir triumphant sings;\nHonor, riches, power, dominion,\nThus its praise creation brings;\nThou art worthy, Thou art worthy,\nLord of lords, and King of kings."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Glory to the King of angels,\nGlory to the Church’s King,\nGlory to the King of nations,\nHeaven and earth His praises sing;\nGlory ever and forever\nTo the King of Glory bring."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "glory be to him who loved us",
+    "normalizedFirstLine": "glory be to him who loved us",
+    "keywords": [
+      "glory",
+      "loved"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "glory",
+      "be",
+      "to",
+      "him",
+      "who",
+      "loved",
+      "us",
+      "horatius",
+      "bonar",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "glory be to him who loved us glory be to him who loved us horatius bonar unknown praise glory loved"
+  }
+}

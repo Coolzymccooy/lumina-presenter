@@ -1,0 +1,105 @@
+{
+  "status": "approved",
+  "id": "i-have-a-song-i-love-to-sing",
+  "title": "I have a song I love to sing",
+  "alternateTitles": [],
+  "firstLine": "I have a song I love to sing,",
+  "meter": "8.6.8.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Edwin Othello Excell",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Edwin Othello Excell"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Edwin Othello Excell (1851–1921).",
+  "tuneAttribution": "Tune: Edwin Othello Excell (1851–1921).",
+  "publicDomainBasis": "Edwin Othello Excell (1851–1921), Edwin Othello Excell (1851–1921). All public domain.",
+  "searchKeywords": [
+    "have",
+    "song",
+    "love",
+    "sing"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "I have a song I love to sing,\nSince I have been redeemed,\nOf my Redeemer, Savior, King—\nSince I have been redeemed."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "I have a Christ that satisfies,\nSince I have been redeemed,\nTo do His will my highest prize—\nSince I have been redeemed."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "I have a witness bright and clear,\nSince I have been redeemed,\nDispelling every doubt and fear—\nSince I have been redeemed."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "I have a joy I can’t express,\nSince I have been redeemed,\nAll through the Lord, my righteousness—\nSince I have been redeemed."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "I have a God who is for me,\nSince I have been redeemed,\nWith whom I’ll dwell eternally—\nSince I have been redeemed."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "i have a song i love to sing",
+    "normalizedFirstLine": "i have a song i love to sing",
+    "keywords": [
+      "have",
+      "song",
+      "love",
+      "sing"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "have",
+      "song",
+      "love",
+      "to",
+      "sing",
+      "edwin",
+      "othello",
+      "excell",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "i have a song i love to sing i have a song i love to sing edwin othello excell unknown praise have song love sing"
+  }
+}

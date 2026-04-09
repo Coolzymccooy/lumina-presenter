@@ -1,0 +1,101 @@
+{
+  "status": "approved",
+  "id": "in-tenderness-he-sought-me",
+  "title": "In tenderness He sought me",
+  "alternateTitles": [],
+  "firstLine": "In tenderness He sought me,",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "William Spencer Walton",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Adoniram Judson Gordon"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: William Spencer Walton (1850–1906).",
+  "tuneAttribution": "Tune: Adoniram Judson Gordon (1836–1895).",
+  "publicDomainBasis": "William Spencer Walton (1850–1906), Adoniram Judson Gordon (1836–1895). All public domain.",
+  "searchKeywords": [
+    "tenderness",
+    "sought"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "In tenderness He sought me,\nWeary and sick with sin,\nAnd on His shoulders brought me\nInto His flock again.\nWhile angels in His presence sang\nUntil the courts of heaven rang."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "He washed the bleeding sin-wounds,\nAnd poured in oil and wine;\nHe whispered to assure me,\n“I’ve found thee, thou art Mine:”\nI never heard a sweeter voice,\nIt made my aching heart rejoice."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "He pointed to the nail-prints,\nFor me His blood was shed;\nA mocking crown so thorny,\nWas placed upon His head:\nI wondered what He saw in me,\nTo suffer such deep agony."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "I’m sitting in His presence,\nThe sunshine of His face,\nWhile with adoring wonder\nHis blessings I retrace.\nIt seems as if eternal days\nAre far too short to sound His praise."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "So while the hours are passing,\nAll now is perfect rest;\nI’m waiting for the morning,\nThe brightest and the best,\nWhen He will call us to His side,\nTo be with Him, His spotless Bride."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "in tenderness he sought me",
+    "normalizedFirstLine": "in tenderness he sought me",
+    "keywords": [
+      "tenderness",
+      "sought"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "in",
+      "tenderness",
+      "he",
+      "sought",
+      "me",
+      "william",
+      "spencer",
+      "walton",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "in tenderness he sought me in tenderness he sought me william spencer walton unknown praise tenderness sought"
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "status": "approved",
+  "id": "break-thou-the-bread-of-life",
+  "title": "Break Thou the Bread of Life",
+  "alternateTitles": [],
+  "firstLine": "Break Thou the Bread of Life,",
+  "meter": "10.10.10.10.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Mary Artemesia Lathbury",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "William Fiske Sherwin"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Mary Artemesia Lathbury (1841–1913).",
+  "tuneAttribution": "Tune: William Fiske Sherwin (1826–1888).",
+  "publicDomainBasis": "Mary Artemesia Lathbury (1841–1913), William Fiske Sherwin (1826–1888). All public domain.",
+  "searchKeywords": [
+    "break",
+    "thou",
+    "bread",
+    "life"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Break Thou the Bread of Life,\nDear Lord, to me,\nAs Thou didst break the loaves\nBeside the sea;\nBeyond the sacred page\nI seek Thee, Lord;\nMy spirit pants for Thee,\nO Living Word."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Thou art the Bread of Life,\nO Lord, to me,\nThy holy Word the truth\nThat saveth me;\nGive me to eat and live\nWith Thee above;\nTeach me to love Thy truth,\nFor Thou art Love."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Oh, send Thy Spirit, Lord,\nNow unto me,\nThat He may touch my eyes,\nAnd make me see;\nShow me the truth concealed\nWithin Thy Word,\nAnd in Thy Book revealed\nI see the Lord."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Bless Thou the truth, dear Lord,\nTo me, to me,\nAs Thou didst bless the bread\nBy Galilee;\nThen shall all bondage cease,\nAll fetters fall,\nAnd I shall find my peace,\nMy All in all."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "break thou the bread of life",
+    "normalizedFirstLine": "break thou the bread of life",
+    "keywords": [
+      "break",
+      "thou",
+      "bread",
+      "life"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "break",
+      "thou",
+      "the",
+      "bread",
+      "of",
+      "life",
+      "mary",
+      "artemesia",
+      "lathbury",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "break thou the bread of life break thou the bread of life mary artemesia lathbury unknown praise break thou bread life"
+  }
+}

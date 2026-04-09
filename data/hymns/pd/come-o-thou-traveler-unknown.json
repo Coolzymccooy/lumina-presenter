@@ -1,0 +1,109 @@
+{
+  "status": "approved",
+  "id": "come-o-thou-traveler-unknown",
+  "title": "Come, O Thou Traveler unknown",
+  "alternateTitles": [],
+  "firstLine": "Come, O Thou Traveler unknown,",
+  "meter": "8.8.8.8.8.8.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Charles Wesley",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "John Bacchus Dykes"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Charles Wesley (1707–1788).",
+  "tuneAttribution": "Tune: John Bacchus Dykes (1823–1876).",
+  "publicDomainBasis": "Charles Wesley (1707–1788), John Bacchus Dykes (1823–1876). All public domain.",
+  "searchKeywords": [
+    "come",
+    "thou",
+    "traveler",
+    "unknown"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Come, O Thou Traveler unknown,\nWhom still I hold but cannot see;\nMy company before is gone,\nAnd I am left alone with Thee;\nWith Thee all night I mean to stay,\nAnd wrestle till the break of day."
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "I need not tell Thee who I am,\nMy sin and misery declare;\nThyself hast called me by my name,\nLook on Thy hands, and read it there;\nBut who, I ask Thee, who art Thou?\nTell me Thy name, and tell me now."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "In vain Thou strugglest to get free;\nI never will unloose my hold;\nArt Thou the Man that died for me?\nThe secret of Thy love unfold;\nWrestling, I will not let Thee go,\nTill I Thy name, Thy nature know."
+    },
+    {
+      "id": "v4",
+      "type": "verse",
+      "label": "Verse 4",
+      "order": 4,
+      "text": "Yield to me now, for I am weak,\nBut confident in self-despair;\nSpeak to my heart, in blessings speak,\nBe conquered by my instant prayer;\nSpeak, or Thou never hence shalt move,\nAnd tell me if Thy name be Love."
+    },
+    {
+      "id": "v5",
+      "type": "verse",
+      "label": "Verse 5",
+      "order": 5,
+      "text": "’Tis Love! ’tis Love! Thou diedst for me,\nI hear Thy whisper in my heart;\nThe morning breaks, the shadows flee:\nPure, universal Love Thou art;\nTo me, to all Thy mercies move;\nThy nature and Thy name is Love."
+    },
+    {
+      "id": "v6",
+      "type": "verse",
+      "label": "Verse 6",
+      "order": 6,
+      "text": "Lame as I am, I take the prey;\nHell, earth and sin, with ease o’ercome.\nI leap for joy, pursue my way,\nAnd, as a bounding hart, I run,\nThrough all eternity to prove\nThy nature and Thy name is Love."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "come o thou traveler unknown",
+    "normalizedFirstLine": "come o thou traveler unknown",
+    "keywords": [
+      "come",
+      "thou",
+      "traveler",
+      "unknown"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "come",
+      "thou",
+      "traveler",
+      "unknown",
+      "charles",
+      "wesley",
+      "praise"
+    ],
+    "searchableText": "come o thou traveler unknown come o thou traveler unknown charles wesley unknown praise come thou traveler unknown"
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "status": "approved",
+  "id": "trust-and-obey",
+  "title": "Trust and obey",
+  "alternateTitles": [],
+  "firstLine": "When we walk with the Lord",
+  "meter": "6.6.9.6.6.9. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "John Henry Sammis",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Daniel Brink Towner"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: John Henry Sammis (1846–1919).",
+  "tuneAttribution": "Tune: Daniel Brink Towner (1850–1919).",
+  "publicDomainBasis": "John Henry Sammis (1846–1919), Daniel Brink Towner (1850–1919). All public domain.",
+  "searchKeywords": [
+    "trust",
+    "obey"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "When we walk with the Lord\nIn the light of His Word,\nWhat a glory He sheds on our way;\nWhile we do His good will,\nHe abides with us still,\nAnd with all who will trust and obey."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Not a shadow can rise,\nNot a cloud in the skies,\nBut His smile quickly drives it away;\nNot a doubt or a fear,\nNot a sigh or a tear,\nCan abide while we trust and obey."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "Not a burden we bear,\nNot a sorrow we share,\nBut our toil He doth richly repay;\nNot a grief or a loss,\nNot a frown or a cross,\nBut is blest if we trust and obey."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "But we never can prove\nThe delights of His love,\nUntil all on the altar we lay;\nFor the favor He shows,\nAnd the joy He bestows,\nAre for them who will trust and obey."
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Then in fellowship sweet\nWe will sit at His feet,\nOr we’ll walk by His side in the way;\nWhat He says we will do;\nWhere He sends, we will go,\nNever fear, only trust and obey."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "trust and obey",
+    "normalizedFirstLine": "when we walk with the lord",
+    "keywords": [
+      "trust",
+      "obey"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "trust",
+      "and",
+      "obey",
+      "when",
+      "we",
+      "walk",
+      "with",
+      "the",
+      "lord",
+      "john",
+      "henry",
+      "sammis",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "trust and obey when we walk with the lord john henry sammis unknown praise trust obey"
+  }
+}

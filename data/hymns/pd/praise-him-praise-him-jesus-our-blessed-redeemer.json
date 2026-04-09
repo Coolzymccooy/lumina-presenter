@@ -1,0 +1,91 @@
+{
+  "status": "approved",
+  "id": "praise-him-praise-him-jesus-our-blessed-redeemer",
+  "title": "Praise Him! praise Him! Jesus, our blessed Redeemer",
+  "alternateTitles": [],
+  "firstLine": "Praise Him! praise Him! Jesus, our blessed Redeemer!",
+  "meter": "Peculiar Meter.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Fanny Jane Crosby",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Chester G. Allen"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Fanny Jane Crosby (1820–1915).",
+  "tuneAttribution": "Tune: Chester G. Allen (1838–1878).",
+  "publicDomainBasis": "Fanny Jane Crosby (1820–1915), Chester G. Allen (1838–1878). All public domain.",
+  "searchKeywords": [
+    "praise",
+    "jesus",
+    "blessed",
+    "redeemer"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": false,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "Praise Him! praise Him! Jesus, our blessed Redeemer!\nSing, ye saints! His wonderful love proclaim!\nHail Him! hail Him! mightiest angels in glory;\nStrength and honor give to His holy name!\nLike a shepherd, Jesus will feed His people,\nIn His arms He carries them all day long;\nO ye saints that live in the light of His presence,\nPraise Him! praise Him! ever in joyful song!"
+    },
+    {
+      "id": "v2",
+      "type": "verse",
+      "label": "Verse 2",
+      "order": 2,
+      "text": "Praise Him! praise Him! Jesus, our blessed Redeemer,\nFor our sins He suffered and bled and died;\nHe, our Rock, our Hope of eternal salvation,\nHail Him! hail Him! Jesus, the Crucified;\nLoving Savior, meekly enduring sorrow,\nCrowned with thorns that cruelly pierced His brow;\nOnce for us rejected, despised, and forsaken,\nPrince of Glory, ever triumphant now."
+    },
+    {
+      "id": "v3",
+      "type": "verse",
+      "label": "Verse 3",
+      "order": 3,
+      "text": "Praise Him! praise Him! Jesus, our blessed Redeemer,\nHeavenly portals, loud with hosannahs ring!\nJesus, Savior, reigneth for ever and ever;\nCrown Him! crown Him! Prophet and Priest and King!\nDeath is vanquished! Tell it with joy, ye faithful,\nWhere is now thy victory, boasting grave?\nJesus lives! No longer thy portals are cheerless;\nJesus lives, the mighty and strong to save."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "praise him praise him jesus our blessed redeemer",
+    "normalizedFirstLine": "praise him praise him jesus our blessed redeemer",
+    "keywords": [
+      "praise",
+      "jesus",
+      "blessed",
+      "redeemer"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "praise",
+      "him",
+      "jesus",
+      "our",
+      "blessed",
+      "redeemer",
+      "fanny",
+      "jane",
+      "crosby",
+      "unknown"
+    ],
+    "searchableText": "praise him praise him jesus our blessed redeemer praise him praise him jesus our blessed redeemer fanny jane crosby unknown praise praise jesus blessed redeemer"
+  }
+}

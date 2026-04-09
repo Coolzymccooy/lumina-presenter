@@ -1,0 +1,103 @@
+{
+  "status": "approved",
+  "id": "this-is-my-wonderful-story",
+  "title": "This is my wonderful story",
+  "alternateTitles": [],
+  "firstLine": "This is my wonderful story,",
+  "meter": "8.6.8.6. with chorus.",
+  "hymnalNumbers": {},
+  "authors": [
+    {
+      "name": "Albert Benjamin Simpson",
+      "role": "text"
+    }
+  ],
+  "tunes": [
+    {
+      "name": "Unknown",
+      "composer": "Albert Benjamin Simpson"
+    }
+  ],
+  "themes": [
+    "praise"
+  ],
+  "scriptureThemes": [],
+  "textAttribution": "Text: Albert Benjamin Simpson (1843–1919).",
+  "tuneAttribution": "Tune: Albert Benjamin Simpson (1843–1919).",
+  "publicDomainBasis": "Albert Benjamin Simpson (1843–1919), Albert Benjamin Simpson (1843–1919). All public domain.",
+  "searchKeywords": [
+    "this",
+    "wonderful",
+    "story"
+  ],
+  "defaultTypographyPresetId": "classic-worship-serif",
+  "defaultThemeCategory": "praise",
+  "defaultChorusStrategy": "smart",
+  "preferredBackgroundMotion": "still",
+  "maxLinesPerSlide": 2,
+  "preferredCharsPerLine": 36,
+  "allowThreeLineSlides": false,
+  "chorusVisuallyDistinct": true,
+  "sections": [
+    {
+      "id": "v1",
+      "type": "verse",
+      "label": "Verse 1",
+      "order": 1,
+      "text": "This is my wonderful story,\nChrist to my heart has come;\nJesus, the King of Glory,\nFinds in my heart a home."
+    },
+    {
+      "id": "chorus",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 2,
+      "text": "Was there e’er story so moving,\nStory of love and pain;\nWas there e’er Bridegroom so loving,\nSeeking our hearts to gain."
+    },
+    {
+      "id": "chorus-2",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 3,
+      "text": "I am so glad I received Him,\nJesus my heart’s dear King;\nI who so often have grieved Him,\nAll to His feet would bring."
+    },
+    {
+      "id": "chorus-3",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 4,
+      "text": "How can I ever be lonely,\nHow can I ever fall;\nWhat can I want, if only\nChrist is my all in all?"
+    },
+    {
+      "id": "chorus-4",
+      "type": "chorus",
+      "label": "Chorus",
+      "order": 5,
+      "text": "Now in His bosom confiding,\nThis my glad song shall be;\nI am in Christ abiding,\nAnd Christ abides in me."
+    }
+  ],
+  "searchIndex": {
+    "normalizedTitle": "this is my wonderful story",
+    "normalizedFirstLine": "this is my wonderful story",
+    "keywords": [
+      "this",
+      "wonderful",
+      "story"
+    ],
+    "themes": [
+      "praise"
+    ],
+    "tokens": [
+      "this",
+      "is",
+      "my",
+      "wonderful",
+      "story",
+      "albert",
+      "benjamin",
+      "simpson",
+      "unknown",
+      "praise"
+    ],
+    "searchableText": "this is my wonderful story this is my wonderful story albert benjamin simpson unknown praise this wonderful story"
+  }
+}
