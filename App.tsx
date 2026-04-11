@@ -2379,7 +2379,7 @@ function App() {
       enqueueLiveState(payload);
     } else {
       resetSyncBackoff();
-      if (!firebaseOk && serverOk) {
+      if (canUseFirebaseSync && !firebaseOk && serverOk) {
         setSyncIssue('Cloud sharing needs permission. This booth is still live through the local Lumina server.');
       } else {
         setSyncIssue(null);
