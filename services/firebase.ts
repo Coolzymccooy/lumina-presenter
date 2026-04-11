@@ -14,11 +14,23 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-// experimentalAutoDetectLongPolling prevents INTERNAL ASSERTION FAILED crashes
-// in Electron where WebChannel transport becomes unstable on reconnect.
-export const db = initializeFirestore(app, {
-  experimentalAutoDetectLongPolling: true,
-});
+const isElectronRuntime = () => {
+  if (typeof window !== 'undefined' && window.electron?.isElectron) return true;
+  if (typeof navigator !== 'undefined') {
+    return String(navigator.userAgent || '').toLowerCase().includes('electron');
+  }
+  return false;
+};
+
+// Electron is more stable with forced long-polling than WebChannel auto-detection.
+// Browser builds keep auto-detect so they can still use the faster transport path.
+export const db = initializeFirestore(app, isElectronRuntime()
+  ? {
+      experimentalForceLongPolling: true,
+    }
+  : {
+      experimentalAutoDetectLongPolling: true,
+    });
 export const auth = getAuth(app);
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
