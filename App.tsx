@@ -2264,8 +2264,9 @@ function App() {
       setSyncIssue(buildSyncPausedMessage(remainingSeconds));
       return;
     }
+    const firebaseExpected = isFirebaseConfigured() && !isElectronShell;
     const [firebaseOk, serverOk] = await Promise.all([
-      isFirebaseConfigured() ? updateLiveState(payload, liveSessionId) : Promise.resolve(false),
+      firebaseExpected ? updateLiveState(payload, liveSessionId) : Promise.resolve(false),
       saveServerSessionState(workspaceId, liveSessionId, user, payload).then((response) => !!response?.ok),
     ]);
     if (!firebaseOk && !serverOk) {
@@ -2273,7 +2274,7 @@ function App() {
       enqueueLiveState(payload);
     } else {
       resetSyncBackoff();
-      if (!firebaseOk && serverOk) {
+      if (firebaseExpected && !firebaseOk && serverOk) {
         setSyncIssue('Cloud sharing needs permission. This booth is still live through the local Lumina server.');
       } else {
         setSyncIssue(null);
