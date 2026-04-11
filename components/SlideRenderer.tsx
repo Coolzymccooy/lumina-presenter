@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Slide, ServiceItem, MediaType, AudienceDisplayState, AudienceQrProjectionState } from "../types";
 
 import { getMediaAsset, getCachedMediaAsset } from "../services/localMedia";
@@ -272,83 +272,82 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     return rawBgUrl.startsWith("local://") && !getCachedMediaAsset(rawBgUrl);
   });
 
-  // Resolve local:// URLs async (only if a background exists)
-  useEffect(() => {
-    let active = true;
-
-    async function run() {
-      if (!hasBackground) {
-        if (!active) return;
-        setResolvedUrl("");
-        setResolvedLocalKind(null);
-        setIsLoading(false);
-        setMediaError(false);
-        setLegacyLocalMediaMissing(false);
-        return;
-      }
-
-      if (!rawBgUrl.startsWith("local://")) {
-        if (!active) return;
-        setResolvedUrl(rawBgUrl);
-        setResolvedLocalKind(null);
-        setIsLoading(false);
-        setMediaError(false);
-        setLegacyLocalMediaMissing(false);
-        return;
-      }
-
-      // local://
-      const cached = getCachedMediaAsset(rawBgUrl);
-      if (cached) {
-        if (!active) return;
-        setResolvedUrl(cached.url);
-        setResolvedLocalKind(cached.kind);
-        setIsLoading(false);
-        setMediaError(false);
-        setLegacyLocalMediaMissing(false);
-        return;
-      }
-
-      setIsLoading(true);
-      try {
-        const asset = await getMediaAsset(rawBgUrl);
-        if (!active) return;
-
-        if (asset?.url) {
-          setResolvedUrl(asset.url);
-          setResolvedLocalKind(asset.kind);
-          setMediaError(false);
-          setLegacyLocalMediaMissing(false);
-        } else if (sourceRecoveryUrl) {
-          setResolvedUrl(sourceRecoveryUrl);
-          setResolvedLocalKind(null);
-          setMediaError(false);
-          setLegacyLocalMediaMissing(false);
-        } else {
-          setResolvedUrl("");
-          setResolvedLocalKind(null);
-          setMediaError(true);
-          setLegacyLocalMediaMissing(true);
-        }
-      } catch {
-        if (!active) return;
-        if (sourceRecoveryUrl) {
-          setResolvedUrl(sourceRecoveryUrl);
-          setResolvedLocalKind(null);
-          setMediaError(false);
-          setLegacyLocalMediaMissing(false);
-        } else {
-          setResolvedUrl("");
-          setResolvedLocalKind(null);
-          setMediaError(true);
-          setLegacyLocalMediaMissing(true);
-        }
-      } finally {
-        if (active) setIsLoading(false);
-      }
+  // Keep media state aligned with the incoming slide before paint so the live
+  // renderer does not keep showing a previous image while advancing through
+  // visual-only decks (uploaded images / PPT visual imports).
+  useLayoutEffect(() => {
+    if (!hasBackground) {
+      setResolvedUrl("");
+      setResolvedLocalKind(null);
+      setIsLoading(false);
+      setMediaError(false);
+      setLegacyLocalMediaMissing(false);
+      return;
     }
 
-    run();
+    if (!rawBgUrl.startsWith("local://")) {
+      setResolvedUrl(rawBgUrl);
+      setResolvedLocalKind(null);
+      setIsLoading(false);
+      setMediaError(false);
+      setLegacyLocalMediaMissing(false);
+      return;
+    }
+
+    const cached = getCachedMediaAsset(rawBgUrl);
+    setResolvedUrl(cached?.url || "");
+    setResolvedLocalKind(cached?.kind || null);
+    setIsLoading(!cached);
+    setMediaError(false);
+    setLegacyLocalMediaMissing(false);
+  }, [hasBackground, rawBgUrl]);
+
+  // Resolve uncached local:// URLs async (only if a background exists)
+  useEffect(() => {
+    if (!hasBackground || !rawBgUrl.startsWith("local://")) return undefined;
+    const cached = getCachedMediaAsset(rawBgUrl);
+    if (cached) return undefined;
+
+    let active = true;
+    setIsLoading(true);
+
+    void getMediaAsset(rawBgUrl).then((asset) => {
+      if (!active) return;
+      if (asset?.url) {
+        setResolvedUrl(asset.url);
+        setResolvedLocalKind(asset.kind);
+        setMediaError(false);
+        setLegacyLocalMediaMissing(false);
+        return;
+      }
+      if (sourceRecoveryUrl) {
+        setResolvedUrl(sourceRecoveryUrl);
+        setResolvedLocalKind(null);
+        setMediaError(false);
+        setLegacyLocalMediaMissing(false);
+        return;
+      }
+      setResolvedUrl("");
+      setResolvedLocalKind(null);
+      setMediaError(true);
+      setLegacyLocalMediaMissing(true);
+    }).catch(() => {
+      if (!active) return;
+      if (sourceRecoveryUrl) {
+        setResolvedUrl(sourceRecoveryUrl);
+        setResolvedLocalKind(null);
+        setMediaError(false);
+        setLegacyLocalMediaMissing(false);
+        return;
+      }
+      setResolvedUrl("");
+      setResolvedLocalKind(null);
+      setMediaError(true);
+      setLegacyLocalMediaMissing(true);
+    }).finally(() => {
+      if (active) setIsLoading(false);
+    });
+
     return () => {
       active = false;
     };
