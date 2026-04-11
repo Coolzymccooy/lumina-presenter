@@ -1999,7 +1999,7 @@ function App() {
     const saved = initialSavedState;
     return sanitizeHoldScreenMode(saved?.holdScreenMode);
   });
-  const [isPlaying, setIsPlaying] = useState(() => {
+  const [isPlaying, setIsPlaying] = useState<boolean>(() => {
     const saved = initialSavedState;
     return typeof saved?.isPlaying === 'boolean' ? saved.isPlaying : true;
   });
@@ -2169,6 +2169,7 @@ function App() {
   const lastRemoteCommandAtRef = useRef<number | null>(null);
   const lastServerRemoteCommandAtRef = useRef<number | null>(null);
   const lastServerScheduleSnapshotAtRef = useRef<number | null>(null);
+  const lastServerSermonFlashAtRef = useRef<number | null>(null);
   const lastCueAutoAdvanceKeyRef = useRef<string>('');
   const lastSyncErrorRef = useRef<{ key: string; at: number } | null>(null);
   const syncFailureStreakRef = useRef(0);
@@ -2501,6 +2502,7 @@ function App() {
     hasHydratedServerSnapshotRef.current = false;
     lastServerRemoteCommandAtRef.current = null;
     lastServerScheduleSnapshotAtRef.current = null;
+    lastServerSermonFlashAtRef.current = null;
   }, [user?.uid, liveSessionId, resetSyncBackoff]);
 
 
@@ -5299,16 +5301,16 @@ function App() {
       slideItems = [];
       // Slide 1: main theme
       if (content.summary.mainTheme) {
-        slideItems.push({ id: `${stamp}-theme`, content: content.summary.mainTheme, label: 'Theme' });
+        slideItems.push({ id: `${stamp}-theme`, content: `THEME\n\n${content.summary.mainTheme}`, label: 'Theme' });
       }
       // Slide 2: all key points on ONE slide (numbered list)
       if (content.summary.keyPoints.length > 0) {
         const pointsContent = content.summary.keyPoints.map((pt, i) => `${i + 1}. ${pt}`).join('\n');
-        slideItems.push({ id: `${stamp}-points`, content: pointsContent, label: 'Key Points' });
+        slideItems.push({ id: `${stamp}-points`, content: `KEY POINTS\n\n${pointsContent}`, label: 'Key Points' });
       }
       // Slide 3: call to action
       if (content.summary.callToAction) {
-        slideItems.push({ id: `${stamp}-cta`, content: content.summary.callToAction, label: 'Call to Action' });
+        slideItems.push({ id: `${stamp}-cta`, content: `CALL TO ACTION\n\n${content.summary.callToAction}`, label: 'Call to Action' });
       }
       if (!slideItems.length) {
         slideItems = [{ id: `${stamp}-0`, content: title, label: 'Sermon' }];
@@ -5353,12 +5355,12 @@ function App() {
     const stamp = Date.now().toString(36);
     const title = summary.title || 'Sermon';
     const slideItems: { id: string; content: string; label: string }[] = [];
-    if (summary.mainTheme) slideItems.push({ id: `${stamp}-theme`, content: summary.mainTheme, label: 'Theme' });
+    if (summary.mainTheme) slideItems.push({ id: `${stamp}-theme`, content: `THEME\n\n${summary.mainTheme}`, label: 'Theme' });
     if (summary.keyPoints.length > 0) {
       const pointsContent = summary.keyPoints.map((pt, i) => `${i + 1}. ${pt}`).join('\n');
-      slideItems.push({ id: `${stamp}-points`, content: pointsContent, label: 'Key Points' });
+      slideItems.push({ id: `${stamp}-points`, content: `KEY POINTS\n\n${pointsContent}`, label: 'Key Points' });
     }
-    if (summary.callToAction) slideItems.push({ id: `${stamp}-cta`, content: summary.callToAction, label: 'Call to Action' });
+    if (summary.callToAction) slideItems.push({ id: `${stamp}-cta`, content: `CALL TO ACTION\n\n${summary.callToAction}`, label: 'Call to Action' });
     if (!slideItems.length) slideItems.push({ id: `${stamp}-0`, content: title, label: 'Sermon' });
     return finalizeGeneratedItemBackground({
       id: `${stamp}-sermon`,
@@ -6512,6 +6514,21 @@ function App() {
         lastServerScheduleSnapshotAtRef.current = scheduleAt;
         applyHydratedStudioState({ schedule: data.scheduleSnapshot });
       }
+
+      // Sermon flash request relayed from a stage device
+      const rawSermonFlashAt = data.sermonFlashRequestAt;
+      const sermonFlashAt = typeof rawSermonFlashAt === 'number' && Number.isFinite(rawSermonFlashAt) ? rawSermonFlashAt : null;
+      if (sermonFlashAt && sermonFlashAt !== lastServerSermonFlashAtRef.current) {
+        lastServerSermonFlashAtRef.current = sermonFlashAt;
+        const req = data.sermonFlashRequest;
+        if (req && typeof req === 'object' && typeof (req as Record<string, unknown>).transcript === 'string') {
+          const flashReq = req as { transcript: string; summary?: unknown };
+          handleSermonFlashToScreen({
+            transcript: flashReq.transcript,
+            ...(flashReq.summary ? { summary: flashReq.summary as import('./services/sermonSummaryService').SermonSummary } : {}),
+          });
+        }
+      }
     };
     pollServerCommands();
     const id = window.setInterval(pollServerCommands, 650);
@@ -6519,7 +6536,7 @@ function App() {
       active = false;
       window.clearInterval(id);
     };
-  }, [workspaceId, liveSessionId, user?.uid, user, cloudBootstrapComplete, executeRemoteCommand, applyHydratedStudioState]);
+  }, [workspaceId, liveSessionId, user?.uid, user, cloudBootstrapComplete, executeRemoteCommand, applyHydratedStudioState, handleSermonFlashToScreen]);
 
   useEffect(() => {
     if (!user?.uid || !cloudBootstrapComplete) return;
@@ -8356,7 +8373,7 @@ function App() {
               />
             </div>
           )}
-          {activeSidebarTab === 'AUDIO' && <AudioLibrary currentTrackId={currentTrack?.id} isPlaying={isAudioPlaying} progress={audioProgress} onPlay={handlePlayTrack} onToggle={() => setIsAudioPlaying(!isAudioPlaying)} onStop={stopAudio} onVolumeChange={setAudioVolume} volume={audioVolume} />}
+          {activeSidebarTab === 'AUDIO' && <AudioLibrary currentTrackId={currentTrack?.id ?? null} isPlaying={isAudioPlaying} progress={audioProgress} onPlay={handlePlayTrack} onToggle={() => setIsAudioPlaying(!isAudioPlaying)} onStop={stopAudio} onVolumeChange={setAudioVolume} volume={audioVolume} />}
           {activeSidebarTab === 'BIBLE' && (
             <div className="flex-1 overflow-hidden flex flex-col min-h-0">
               <div className="p-3 border-b border-zinc-900 shrink-0"><h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Bible Hub</h3></div>
@@ -8654,14 +8671,14 @@ function App() {
                             onClick={async () => {
                               setNdiError(null);
                               if (ndiActive) {
-                                await window.electron.ndi.stop();
+                                await window.electron?.ndi?.stop?.();
                               } else {
-                                const result = await window.electron.ndi.start({
+                                const result = await window.electron?.ndi?.start?.({
                                   sourceName: `Lumina \u2013 ${workspaceSettings.churchName || 'Presenter'}`,
                                   workspaceId,
                                   sessionId: liveSessionId,
                                 });
-                                if (!result.ok) setNdiError(result.error ?? 'NDI failed to start.');
+                                if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to start.');
                               }
                             }}
                             title={ndiActive ? 'Stop NDI broadcast' : 'Broadcast slide output as an NDI source on the local network'}
@@ -9860,7 +9877,7 @@ function App() {
 
       {/* Sermon recorder — persistent fixed overlay, survives tab switches */}
       {showSermonRecorder && (
-        <div className="fixed top-16 right-4 z-[200] w-96 max-h-[85vh] overflow-hidden rounded-2xl shadow-2xl">
+        <div className="fixed top-16 right-4 z-[200] w-96 h-[85vh] overflow-hidden rounded-2xl shadow-2xl">
           <SermonRecorderPanel
             onClose={() => setShowSermonRecorder(false)}
             onFlashToScreen={handleSermonFlashToScreen}

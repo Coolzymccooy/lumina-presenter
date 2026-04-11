@@ -208,6 +208,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   const [editableTranscript, setEditableTranscript] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [summary, setSummary] = useState<SermonSummary | null>(null);
+  const [sermonTitle, setSermonTitle] = useState('');
   const [summarizing, setSummarizing] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [flashDone, setFlashDone] = useState(false);
@@ -238,6 +239,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
     if (phase === 'done') {
       setEditableTranscript(transcript || '');
       setSummary(processingSummary || null);
+      if (processingSummary?.title) setSermonTitle(processingSummary.title);
       setSummaryError(null);
       setIsEditing(false);
     }
@@ -253,6 +255,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
     setEditableTranscript('');
     setIsEditing(false);
     setSummary(null);
+    setSermonTitle('');
     setSummaryError(null);
     setFlashDone(false);
     setSaveDone(false);
@@ -288,6 +291,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
     setSummarizing(false);
     if (result.ok && result.summary) {
       setSummary(result.summary);
+      if (result.summary.title) setSermonTitle(result.summary.title);
     } else {
       setSummaryError(result.error || 'Summarization failed.');
     }
@@ -303,11 +307,12 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   const handleSave = useCallback(async () => {
     if (!onSave || !summary) return;
     setSaving(true);
-    await onSave(currentTranscript.trim(), summary);
+    const finalTitle = sermonTitle.trim() || summary.title;
+    await onSave(currentTranscript.trim(), { ...summary, title: finalTitle });
     setSaving(false);
     setSaveDone(true);
     setTimeout(() => setSaveDone(false), 3000);
-  }, [currentTranscript, onSave, summary]);
+  }, [currentTranscript, onSave, sermonTitle, summary]);
 
   const handleAddToSchedule = useCallback(() => {
     if (!onAddToSchedule) return;
@@ -603,6 +608,18 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
 
       {isDone && (
         <div className="border-t border-zinc-800 px-4 py-2.5 flex flex-col gap-2 flex-shrink-0">
+          {onSave && summary && (
+            <div className="flex flex-col gap-1">
+              <label className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Sermon Title</label>
+              <input
+                type="text"
+                value={sermonTitle}
+                onChange={(e) => setSermonTitle(e.target.value)}
+                placeholder="Enter sermon title..."
+                className="w-full rounded-lg bg-zinc-900 border border-zinc-700 focus:border-purple-600 outline-none px-2.5 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 transition-colors"
+              />
+            </div>
+          )}
           <div className="flex gap-2">
             {onSave && summary && (
               <button

@@ -10,9 +10,9 @@ interface BuilderPreviewPanelProps {
   onOpenSlideEditor: (slide: Slide) => void;
   onDeleteSlide: (slideId: string, e: React.MouseEvent) => void;
   onAddSlide: () => void;
-  onStartLabelRename: (itemId: string, slideId: string, currentLabel: string, source: string) => void;
+  onStartLabelRename: (itemId: string, slideId: string, currentLabel: string, source?: 'runsheet' | 'thumbnail') => void;
   inlineSlideRename: { slideId: string; value: string; source: string } | null;
-  inlineSlideRenameInputRef: React.RefObject<HTMLInputElement>;
+  inlineSlideRenameInputRef: React.RefObject<HTMLInputElement | null>;
   onInlineRenameChange: (value: string) => void;
   onInlineRenameCommit: (itemId: string, slideId: string, value: string) => void;
   onGoLive?: (item: ServiceItem, slideIdx: number) => void;

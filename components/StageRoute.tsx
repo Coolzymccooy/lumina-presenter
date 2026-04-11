@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, subscribeToState } from '../services/firebase';
-import { fetchServerSessionState, fetchSessionConnections, getOrCreateConnectionClientId, heartbeatSessionConnection, saveServerSessionState, saveWorkspaceSettings, submitAudienceMessage } from '../services/serverApi';
+import { fetchServerSessionState, fetchSessionConnections, getOrCreateConnectionClientId, heartbeatSessionConnection, saveServerSessionState, saveWorkspaceSettings } from '../services/serverApi';
 import { AudienceDisplayState, ServiceItem, StageAlertLayout, StageAlertState, StageAutoAdvanceConfig, StageFlowLayout, StageMessageCategory, StageMessageCenterState, StageSttState, StageTimerFlashColor, StageTimerFlashState, StageTimerLayout } from '../types';
 import type { SermonSummary } from '../services/sermonSummaryService';
 import { HoldScreen } from './presenter/HoldScreen';
@@ -350,31 +350,25 @@ export const StageRoute: React.FC = () => {
   }, [sttState.isRecording]);
 
   // ── Sermon flash-to-screen handler ───────────────────────────────────────
+  // Relays the request to the main presenter via server session state so
+  // App.tsx can build and go-live a proper slide item. Previously this
+  // incorrectly called submitAudienceMessage which posted sermon content into
+  // the Audience Hub congregation feed.
   const handleSermonFlashToScreen = useCallback(async (content: { transcript: string; summary?: SermonSummary }) => {
-    if (!workspaceId) return;
-    const lines: string[] = [];
-    if (content.summary) {
-      lines.push(`SERMON: ${content.summary.title}`);
-      lines.push(`THEME: ${content.summary.mainTheme}`);
-      lines.push('');
-      content.summary.keyPoints.forEach((p, i) => lines.push(`${i + 1}. ${p}`));
-      if (content.summary.callToAction) {
-        lines.push('');
-        lines.push(`ACTION: ${content.summary.callToAction}`);
-      }
-    } else {
-      lines.push(content.transcript);
-    }
+    if (!workspaceId || !user) return;
     try {
-      await submitAudienceMessage(workspaceId, {
-        category: 'testimony',
-        text: lines.join('\n'),
-        name: 'Sermon Recap',
+      await saveServerSessionState(workspaceId, sessionId, user, {
+        sermonFlashRequest: {
+          transcript: content.transcript,
+          summary: content.summary ?? null,
+        },
+        sermonFlashRequestAt: Date.now(),
+        updatedAt: Date.now(),
       });
     } catch (err) {
-      console.warn('Stage: failed to flash sermon to screen', err);
+      console.warn('Stage: failed to relay sermon flash request', err);
     }
-  }, [workspaceId]);
+  }, [workspaceId, sessionId, user]);
 
   // ── Keyboard shortcuts handler — Tier 2 ──────────────────────────────────
   useEffect(() => {
