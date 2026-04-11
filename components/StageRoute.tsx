@@ -300,6 +300,12 @@ export const StageRoute: React.FC = () => {
 
   // ── STT helpers ───────────────────────────────────────────────────────────
   const handleSttToggleRecording = useCallback(() => {
+    const isElectron = typeof navigator !== 'undefined'
+      && String(navigator.userAgent || '').toLowerCase().includes('electron');
+    if (isElectron) {
+      console.warn('Stage: browser SpeechRecognition is disabled in Electron.');
+      return;
+    }
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
       console.warn('Stage: SpeechRecognition API not available in this browser.');
@@ -431,9 +437,9 @@ export const StageRoute: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || canUseServerWorkspace) return;
     return subscribeToState((data) => setLiveState(data), sessionId);
-  }, [user, sessionId]);
+  }, [user, sessionId, canUseServerWorkspace]);
 
   useEffect(() => {
     const refresh = () => {
@@ -595,12 +601,26 @@ export const StageRoute: React.FC = () => {
     ? effective
     : (stableEffective || effective);
 
+  // Derive the live schedule from whichever state source has it.
+  // Must be before any conditional returns to satisfy Rules of Hooks.
+  const liveSchedule: ServiceItem[] = useMemo(() => {
+    const src = serverState || liveState || {};
+    return Array.isArray(src?.scheduleSnapshot)
+      ? src.scheduleSnapshot
+      : (Array.isArray(src?.schedule) ? src.schedule : []);
+  }, [serverState, liveState]);
+
+  const liveActiveItemId: string | null = useMemo(() => {
+    const src = serverState || liveState || {};
+    return typeof src?.activeItemId === 'string' ? src.activeItemId : null;
+  }, [serverState, liveState]);
+
   const hasLocalSchedule = Array.isArray(localState?.schedule) && localState.schedule.length > 0;
-  if (authLoading && !hasLocalSchedule) {
+  if (authLoading && !hasLocalSchedule && !canUseServerWorkspace) {
     return <div className="h-screen w-screen bg-black text-zinc-500 flex items-center justify-center text-xs">Loading stage view...</div>;
   }
 
-  if (!user && !hasLocalSchedule) {
+  if (!user && !hasLocalSchedule && !canUseServerWorkspace) {
     return <LoginScreen onLoginSuccess={(nextUser) => setUser(nextUser)} />;
   }
 
@@ -615,19 +635,6 @@ export const StageRoute: React.FC = () => {
   if (display.holdScreenMode === 'logo') {
     return <HoldScreen view="logo" churchName={display.churchName} />;
   }
-
-  // Derive the live schedule from whichever state source has it
-  const liveSchedule: ServiceItem[] = useMemo(() => {
-    const src = serverState || liveState || {};
-    return Array.isArray(src?.scheduleSnapshot)
-      ? src.scheduleSnapshot
-      : (Array.isArray(src?.schedule) ? src.schedule : []);
-  }, [serverState, liveState]);
-
-  const liveActiveItemId: string | null = useMemo(() => {
-    const src = serverState || liveState || {};
-    return typeof src?.activeItemId === 'string' ? src.activeItemId : null;
-  }, [serverState, liveState]);
 
   return (
     <StageDisplay

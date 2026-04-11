@@ -261,8 +261,9 @@ async function createManagedRoleWindow(kind, displayId, payload = {}) {
         preload: path.join(__dirname, 'preload.js'),
         nodeIntegration: false,
         contextIsolation: true,
-        sandbox: !isWindowed,   // offscreen + sandbox conflicts in some Electron builds
-        offscreen: isWindowed,  // render to buffer — invisible, GPU-independent
+        sandbox: !isWindowed,        // offscreen + sandbox conflicts in some Electron builds
+        offscreen: isWindowed,       // render to buffer — invisible, GPU-independent
+        backgroundThrottling: false, // prevent JS/timer throttling when window loses focus
       },
       title: isAudience ? 'Lumina Output (Projector)' : 'Lumina Stage Display',
     });
@@ -515,11 +516,26 @@ function installMachineIpcHandlers() {
       // windows; paint events deliver rendered frames directly from the software renderer.
       ndiWindowRef.webContents.setFrameRate(NDI_TARGET_FPS);
       let ndiSending = false;
+      let pendingFrame = null;
+      const flushNdiFrame = async (initialFrame) => {
+        ndiSending = true;
+        let frame = initialFrame;
+        while (ndiActive && frame) {
+          try {
+            await ndiSender.sendFrame(frame.buffer, frame.width, frame.height);
+          } catch (err) {
+            ndiDroppedFrames++;
+            if (ndiDroppedFrames <= 3) console.error('[NDI] send error:', err?.message || String(err));
+          }
+          frame = pendingFrame;
+          pendingFrame = null;
+        }
+        ndiSending = false;
+      };
       ndiWindowRef.webContents.on('paint', async (_paintEvent, _dirty, image) => {
         if (!ndiActive) return;
-        if (ndiSending) { ndiDroppedFrames++; return; }
         const { width, height } = image.getSize();
-        if (width === 0 || height === 0) { ndiDroppedFrames++; return; }
+        if (width === 0 || height === 0) { return; }
         // toBitmap() returns BGRA on Windows/Linux; RGBA on macOS.
         const buffer = image.toBitmap();
         if (process.platform === 'darwin') {
@@ -527,15 +543,13 @@ function installMachineIpcHandlers() {
             const r = buffer[i]; buffer[i] = buffer[i + 2]; buffer[i + 2] = r;
           }
         }
-        ndiSending = true;
-        try {
-          await ndiSender.sendFrame(buffer, width, height);
-        } catch (err) {
-          ndiDroppedFrames++;
-          if (ndiDroppedFrames <= 3) console.error('[NDI] send error:', err?.message || String(err));
-        } finally {
-          ndiSending = false;
+        const frame = { buffer, width, height };
+        if (ndiSending) {
+          pendingFrame = frame;
+          return;
         }
+        pendingFrame = null;
+        void flushNdiFrame(frame);
       });
 
       // Log dropped frames every 10 seconds (non-blocking).

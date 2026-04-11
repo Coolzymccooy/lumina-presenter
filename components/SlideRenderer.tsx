@@ -68,6 +68,74 @@ function looksLikeDirectVideo(url: string): boolean {
 // then CSS-scaled to fill any container. Guarantees preview === output appearance.
 const CANVAS_W = 1920;
 const CANVAS_H = 1080;
+const CANVAS_ASPECT = CANVAS_W / CANVAS_H;
+
+type CanvasFrame = {
+  viewportWidth: number;
+  viewportHeight: number;
+  renderWidth: number;
+  renderHeight: number;
+  offsetX: number;
+  offsetY: number;
+  scale: number;
+};
+
+const EMPTY_CANVAS_FRAME: CanvasFrame = {
+  viewportWidth: 0,
+  viewportHeight: 0,
+  renderWidth: CANVAS_W,
+  renderHeight: CANVAS_H,
+  offsetX: 0,
+  offsetY: 0,
+  scale: 1,
+};
+
+function computeCanvasFrame(width: number, height: number): CanvasFrame {
+  const viewportWidth = Math.max(0, Math.round(width));
+  const viewportHeight = Math.max(0, Math.round(height));
+
+  if (viewportWidth <= 0 || viewportHeight <= 0) {
+    return EMPTY_CANVAS_FRAME;
+  }
+
+  let renderWidth = viewportWidth;
+  let renderHeight = Math.round(renderWidth / CANVAS_ASPECT);
+
+  if (renderHeight > viewportHeight) {
+    renderHeight = viewportHeight;
+    renderWidth = Math.round(renderHeight * CANVAS_ASPECT);
+  }
+
+  renderWidth = Math.max(1, Math.min(viewportWidth, renderWidth));
+  renderHeight = Math.max(1, Math.min(viewportHeight, renderHeight));
+
+  return {
+    viewportWidth,
+    viewportHeight,
+    renderWidth,
+    renderHeight,
+    offsetX: Math.floor((viewportWidth - renderWidth) / 2),
+    offsetY: Math.floor((viewportHeight - renderHeight) / 2),
+    scale: Math.min(renderWidth / CANVAS_W, renderHeight / CANVAS_H),
+  };
+}
+
+function canvasFramesEqual(a: CanvasFrame, b: CanvasFrame): boolean {
+  return (
+    a.viewportWidth === b.viewportWidth
+    && a.viewportHeight === b.viewportHeight
+    && a.renderWidth === b.renderWidth
+    && a.renderHeight === b.renderHeight
+    && a.offsetX === b.offsetX
+    && a.offsetY === b.offsetY
+  );
+}
+
+const STABLE_MEDIA_LAYER_STYLE: React.CSSProperties = {
+  display: "block",
+  backfaceVisibility: "hidden",
+  transform: "translateZ(0)",
+};
 
 type RetainedBackgroundAsset = {
   url: string;
@@ -143,12 +211,15 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   const lastStableBackgroundRef = useRef<RetainedBackgroundAsset | null>(null);
   // Reactive mirror of lastStableBackgroundRef — triggers re-render for floor layer.
   const [retainedFloor, setRetainedFloor] = useState<RetainedBackgroundAsset | null>(null);
+  const [isCurrentMediaReady, setIsCurrentMediaReady] = useState(false);
   const [mediaError, setMediaError] = useState(false);
   const [legacyLocalMediaMissing, setLegacyLocalMediaMissing] = useState(false);
   const [isYoutubeReady, setIsYoutubeReady] = useState(false);
 
   const slideBackgroundUrl = useMemo(() => safeString(slide?.backgroundUrl), [slide?.backgroundUrl]);
   const itemBackgroundUrl = useMemo(() => safeString(item?.theme?.backgroundUrl), [item?.theme?.backgroundUrl]);
+  const itemBackgroundSourceUrl = useMemo(() => safeString(item?.metadata?.backgroundSourceUrl), [item?.metadata?.backgroundSourceUrl]);
+  const itemBackgroundThumbnailUrl = useMemo(() => item?.metadata?.backgroundThumbnailUrl || undefined, [item?.metadata?.backgroundThumbnailUrl]);
   const projectorSafeItemBackgroundUrl = useMemo(
     () => (slideBackgroundUrl ? "" : safeString(item?.metadata?.backgroundFallbackUrl)),
     [slideBackgroundUrl, item?.metadata?.backgroundFallbackUrl],
@@ -176,6 +247,12 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     }
     return itemBackgroundUrl || "";
   }, [slideBackgroundUrl, item?.metadata?.backgroundSource, projectorSafeItemBackgroundUrl, itemBackgroundUrl]);
+  const sourceRecoveryUrl = useMemo(() => {
+    if (slideBackgroundUrl) return "";
+    if (!rawBgUrl.startsWith("local://")) return "";
+    if (!itemBackgroundSourceUrl || itemBackgroundSourceUrl === rawBgUrl) return "";
+    return itemBackgroundSourceUrl;
+  }, [slideBackgroundUrl, rawBgUrl, itemBackgroundSourceUrl]);
 
   const hasBackground = !!rawBgUrl;
 
@@ -242,6 +319,11 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
           setResolvedLocalKind(asset.kind);
           setMediaError(false);
           setLegacyLocalMediaMissing(false);
+        } else if (sourceRecoveryUrl) {
+          setResolvedUrl(sourceRecoveryUrl);
+          setResolvedLocalKind(null);
+          setMediaError(false);
+          setLegacyLocalMediaMissing(false);
         } else {
           setResolvedUrl("");
           setResolvedLocalKind(null);
@@ -250,10 +332,17 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
         }
       } catch {
         if (!active) return;
-        setResolvedUrl("");
-        setResolvedLocalKind(null);
-        setMediaError(true);
-        setLegacyLocalMediaMissing(true);
+        if (sourceRecoveryUrl) {
+          setResolvedUrl(sourceRecoveryUrl);
+          setResolvedLocalKind(null);
+          setMediaError(false);
+          setLegacyLocalMediaMissing(false);
+        } else {
+          setResolvedUrl("");
+          setResolvedLocalKind(null);
+          setMediaError(true);
+          setLegacyLocalMediaMissing(true);
+        }
       } finally {
         if (active) setIsLoading(false);
       }
@@ -263,7 +352,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     return () => {
       active = false;
     };
-  }, [rawBgUrl, hasBackground]);
+  }, [rawBgUrl, hasBackground, sourceRecoveryUrl]);
 
   // Decide media type
   const youtubeId = useMemo(() => getYoutubeId(resolvedUrl || ""), [resolvedUrl]);
@@ -315,23 +404,65 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     }
   }, [rawBgUrl]);
 
+  const buildRetainedAsset = useCallback((): RetainedBackgroundAsset | null => {
+    if (!hasBackground) return null;
+    if (mediaType === "color" && rawBgUrl) {
+      return {
+        url: rawBgUrl,
+        mediaType: "color",
+        imageFit,
+        youtubeId: null,
+      };
+    }
+    if (!resolvedUrl) return null;
+    return {
+      url: resolvedUrl,
+      mediaType,
+      imageFit,
+      youtubeId,
+    };
+  }, [hasBackground, mediaType, rawBgUrl, resolvedUrl, imageFit, youtubeId]);
+
+  const markCurrentMediaReady = useCallback(() => {
+    setIsCurrentMediaReady(true);
+    const next = buildRetainedAsset();
+    if (!next) return;
+    lastStableBackgroundRef.current = next;
+    setRetainedFloor((prev) => (
+      prev
+      && prev.url === next.url
+      && prev.mediaType === next.mediaType
+      && prev.imageFit === next.imageFit
+      && prev.youtubeId === next.youtubeId
+        ? prev
+        : next
+    ));
+  }, [buildRetainedAsset]);
+
   useEffect(() => {
     setIsYoutubeReady(false);
   }, [youtubeId, resolvedUrl, slide?.id, item?.id]);
 
+  const isDataUriBg = rawBgUrl.startsWith('data:');
+
+  // Reset readiness when the actual background source/type changes.
+  // Deliberately excludes markCurrentMediaReady so its identity change between
+  // slides (due to imageFit/buildRetainedAsset) does NOT reset the floor.
   useEffect(() => {
-    if (!hasBackground || isLoading || mediaError) return;
-    let next: RetainedBackgroundAsset | null = null;
-    if (mediaType === "color" && rawBgUrl) {
-      next = { url: rawBgUrl, mediaType: "color", imageFit, youtubeId: null };
-    } else if (resolvedUrl) {
-      next = { url: resolvedUrl, mediaType, imageFit, youtubeId };
+    if (!hasBackground) {
+      setIsCurrentMediaReady(true);
+      return;
     }
-    if (next) {
-      lastStableBackgroundRef.current = next;
-      setRetainedFloor(next);
+    setIsCurrentMediaReady(false);
+  }, [hasBackground, rawBgUrl, resolvedUrl, mediaType, youtubeId]);
+
+  // For instant-ready types (solid color, data-URI image) notify immediately.
+  useEffect(() => {
+    if (!hasBackground) return;
+    if (!mediaError && !isLoading && (mediaType === "color" || (isDataUriBg && mediaType !== "video"))) {
+      markCurrentMediaReady();
     }
-  }, [hasBackground, isLoading, mediaError, mediaType, rawBgUrl, resolvedUrl, imageFit, youtubeId]);
+  }, [hasBackground, mediaError, isLoading, mediaType, isDataUriBg, markCurrentMediaReady]);
 
   // HTML5 video play/pause and seek are now handled inside VideoBackground.
 
@@ -372,7 +503,6 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   const hasStructuredElements = Array.isArray(slide?.elements) && slide.elements.length > 0;
   // Guardrail: data-URI backgrounds (SVG split-panel, gradient SVG) always load — never
   // trigger the retained-background fallback for structured-element slides.
-  const isDataUriBg = rawBgUrl.startsWith('data:');
   const structuredElements = useMemo(
     () => (hasStructuredElements && slide ? getRenderableElements(slide, item) : []),
     [hasStructuredElements, slide, item]
@@ -472,12 +602,14 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       );
     } else if (retained.mediaType === "video" || retained.mediaType === "video-alpha") {
       content = (
-        <VideoBackground
+        <video
           src={retained.url}
-          active
+          className="absolute inset-0 w-full h-full object-cover"
           muted
-          filter={undefined}
-          isThumbnail
+          autoPlay
+          loop
+          playsInline
+          preload="auto"
         />
       );
     } else if (retained.imageFit === "contain") {
@@ -493,6 +625,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
               src={retained.url}
               alt=""
               className="w-full h-full object-contain"
+              style={STABLE_MEDIA_LAYER_STYLE}
               draggable={false}
             />
           </div>
@@ -504,6 +637,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
           src={retained.url}
           alt=""
           className="w-full h-full object-cover"
+          style={STABLE_MEDIA_LAYER_STYLE}
           draggable={false}
         />
       );
@@ -540,7 +674,9 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
           src={rawBgUrl}
           alt=""
           className="w-full h-full object-cover"
+          style={STABLE_MEDIA_LAYER_STYLE}
           draggable={false}
+          onLoad={markCurrentMediaReady}
           onError={handleMediaError}
         />
       );
@@ -600,6 +736,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             referrerPolicy="no-referrer-when-downgrade"
             onLoad={() => {
+              markCurrentMediaReady();
               setIsYoutubeReady(true);
               window.setTimeout(() => {
                 if (isMuted || isThumbnail) postYoutubeCommand("mute");
@@ -642,7 +779,9 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
           filter={!isThumbnail ? PROGRAM_MEDIA_PRESENTATION_FILTER : undefined}
           isThumbnail={isThumbnail}
           isPlaying={!isThumbnail && isPlaying}
+          poster={!isThumbnail ? itemBackgroundThumbnailUrl : undefined}
           onError={handleMediaError}
+          onReady={markCurrentMediaReady}
         />
       );
     }
@@ -667,7 +806,9 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
                 src={resolvedUrl}
                 alt=""
                 className="w-full h-full object-contain"
+                style={STABLE_MEDIA_LAYER_STYLE}
                 draggable={false}
+                onLoad={markCurrentMediaReady}
                 onError={handleMediaError}
               />
             </div>
@@ -681,8 +822,11 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
           src={resolvedUrl}
           alt=""
           className="w-full h-full object-cover"
-          style={!isThumbnail ? { filter: PROGRAM_MEDIA_PRESENTATION_FILTER } : undefined}
+          style={!isThumbnail
+            ? { ...STABLE_MEDIA_LAYER_STYLE, filter: PROGRAM_MEDIA_PRESENTATION_FILTER }
+            : STABLE_MEDIA_LAYER_STYLE}
           draggable={false}
+          onLoad={markCurrentMediaReady}
           onError={handleMediaError}
         />
       );
@@ -723,6 +867,8 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     );
   }
 
+  const shouldRenderFloor = !!retainedFloor && (mediaError || isLoading || !isCurrentMediaReady);
+
   return (
     <ScaledCanvas
       fitContainer={fitContainer}
@@ -739,7 +885,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       lowerThirds={lowerThirds}
       showSlideLabel={showSlideLabel}
       renderMedia={renderMedia}
-      renderFloor={() => retainedFloor ? <RetainedFloor asset={retainedFloor} /> : null}
+      renderFloor={shouldRenderFloor ? () => retainedFloor ? <RetainedFloor asset={retainedFloor} /> : null : undefined}
       mediaType={mediaType}
       hasBackground={hasBackground}
       mediaError={mediaError}
@@ -787,7 +933,7 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
   audienceOverlay, projectedAudienceQr, branding, alphaOverlayUrl, isThumbnail = false,
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const [scale, setScale] = useState(1);
+  const [canvasFrame, setCanvasFrame] = useState<CanvasFrame>(EMPTY_CANVAS_FRAME);
 
   // Legacy text path: render HTML if the content contains markup (from rich-text editor)
   const contentIsHtml = /<[a-zA-Z][^>]*>/.test(contentText);
@@ -799,11 +945,14 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
     const el = wrapperRef.current;
     if (!el) return;
 
+    const updateFrame = (width: number, height: number) => {
+      const nextFrame = computeCanvasFrame(width, height);
+      setCanvasFrame((prev) => (canvasFramesEqual(prev, nextFrame) ? prev : nextFrame));
+    };
+
     // Initial measurement — read once synchronously before observer fires
     const initRect = el.getBoundingClientRect();
-    if (initRect.width > 0 && initRect.height > 0) {
-      setScale(Math.min(initRect.width / CANVAS_W, initRect.height / CANVAS_H));
-    }
+    updateFrame(initRect.width, initRect.height);
 
     let rafId: number | null = null;
     const ro = new ResizeObserver((entries) => {
@@ -818,9 +967,7 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
       if (rafId !== null) cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
         rafId = null;
-        if (width > 0 && height > 0) {
-          setScale(Math.min(width / CANVAS_W, height / CANVAS_H));
-        }
+        updateFrame(width, height);
       });
     });
     ro.observe(el);
@@ -875,11 +1022,12 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
           position: "absolute",
           width: CANVAS_W,
           height: CANVAS_H,
-          top: "50%",
-          left: "50%",
-          transform: `translate(-50%, -50%) scale(${scale})`,
-          transformOrigin: "center center",
+          top: canvasFrame.offsetY,
+          left: canvasFrame.offsetX,
+          transform: `scale(${canvasFrame.scale})`,
+          transformOrigin: "top left",
           willChange: "transform",
+          backfaceVisibility: "hidden",
         }}
       >
         {/* Floor layer — always-on last-stable background; prevents black flash during load/error */}
