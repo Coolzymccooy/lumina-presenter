@@ -75,13 +75,15 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
+      "server/**/*",
       "node_modules/**/*",
       "!node_modules/**/*.d",
       "package.json"
     ],
     "asarUnpack": [
       "node_modules/@stagetimerio/grandiose/dist/**",
-      "node_modules/better-sqlite3/**"
+      "node_modules/better-sqlite3/**",
+      "server/**"
     ],
     "win": {
       "target": [

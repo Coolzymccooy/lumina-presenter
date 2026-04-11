@@ -191,7 +191,7 @@ interface TooltipContentProps {
   visible: boolean;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
-  tooltipRef: React.RefObject<HTMLDivElement>;
+  tooltipRef: React.RefObject<HTMLDivElement | null>;
 }
 
 const TooltipContent: React.FC<TooltipContentProps> = ({

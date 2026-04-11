@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen, session, Menu, shell, ipcMain, clipboard, dialog } from 'electron';
+import { app, BrowserWindow, screen, session, Menu, shell, ipcMain, clipboard, dialog, utilityProcess } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -49,17 +49,87 @@ let machineServiceState = {
   stageOpen: false,
 };
 
-// Content Security Policy â€” allows Firebase, Google APIs, and the Lumina API.
+// ─── Local API server (packaged mode only) ───────────────────────────────────
+let apiServerProcess = null;
+
+/**
+ * Read a simple KEY=VALUE config file from the user's data directory
+ * (userData/lumina.env).  This lets non-dev users supply GOOGLE_AI_API_KEY
+ * without needing system-level environment variables.
+ */
+function readUserEnvConfig(userData) {
+  const configPath = path.join(userData, 'lumina.env');
+  const vars = {};
+  try {
+    if (!fs.existsSync(configPath)) return vars;
+    const lines = fs.readFileSync(configPath, 'utf8').split(/\r?\n/);
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith('#')) continue;
+      const eqIdx = line.indexOf('=');
+      if (eqIdx <= 0) continue;
+      const key = line.slice(0, eqIdx).trim();
+      let val = line.slice(eqIdx + 1).trim();
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        val = val.slice(1, -1);
+      }
+      if (key) vars[key] = val;
+    }
+  } catch { /* best effort */ }
+  return vars;
+}
+
+function startApiServer() {
+  if (!app.isPackaged) return; // dev mode: server is started by npm run server separately
+  const serverPath = path.join(process.resourcesPath, 'app.asar.unpacked', 'server', 'index.js');
+  if (!fs.existsSync(serverPath)) {
+    console.warn('[lumina-server] server/index.js not found at:', serverPath);
+    return;
+  }
+  const userData = app.getPath('userData');
+  const userConfig = readUserEnvConfig(userData);
+  const serverEnv = {
+    ...process.env,
+    ...userConfig,
+    PORT: '8787',
+    LUMINA_API_PORT: '8787',
+    LUMINA_DATA_DIR: userData,
+  };
+  try {
+    apiServerProcess = utilityProcess.fork(serverPath, [], {
+      serviceName: 'lumina-api-server',
+      stdio: 'pipe',
+      env: serverEnv,
+    });
+    apiServerProcess.on('exit', (code) => {
+      console.warn('[lumina-server] API server exited with code:', code);
+      apiServerProcess = null;
+    });
+  } catch (err) {
+    console.warn('[lumina-server] Failed to start API server:', err?.message || err);
+  }
+}
+
+function stopApiServer() {
+  if (!apiServerProcess) return;
+  try { apiServerProcess.kill(); } catch { /* best effort */ }
+  apiServerProcess = null;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Content Security Policy — allows Firebase, Google APIs, and the Lumina API.
+// http://localhost:8787 and http://127.0.0.1:8787 are needed for the local
+// Express API server that is spawned as a child process in packaged builds.
 const CSP = [
-  "default-src 'self' blob: data:",
-  "script-src 'self' 'wasm-unsafe-eval'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' data: https://fonts.gstatic.com",
-  "img-src 'self' blob: data: https:",
-  "media-src 'self' blob: data: https:",
-  "connect-src 'self' https: wss: ws:",
-  "worker-src 'self' blob:",
-  "frame-src 'none'",
+  “default-src 'self' blob: data:”,
+  “script-src 'self' 'wasm-unsafe-eval'”,
+  “style-src 'self' 'unsafe-inline' https://fonts.googleapis.com”,
+  “font-src 'self' data: https://fonts.gstatic.com”,
+  “img-src 'self' blob: data: https:”,
+  “media-src 'self' blob: data: https:”,
+  “connect-src 'self' https: http://localhost:8787 http://127.0.0.1:8787 wss: ws:”,
+  “worker-src 'self' blob:”,
+  “frame-src 'none'”,
 ].join('; ');
 
 function normalizeOrigin(value) {
@@ -1010,6 +1080,7 @@ function verifyCriticalFiles() {
 
 app.whenReady().then(async () => {
   if (!verifyCriticalFiles()) return;
+  startApiServer();
   // macOS requires explicit OS-level permission before getUserMedia can succeed.
   // On Windows/Linux this is handled automatically by Chromium.
   if (process.platform === 'darwin') {
@@ -1038,6 +1109,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('before-quit', () => {
+  stopApiServer();
   if (updateCheckTimer) {
     clearInterval(updateCheckTimer);
     updateCheckTimer = null;
