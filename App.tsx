@@ -23,7 +23,7 @@ import {
 } from './types';
 import { SlideRenderer } from './components/SlideRenderer';
 import { AIModal } from './components/AIModal';
-import { ItemEditorPanel } from './components/ItemEditorPanel';
+import { ItemEditorPanel, type QuickBackgroundSelection } from './components/ItemEditorPanel';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { HelpModal } from './components/HelpModal';
 import { OutputWindow } from './components/OutputWindow';
@@ -38,6 +38,8 @@ import { AudienceSubmit } from './components/AudienceSubmit'; // NEW
 import { AudienceStudio } from './components/AudienceStudio'; // NEW
 import { ConnectModal } from './components/ConnectModal'; // NEW
 import { DisplaySetupModal, type DesktopDisplayCard } from './components/DisplaySetupModal';
+import { OutputRoute } from './components/OutputRoute';
+import { StageRoute } from './components/StageRoute';
 import { HymnLibrary } from './components/HymnLibrary';
 import { StageDisplay } from './components/StageDisplay';
 import { RemoteControl } from './components/RemoteControl';
@@ -1134,6 +1136,7 @@ declare global {
 function App() {
   // @ts-ignore
   const isElectronShell = !!window.electron?.isElectron;
+  const canUseFirebaseSync = isFirebaseConfigured() && !isElectronShell;
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [userPlan, setUserPlan] = useState<string | null>(null);
@@ -1142,6 +1145,30 @@ function App() {
   const isNdiCapture = useMemo(() => {
     const params = new URLSearchParams(window.location.search || window.location.hash.split('?')[1] || '');
     return params.get('ndi') === '1';
+  }, []);
+  const managedRouteParams = useMemo(() => {
+    const searchParams = new URLSearchParams(window.location.search || '');
+    const hash = window.location.hash || '';
+    const queryStart = hash.indexOf('?');
+    const hashParams = new URLSearchParams(queryStart >= 0 ? hash.slice(queryStart + 1) : '');
+    const readParam = (key: string) => (
+      (searchParams.get(key) || '').trim()
+      || (hashParams.get(key) || '').trim()
+    );
+    const sessionId = readParam('session');
+    const workspaceId = readParam('workspace');
+    const fullscreen = readParam('fullscreen');
+    const clean = readParam('clean');
+    const ndi = readParam('ndi');
+    return {
+      sessionId,
+      workspaceId,
+      fullscreen,
+      clean,
+      ndi,
+      hasManagedOutputRoute: !!(sessionId || workspaceId || fullscreen === '1' || clean === '1' || ndi === '1'),
+      hasManagedStageRoute: !!(sessionId || workspaceId),
+    };
   }, []);
   const [viewState, setViewState] = useState<'landing' | 'studio' | 'audience' | 'output' | 'stage' | 'remote'>(() => {
     const hash = window.location.hash;
@@ -1276,6 +1303,10 @@ function App() {
     const saved = initialSavedState;
     return saved?.schedule || INITIAL_SCHEDULE;
   });
+  const scheduleRef = useRef<ServiceItem[]>(schedule);
+  useEffect(() => {
+    scheduleRef.current = schedule;
+  }, [schedule]);
 
   const [selectedItemId, setSelectedItemId] = useState<string>(() => {
     const saved = initialSavedState;
@@ -1515,7 +1546,7 @@ function App() {
   const [lowerThirdsEnabled, setLowerThirdsEnabled] = useState(false);
   const [routingMode, setRoutingMode] = useState<'PROJECTOR' | 'STREAM' | 'LOBBY'>('PROJECTOR');
   const [teamPlaylists, setTeamPlaylists] = useState<CloudPlaylistRecord[]>([]);
-  const [cloudBootstrapComplete, setCloudBootstrapComplete] = useState(!isFirebaseConfigured());
+  const [cloudBootstrapComplete, setCloudBootstrapComplete] = useState(!canUseFirebaseSync);
   const [stageWin, setStageWin] = useState<Window | null>(null);
   const [timerMode, setTimerMode] = useState<'COUNTDOWN' | 'ELAPSED'>(() => {
     const saved = initialSavedState;
@@ -2263,7 +2294,9 @@ function App() {
       for (let idx = 0; idx < queued.length; idx += 1) {
         const entry = queued[idx];
         const [firebaseOk, serverOk] = await Promise.all([
-          updateLiveState(entry.payload, entry.sessionId || liveSessionId),
+          canUseFirebaseSync
+            ? updateLiveState(entry.payload, entry.sessionId || liveSessionId)
+            : Promise.resolve(false),
           saveServerSessionState(workspaceId, entry.sessionId || liveSessionId, user, entry.payload).then((response) => !!response?.ok),
         ]);
         if (!firebaseOk && !serverOk) {
@@ -2282,7 +2315,7 @@ function App() {
       console.warn('Failed to flush queued live state', error);
       reportSyncFailure('flush', error, { queueOp: 'flush' });
     }
-  }, [liveSessionId, workspaceId, user, reportSyncFailure, applySyncBackoff, resetSyncBackoff, buildSyncPausedMessage]);
+  }, [liveSessionId, workspaceId, user, reportSyncFailure, applySyncBackoff, resetSyncBackoff, buildSyncPausedMessage, canUseFirebaseSync]);
 
   // Strip inline data: URLs (e.g. SVG backgrounds on Bible slides) before syncing to server.
   // These can be hundreds of KB each and cause PayloadTooLargeError.
@@ -2337,7 +2370,7 @@ function App() {
       return;
     }
     const [firebaseOk, serverOk] = await Promise.all([
-      isFirebaseConfigured() ? updateLiveState(payload, liveSessionId) : Promise.resolve(false),
+      canUseFirebaseSync ? updateLiveState(payload, liveSessionId) : Promise.resolve(false),
       saveServerSessionState(workspaceId, liveSessionId, user, payload).then((response) => !!response?.ok),
     ]);
     if (!firebaseOk && !serverOk) {
@@ -2351,7 +2384,7 @@ function App() {
         setSyncIssue(null);
       }
     }
-  }, [user?.uid, user, workspaceId, liveSessionId, enqueueLiveState, applySyncBackoff, resetSyncBackoff, buildSyncPausedMessage]);
+  }, [user?.uid, user, workspaceId, liveSessionId, enqueueLiveState, applySyncBackoff, resetSyncBackoff, buildSyncPausedMessage, canUseFirebaseSync]);
 
   const refreshRunSheetFiles = useCallback(async () => {
     // Wait for Firebase auth and workspace ID to resolve — workspaceId defaults to
@@ -3102,8 +3135,8 @@ function App() {
     : -1;
   const presenterPreviewSlide = presenterPreviewSlideIndex >= 0 ? presenterPreviewSlides[presenterPreviewSlideIndex] : null;
   const currentLiveBackground = useMemo(
-    () => (isOutputLive ? getBackgroundSnapshotFromItem(activeItem, activeSlide) : null),
-    [isOutputLive, activeItem, activeSlide],
+    () => getBackgroundSnapshotFromItem(activeItem, activeSlide),
+    [activeItem, activeSlide],
   );
   const activeBackgroundUrl = (activeSlide?.backgroundUrl || activeItem?.theme?.backgroundUrl || '').trim();
   const isActiveVideo = !!activeSlide && (
@@ -3367,7 +3400,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!isOutputLive || !currentLiveBackground?.backgroundUrl) return;
+    if (!currentLiveBackground?.backgroundUrl) return;
     prevailingGeneratedBackgroundRef.current = currentLiveBackground;
     const backgroundKey = [
       currentLiveBackground.backgroundUrl,
@@ -3408,7 +3441,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [currentLiveBackground, isOutputLive, persistBackgroundSnapshotForProjection]);
+  }, [currentLiveBackground, persistBackgroundSnapshotForProjection]);
 
   const getPrevailingGeneratedBackground = useCallback(() => {
     if (!isOutputLive) return null;
@@ -5730,6 +5763,41 @@ function App() {
     }
   }, [user, workspaceId]);
 
+  const applyQuickBackgroundToItem = useCallback(async (targetItem: ServiceItem, selection: QuickBackgroundSelection) => {
+    if (!targetItem?.id) return;
+    const resolvedMediaType: 'image' | 'video' = selection.mediaType === 'image' ? 'image' : 'video';
+    const resolvedUrl = await persistRemoteMotionLibraryAsset(selection.url, resolvedMediaType);
+    const latestItem = scheduleRef.current.find((entry) => entry.id === targetItem.id);
+    if (!latestItem) return;
+
+    const normalizedItem = markItemBackgroundAsUserChanged({
+      ...latestItem,
+      theme: {
+        ...latestItem.theme,
+        backgroundUrl: resolvedUrl,
+        mediaType: resolvedMediaType,
+      },
+      metadata: {
+        ...latestItem.metadata,
+        backgroundProvider: selection.provider,
+        backgroundCategory: selection.category,
+        backgroundTitle: selection.title,
+        backgroundSourceUrl: selection.sourceUrl || selection.url,
+        backgroundThumbnailUrl: selection.thumb || undefined,
+      },
+    }, latestItem);
+
+    pushHistory();
+    setSchedule((prev) => prev.map((entry) => (entry.id === normalizedItem.id ? normalizedItem : entry)));
+    logActivity(user?.uid, 'UPDATE_THEME', {
+      type: 'QUICK_BG',
+      itemId: normalizedItem.id,
+      mediaType: resolvedMediaType,
+      provider: selection.provider,
+      category: selection.category,
+    });
+  }, [markItemBackgroundAsUserChanged, persistRemoteMotionLibraryAsset, pushHistory, user?.uid]);
+
   const buildTextSlidesFromPptx = async (file: File) => {
     const parsed = await parsePptxFile(file);
     const now = Date.now();
@@ -6250,7 +6318,14 @@ function App() {
 
 
   useEffect(() => {
-    if (!isFirebaseConfigured() || !user?.uid) return;
+    if (!user?.uid) return;
+    if (!canUseFirebaseSync) {
+      if (!hasHydratedCloudStateRef.current) {
+        hasHydratedCloudStateRef.current = true;
+        setCloudBootstrapComplete(true);
+      }
+      return;
+    }
 
     let unsubPlaylists = () => { };
     try {
@@ -6360,10 +6435,10 @@ function App() {
     return () => {
       unsubPlaylists();
     };
-  }, [user?.uid, cloudPlaylistId, reportSyncFailure, applyHydratedStudioState]);
+  }, [user?.uid, cloudPlaylistId, reportSyncFailure, applyHydratedStudioState, canUseFirebaseSync]);
 
   useEffect(() => {
-    if (!isFirebaseConfigured() || !user?.uid || !cloudBootstrapComplete) return;
+    if (!canUseFirebaseSync || !user?.uid || !cloudBootstrapComplete) return;
 
     const unsubState = subscribeToState((data) => {
       if (!isRecord(data)) {
@@ -6404,7 +6479,7 @@ function App() {
       hasInitializedRemoteSnapshotRef.current = false;
       lastRemoteCommandAtRef.current = null;
     };
-  }, [user?.uid, cloudBootstrapComplete, executeRemoteCommand, liveSessionId, reportSyncFailure]);
+  }, [user?.uid, cloudBootstrapComplete, executeRemoteCommand, liveSessionId, reportSyncFailure, canUseFirebaseSync]);
 
   useEffect(() => {
     if (!user?.uid || !cloudBootstrapComplete) return;
@@ -6910,7 +6985,12 @@ function App() {
     try { w.focus(); } catch { }
   };
 
-  if (authLoading) return <div className="h-screen w-screen bg-black flex items-center justify-center text-zinc-500 font-mono text-xs animate-pulse">LOADING NEURAL HUB...</div>;
+  const shouldBypassAppAuthGate = (
+    (viewState === 'output' && managedRouteParams.hasManagedOutputRoute)
+    || (viewState === 'stage' && managedRouteParams.hasManagedStageRoute)
+  );
+
+  if (authLoading && !shouldBypassAppAuthGate) return <div className="h-screen w-screen bg-black flex items-center justify-center text-zinc-500 font-mono text-xs animate-pulse">LOADING NEURAL HUB...</div>;
 
   // ROUTING: LANDING PAGE
   if (viewState === 'landing') {
@@ -6935,6 +7015,9 @@ function App() {
 
   // ROUTING: PROJECTOR / OBS OUTPUT
   if (viewState === 'output') {
+    if (managedRouteParams.hasManagedOutputRoute) {
+      return <OutputRoute />;
+    }
     const holdState = renderPresenterHoldState();
     return (
       <div className="h-screen w-screen bg-black overflow-hidden relative">
@@ -6963,6 +7046,9 @@ function App() {
   }
 
   if (viewState === 'stage') {
+    if (managedRouteParams.hasManagedStageRoute) {
+      return <StageRoute />;
+    }
     const holdState = renderPresenterHoldState();
     if (holdState) {
       return <div className="h-screen w-screen bg-black overflow-hidden">{holdState}</div>;
@@ -8360,6 +8446,7 @@ function App() {
             <ItemEditorPanel
               item={selectedItem}
               onUpdate={updateItem}
+              onApplyQuickBackground={applyQuickBackgroundToItem}
               onOpenLibrary={() => setIsMotionLibOpen(true)}
               speakerPresets={workspaceSettings.speakerTimerPresets}
             />

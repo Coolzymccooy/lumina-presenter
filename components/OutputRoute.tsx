@@ -125,6 +125,7 @@ export const OutputRoute: React.FC = () => {
     const fromSearchWorkspace = (searchParams.get('workspace') || '').trim();
     const fromSearchFullscreen = (searchParams.get('fullscreen') || '').trim();
     const fromSearchClean = (searchParams.get('clean') || '').trim();
+    const fromSearchNdi = (searchParams.get('ndi') || '').trim();
 
     const hash = window.location.hash || '';
     const queryStart = hash.indexOf('?');
@@ -132,12 +133,14 @@ export const OutputRoute: React.FC = () => {
     let fromHashWorkspace = '';
     let fromHashFullscreen = '';
     let fromHashClean = '';
+    let fromHashNdi = '';
     if (queryStart >= 0) {
       const hashParams = new URLSearchParams(hash.slice(queryStart + 1));
       fromHash = (hashParams.get('session') || '').trim();
       fromHashWorkspace = (hashParams.get('workspace') || '').trim();
       fromHashFullscreen = (hashParams.get('fullscreen') || '').trim();
       fromHashClean = (hashParams.get('clean') || '').trim();
+      fromHashNdi = (hashParams.get('ndi') || '').trim();
     }
 
     return {
@@ -145,10 +148,11 @@ export const OutputRoute: React.FC = () => {
       workspaceId: fromSearchWorkspace || fromHashWorkspace || 'default-workspace',
       fullscreen: fromSearchFullscreen || fromHashFullscreen,
       clean: fromSearchClean || fromHashClean,
+      ndi: fromSearchNdi || fromHashNdi,
       hasExplicitWorkspace: !!(fromSearchWorkspace || fromHashWorkspace),
     };
   };
-  const [{ sessionId, workspaceId, fullscreen, clean, hasExplicitWorkspace }] = useState(getRouteParams);
+  const [{ sessionId, workspaceId, fullscreen, clean, ndi, hasExplicitWorkspace }] = useState(getRouteParams);
   const outputClientId = useMemo(
     () => getOrCreateConnectionClientId(workspaceId, sessionId, 'output'),
     [workspaceId, sessionId]
@@ -179,9 +183,9 @@ export const OutputRoute: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || canUseServerWorkspace) return;
     return subscribeToState((data) => setLiveState(data), sessionId);
-  }, [user, sessionId]);
+  }, [user, sessionId, canUseServerWorkspace]);
 
   useEffect(() => {
     if (fullscreen !== '1') return;
@@ -256,6 +260,7 @@ export const OutputRoute: React.FC = () => {
   const localSchedule: ServiceItem[] = Array.isArray(localState?.schedule) ? localState.schedule : [];
   const serverSchedule: ServiceItem[] = Array.isArray(serverState?.scheduleSnapshot) ? serverState.scheduleSnapshot : [];
   const hasLocalSchedule = localSchedule.length > 0;
+  const isNdiCapture = ndi === '1';
 
   const buildEffective = useCallback((source: any, schedule: ServiceItem[]): EffectiveOutputState => {
     const activeItemId = typeof source?.activeItemId === 'string' ? source.activeItemId : null;
@@ -358,13 +363,20 @@ export const OutputRoute: React.FC = () => {
         audienceOverlay: null,
         projectedAudienceQr: null,
       }
-    : rawDisplay;
+    : (
+      isNdiCapture
+        ? {
+            ...rawDisplay,
+            projectedAudienceQr: null,
+          }
+        : rawDisplay
+    );
 
-  if (authLoading && !hasLocalSchedule) {
+  if (authLoading && !hasLocalSchedule && !canUseServerWorkspace) {
     return <div className="h-screen w-screen bg-black text-zinc-500 flex items-center justify-center text-xs">Loading output...</div>;
   }
 
-  if (!user && !hasLocalSchedule) {
+  if (!user && !hasLocalSchedule && !canUseServerWorkspace) {
     return <LoginScreen onLoginSuccess={(loggedInUser) => setUser(loggedInUser)} />;
   }
 
