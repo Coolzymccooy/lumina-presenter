@@ -97,7 +97,7 @@ const AUTO_NETWORK_ERROR_LIMIT = 3;
 const AUTO_RESTART_BASE_MS = 600;
 const AUTO_MIC_PREFLIGHT_COOLDOWN_MS = 120000;
 const AUTO_NETWORK_FALLBACK_THRESHOLD = 2;
-const CLOUD_FALLBACK_CHUNK_MS = 10000;
+const CLOUD_FALLBACK_CHUNK_MS = 15000;
 const CLOUD_FALLBACK_RETRY_MS = 3500;
 const CLOUD_BROWSER_PROBE_INTERVAL_MS = 45000;
 const ENGINE_TOAST_MS = 4200;
@@ -1073,6 +1073,10 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       } else if (response.mode === 'cooldown') {
         const retryAfterMs = Math.max(1000, Number(response.retryAfterMs || 0));
         const resumeAt = Date.now() + retryAfterMs;
+        // Discard stale queued audio — it's irrelevant after a long cooldown and
+        // would cause a burst of requests the moment cooldown expires, re-triggering
+        // the same quota error immediately.
+        cloudQueueRef.current = [];
         setCloudCooldownUntil(resumeAt);
         setCloudRecorderState('cooldown');
         setAutoError(`Cloud transcription cooling down. Retrying in ${Math.ceil(retryAfterMs / 1000)}s.`);

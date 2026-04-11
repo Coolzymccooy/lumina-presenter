@@ -179,7 +179,7 @@ export type TranscribeSermonChunkResult =
 export const transcribeSermonChunk = async (
   payload: TranscribeSermonChunkRequest
 ): Promise<TranscribeSermonChunkResult> => {
-  const response = await postAi('/api/ai/transcribe-sermon-chunk', payload, 10000);
+  const response = await postAi('/api/ai/transcribe-sermon-chunk', payload, 20000);
   if (response?.ok) {
     const locale = response.locale === 'en-GB' ? 'en-GB' : 'en-US';
     return {
