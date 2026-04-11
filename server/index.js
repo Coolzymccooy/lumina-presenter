@@ -1932,26 +1932,46 @@ ${text}`,
 
 app.post("/api/ai/semantic-bible-search", async (req, res) => {
   const query = String(req.body?.query || "").trim();
+  const maxResults = Math.min(5, Math.max(1, parseInt(String(req.body?.maxResults || "1"), 10) || 1));
   if (!query) return res.status(400).json({ ok: false, error: "QUERY_REQUIRED" });
   const ai = ensureGoogleAiClient(res);
   if (!ai) return;
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `You are a biblical scholar. Given the user's input (topic, emotion, or situation),
+    const userAskedForJohn316 = /john\s*3:16|for god so loved|eternal life|believe/i.test(query);
+    if (maxResults > 1) {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `You are a biblical scholar. Given the user's spoken words (topic, emotion, or situation), provide ${maxResults} distinct and relevant Bible references that address it from different angles.
+
+User Input: "${query}"
+
+Return ONLY ${maxResults} references, one per line, no numbering, no extra text. Example:
+Philippians 4:13
+Psalm 46:1-3
+Romans 8:28`,
+      });
+      const lines = String(response?.text || "").split("\n").map((l) => l.trim()).filter(Boolean);
+      const parsed = lines.map((l) => extractBibleReference(l)).filter(Boolean);
+      const filtered = parsed.filter((r) => !SEMANTIC_JOHN_316_PATTERN.test(r) || userAskedForJohn316);
+      const references = filtered.length > 0 ? filtered.slice(0, maxResults) : [inferSemanticFallbackReference(query)];
+      return res.json({ ok: true, reference: references[0], references });
+    } else {
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `You are a biblical scholar. Given the user's input (topic, emotion, or situation),
 provide the single best Bible reference (Book Chapter:Verse) to address it.
 
 User Input: "${query}"
 
 Return ONLY the reference (e.g., "Philippians 4:13" or "Psalm 23:1-4").`,
-    });
-    const parsedReference = extractBibleReference(response?.text);
-    const looksLikeDefaultJohn = parsedReference ? SEMANTIC_JOHN_316_PATTERN.test(parsedReference) : false;
-    const userAskedForJohn316 = /john\s*3:16|for god so loved|eternal life|believe/i.test(query);
-    const reference = parsedReference && (!looksLikeDefaultJohn || userAskedForJohn316)
-      ? parsedReference
-      : inferSemanticFallbackReference(query);
-    return res.json({ ok: true, reference });
+      });
+      const parsedReference = extractBibleReference(response?.text);
+      const looksLikeDefaultJohn = parsedReference ? SEMANTIC_JOHN_316_PATTERN.test(parsedReference) : false;
+      const reference = parsedReference && (!looksLikeDefaultJohn || userAskedForJohn316)
+        ? parsedReference
+        : inferSemanticFallbackReference(query);
+      return res.json({ ok: true, reference, references: [reference] });
+    }
   } catch (error) {
     return res.status(500).json({ ok: false, error: "AI_SEMANTIC_SEARCH_FAILED", message: String(error?.message || error) });
   }

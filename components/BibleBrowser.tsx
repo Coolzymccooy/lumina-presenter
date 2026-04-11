@@ -13,6 +13,7 @@ import {
   getSermonProcessingJob,
   retrySermonProcessingJob,
   semanticBibleSearch,
+  semanticBibleSearchMulti,
   transcribeSermonChunk,
   transcribeSermonAudio,
   type SermonProcessingJob,
@@ -257,7 +258,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const [autoListening, setAutoListening] = useState(false);
   const [autoBusy, setAutoBusy] = useState(false);
   const [autoTranscript, setAutoTranscript] = useState('');
-  const [autoReference, setAutoReference] = useState('');
+  const [autoReferences, setAutoReferences] = useState<string[]>([]);
   const [autoError, setAutoError] = useState<string | null>(null);
   const [autoSupportError, setAutoSupportError] = useState<string | null>(null);
   const [activeSpeechLanguage, setActiveSpeechLanguage] = useState('en-US');
@@ -1273,26 +1274,26 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     setAutoBusy(true);
     setAutoError(null);
     try {
-      const semanticResolution = await resolveSemanticReference(transcript, 'voice_final', [transcript]);
-      const reference = semanticResolution.reference;
-      if (!reference) return;
-      setAutoReference(reference);
-      setAiQuery(reference);
+      const references = await semanticBibleSearchMulti(transcript, 4);
+      if (!references.length) return;
+      setAutoReferences(references);
+      const primary = references[0];
+      setAiQuery(primary);
 
       const last = lastReferenceRef.current;
-      if (last.reference.toLowerCase() === reference.toLowerCase() && (now - last.at) < AUTO_REPEAT_REFERENCE_WINDOW_MS) {
+      if (last.reference.toLowerCase() === primary.toLowerCase() && (now - last.at) < AUTO_REPEAT_REFERENCE_WINDOW_MS) {
         return;
       }
 
-      const verses = await fetchScripture(reference, false, true);
+      const verses = await fetchScripture(primary, false, true);
       if (!verses.length) {
-        lastReferenceRef.current = { reference, at: Date.now() };
+        lastReferenceRef.current = { reference: primary, at: Date.now() };
         return;
       }
 
-      lastReferenceRef.current = { reference, at: Date.now() };
+      lastReferenceRef.current = { reference: primary, at: Date.now() };
 
-      if (autoProjectRef.current && semanticResolution.shouldProjectInstantly) {
+      if (autoProjectRef.current) {
         onProjectRequest(createServiceItem(verses));
       }
     } catch {
@@ -1301,11 +1302,19 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       autoBusyRef.current = false;
       setAutoBusy(false);
     }
-  }, [createServiceItem, fetchScripture, onProjectRequest, resolveSemanticReference]);
+  }, [createServiceItem, fetchScripture, onProjectRequest, semanticBibleSearchMulti]);
 
   useEffect(() => {
     processAutoTranscriptRef.current = processAutoTranscript;
   }, [processAutoTranscript]);
+
+  const handleAutoReferenceClick = useCallback(async (reference: string) => {
+    setAiQuery(reference);
+    const verses = await fetchScripture(reference, false, true);
+    if (verses.length && autoProjectRef.current) {
+      onProjectRequest(createServiceItem(verses));
+    }
+  }, [createServiceItem, fetchScripture, onProjectRequest]);
 
   useEffect(() => {
     const enabled = autoVisionaryEnabled && isVisionaryMode;
@@ -1650,9 +1659,21 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                   Cooldown: {Math.max(1, Math.ceil((cloudCooldownUntil - Date.now()) / 1000))}s
                 </div>
               )}
-              {autoReference && (
-                <div className="text-[9px] text-cyan-300 font-mono truncate">
-                  Match: {autoReference}
+              {autoReferences.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  <div className="text-[9px] text-zinc-500 font-mono uppercase tracking-widest">Matches</div>
+                  <div className="flex flex-wrap gap-1">
+                    {autoReferences.map((ref) => (
+                      <button
+                        key={ref}
+                        onClick={() => void handleAutoReferenceClick(ref)}
+                        className="text-[9px] text-cyan-300 font-mono bg-cyan-950/40 border border-cyan-800/50 rounded px-1.5 py-0.5 hover:bg-cyan-900/60 active:bg-cyan-900/80 transition-colors truncate max-w-[140px]"
+                        title={`Load ${ref}`}
+                      >
+                        {ref}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
               {autoTranscript && (

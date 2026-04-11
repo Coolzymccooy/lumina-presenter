@@ -413,6 +413,25 @@ export const semanticBibleSearch = async (query: string): Promise<string> => {
   return resolved;
 };
 
+export const semanticBibleSearchMulti = async (query: string, maxResults = 4): Promise<string[]> => {
+  const sanitizedQuery = String(query || '').trim();
+  if (!sanitizedQuery) return ['Psalm 23:1-4'];
+
+  const exactReference = normalizeBibleReference(sanitizedQuery);
+  if (exactReference) return [exactReference];
+
+  const response = await postAi('/api/ai/semantic-bible-search', { query: sanitizedQuery, maxResults }, 25000);
+  if (!response?.ok) return [inferSemanticFallbackReference(sanitizedQuery)];
+
+  const refs = Array.isArray(response.references)
+    ? (response.references as unknown[]).map((r) => extractBibleReference(String(r || ''))).filter((r): r is string => Boolean(r))
+    : [];
+  if (refs.length > 0) return refs;
+
+  const single = extractBibleReference(response.reference);
+  return single ? [single] : [inferSemanticFallbackReference(sanitizedQuery)];
+};
+
 export const generateVisionaryBackdrop = async (verseText: string): Promise<string | null> => {
   const response = await postAi("/api/ai/generate-visionary-backdrop", { verseText }, 90000);
   if (!response?.ok) return null;
