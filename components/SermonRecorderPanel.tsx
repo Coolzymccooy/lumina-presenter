@@ -36,6 +36,9 @@ const WaveformBars: React.FC<{ level: number; active: boolean }> = ({ level, act
   const barsRef = useRef<number[]>(Array.from({ length: BAR_COUNT }, () => 0.04));
   const frameRef = useRef<number | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Use a ref so the RAF loop always reads the latest level without restarting
+  const levelRef = useRef(level);
+  useEffect(() => { levelRef.current = level; }, [level]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -51,12 +54,13 @@ const WaveformBars: React.FC<{ level: number; active: boolean }> = ({ level, act
       const barW = W / BAR_COUNT;
       const gap = 3;
       const centerY = H / 2;
+      const lv = levelRef.current;
 
       barsRef.current.forEach((val, i) => {
         const freqBias = 1 - Math.abs(i - BAR_COUNT / 2) / (BAR_COUNT / 2) * 0.4;
         const randomNoise = active ? (Math.random() - 0.5) * 0.35 : 0;
         const target = active
-          ? Math.max(0.04, Math.min(1, level * freqBias * 1.4 + randomNoise))
+          ? Math.max(0.04, Math.min(1, lv * freqBias * 1.4 + randomNoise))
           : 0.04;
         const speed = target > val ? 0.55 : 0.25;
         barsRef.current[i] = val + (target - val) * speed;
@@ -92,7 +96,7 @@ const WaveformBars: React.FC<{ level: number; active: boolean }> = ({ level, act
     return () => {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
     };
-  }, [level, active]);
+  }, [active]); // level intentionally omitted — read via levelRef to keep the RAF loop stable
 
   return (
     <canvas

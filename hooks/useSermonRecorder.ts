@@ -271,13 +271,14 @@ export const useSermonRecorder = (
       if (Date.now() < chunkUploadPausedUntilRef.current) return;
 
       const allChunks = audioChunksRef.current;
-      const newChunks = allChunks.slice(lastChunkIdxRef.current);
-      if (newChunks.length === 0) return;
+      // Always send all chunks from the start so the blob contains the webm EBML
+      // header — slicing from a non-zero index produces an invalid webm file that
+      // Gemini cannot parse, which causes hallucinated transcripts.
+      if (allChunks.length === 0) return;
 
-      const blob = new Blob(newChunks, { type: mimeTypeRef.current });
+      const blob = new Blob(allChunks, { type: mimeTypeRef.current });
       if (blob.size < 8192) return;
 
-      const snapshotIdx = allChunks.length;
       const result = await transcribeSermonChunk({
         audioBase64: await blobToBase64(blob),
         mimeType: mimeTypeRef.current as any,
@@ -287,8 +288,8 @@ export const useSermonRecorder = (
 
       if (result.ok) {
         if (result.transcript) {
-          lastChunkIdxRef.current = snapshotIdx;
-          setCloudTranscript((prev) => prev ? `${prev} ${result.transcript}` : result.transcript);
+          // Replace (not append) since we re-transcribe the full audio each time
+          setCloudTranscript(result.transcript);
           setChunkError(null);
         }
       } else {
@@ -452,6 +453,13 @@ export const useSermonRecorder = (
     source.connect(hpf);
     hpf.connect(compressor);
     compressor.connect(analyser);
+    // Force analyser into Chromium's active audio graph via a silent (gain=0) path to destination.
+    // Without this, Chromium skips nodes whose output has no downstream consumer connected to
+    // AudioContext.destination, causing getFloatTimeDomainData to return silence.
+    const silentSink = ctx.createGain();
+    silentSink.gain.value = 0;
+    analyser.connect(silentSink);
+    silentSink.connect(ctx.destination);
     startVizLoop();
 
     const destination = ctx.createMediaStreamDestination();

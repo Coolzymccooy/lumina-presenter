@@ -1277,7 +1277,43 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     autoBusyRef.current = true;
     setAutoBusy(true);
     setAutoError(null);
+
+    let localProjectedRef: string | null = null;
+
     try {
+      // Phase 1 — local memory (instant, no network)
+      try {
+        const localResolution = await resolveBibleIntent(
+          {
+            rawText: transcript,
+            translationId: selectedVersion,
+            origin: 'voice_partial',
+            allowRemoteRerank: false,
+            preferInstantProject: true,
+            recentReferences: [lastReferenceRef.current.reference].filter(Boolean),
+          },
+          { memoryProvider: bibleMemoryProviderRef.current }
+        );
+        const localRef = localResolution.chosen?.reference;
+        if (localRef) {
+          setAutoReferences([localRef]);
+          setAiQuery(localRef);
+          const last = lastReferenceRef.current;
+          const isLocalRepeat =
+            last.reference.toLowerCase() === localRef.toLowerCase() &&
+            now - last.at < AUTO_REPEAT_REFERENCE_WINDOW_MS;
+          if (!isLocalRepeat && localResolution.shouldProjectInstantly) {
+            const verses = await fetchScripture(localRef, false, true);
+            if (verses.length && autoProjectRef.current) {
+              lastReferenceRef.current = { reference: localRef, at: Date.now() };
+              onProjectRequest(createServiceItem(verses));
+              localProjectedRef = localRef;
+            }
+          }
+        }
+      } catch { /* local failure — continue to Gemini */ }
+
+      // Phase 2 — Gemini semantic search (enriches tiles)
       const references = await semanticBibleSearchMulti(transcript, 4);
       if (!references.length) return;
       setAutoReferences(references);
@@ -1285,9 +1321,10 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       setAiQuery(primary);
 
       const last = lastReferenceRef.current;
-      if (last.reference.toLowerCase() === primary.toLowerCase() && (now - last.at) < AUTO_REPEAT_REFERENCE_WINDOW_MS) {
-        return;
-      }
+      const isGeminiRepeat =
+        last.reference.toLowerCase() === primary.toLowerCase() &&
+        now - last.at < AUTO_REPEAT_REFERENCE_WINDOW_MS;
+      if (isGeminiRepeat || localProjectedRef?.toLowerCase() === primary.toLowerCase()) return;
 
       const verses = await fetchScripture(primary, false, true);
       if (!verses.length) {
@@ -1296,7 +1333,6 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       }
 
       lastReferenceRef.current = { reference: primary, at: Date.now() };
-
       if (autoProjectRef.current) {
         onProjectRequest(createServiceItem(verses));
       }
@@ -1306,7 +1342,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       autoBusyRef.current = false;
       setAutoBusy(false);
     }
-  }, [createServiceItem, fetchScripture, onProjectRequest, semanticBibleSearchMulti]);
+  }, [createServiceItem, fetchScripture, onProjectRequest, selectedVersion, semanticBibleSearchMulti]);
 
   useEffect(() => {
     processAutoTranscriptRef.current = processAutoTranscript;
