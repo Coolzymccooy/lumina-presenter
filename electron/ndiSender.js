@@ -94,6 +94,13 @@ export async function startNdiSend(sourceName, width, height) {
  */
 export async function sendFrame(bgraBuffer, width, height) {
   if (!active || !sender) return;
+  if (!bgraBuffer || !Buffer.isBuffer(bgraBuffer) || width <= 0 || height <= 0) return;
+
+  const expectedStride = width * 4;
+  const inferredStride = Math.floor(bgraBuffer.length / Math.max(1, height));
+  const lineStrideBytes = Number.isFinite(inferredStride) && inferredStride >= expectedStride
+    ? inferredStride
+    : expectedStride;
 
   await sender.video({
     xres: width,
@@ -102,6 +109,7 @@ export async function sendFrame(bgraBuffer, width, height) {
     frameRateD: 1001,   // 29.97 fps drop-frame
     pictureAspectRatio: width / height,
     frameFormatType: grandiose.FORMAT_TYPE_PROGRESSIVE,
+    lineStrideBytes,
     fourCC: grandiose.FOURCC_BGRA,
     data: bgraBuffer,
   });
