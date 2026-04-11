@@ -7042,6 +7042,7 @@ function App() {
           <div className="w-full h-full bg-black flex items-center justify-center text-zinc-500 font-mono text-xs font-bold tracking-[0.2em]">WAITING_FOR_LIVE_CONTENT</div>
         ) : (
           <SlideRenderer
+            key={`output-live:${activeSlide.id}:${activeSlide.backgroundUrl || ''}`}
             slide={activeSlide}
             item={activeItem}
             isPlaying={isPlaying}
@@ -8517,11 +8518,12 @@ function App() {
       />
     ) : (
             <div className="flex-1 flex flex-col lg:flex-row bg-black min-w-0 overflow-hidden">
-              <div className="flex-1 flex flex-col relative min-w-0">
+            <div className="flex-1 flex flex-col relative min-w-0">
                 <div className={`flex-1 relative flex items-center bg-zinc-950 overflow-hidden border-r border-zinc-900 p-3 ${presenterPreviewAlignClass}`}>
-                  <div className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group shadow-2xl overflow-hidden rounded-sm">
+                  <div data-testid="presenter-live-preview" className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group shadow-2xl overflow-hidden rounded-sm">
                     {renderPresenterHoldState() || (
                       <SlideRenderer
+                        key={activeSlide ? `presenter-preview:${activeSlide.id}:${activeSlide.backgroundUrl || ''}` : 'presenter-preview:none'}
                         slide={activeSlide}
                         item={activeItem}
                         isPlaying={isPlaying}
@@ -8913,6 +8915,7 @@ function App() {
                 }
                 return (
                   <SlideRenderer
+                    key={`output-window:${activeSlide.id}:${activeSlide.backgroundUrl || ''}`}
                     slide={activeSlide}
                     item={activeItem}
                     fitContainer={true}
