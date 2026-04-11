@@ -11,7 +11,14 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { transcribeSermonAudio, transcribeSermonChunk } from '../services/geminiService';
+import {
+  getSermonProcessingJob,
+  retrySermonProcessingJob,
+  transcribeSermonAudio,
+  transcribeSermonChunk,
+  type SermonProcessingJob,
+} from '../services/geminiService';
+import type { SermonSummary } from '../services/sermonSummaryService';
 
 export type SermonRecorderLocale = 'en-GB' | 'en-US';
 export type SermonAccentHint = 'standard' | 'uk' | 'nigerian' | 'ghanaian' | 'southafrican' | 'kenyan';
@@ -53,6 +60,10 @@ export interface SermonRecorderState {
   sttStatus: 'idle' | 'active' | 'unavailable' | string;
   /** Last cloud transcription error (chunk upload or final); null when ok */
   chunkError: string | null;
+  /** Deferred sermon-processing job while Gemini quota retry is pending */
+  processingJob: SermonProcessingJob | null;
+  /** Summary returned from deferred sermon processing */
+  processingSummary: SermonSummary | null;
 }
 
 export interface SermonRecorderActions {
@@ -60,6 +71,7 @@ export interface SermonRecorderActions {
   pause: () => void;
   resume: () => void;
   stop: () => Promise<void>;
+  retryProcessing: () => Promise<void>;
   clearTranscript: () => void;
   setTranscript: (text: string) => void;
 }
@@ -95,6 +107,8 @@ const getAnalyserLevel = (analyser: AnalyserNode): number => {
 
 const CHUNK_UPLOAD_INTERVAL_MS = 12_000;
 const TIMER_INTERVAL_MS = 1_000;
+const JOB_POLL_INTERVAL_MS = 4_000;
+const JOB_POLL_MAX_INTERVAL_MS = 15_000;
 
 export const useSermonRecorder = (
   options: SermonRecorderOptions = {}
@@ -109,6 +123,8 @@ export const useSermonRecorder = (
   const [error, setError] = useState<string | null>(null);
   const [sttStatus, setSttStatus] = useState<SermonRecorderState['sttStatus']>('idle');
   const [chunkError, setChunkError] = useState<string | null>(null);
+  const [processingJob, setProcessingJob] = useState<SermonProcessingJob | null>(null);
+  const [processingSummary, setProcessingSummary] = useState<SermonSummary | null>(null);
 
   // refs — stable across renders
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -120,6 +136,7 @@ export const useSermonRecorder = (
   const speechRecRef = useRef<any>(null);
   const timerRef = useRef<number | null>(null);
   const chunkUploadTimerRef = useRef<number | null>(null);
+  const jobPollTimerRef = useRef<number | null>(null);
   const mimeTypeRef = useRef(pickMimeType());
   const liveTranscriptRef = useRef('');
   const phaseRef = useRef<SermonRecorderPhase>('idle');
@@ -127,6 +144,13 @@ export const useSermonRecorder = (
   const lastChunkIdxRef = useRef(0);
   /** Timestamp (ms) until which chunk uploads are paused due to quota/cooldown */
   const chunkUploadPausedUntilRef = useRef(0);
+
+  const clearJobPolling = useCallback(() => {
+    if (jobPollTimerRef.current !== null) {
+      window.clearTimeout(jobPollTimerRef.current);
+      jobPollTimerRef.current = null;
+    }
+  }, []);
 
   // Keep refs in sync with state so callbacks always read current values
   useEffect(() => { liveTranscriptRef.current = liveTranscript; }, [liveTranscript]);
@@ -222,6 +246,7 @@ export const useSermonRecorder = (
       window.clearInterval(chunkUploadTimerRef.current);
       chunkUploadTimerRef.current = null;
     }
+    clearJobPolling();
     stopVizLoop();
     stopSpeechRecognition();
     try { analyserRef.current?.disconnect(); } catch { /* no-op */ }
@@ -234,7 +259,7 @@ export const useSermonRecorder = (
       try { mediaRecorderRef.current.stop(); } catch { /* no-op */ }
     }
     mediaRecorderRef.current = null;
-  }, [stopVizLoop, stopSpeechRecognition]);
+  }, [clearJobPolling, stopVizLoop, stopSpeechRecognition]);
 
   useEffect(() => () => cleanup(), [cleanup]);
 
@@ -276,11 +301,68 @@ export const useSermonRecorder = (
     }, CHUNK_UPLOAD_INTERVAL_MS);
   }, [accentHint, locale]);
 
+  const pollProcessingJob = useCallback((jobId: string, delayMs = JOB_POLL_INTERVAL_MS) => {
+    clearJobPolling();
+    jobPollTimerRef.current = window.setTimeout(async () => {
+      if (phaseRef.current !== 'transcribing') return;
+
+      const result = await getSermonProcessingJob(jobId);
+      if (phaseRef.current !== 'transcribing') return;
+
+      if (!result.ok) {
+        const pollError = 'error' in result ? result.error : 'Unable to fetch deferred sermon status.';
+        setChunkError(`Waiting for saved transcription... ${pollError}`);
+        pollProcessingJob(jobId, JOB_POLL_INTERVAL_MS);
+        return;
+      }
+
+      const job = result.job;
+      setProcessingJob(job);
+
+      if (job.status === 'completed') {
+        if (job.transcript) {
+          setCloudTranscript(job.transcript);
+        }
+        setProcessingSummary(job.summary || null);
+        setChunkError(job.error || null);
+        setError(null);
+        clearJobPolling();
+        setPhase('done');
+        return;
+      }
+
+      if (job.status === 'failed') {
+        clearJobPolling();
+        if (liveTranscriptRef.current.trim()) {
+          setChunkError(job.error || 'Saved transcription failed. Using the live transcript.');
+          setPhase('done');
+          return;
+        }
+        setError(job.error || 'Saved transcription failed.');
+        setPhase('error');
+        return;
+      }
+
+      if (job.status === 'queued') {
+        setChunkError(job.error || 'Saved audio is queued for automatic transcription retry.');
+      } else if (job.phase === 'summarize') {
+        setChunkError(null);
+      }
+
+      const nextDelay = job.retryAfterMs > 0
+        ? Math.min(JOB_POLL_MAX_INTERVAL_MS, Math.max(JOB_POLL_INTERVAL_MS, job.retryAfterMs))
+        : JOB_POLL_INTERVAL_MS;
+      pollProcessingJob(jobId, nextDelay);
+    }, Math.max(500, delayMs));
+  }, [clearJobPolling]);
+
   // ── Actions ──────────────────────────────────────────────────────────────
   const start = useCallback(async () => {
     setError(null);
     setSttStatus('idle');
     setChunkError(null);
+    setProcessingJob(null);
+    setProcessingSummary(null);
     setPhase('recording');
     setLiveTranscript('');
     setCloudTranscript('');
@@ -289,6 +371,7 @@ export const useSermonRecorder = (
     audioChunksRef.current = [];
     lastChunkIdxRef.current = 0;
     chunkUploadPausedUntilRef.current = 0;
+    clearJobPolling();
 
     let micStream: MediaStream;
     try {
@@ -396,7 +479,7 @@ export const useSermonRecorder = (
 
     startSpeechRecognition();
     scheduleChunkUpload();
-  }, [audioDeviceId, startSpeechRecognition, scheduleChunkUpload, startVizLoop]);
+  }, [audioDeviceId, clearJobPolling, scheduleChunkUpload, startSpeechRecognition, startVizLoop]);
 
   const pause = useCallback(() => {
     if (mediaRecorderRef.current?.state === 'recording') {
@@ -436,6 +519,8 @@ export const useSermonRecorder = (
 
     cleanup();
     setPhase('transcribing');
+    setProcessingJob(null);
+    setProcessingSummary(null);
 
     const chunks = audioChunksRef.current;
     if (chunks.length === 0) {
@@ -447,13 +532,23 @@ export const useSermonRecorder = (
     const blob = new Blob(chunks, { type: mimeType });
 
     try {
-      const result = await transcribeSermonAudio(blob, mimeType, locale, accentHint);
+      const result = await transcribeSermonAudio(blob, mimeType, locale, accentHint, { allowDeferred: true });
       if (result.ok) {
         if (result.transcript) {
           setCloudTranscript(result.transcript);
           setChunkError(null);
         }
-      } else {
+        setPhase('done');
+        return;
+      }
+
+      if (!result.ok && 'deferred' in result && result.deferred) {
+        setProcessingJob(result.job);
+        setChunkError(result.error || 'Saved audio is queued for automatic transcription retry.');
+        pollProcessingJob(result.job.id, Math.min(JOB_POLL_MAX_INTERVAL_MS, Math.max(JOB_POLL_INTERVAL_MS, result.job.retryAfterMs || JOB_POLL_INTERVAL_MS)));
+        return;
+      }
+      if (!result.ok) {
         const failed = result as Extract<typeof result, { ok: false }>;
         setChunkError(failed.error || 'Final transcription failed.');
       }
@@ -462,15 +557,37 @@ export const useSermonRecorder = (
     }
 
     setPhase('done');
-  }, [accentHint, cleanup, locale]);
+  }, [accentHint, cleanup, locale, pollProcessingJob]);
 
   const clearTranscript = useCallback(() => {
     setLiveTranscript('');
     setCloudTranscript('');
     setInterimText('');
     setChunkError(null);
+    setProcessingJob(null);
+    setProcessingSummary(null);
     liveTranscriptRef.current = '';
   }, []);
+
+  const retryProcessing = useCallback(async () => {
+    if (!processingJob?.id) return;
+    setError(null);
+    setChunkError('Retrying saved audio...');
+    setProcessingSummary(null);
+    setPhase('transcribing');
+    const result = await retrySermonProcessingJob(processingJob.id);
+    if (!result.ok) {
+      const retryError = 'error' in result ? result.error : 'Unable to retry saved sermon processing.';
+      setError(retryError || 'Unable to retry saved sermon processing.');
+      setPhase('error');
+      return;
+    }
+    setProcessingJob(result.job);
+    pollProcessingJob(
+      result.job.id,
+      Math.min(JOB_POLL_MAX_INTERVAL_MS, Math.max(JOB_POLL_INTERVAL_MS, result.job.retryAfterMs || JOB_POLL_INTERVAL_MS)),
+    );
+  }, [pollProcessingJob, processingJob]);
 
   const setTranscript = useCallback((text: string) => {
     setLiveTranscript(text);
@@ -491,6 +608,8 @@ export const useSermonRecorder = (
     error,
     sttStatus,
     chunkError,
+    processingJob,
+    processingSummary,
   };
 
   const actions: SermonRecorderActions = {
@@ -498,6 +617,7 @@ export const useSermonRecorder = (
     pause,
     resume,
     stop,
+    retryProcessing,
     clearTranscript,
     setTranscript,
   };

@@ -195,6 +195,9 @@ const VIS_MEDIA_DIR = process.env.LUMINA_VIS_MEDIA_DIR
 const WORKSPACE_MEDIA_DIR = process.env.LUMINA_WORKSPACE_MEDIA_DIR
   ? path.resolve(process.env.LUMINA_WORKSPACE_MEDIA_DIR)
   : path.join(DATA_DIR, "workspace-media");
+const SERMON_PROCESSING_AUDIO_DIR = process.env.LUMINA_SERMON_PROCESSING_AUDIO_DIR
+  ? path.resolve(process.env.LUMINA_SERMON_PROCESSING_AUDIO_DIR)
+  : path.join(DATA_DIR, "sermon-processing");
 const VIS_MEDIA_BASE_PATH = (() => {
   const raw = String(process.env.LUMINA_VIS_MEDIA_BASE_PATH || "/media/vis").trim();
   const normalized = `/${raw.replace(/^\/+|\/+$/g, "")}`;
@@ -309,6 +312,27 @@ CREATE TABLE IF NOT EXISTS sermon_summaries (
   summary_json TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS sermon_processing_jobs (
+  id TEXT PRIMARY KEY,
+  workspace_id TEXT NOT NULL DEFAULT 'default-workspace',
+  status TEXT NOT NULL,
+  phase TEXT NOT NULL,
+  progress INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  completed_at INTEGER,
+  error TEXT,
+  retry_after_ms INTEGER NOT NULL DEFAULT 0,
+  next_retry_at INTEGER,
+  attempt_count INTEGER NOT NULL DEFAULT 0,
+  accent_hint TEXT NOT NULL DEFAULT 'standard',
+  locale TEXT NOT NULL DEFAULT 'en-US',
+  mime_type TEXT NOT NULL DEFAULT 'audio/webm',
+  audio_file_path TEXT,
+  transcript TEXT,
+  summary_json TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_audit_workspace_time ON audit_logs(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_snapshots_workspace_time ON workspace_snapshots(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_audience_workspace_time ON audience_messages(workspace_id, created_at);
@@ -316,6 +340,7 @@ CREATE INDEX IF NOT EXISTS idx_connections_workspace_session_seen ON session_con
 CREATE UNIQUE INDEX IF NOT EXISTS idx_runsheet_workspace_file_unique ON workspace_runsheet_files(workspace_id, file_id);
 CREATE INDEX IF NOT EXISTS idx_runsheet_workspace_updated ON workspace_runsheet_files(workspace_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sermons_workspace_time ON sermon_summaries(workspace_id, saved_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sermon_jobs_status_retry ON sermon_processing_jobs(status, next_retry_at, created_at);
 
 CREATE TABLE IF NOT EXISTS workspace_ccli_credentials (
   workspace_id TEXT PRIMARY KEY,
@@ -349,12 +374,25 @@ ensureColumnExists(
   "INTEGER NOT NULL DEFAULT 0",
   "UPDATE workspaces SET settings_updated_at = updated_at WHERE settings_updated_at IS NULL OR settings_updated_at = 0",
 );
+db.prepare(`
+  UPDATE sermon_processing_jobs
+  SET status = 'queued',
+      phase = 'queued',
+      updated_at = ?,
+      next_retry_at = COALESCE(next_retry_at, ?),
+      error = CASE
+        WHEN status = 'processing' THEN COALESCE(error, 'Server restarted while processing. Retrying automatically.')
+        ELSE error
+      END
+  WHERE status IN ('processing')
+`).run(Date.now(), Date.now() + 5000);
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: JSON_LIMIT }));
 fs.mkdirSync(VIS_MEDIA_DIR, { recursive: true });
 fs.mkdirSync(WORKSPACE_MEDIA_DIR, { recursive: true });
+fs.mkdirSync(SERMON_PROCESSING_AUDIO_DIR, { recursive: true });
 const audienceMessageStreamClients = new Map();
 
 const getAudienceStreamBucket = (workspaceId) => {
@@ -510,14 +548,92 @@ const extractGeminiErrorMessage = (error) => {
   return firstLine.length > 120 ? firstLine.slice(0, 120) + "…" : firstLine;
 };
 
+const waitMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const isGeminiQuotaError = (error) => {
+  const raw = String(error?.message || error || "");
+  return raw.includes("RESOURCE_EXHAUSTED") || raw.includes("429") || raw.toLowerCase().includes("quota");
+};
+
+const runWithGeminiQuotaRetry = async (task, options = {}) => {
+  const retries = Number.isFinite(options.retries) ? options.retries : 1;
+  const baseDelayMs = Number.isFinite(options.baseDelayMs) ? options.baseDelayMs : 8000;
+  let lastError = null;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await task();
+    } catch (error) {
+      lastError = error;
+      if (attempt >= retries || !isGeminiQuotaError(error)) {
+        throw error;
+      }
+      await waitMs(baseDelayMs * (attempt + 1));
+    }
+  }
+
+  throw lastError || new Error("Gemini request failed.");
+};
+
+const parseGeminiErrorJson = (error) => {
+  const raw = String(error?.message || error || "").trim();
+  if (!raw) return null;
+  const start = raw.indexOf("{");
+  if (start < 0) return null;
+  try {
+    return JSON.parse(raw.slice(start));
+  } catch {
+    return null;
+  }
+};
+
+const parseRetryDelayToMs = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return 0;
+  const secondsMatch = raw.match(/^([0-9]+(?:\.[0-9]+)?)s$/i);
+  if (secondsMatch) return Math.max(0, Math.round(Number(secondsMatch[1]) * 1000));
+  const numberValue = Number(raw);
+  return Number.isFinite(numberValue) && numberValue > 0 ? Math.round(numberValue) : 0;
+};
+
+const extractGeminiRetryAfterMs = (error) => {
+  const parsed = parseGeminiErrorJson(error);
+  const details = Array.isArray(parsed?.error?.details) ? parsed.error.details : [];
+  const retryInfo = details.find((entry) => String(entry?.["@type"] || "").includes("RetryInfo"));
+  const structuredDelay = parseRetryDelayToMs(retryInfo?.retryDelay);
+  if (structuredDelay > 0) return structuredDelay;
+
+  const raw = String(error?.message || error || "");
+  const retryMatch = raw.match(/retry in\s+([0-9]+(?:\.[0-9]+)?)s/i);
+  if (retryMatch) return Math.max(0, Math.round(Number(retryMatch[1]) * 1000));
+  return 0;
+};
+
+const inferSermonAudioExtension = (mimeType) => {
+  const normalized = String(mimeType || "").trim().toLowerCase();
+  if (normalized.includes("mp4")) return ".mp4";
+  if (normalized.includes("wav")) return ".wav";
+  return ".webm";
+};
+
+const moveFileSafely = (sourcePath, targetPath) => {
+  fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+  try {
+    fs.renameSync(sourcePath, targetPath);
+    return;
+  } catch {
+    fs.copyFileSync(sourcePath, targetPath);
+    try { fs.unlinkSync(sourcePath); } catch { /* ignore */ }
+  }
+};
+
 const parseBase64Payload = (value) => {
   const raw = String(value || "").trim();
   if (!raw) return "";
   const commaIdx = raw.indexOf(",");
   return commaIdx >= 0 ? raw.slice(commaIdx + 1).trim() : raw;
 };
-let cachedGoogleAiClient = null;
-let cachedGoogleAiKey = "";
+const cachedGoogleAiClients = new Map();
 const resolveGoogleAiKey = () => (
   String(
     process.env.GOOGLE_AI_API_KEY
@@ -527,21 +643,40 @@ const resolveGoogleAiKey = () => (
     || "",
   ).trim()
 );
-const getGoogleAiClient = () => {
-  const key = resolveGoogleAiKey();
-  if (!key) return null;
-  if (cachedGoogleAiClient && cachedGoogleAiKey === key) return cachedGoogleAiClient;
-  cachedGoogleAiClient = new GoogleGenAI({ apiKey: key });
-  cachedGoogleAiKey = key;
-  return cachedGoogleAiClient;
+const resolveSermonGoogleAiKey = () => (
+  String(
+    process.env.GOOGLE_AI_SERMON_API_KEY
+    || process.env.GOOGLE_AI_SERMON_KEY
+    || process.env.GEMINI_SERMON_API_KEY
+    || process.env.GEMINI_SERMON_KEY
+    || resolveGoogleAiKey()
+    || "",
+  ).trim()
+);
+const getGoogleAiClientForKey = (key) => {
+  const normalizedKey = String(key || "").trim();
+  if (!normalizedKey) return null;
+  if (cachedGoogleAiClients.has(normalizedKey)) return cachedGoogleAiClients.get(normalizedKey);
+  const client = new GoogleGenAI({ apiKey: normalizedKey });
+  cachedGoogleAiClients.set(normalizedKey, client);
+  return client;
 };
-const ensureGoogleAiClient = (res) => {
-  const ai = getGoogleAiClient();
+const getGoogleAiClient = () => {
+  return getGoogleAiClientForKey(resolveGoogleAiKey());
+};
+const getSermonGoogleAiClient = () => {
+  return getGoogleAiClientForKey(resolveSermonGoogleAiKey());
+};
+const ensureGoogleAiClient = (res, options = {}) => {
+  const scope = options?.scope === "sermon" ? "sermon" : "general";
+  const ai = scope === "sermon" ? getSermonGoogleAiClient() : getGoogleAiClient();
   if (ai) return ai;
   res.status(503).json({
     ok: false,
     error: "AI_KEY_MISSING",
-    message: "Missing AI key on server. Set GOOGLE_AI_API_KEY (or GOOGLE_API_KEY / GEMINI_API_KEY).",
+    message: scope === "sermon"
+      ? "Missing sermon AI key on server. Set GOOGLE_AI_SERMON_API_KEY (or GOOGLE_AI_API_KEY / GEMINI_API_KEY)."
+      : "Missing AI key on server. Set GOOGLE_AI_API_KEY (or GOOGLE_API_KEY / GEMINI_API_KEY).",
   });
   return null;
 };
@@ -1089,6 +1224,479 @@ const buildSermonTranscriptionPrompt = (locale, accentHintRaw) => {
   ].join(" ");
 };
 
+const SERMON_PROCESSING_PARALLELISM = Math.max(
+  1,
+  Number(process.env.LUMINA_SERMON_PROCESSING_PARALLELISM || 1),
+);
+const SERMON_PROCESSING_POLL_MS = Math.max(
+  3000,
+  Number(process.env.LUMINA_SERMON_PROCESSING_POLL_MS || 5000),
+);
+const SERMON_PROCESSING_RETRY_BASE_MS = Math.max(
+  5000,
+  Number(process.env.LUMINA_SERMON_PROCESSING_RETRY_BASE_MS || 15000),
+);
+const SERMON_PROCESSING_MAX_RETRY_MS = Math.max(
+  SERMON_PROCESSING_RETRY_BASE_MS,
+  Number(process.env.LUMINA_SERMON_PROCESSING_MAX_RETRY_MS || 60000),
+);
+const SERMON_PROCESSING_MAX_ATTEMPTS = Math.max(
+  1,
+  Number(process.env.LUMINA_SERMON_PROCESSING_MAX_ATTEMPTS || 3),
+);
+const SERMON_PROCESSING_JOB_TTL_MS = Math.max(
+  60 * 60 * 1000,
+  Number(process.env.LUMINA_SERMON_PROCESSING_JOB_TTL_MS || (7 * 24 * 60 * 60 * 1000)),
+);
+const activeSermonProcessingJobs = new Set();
+
+const parseSermonSummaryJson = (raw) => {
+  const text = String(raw || "").trim();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+};
+
+const toClientSermonProcessingJob = (row) => {
+  if (!row) return null;
+  const nextRetryAt = Number(row.next_retry_at || 0) || null;
+  return {
+    id: row.id,
+    workspaceId: row.workspace_id,
+    status: row.status,
+    phase: row.phase,
+    progress: Number(row.progress || 0),
+    createdAt: Number(row.created_at || 0),
+    updatedAt: Number(row.updated_at || 0),
+    completedAt: row.completed_at ? Number(row.completed_at) : null,
+    error: row.error ? String(row.error) : null,
+    retryAfterMs: nextRetryAt ? Math.max(0, nextRetryAt - now()) : 0,
+    nextRetryAt,
+    attemptCount: Number(row.attempt_count || 0),
+    transcript: row.transcript ? String(row.transcript) : null,
+    summary: parseSermonSummaryJson(row.summary_json),
+    accentHint: normalizeSermonAccentHint(row.accent_hint, row.locale || "en-US"),
+    locale: row.locale === "en-GB" ? "en-GB" : "en-US",
+  };
+};
+
+const getSermonProcessingJobRow = (jobId) => db.prepare(`
+  SELECT id, workspace_id, status, phase, progress, created_at, updated_at, completed_at,
+         error, retry_after_ms, next_retry_at, attempt_count, accent_hint, locale,
+         mime_type, audio_file_path, transcript, summary_json
+  FROM sermon_processing_jobs
+  WHERE id = ?
+`).get(jobId);
+
+const getSermonProcessingJob = (jobId) => toClientSermonProcessingJob(getSermonProcessingJobRow(jobId));
+
+const updateSermonProcessingJob = (jobId, patch) => {
+  const current = getSermonProcessingJobRow(jobId);
+  if (!current) return null;
+  const next = {
+    workspace_id: Object.prototype.hasOwnProperty.call(patch, "workspaceId") ? patch.workspaceId : current.workspace_id,
+    status: Object.prototype.hasOwnProperty.call(patch, "status") ? patch.status : current.status,
+    phase: Object.prototype.hasOwnProperty.call(patch, "phase") ? patch.phase : current.phase,
+    progress: Object.prototype.hasOwnProperty.call(patch, "progress") ? patch.progress : current.progress,
+    created_at: current.created_at,
+    updated_at: Object.prototype.hasOwnProperty.call(patch, "updatedAt") ? patch.updatedAt : now(),
+    completed_at: Object.prototype.hasOwnProperty.call(patch, "completedAt") ? patch.completedAt : current.completed_at,
+    error: Object.prototype.hasOwnProperty.call(patch, "error") ? patch.error : current.error,
+    retry_after_ms: Object.prototype.hasOwnProperty.call(patch, "retryAfterMs") ? patch.retryAfterMs : current.retry_after_ms,
+    next_retry_at: Object.prototype.hasOwnProperty.call(patch, "nextRetryAt") ? patch.nextRetryAt : current.next_retry_at,
+    attempt_count: Object.prototype.hasOwnProperty.call(patch, "attemptCount") ? patch.attemptCount : current.attempt_count,
+    accent_hint: Object.prototype.hasOwnProperty.call(patch, "accentHint") ? patch.accentHint : current.accent_hint,
+    locale: Object.prototype.hasOwnProperty.call(patch, "locale") ? patch.locale : current.locale,
+    mime_type: Object.prototype.hasOwnProperty.call(patch, "mimeType") ? patch.mimeType : current.mime_type,
+    audio_file_path: Object.prototype.hasOwnProperty.call(patch, "audioFilePath") ? patch.audioFilePath : current.audio_file_path,
+    transcript: Object.prototype.hasOwnProperty.call(patch, "transcript") ? patch.transcript : current.transcript,
+    summary_json: Object.prototype.hasOwnProperty.call(patch, "summaryJson") ? patch.summaryJson : current.summary_json,
+  };
+
+  db.prepare(`
+    UPDATE sermon_processing_jobs
+    SET workspace_id = ?, status = ?, phase = ?, progress = ?, updated_at = ?, completed_at = ?,
+        error = ?, retry_after_ms = ?, next_retry_at = ?, attempt_count = ?, accent_hint = ?,
+        locale = ?, mime_type = ?, audio_file_path = ?, transcript = ?, summary_json = ?
+    WHERE id = ?
+  `).run(
+    next.workspace_id,
+    next.status,
+    next.phase,
+    next.progress,
+    next.updated_at,
+    next.completed_at,
+    next.error,
+    next.retry_after_ms,
+    next.next_retry_at,
+    next.attempt_count,
+    next.accent_hint,
+    next.locale,
+    next.mime_type,
+    next.audio_file_path,
+    next.transcript,
+    next.summary_json,
+    jobId,
+  );
+
+  return getSermonProcessingJob(jobId);
+};
+
+const buildFallbackSermonSummary = (transcript) => {
+  const greetingMarkers = /\b(welcome|good evening|good morning|good afternoon|joining us|warm welcome|pleased to have|glad you|nice to see|wonderful to have|first time|bless you all)\b/i;
+  const scriptureRegex = /\b(?:[1-3]\s)?[A-Za-z]+\s\d{1,3}:\d{1,3}(?:-\d{1,3})?\b/g;
+  const scriptures = Array.from(new Set((String(transcript || "").match(scriptureRegex) || []).slice(0, 10)));
+  const sentences = String(transcript || "")
+    .split(/[.!?]+(?=\s|$)/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 20);
+  const contentSentences = sentences.filter((sentence) => !greetingMarkers.test(sentence));
+  const usable = contentSentences.length >= 3 ? contentSentences : sentences;
+  return {
+    title: "Sermon",
+    mainTheme: usable[0]?.slice(0, 120) || "Faith and purpose",
+    keyPoints: usable.slice(1, 6).map((sentence) => sentence.slice(0, 160)),
+    scripturesReferenced: scriptures,
+    callToAction: usable[usable.length - 1]?.slice(0, 200) || "Walk in faith.",
+    quotableLines: [],
+  };
+};
+
+const sanitizeSermonSummary = (parsed, fallback) => ({
+  title: String(parsed?.title || fallback.title || "Sermon").slice(0, 100),
+  mainTheme: String(parsed?.mainTheme || fallback.mainTheme || "").slice(0, 300),
+  keyPoints: Array.isArray(parsed?.keyPoints)
+    ? parsed.keyPoints.slice(0, 7).map((point) => String(point).slice(0, 300))
+    : fallback.keyPoints,
+  scripturesReferenced: Array.isArray(parsed?.scripturesReferenced)
+    ? parsed.scripturesReferenced.slice(0, 20).map(String)
+    : fallback.scripturesReferenced,
+  callToAction: String(parsed?.callToAction || fallback.callToAction || "").slice(0, 400),
+  quotableLines: Array.isArray(parsed?.quotableLines)
+    ? parsed.quotableLines.slice(0, 4).map((quote) => String(quote).slice(0, 300))
+    : fallback.quotableLines,
+});
+
+const summarizeSermonTranscriptInternal = async (transcript, accentHint, options = {}) => {
+  const trimmed = String(transcript || "").trim();
+  if (!trimmed) {
+    return { ok: false, error: "TRANSCRIPT_REQUIRED", summary: null, warning: null };
+  }
+
+  const fallback = buildFallbackSermonSummary(trimmed);
+  const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
+  const allowShortTranscript = options.allowShortTranscript === true;
+  if (wordCount < 40 && !allowShortTranscript) {
+    return {
+      ok: false,
+      error: "TRANSCRIPT_TOO_SHORT",
+      summary: null,
+      warning: `Only ${wordCount} words were captured. At least 40 words are needed for a meaningful summary. Try recording a longer segment.`,
+    };
+  }
+
+  const ai = options.ai || getSermonGoogleAiClient();
+  if (!ai) {
+    return {
+      ok: true,
+      summary: fallback,
+      warning: "Missing AI key on server. Using fallback sermon summary.",
+    };
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `You are a sermon note-taker for a church service${accentHint !== "standard" ? ` (${accentHint} English accent)` : ""}.
+The following is a live speech transcript from a pastor's sermon captured by a speech-to-text engine. There may be minor transcription errors.
+
+IMPORTANT RULES:
+1. Extract ONLY theological/spiritual content explicitly stated in the transcript. Do NOT infer, assume, or fabricate.
+2. SKIP all opening pleasantries, greetings, welcomes, and introductions (e.g. "Good evening", "welcome to St John's", "glad you joined us"). These are NOT the sermon content.
+3. The mainTheme must describe the central spiritual/theological message — not the opening greeting.
+4. keyPoints must be actual points the pastor made about faith, scripture, or the sermon topic — not pleasantries.
+5. If a field cannot be determined from the actual sermon content, return an empty string or empty array.
+6. Correct obvious transcription artifacts before extracting content: remove duplicate repeated words, fix broken sentences from speech-to-text, and clean up filler words — but preserve the pastor's authentic voice, idioms, and theological vocabulary.
+
+Return a JSON object with:
+- title: short sermon title based only on what was said (max 8 words, or "Untitled Sermon" if unclear)
+- mainTheme: one sentence describing the central spiritual message
+- keyPoints: array of 3 to 7 concise theological points the pastor explicitly made
+- scripturesReferenced: array of Bible references explicitly mentioned (book chapter:verse format)
+- callToAction: the closing challenge given to the congregation — only if clearly stated, otherwise empty string
+- quotableLines: array of up to 4 direct quotes that capture the sermon's spiritual content
+
+Transcript (${wordCount} words):
+${trimmed.slice(0, 20000)}`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            mainTheme: { type: Type.STRING },
+            keyPoints: { type: Type.ARRAY, items: { type: Type.STRING } },
+            scripturesReferenced: { type: Type.ARRAY, items: { type: Type.STRING } },
+            callToAction: { type: Type.STRING },
+            quotableLines: { type: Type.ARRAY, items: { type: Type.STRING } },
+          },
+          required: ["title", "mainTheme", "keyPoints", "scripturesReferenced", "callToAction", "quotableLines"],
+        },
+      },
+    });
+
+    const parsed = parseAiJson(response);
+    return {
+      ok: true,
+      summary: sanitizeSermonSummary(parsed, fallback),
+      warning: !parsed?.title ? "AI returned incomplete sermon summary. Using fallback content." : null,
+    };
+  } catch (error) {
+    return {
+      ok: true,
+      summary: fallback,
+      warning: String(error?.message || error),
+    };
+  }
+};
+
+const transcribeSermonAudioFileInternal = async (audioFilePath, rawMime, locale, accentHint, ai = getSermonGoogleAiClient()) => {
+  if (!ai) {
+    const error = new Error("AI_KEY_MISSING");
+    error.code = "AI_KEY_MISSING";
+    throw error;
+  }
+
+  const geminiMimeType = String(rawMime || "audio/webm").trim().toLowerCase().includes(";")
+    ? String(rawMime || "audio/webm").trim().toLowerCase().split(";")[0].trim()
+    : String(rawMime || "audio/webm").trim().toLowerCase();
+  const speechPrompt = buildSermonTranscriptionPrompt(locale, accentHint);
+  const fileStat = fs.statSync(audioFilePath);
+
+  if (fileStat.size <= SERMON_INLINE_LIMIT) {
+    const fileBuffer = fs.readFileSync(audioFilePath);
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { inlineData: { data: fileBuffer.toString("base64"), mimeType: geminiMimeType } },
+            { text: speechPrompt },
+          ],
+        },
+      ],
+    });
+    return String(response?.text || "").trim();
+  }
+
+  let uploadResult;
+  try {
+    uploadResult = await ai.files.upload({ file: audioFilePath, config: { mimeType: geminiMimeType } });
+    const pollStart = Date.now();
+    let fileState = await ai.files.get({ name: uploadResult.name });
+    while (fileState.state === "PROCESSING") {
+      if (Date.now() - pollStart > 5 * 60 * 1000) throw new Error("Gemini File API processing timed out");
+      await waitMs(2000);
+      fileState = await ai.files.get({ name: uploadResult.name });
+    }
+    if (fileState.state === "FAILED") throw new Error("Gemini File processing failed.");
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { fileData: { fileUri: uploadResult.uri, mimeType: geminiMimeType } },
+            { text: speechPrompt },
+          ],
+        },
+      ],
+    });
+    return String(response?.text || "").trim();
+  } finally {
+    if (uploadResult?.name) {
+      ai.files.delete({ name: uploadResult.name }).catch(() => {});
+    }
+  }
+};
+
+const computeSermonProcessingRetryMs = (error, attemptCount = 0) => {
+  const hintedMs = extractGeminiRetryAfterMs(error);
+  if (hintedMs > 0) {
+    return Math.min(SERMON_PROCESSING_MAX_RETRY_MS, hintedMs);
+  }
+  const backoff = SERMON_PROCESSING_RETRY_BASE_MS * Math.max(1, Math.min(8, attemptCount + 1));
+  return Math.min(SERMON_PROCESSING_MAX_RETRY_MS, backoff);
+};
+
+const createDeferredSermonProcessingJob = ({ sourcePath, mimeType, locale, accentHint, workspaceId, initialError }) => {
+  const jobId = randomUUID();
+  const storedPath = path.join(
+    SERMON_PROCESSING_AUDIO_DIR,
+    `${jobId}${inferSermonAudioExtension(mimeType)}`
+  );
+  moveFileSafely(sourcePath, storedPath);
+
+  const retryAfterMs = computeSermonProcessingRetryMs(initialError, 0);
+  db.prepare(`
+    INSERT INTO sermon_processing_jobs (
+      id, workspace_id, status, phase, progress, created_at, updated_at, completed_at,
+      error, retry_after_ms, next_retry_at, attempt_count, accent_hint, locale,
+      mime_type, audio_file_path, transcript, summary_json
+    ) VALUES (?, ?, 'queued', 'queued', 4, ?, ?, NULL, ?, ?, ?, 0, ?, ?, ?, ?, NULL, NULL)
+  `).run(
+    jobId,
+    String(workspaceId || "default-workspace").trim() || "default-workspace",
+    now(),
+    now(),
+    "Gemini quota reached. Audio saved and queued for automatic retry.",
+    retryAfterMs,
+    now() + retryAfterMs,
+    normalizeSermonAccentHint(accentHint, locale),
+    locale === "en-GB" ? "en-GB" : "en-US",
+    String(mimeType || "audio/webm").trim().toLowerCase() || "audio/webm",
+    storedPath,
+  );
+
+  return getSermonProcessingJob(jobId);
+};
+
+const processDeferredSermonJob = async (jobId) => {
+  const row = getSermonProcessingJobRow(jobId);
+  if (!row) return;
+
+  const currentAttempt = Number(row.attempt_count || 0) + 1;
+  updateSermonProcessingJob(jobId, {
+    status: "processing",
+    phase: "transcribe",
+    progress: 12,
+    error: null,
+    retryAfterMs: 0,
+    nextRetryAt: null,
+    attemptCount: currentAttempt,
+  });
+
+  try {
+    if (!row.audio_file_path || !fs.existsSync(row.audio_file_path)) {
+      throw new Error("Saved sermon audio could not be found for processing.");
+    }
+
+    const transcript = await transcribeSermonAudioFileInternal(
+      row.audio_file_path,
+      row.mime_type,
+      row.locale,
+      row.accent_hint,
+    );
+
+    updateSermonProcessingJob(jobId, {
+      phase: "summarize",
+      progress: 74,
+      transcript,
+    });
+
+    const summaryResult = await summarizeSermonTranscriptInternal(transcript, row.accent_hint, {
+      allowShortTranscript: true,
+    });
+    const summary = summaryResult.summary || buildFallbackSermonSummary(transcript);
+    updateSermonProcessingJob(jobId, {
+      status: "completed",
+      phase: "completed",
+      progress: 100,
+      completedAt: now(),
+      error: summaryResult.warning || null,
+      transcript,
+      summaryJson: JSON.stringify(summary),
+      audioFilePath: null,
+    });
+
+    try { fs.unlinkSync(row.audio_file_path); } catch { /* ignore */ }
+  } catch (error) {
+    if (isGeminiQuotaError(error)) {
+      if (currentAttempt >= SERMON_PROCESSING_MAX_ATTEMPTS) {
+        updateSermonProcessingJob(jobId, {
+          status: "failed",
+          phase: "failed",
+          progress: 100,
+          completedAt: now(),
+          error: `Gemini quota is still exhausted after ${SERMON_PROCESSING_MAX_ATTEMPTS} attempts. Saved sermon audio is still available. Retry later.`,
+          retryAfterMs: 0,
+          nextRetryAt: null,
+          attemptCount: currentAttempt,
+        });
+        return;
+      }
+      const retryAfterMs = computeSermonProcessingRetryMs(error, currentAttempt);
+      updateSermonProcessingJob(jobId, {
+        status: "queued",
+        phase: "queued",
+        progress: 8,
+        error: "Gemini quota reached. Saved sermon will retry automatically.",
+        retryAfterMs,
+        nextRetryAt: now() + retryAfterMs,
+        attemptCount: currentAttempt,
+      });
+      return;
+    }
+
+    updateSermonProcessingJob(jobId, {
+      status: "failed",
+      phase: "failed",
+      progress: 100,
+      completedAt: now(),
+      error: extractGeminiErrorMessage(error),
+    });
+  } finally {
+    activeSermonProcessingJobs.delete(jobId);
+  }
+};
+
+const drainDeferredSermonJobs = () => {
+  const availableSlots = Math.max(0, SERMON_PROCESSING_PARALLELISM - activeSermonProcessingJobs.size);
+  if (availableSlots <= 0) return;
+
+  const readyRows = db.prepare(`
+    SELECT id
+    FROM sermon_processing_jobs
+    WHERE status = 'queued'
+      AND (next_retry_at IS NULL OR next_retry_at <= ?)
+    ORDER BY COALESCE(next_retry_at, created_at) ASC, created_at ASC
+    LIMIT ?
+  `).all(now(), availableSlots);
+
+  readyRows.forEach((entry) => {
+    const jobId = String(entry?.id || "").trim();
+    if (!jobId || activeSermonProcessingJobs.has(jobId)) return;
+    activeSermonProcessingJobs.add(jobId);
+    void processDeferredSermonJob(jobId);
+  });
+};
+
+const pruneDeferredSermonJobs = () => {
+  const cutoff = now() - SERMON_PROCESSING_JOB_TTL_MS;
+  const staleRows = db.prepare(`
+    SELECT id, audio_file_path
+    FROM sermon_processing_jobs
+    WHERE status IN ('completed', 'failed')
+      AND COALESCE(completed_at, updated_at, created_at) < ?
+  `).all(cutoff);
+
+  staleRows.forEach((row) => {
+    if (row?.audio_file_path) {
+      try { fs.unlinkSync(row.audio_file_path); } catch { /* ignore */ }
+    }
+  });
+
+  db.prepare(`
+    DELETE FROM sermon_processing_jobs
+    WHERE status IN ('completed', 'failed')
+      AND COALESCE(completed_at, updated_at, created_at) < ?
+  `).run(cutoff);
+};
+
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "lumina-server-api", db: DB_PATH, now: now() });
 });
@@ -1492,6 +2100,21 @@ app.post("/api/ai/summarize-sermon", async (req, res) => {
   const transcript = String(req.body?.transcript || "").trim();
   const accentHint = normalizeSermonAccentHint(req.body?.accentHint, "en-US");
   if (!transcript) return res.status(400).json({ ok: false, error: "TRANSCRIPT_REQUIRED" });
+  const result = await summarizeSermonTranscriptInternal(transcript, accentHint, {
+    ai: getSermonGoogleAiClient(),
+  });
+  if (!result.ok) {
+    return res.status(result.error === "TRANSCRIPT_TOO_SHORT" ? 422 : 500).json({
+      ok: false,
+      error: result.error || "SUMMARY_FAILED",
+      message: result.warning || "Summarization failed.",
+    });
+  }
+  return res.json({
+    ok: true,
+    summary: result.summary,
+    warning: result.warning || undefined,
+  });
   const wordCount = transcript.split(/\s+/).filter(Boolean).length;
   if (wordCount < 40) {
     return res.status(422).json({
@@ -1889,89 +2512,108 @@ app.post("/api/ai/transcribe-sermon-audio", sermonAudioUpload.single("audio"), a
   const rawMime = String(req.body?.mimeType || audioFile.mimetype || "audio/webm").trim().toLowerCase();
   const locale = String(req.body?.locale || "en-US").trim();
   const accentHint = normalizeSermonAccentHint(req.body?.accentHint, locale);
-  // Strip codec params for Gemini
-  const geminiMimeType = rawMime.includes(";") ? rawMime.split(";")[0].trim() : rawMime;
+  const allowDeferred = parseBool(req.body?.allowDeferred, false);
+  const workspaceId = String(req.body?.workspaceId || "default-workspace").trim() || "default-workspace";
+  let managedByDeferredJob = false;
 
-  const ai = ensureGoogleAiClient(res);
+  const ai = ensureGoogleAiClient(res, { scope: "sermon" });
   if (!ai) {
     try { fs.unlinkSync(audioFile.path); } catch { /* ignore */ }
     return;
   }
 
-  const speechPrompt = buildSermonTranscriptionPrompt(locale, accentHint);
-
   try {
-    const fileStat = fs.statSync(audioFile.path);
-
-    let transcript = "";
-    if (fileStat.size <= SERMON_INLINE_LIMIT) {
-      // Small enough for inline data
-      const fileBuffer = fs.readFileSync(audioFile.path);
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { inlineData: { data: fileBuffer.toString("base64"), mimeType: geminiMimeType } },
-              { text: speechPrompt },
-            ],
-          },
-        ],
-      });
-      transcript = String(response?.text || "").trim();
-    } else {
-      // Large file: upload via Gemini File API
-      let uploadResult;
-      try {
-        uploadResult = await ai.files.upload({ file: audioFile.path, config: { mimeType: geminiMimeType } });
-        const pollStart = Date.now();
-        let fileState = await ai.files.get({ name: uploadResult.name });
-        while (fileState.state === "PROCESSING") {
-          if (Date.now() - pollStart > 5 * 60 * 1000) throw new Error("Gemini File API processing timed out");
-          await new Promise((r) => setTimeout(r, 2000));
-          fileState = await ai.files.get({ name: uploadResult.name });
-        }
-        if (fileState.state === "FAILED") throw new Error("Gemini File processing failed.");
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: [
-            {
-              role: "user",
-              parts: [
-                { fileData: { fileUri: uploadResult.uri, mimeType: geminiMimeType } },
-                { text: speechPrompt },
-              ],
-            },
-          ],
-        });
-        transcript = String(response?.text || "").trim();
-      } finally {
-        if (uploadResult?.name) {
-          ai.files.delete({ name: uploadResult.name }).catch(() => {});
-        }
-      }
-    }
+    const transcript = await runWithGeminiQuotaRetry(
+      () => transcribeSermonAudioFileInternal(audioFile.path, rawMime, locale, accentHint, ai),
+      { retries: 1, baseDelayMs: 10000 },
+    );
 
     return res.json({ ok: true, transcript });
   } catch (error) {
-    const raw = String(error?.message || error);
-    const isQuota = raw.includes("RESOURCE_EXHAUSTED") || raw.includes("quota");
+    const isQuota = isGeminiQuotaError(error);
+    if (isQuota && allowDeferred) {
+      const job = createDeferredSermonProcessingJob({
+        sourcePath: audioFile.path,
+        mimeType: rawMime,
+        locale: locale === "en-GB" ? "en-GB" : "en-US",
+        accentHint,
+        workspaceId,
+        initialError: error,
+      });
+      managedByDeferredJob = true;
+      drainDeferredSermonJobs();
+      return res.status(202).json({
+        ok: true,
+        deferred: true,
+        job,
+        message: "Gemini quota reached. Audio saved and queued for automatic transcription.",
+      });
+    }
     return res.status(isQuota ? 429 : 502).json({
       ok: false,
       error: isQuota ? "QUOTA_EXCEEDED" : "TRANSCRIBE_FAILED",
       message: isQuota ? "Gemini quota reached. Please wait a moment and try again." : extractGeminiErrorMessage(error),
     });
   } finally {
-    try { fs.unlinkSync(audioFile.path); } catch { /* ignore */ }
+    if (!managedByDeferredJob) {
+      try { fs.unlinkSync(audioFile.path); } catch { /* ignore */ }
+    }
   }
+});
+
+app.get("/api/ai/sermon-processing-jobs/:jobId", (req, res) => {
+  const jobId = String(req.params.jobId || "").trim();
+  if (!jobId) {
+    return res.status(400).json({ ok: false, error: "JOB_ID_REQUIRED", message: "jobId is required." });
+  }
+
+  const job = getSermonProcessingJob(jobId);
+  if (!job) {
+    return res.status(404).json({ ok: false, error: "JOB_NOT_FOUND", message: "Sermon processing job not found." });
+  }
+
+  return res.json({ ok: true, job });
+});
+
+app.post("/api/ai/sermon-processing-jobs/:jobId/retry", (req, res) => {
+  const jobId = String(req.params.jobId || "").trim();
+  if (!jobId) {
+    return res.status(400).json({ ok: false, error: "JOB_ID_REQUIRED", message: "jobId is required." });
+  }
+
+  const row = getSermonProcessingJobRow(jobId);
+  if (!row) {
+    return res.status(404).json({ ok: false, error: "JOB_NOT_FOUND", message: "Sermon processing job not found." });
+  }
+  if (!row.audio_file_path || !fs.existsSync(row.audio_file_path)) {
+    return res.status(409).json({
+      ok: false,
+      error: "JOB_AUDIO_MISSING",
+      message: "Saved sermon audio is no longer available for retry.",
+    });
+  }
+
+  const job = updateSermonProcessingJob(jobId, {
+    status: "queued",
+    phase: "queued",
+    progress: 4,
+    completedAt: null,
+    error: null,
+    retryAfterMs: 0,
+    nextRetryAt: now(),
+    attemptCount: 0,
+    transcript: null,
+    summaryJson: null,
+  });
+  drainDeferredSermonJobs();
+  return res.json({ ok: true, job });
 });
 
 app.post("/api/ai/generate-macro", async (req, res) => {
   const prompt = String(req.body?.prompt || "").trim();
   const scheduleItems = Array.isArray(req.body?.scheduleItems) ? req.body.scheduleItems : [];
   if (!prompt) return res.status(400).json({ ok: false, error: "PROMPT_REQUIRED" });
-  const ai = ensureGoogleAiClient(res);
+  const ai = ensureGoogleAiClient(res, { scope: "sermon" });
   if (!ai) return;
 
   const scheduleContext = scheduleItems.length > 0
@@ -3063,6 +3705,32 @@ app.use((err, req, res, _next) => {
   console.error("[lumina-server-api] unhandled error:", err?.message || err);
   return res.status(500).json({ ok: false, error: "INTERNAL_ERROR", message: String(err?.message || err) });
 });
+
+const sermonProcessingPollTimer = setInterval(() => {
+  try {
+    drainDeferredSermonJobs();
+  } catch (error) {
+    console.warn("[lumina-server-api] sermon-processing: poll error", error?.message || error);
+  }
+}, SERMON_PROCESSING_POLL_MS);
+sermonProcessingPollTimer.unref?.();
+
+const sermonProcessingPruneTimer = setInterval(() => {
+  try {
+    pruneDeferredSermonJobs();
+  } catch (error) {
+    console.warn("[lumina-server-api] sermon-processing: prune error", error?.message || error);
+  }
+}, 60 * 60 * 1000);
+sermonProcessingPruneTimer.unref?.();
+
+setTimeout(() => {
+  try {
+    drainDeferredSermonJobs();
+  } catch {
+    // ignore boot-time drain failures; poll loop will retry
+  }
+}, 1000).unref?.();
 
 app.listen(PORT, () => {
   console.log(`[lumina-server-api] listening on http://localhost:${PORT}`);

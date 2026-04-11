@@ -193,6 +193,8 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
     error,
     sttStatus,
     chunkError,
+    processingJob,
+    processingSummary,
   } = recState;
 
   const sttWarning = (() => {
@@ -214,14 +216,32 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
 
   const transcriptScrollRef = useRef<HTMLDivElement>(null);
 
+  const processingStatusText = (() => {
+    if (processingJob?.status === 'queued') {
+      const seconds = processingJob.retryAfterMs > 0
+        ? Math.max(1, Math.ceil(processingJob.retryAfterMs / 1000))
+        : 0;
+      return seconds > 0
+        ? `Audio saved. Gemini quota is retrying automatically in about ${seconds}s...`
+        : 'Audio saved. Gemini quota is retrying automatically...';
+    }
+    if (processingJob?.phase === 'summarize') {
+      return 'Transcript ready. Generating sermon summary...';
+    }
+    if (processingJob?.status === 'processing') {
+      return 'Transcribing saved audio...';
+    }
+    return 'Processing audio...';
+  })();
+
   useEffect(() => {
     if (phase === 'done') {
       setEditableTranscript(transcript || '');
-      setSummary(null);
+      setSummary(processingSummary || null);
       setSummaryError(null);
       setIsEditing(false);
     }
-  }, [phase, transcript]);
+  }, [phase, processingSummary, transcript]);
 
   useEffect(() => {
     if (transcriptScrollRef.current) {
@@ -429,7 +449,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
                   <div className="h-3 w-3 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '0ms' }} />
                   <div className="h-3 w-3 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '120ms' }} />
                   <div className="h-3 w-3 rounded-full bg-blue-400 animate-bounce" style={{ animationDelay: '240ms' }} />
-                  <span className="text-[11px] text-blue-300 font-bold ml-1">Processing audio...</span>
+                  <span className="text-[11px] text-blue-300 font-bold ml-1">{processingStatusText}</span>
                 </div>
               )}
             </div>
@@ -439,12 +459,22 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
         {phase === 'error' && (
           <div className="rounded-xl bg-red-950/40 border border-red-800/50 px-3 py-3 space-y-2">
             <p className="text-red-300 text-[11px] font-semibold">{error || 'An error occurred.'}</p>
-            <button
-              onClick={handleStartRecording}
-              className="text-[10px] font-bold text-red-200 border border-red-700/50 px-3 py-1.5 rounded-lg hover:bg-red-900/40 transition-colors"
-            >
-              Try Again
-            </button>
+            <div className="flex gap-2">
+              {processingJob?.status === 'failed' && (
+                <button
+                  onClick={() => { void recActions.retryProcessing(); }}
+                  className="text-[10px] font-bold text-amber-200 border border-amber-700/50 px-3 py-1.5 rounded-lg hover:bg-amber-900/30 transition-colors"
+                >
+                  Retry Saved Audio
+                </button>
+              )}
+              <button
+                onClick={handleStartRecording}
+                className="text-[10px] font-bold text-red-200 border border-red-700/50 px-3 py-1.5 rounded-lg hover:bg-red-900/40 transition-colors"
+              >
+                Record Again
+              </button>
+            </div>
           </div>
         )}
 
@@ -480,6 +510,12 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
                   via Gemini · updates every 12 s
                 </p>
               </>
+            ) : phase === 'transcribing' ? (
+              <span className="text-zinc-600 italic text-[11px]">
+                {processingJob?.status === 'queued'
+                  ? 'Saved recording is queued for automatic retry as soon as Gemini quota clears.'
+                  : 'Processing saved audio...'}
+              </span>
             ) : (
               <span className="text-zinc-600 italic text-[11px]">
                 {isLive ? 'Recording — transcript will appear in about 12 seconds...' : 'Paused.'}

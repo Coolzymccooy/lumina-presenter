@@ -1,5 +1,6 @@
 import type { GeneratedSlideData } from "../types";
 import type { MacroDefinition, MacroActionType, MacroCategory, MacroTriggerType } from "../types/macros";
+import type { SermonSummary } from "./sermonSummaryService";
 import { nanoid } from "nanoid";
 import { getServerApiBaseCandidates, getServerApiBaseUrl } from "./serverApi";
 import { getCachedSemanticReference, normalizeBibleReference, setCachedSemanticReference } from "./bibleLookup";
@@ -224,12 +225,71 @@ export const transcribeSermonChunk = async (
   };
 };
 
+export interface SermonProcessingJob {
+  id: string;
+  workspaceId: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  phase: 'queued' | 'transcribe' | 'summarize' | 'completed' | 'failed';
+  progress: number;
+  createdAt: number;
+  updatedAt: number;
+  completedAt: number | null;
+  error: string | null;
+  retryAfterMs: number;
+  nextRetryAt: number | null;
+  attemptCount: number;
+  transcript: string | null;
+  summary: SermonSummary | null;
+  accentHint: string;
+  locale: 'en-GB' | 'en-US';
+}
+
+const normalizeSermonProcessingJob = (raw: any): SermonProcessingJob => ({
+  id: String(raw?.id || ''),
+  workspaceId: String(raw?.workspaceId || 'default-workspace'),
+  status: raw?.status === 'completed' || raw?.status === 'failed' || raw?.status === 'processing' ? raw.status : 'queued',
+  phase: raw?.phase === 'transcribe' || raw?.phase === 'summarize' || raw?.phase === 'completed' || raw?.phase === 'failed' ? raw.phase : 'queued',
+  progress: Number(raw?.progress || 0),
+  createdAt: Number(raw?.createdAt || 0),
+  updatedAt: Number(raw?.updatedAt || 0),
+  completedAt: raw?.completedAt ? Number(raw.completedAt) : null,
+  error: raw?.error ? String(raw.error) : null,
+  retryAfterMs: Math.max(0, Number(raw?.retryAfterMs || 0)),
+  nextRetryAt: raw?.nextRetryAt ? Number(raw.nextRetryAt) : null,
+  attemptCount: Math.max(0, Number(raw?.attemptCount || 0)),
+  transcript: raw?.transcript ? String(raw.transcript) : null,
+  summary: raw?.summary && typeof raw.summary === 'object' ? raw.summary as SermonSummary : null,
+  accentHint: String(raw?.accentHint || 'standard'),
+  locale: raw?.locale === 'en-GB' ? 'en-GB' : 'en-US',
+});
+
+export type TranscribeSermonAudioResult =
+  | { ok: true; transcript: string }
+  | {
+      ok: false;
+      deferred: true;
+      error: string;
+      code: 'PROCESSING_DEFERRED';
+      job: SermonProcessingJob;
+    }
+  | {
+      ok: false;
+      deferred?: false;
+      error: string;
+      code?: string;
+      retryAfterMs?: number;
+    };
+
 export const transcribeSermonAudio = async (
   audioBlob: Blob,
   mimeType: string,
   locale: 'en-GB' | 'en-US',
-  accentHint?: string
-): Promise<{ ok: true; transcript: string } | { ok: false; error: string }> => {
+  accentHint?: string,
+  options: {
+    allowDeferred?: boolean;
+    workspaceId?: string;
+  } = {}
+): Promise<TranscribeSermonAudioResult> => {
   const apiBase = getServerApiBaseUrl();
   const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('wav') ? 'wav' : 'webm';
   const form = new FormData();
@@ -237,18 +297,97 @@ export const transcribeSermonAudio = async (
   form.append('mimeType', mimeType);
   form.append('locale', locale);
   form.append('accentHint', accentHint || 'standard');
+  form.append('allowDeferred', options.allowDeferred === false ? '0' : '1');
+  if (options.workspaceId) {
+    form.append('workspaceId', options.workspaceId);
+  }
   try {
     const res = await fetch(`${apiBase}/api/ai/transcribe-sermon-audio`, {
       method: 'POST',
       body: form,
     });
-    const data = await res.json() as { ok: boolean; transcript?: string; message?: string; error?: string };
+    const data = await res.json() as {
+      ok: boolean;
+      deferred?: boolean;
+      transcript?: string;
+      job?: unknown;
+      message?: string;
+      error?: string;
+      retryAfterMs?: number;
+    };
     if (data.ok && typeof data.transcript === 'string') {
       return { ok: true, transcript: data.transcript };
     }
-    return { ok: false, error: data.message || data.error || 'Transcription failed.' };
+    if (data.ok && data.deferred && data.job) {
+      return {
+        ok: false,
+        deferred: true,
+        code: 'PROCESSING_DEFERRED',
+        error: data.message || 'Transcription queued for automatic retry.',
+        job: normalizeSermonProcessingJob(data.job),
+      };
+    }
+    return {
+      ok: false,
+      deferred: false,
+      error: data.message || data.error || 'Transcription failed.',
+      code: data.error,
+      retryAfterMs: Number(data.retryAfterMs || 0),
+    };
   } catch (err: unknown) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Transcription request failed.' };
+    return {
+      ok: false,
+      deferred: false,
+      error: err instanceof Error ? err.message : 'Transcription request failed.',
+    };
+  }
+};
+
+export const getSermonProcessingJob = async (
+  jobId: string
+): Promise<{ ok: true; job: SermonProcessingJob } | { ok: false; error: string; code?: string }> => {
+  const apiBase = getServerApiBaseUrl();
+  try {
+    const res = await fetch(`${apiBase}/api/ai/sermon-processing-jobs/${encodeURIComponent(jobId)}`);
+    const data = await res.json() as { ok?: boolean; job?: unknown; message?: string; error?: string };
+    if (res.ok && data?.ok && data.job) {
+      return { ok: true, job: normalizeSermonProcessingJob(data.job) };
+    }
+    return {
+      ok: false,
+      error: data?.message || data?.error || 'Unable to fetch sermon processing job.',
+      code: data?.error,
+    };
+  } catch (err: unknown) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Unable to fetch sermon processing job.',
+    };
+  }
+};
+
+export const retrySermonProcessingJob = async (
+  jobId: string
+): Promise<{ ok: true; job: SermonProcessingJob } | { ok: false; error: string; code?: string }> => {
+  const apiBase = getServerApiBaseUrl();
+  try {
+    const res = await fetch(`${apiBase}/api/ai/sermon-processing-jobs/${encodeURIComponent(jobId)}/retry`, {
+      method: 'POST',
+    });
+    const data = await res.json() as { ok?: boolean; job?: unknown; message?: string; error?: string };
+    if (res.ok && data?.ok && data.job) {
+      return { ok: true, job: normalizeSermonProcessingJob(data.job) };
+    }
+    return {
+      ok: false,
+      error: data?.message || data?.error || 'Unable to retry sermon processing job.',
+      code: data?.error,
+    };
+  } catch (err: unknown) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Unable to retry sermon processing job.',
+    };
   }
 };
 

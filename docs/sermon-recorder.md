@@ -617,7 +617,7 @@ On mobile browsers and aggressive battery-saver modes, the `AudioContext` may be
 
 Check:
 1. Is the backend running and accessible?
-2. Is `ANTHROPIC_API_KEY` / Gemini API key set in the server's environment?
+2. Is a sermon AI key set in the server's environment? Prefer `GOOGLE_AI_SERMON_API_KEY`; otherwise Lumina falls back to `GOOGLE_AI_API_KEY` / `GEMINI_API_KEY`.
 3. Open DevTools → Network → filter by `transcribe-sermon-chunk` — what is the response?
 4. `chunkError` state will surface the error in the transcript box after the first failed upload
 

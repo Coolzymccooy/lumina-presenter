@@ -9,7 +9,15 @@ import {
   type BibleStyleFamily,
   type BibleStyleMode,
 } from '../services/bibleStyleEngine.ts';
-import { semanticBibleSearch, transcribeSermonChunk, transcribeSermonAudio, type TranscribeSermonChunkResult } from '../services/geminiService';
+import {
+  getSermonProcessingJob,
+  retrySermonProcessingJob,
+  semanticBibleSearch,
+  transcribeSermonChunk,
+  transcribeSermonAudio,
+  type SermonProcessingJob,
+  type TranscribeSermonChunkResult,
+} from '../services/geminiService';
 import { summarizeSermon, canSummarize, type SermonSummary } from '../services/sermonSummaryService';
 import { archiveSermon } from '../services/sermonArchive';
 import { SermonSummaryPanel } from './SermonSummaryPanel';
@@ -161,6 +169,11 @@ const getSpeechCtor = (): SpeechRecognitionCtor | null => {
   return speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition || null;
 };
 
+const isElectronRuntime = (): boolean => (
+  typeof navigator !== 'undefined'
+  && String(navigator.userAgent || '').toLowerCase().includes('electron')
+);
+
 const normalizeLocale = (value: string): string => value.trim().replace(/_/g, '-');
 
 const unique = (items: string[]): string[] => {
@@ -293,6 +306,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const [sermonElapsed, setSermonElapsed] = useState(0);
   const [sermonSummarizing, setSermonSummarizing] = useState(false);
   const [sermonTranscribing, setSermonTranscribing] = useState(false);
+  const [sermonProcessingJob, setSermonProcessingJob] = useState<SermonProcessingJob | null>(null);
   const [sermonSummary, setSermonSummary] = useState<SermonSummary | null>(null);
   const [sermonSummaryOpen, setSermonSummaryOpen] = useState(false);
   const [sermonSummaryError, setSermonSummaryError] = useState<string | null>(null);
@@ -761,6 +775,56 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     } catch { /* mic unavailable — will rely on STT transcript only */ }
   }, [stopSermonCapture]);
 
+  const finalizeSermonTranscript = useCallback(async (
+    rawTranscript: string,
+    providedSummary?: SermonSummary | null,
+  ): Promise<boolean> => {
+    const transcript = String(rawTranscript || '').trim();
+    if (!transcript) {
+      setSermonSummaryError('No transcript was captured. Try recording a longer segment with microphone access enabled.');
+      return false;
+    }
+
+    sermonTranscriptRef.current = transcript;
+    setSermonWordCount(transcript.split(/\s+/).filter(Boolean).length);
+    setSermonSummaryError(null);
+
+    if (providedSummary) {
+      setSermonSummary({ ...providedSummary });
+      setSermonSummaryOpen(true);
+      setSermonArchived(false);
+      return true;
+    }
+
+    setSermonSummarizing(true);
+    const accentHint = speechLocaleMode === 'en-GB' ? 'uk' : 'standard';
+    const result = await summarizeSermon(transcript, accentHint);
+    setSermonSummarizing(false);
+    if (result.ok && result.summary) {
+      setSermonSummary({ ...result.summary });
+      setSermonSummaryOpen(true);
+      setSermonArchived(false);
+      return true;
+    }
+
+    setSermonSummaryError(result.error || 'Summarization failed. Please try again.');
+    return false;
+  }, [speechLocaleMode]);
+
+  const handleRetrySermonProcessing = useCallback(async () => {
+    if (!sermonProcessingJob?.id) return;
+    setSermonTranscribing(true);
+    setSermonSummaryError(null);
+    const result = await retrySermonProcessingJob(sermonProcessingJob.id);
+    if (!result.ok) {
+      setSermonTranscribing(false);
+      const retryError = 'error' in result ? result.error : 'Unable to retry saved sermon audio.';
+      setSermonSummaryError(retryError || 'Unable to retry saved sermon audio.');
+      return;
+    }
+    setSermonProcessingJob(result.job);
+  }, [sermonProcessingJob]);
+
   const toggleSermonRecording = useCallback(async () => {
     if (sermonRecordingRef.current) {
       // STOP — ScribeAI pattern: always transcribe full audio first, fall back to STT words
@@ -780,38 +844,30 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       // Primary: full-file Gemini transcription
       if (audioChunks.length > 0) {
         setSermonTranscribing(true);
+        setSermonProcessingJob(null);
         setSermonSummaryError(null);
         const mimeType = sermonAudioMimeTypeRef.current;
         const audioBlob = new Blob(audioChunks, { type: mimeType });
         const locale = speechLocaleMode === 'en-GB' ? 'en-GB' : 'en-US';
-        const result = await transcribeSermonAudio(audioBlob, mimeType, locale);
+        const accentHint = speechLocaleMode === 'en-GB' ? 'uk' : 'standard';
+        const result = await transcribeSermonAudio(audioBlob, mimeType, locale, accentHint, {
+          allowDeferred: true,
+          workspaceId,
+        });
+        if (!result.ok && 'deferred' in result && result.deferred) {
+          setSermonProcessingJob(result.job);
+          setSermonSummaryError(null);
+          return;
+        }
         setSermonTranscribing(false);
         if (result.ok && result.transcript) {
           transcript = result.transcript;
-          setSermonWordCount(transcript.trim().split(/\s+/).filter(Boolean).length);
         }
       }
 
       // Fallback: whatever browser STT captured live
       if (!transcript) transcript = sttTranscript;
-
-      if (!transcript) {
-        setSermonSummaryError('No transcript was captured. Try recording a longer segment with microphone access enabled.');
-        return;
-      }
-
-      setSermonSummaryError(null);
-      setSermonSummarizing(true);
-      const accentHint = speechLocaleMode === 'en-GB' ? 'uk' : 'standard';
-      const result = await summarizeSermon(transcript, accentHint);
-      setSermonSummarizing(false);
-      if (result.ok && result.summary) {
-        setSermonSummary({ ...result.summary });
-        setSermonSummaryOpen(true);
-        setSermonArchived(false);
-      } else {
-        setSermonSummaryError(result.error || 'Summarization failed. Please try again.');
-      }
+      await finalizeSermonTranscript(transcript);
     } else {
       // START — launch dedicated sermon recorder immediately + Auto Visionary for live word count
       sermonTranscriptRef.current = '';
@@ -821,18 +877,91 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       sermonRestartAttemptRef.current = 0;
       setSermonWordCount(0);
       setSermonElapsed(0);
+      setSermonTranscribing(false);
+      setSermonSummarizing(false);
+      setSermonProcessingJob(null);
       setSermonSummary(null);
+      setSermonSummaryOpen(false);
       setSermonSummaryError(null);
-      setSermonMicWarning(null);
+      const electronRuntime = isElectronRuntime();
+      setSermonMicWarning(
+        electronRuntime
+          ? 'Live captions are unavailable in Electron. Audio is still being recorded and will be transcribed after you stop.'
+          : null
+      );
       setSermonArchived(false);
       setSermonRecording(true);
       void startSermonCapture();
-      if (!autoEnabledRef.current) {
+      if (!autoEnabledRef.current && !electronRuntime) {
         sermonAutoEnabledVisionaryRef.current = true;
         setAutoVisionaryEnabled(true);
       }
     }
-  }, [speechLocaleMode, startSermonCapture, stopSermonCapture]);
+  }, [finalizeSermonTranscript, speechLocaleMode, startSermonCapture, stopSermonCapture, workspaceId]);
+
+  useEffect(() => {
+    const jobId = sermonProcessingJob?.id;
+    if (!jobId) return;
+
+    let cancelled = false;
+    let timerId: number | null = null;
+
+    const pollJob = async (delayMs = 1500) => {
+      timerId = window.setTimeout(async () => {
+        const result = await getSermonProcessingJob(jobId);
+        if (cancelled) return;
+
+        if (!result.ok) {
+          setSermonTranscribing(false);
+          const fallbackTranscript = sermonTranscriptRef.current.trim();
+          if (fallbackTranscript) {
+            await finalizeSermonTranscript(fallbackTranscript);
+            return;
+          }
+          const pollError = 'error' in result ? result.error : 'Unable to check saved sermon transcription.';
+          setSermonSummaryError(pollError || 'Unable to check saved sermon transcription.');
+          return;
+        }
+
+        const job = result.job;
+        setSermonProcessingJob(job);
+
+        if (job.status === 'completed') {
+          setSermonTranscribing(false);
+          setSermonProcessingJob(null);
+          await finalizeSermonTranscript(job.transcript || '', job.summary || null);
+          return;
+        }
+
+        if (job.status === 'failed') {
+          setSermonTranscribing(false);
+          const fallbackTranscript = sermonTranscriptRef.current.trim();
+          if (fallbackTranscript) {
+            await finalizeSermonTranscript(fallbackTranscript);
+            return;
+          }
+          setSermonSummaryError(job.error || 'Saved sermon transcription failed.');
+          return;
+        }
+
+        const nextDelay = job.retryAfterMs > 0
+          ? Math.min(15000, Math.max(3000, job.retryAfterMs))
+          : 4000;
+        await pollJob(nextDelay);
+      }, Math.max(500, delayMs));
+    };
+
+    void pollJob(sermonProcessingJob.retryAfterMs > 0
+      ? Math.min(15000, Math.max(1500, sermonProcessingJob.retryAfterMs))
+      : 1500);
+
+    return () => {
+      cancelled = true;
+      if (timerId !== null) {
+        window.clearTimeout(timerId);
+      }
+    };
+  }, [finalizeSermonTranscript, sermonProcessingJob?.id]);
 
   // Elapsed timer while sermon is recording
   useEffect(() => {
@@ -848,6 +977,10 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   // Auto-restart STT if it dies while sermon is recording (up to 3 attempts)
   useEffect(() => {
     if (!sermonRecording) return;
+    if (isElectronRuntime()) {
+      setSermonMicWarning('Live captions are unavailable in Electron. Audio is still being recorded and will be transcribed after you stop.');
+      return;
+    }
     if (autoVisionaryEnabled) {
       sermonRestartAttemptRef.current = 0;
       setSermonMicWarning(null);
@@ -1047,6 +1180,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
 
   const probeBrowserSpeechRecovery = useCallback(async () => {
     if (!autoEnabledRef.current || transcriptionEngineRef.current !== 'cloud_fallback') return;
+    if (isElectronRuntime()) return;
     if (probeInFlightRef.current) return;
     const nowTs = Date.now();
     if ((nowTs - lastBrowserProbeAtRef.current) < CLOUD_BROWSER_PROBE_INTERVAL_MS) return;
@@ -1185,7 +1319,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     }
     setAutoSupportError(null);
     if (transcriptionEngine === 'disabled') {
-      setTranscriptionEngine('browser_stt');
+      setTranscriptionEngine(isElectronRuntime() ? 'cloud_fallback' : 'browser_stt');
     }
   }, [autoVisionaryEnabled, isVisionaryMode, stopAllVisionaryCapture, transcriptionEngine]);
 
@@ -1383,6 +1517,13 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
         ? 'Browser STT'
         : 'Disabled'
   );
+  const sermonTranscribingStatusText = sermonProcessingJob?.status === 'queued'
+    ? `Saved audio queued for retry${sermonProcessingJob.retryAfterMs > 0 ? ` in about ${Math.max(1, Math.ceil(sermonProcessingJob.retryAfterMs / 1000))}s` : ''}.`
+    : sermonProcessingJob?.phase === 'summarize'
+      ? 'Transcript ready. Generating sermon summary...'
+      : sermonProcessingJob?.status === 'processing'
+        ? 'Transcribing saved audio...'
+        : 'Transcribing audio... this may take a moment.';
   const autoStatusText = autoSupportError
     || (!isVisionaryMode ? 'Turn on Visionary mode to enable auto listening.' : '')
     || (autoBusy ? 'Analyzing live speech...' : '')
@@ -1717,12 +1858,25 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
               </div>
             )}
             {sermonTranscribing && (
+              <div className="text-[9px] text-zinc-400 font-mono animate-pulse">{sermonTranscribingStatusText}</div>
+            )}
+            {false && sermonTranscribing && (
               <div className="text-[9px] text-zinc-400 font-mono animate-pulse">Transcribing audio… this may take a moment.</div>
             )}
             {sermonSummaryError && !sermonRecording && !sermonTranscribing && (
               <div className="flex items-start gap-1.5 bg-rose-950/40 border border-rose-800/50 rounded px-2 py-1">
                 <span className="text-rose-400 text-[10px] leading-tight shrink-0 mt-px">⚠</span>
-                <span className="text-[9px] text-rose-300 font-mono leading-tight line-clamp-2">{sermonSummaryError}</span>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <span className="block text-[9px] text-rose-300 font-mono leading-tight">{sermonSummaryError}</span>
+                  {sermonProcessingJob?.status === 'failed' && (
+                    <button
+                      onClick={() => { void handleRetrySermonProcessing(); }}
+                      className="px-2 py-0.5 rounded-sm border border-amber-700/60 bg-amber-950/30 text-[9px] font-bold text-amber-200 hover:bg-amber-900/40 transition-colors"
+                    >
+                      Retry Saved Audio
+                    </button>
+                  )}
+                </div>
                 <button
                   onClick={() => setSermonSummaryError(null)}
                   className="ml-auto text-rose-500 hover:text-rose-300 text-[10px] shrink-0 leading-tight"
