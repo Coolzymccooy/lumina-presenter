@@ -76,6 +76,7 @@
       "dist/**/*",
       "electron/**/*",
       "node_modules/**/*",
+      "!node_modules/**/*.d",
       "package.json"
     ],
     "asarUnpack": [
