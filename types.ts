@@ -85,6 +85,7 @@ export interface ServiceItemMetadata {
   backgroundFallbackUrl?: string;
   backgroundFallbackMediaType?: MediaType;
   backgroundSourceUrl?: string;
+  backgroundThumbnailUrl?: string;
   backgroundProvider?: string;
   backgroundCategory?: string;
   backgroundTitle?: string;

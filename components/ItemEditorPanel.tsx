@@ -19,7 +19,7 @@ const BG_PRESETS = [
   { label: 'Sunrise',     query: 'sunrise sky background' },
 ];
 
-type QuickBackgroundSelection = {
+export type QuickBackgroundSelection = {
   url: string;
   thumb: string;
   mediaType: 'video' | 'image';
@@ -29,7 +29,7 @@ type QuickBackgroundSelection = {
   sourceUrl: string;
 };
 
-function SmartBgSearch({ onApply }: { onApply: (selection: QuickBackgroundSelection) => void }) {
+function SmartBgSearch({ onApply }: { onApply: (selection: QuickBackgroundSelection) => Promise<void> | void }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
@@ -37,6 +37,7 @@ function SmartBgSearch({ onApply }: { onApply: (selection: QuickBackgroundSelect
   const [results, setResults] = useState<RemoteMotionAsset[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [applyingAssetId, setApplyingAssetId] = useState<string | null>(null);
   const cacheRef = useRef<Record<string, RemoteMotionAsset[]>>({});
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -79,6 +80,29 @@ function SmartBgSearch({ onApply }: { onApply: (selection: QuickBackgroundSelect
     }
   };
 
+  const handleApply = useCallback(async (asset: RemoteMotionAsset) => {
+    if (applyingAssetId) return;
+    setError('');
+    setApplyingAssetId(asset.id);
+    try {
+      await onApply({
+        url: asset.url,
+        thumb: asset.thumb,
+        mediaType: asset.mediaType,
+        provider: asset.provider,
+        category: activeCategory,
+        title: asset.name,
+        sourceUrl: asset.url,
+      });
+      setOpen(false);
+      setActiveQuery('');
+    } catch {
+      setError('Could not apply that background. Try again.');
+    } finally {
+      setApplyingAssetId(null);
+    }
+  }, [activeCategory, applyingAssetId, onApply]);
+
   return (
     <div className="flex flex-col gap-2">
       {/* Preset chips + search row */}
@@ -87,8 +111,9 @@ function SmartBgSearch({ onApply }: { onApply: (selection: QuickBackgroundSelect
         {BG_PRESETS.map((p) => (
           <button
             key={p.label}
+            disabled={!!applyingAssetId}
             onClick={() => handlePreset(p)}
-            className={`h-6 px-2 rounded-md border text-[9px] font-bold uppercase tracking-wider transition-all ${activeQuery === p.query && open ? 'border-blue-600/60 bg-blue-950/40 text-blue-300' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'}`}
+            className={`h-6 px-2 rounded-md border text-[9px] font-bold uppercase tracking-wider transition-all disabled:opacity-50 ${activeQuery === p.query && open ? 'border-blue-600/60 bg-blue-950/40 text-blue-300' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'}`}
           >{p.label}</button>
         ))}
         <form onSubmit={handleSubmit} className="flex items-center gap-1 ml-auto">
@@ -96,10 +121,11 @@ function SmartBgSearch({ onApply }: { onApply: (selection: QuickBackgroundSelect
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            disabled={!!applyingAssetId}
             placeholder="Search Pexels…"
-            className="h-6 w-28 bg-zinc-900 border border-zinc-700 rounded-md px-2 text-[10px] text-zinc-200 placeholder-zinc-600 outline-none focus:border-blue-600/60 transition-colors"
+            className="h-6 w-28 bg-zinc-900 border border-zinc-700 rounded-md px-2 text-[10px] text-zinc-200 placeholder-zinc-600 outline-none focus:border-blue-600/60 transition-colors disabled:opacity-50"
           />
-          <button type="submit" className="h-6 px-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-md text-[9px] font-bold text-zinc-300 transition-colors">Go</button>
+          <button type="submit" disabled={!!applyingAssetId} className="h-6 px-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-md text-[9px] font-bold text-zinc-300 transition-colors disabled:opacity-50">Go</button>
         </form>
       </div>
 
@@ -122,25 +148,17 @@ function SmartBgSearch({ onApply }: { onApply: (selection: QuickBackgroundSelect
                 {results.map((asset) => (
                   <button
                     key={asset.id}
-                    onClick={() => {
-                      onApply({
-                        url: asset.url,
-                        thumb: asset.thumb,
-                        mediaType: asset.mediaType,
-                        provider: 'quick-bg',
-                        category: activeCategory,
-                        title: asset.name,
-                        sourceUrl: asset.url,
-                      });
-                      setOpen(false);
-                      setActiveQuery('');
-                    }}
+                    type="button"
+                    onClick={() => void handleApply(asset)}
+                    disabled={!!applyingAssetId}
                     className="group relative aspect-video rounded-md overflow-hidden border border-zinc-800 hover:border-blue-500 transition-all shadow-md"
                     title={asset.name}
                   >
                     <img src={asset.thumb} alt={asset.name} className="w-full h-full object-cover" loading="lazy" />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
-                      <span className="opacity-0 group-hover:opacity-100 text-white text-[8px] font-black uppercase tracking-wider bg-blue-600/80 rounded px-1.5 py-0.5 transition-all">Apply</span>
+                      <span className="opacity-0 group-hover:opacity-100 text-white text-[8px] font-black uppercase tracking-wider bg-blue-600/80 rounded px-1.5 py-0.5 transition-all">
+                        {applyingAssetId === asset.id ? 'Applying...' : 'Apply'}
+                      </span>
                     </div>
                     {asset.mediaType === 'video' && (
                       <div className="absolute bottom-0.5 right-0.5 bg-black/60 rounded px-1 py-0.5 text-[7px] font-bold text-zinc-300 uppercase">VID</div>
@@ -160,11 +178,12 @@ function SmartBgSearch({ onApply }: { onApply: (selection: QuickBackgroundSelect
 interface ItemEditorPanelProps {
   item: ServiceItem;
   onUpdate: (updatedItem: ServiceItem) => void;
+  onApplyQuickBackground?: (item: ServiceItem, selection: QuickBackgroundSelection) => Promise<void> | void;
   onOpenLibrary?: () => void;
   speakerPresets?: SpeakerTimerPreset[];
 }
 
-export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate, onOpenLibrary, speakerPresets = [] }) => {
+export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate, onApplyQuickBackground, onOpenLibrary, speakerPresets = [] }) => {
   const defaultTimerCue = {
     enabled: false,
     durationSec: 300,
@@ -288,21 +307,11 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
 
       {/* Smart Background Search */}
       <SmartBgSearch
-        onApply={(selection) => onUpdate({
-          ...item,
-          theme: {
-            ...item.theme,
-            backgroundUrl: selection.url,
-            mediaType: selection.mediaType,
-          },
-          metadata: {
-            ...item.metadata,
-            backgroundProvider: selection.provider,
-            backgroundCategory: selection.category,
-            backgroundTitle: selection.title,
-            backgroundSourceUrl: selection.sourceUrl,
-          },
-        })}
+        onApply={(selection) => {
+          if (onApplyQuickBackground) {
+            return onApplyQuickBackground(item, selection);
+          }
+        }}
       />
 
       <div className="grid grid-cols-1 gap-2 rounded-xl border border-zinc-800/90 bg-[linear-gradient(180deg,rgba(24,24,27,0.82),rgba(10,10,14,0.96))] p-2.5 shadow-[0_14px_28px_rgba(0,0,0,0.2)] sm:grid-cols-2 xl:grid-cols-12">

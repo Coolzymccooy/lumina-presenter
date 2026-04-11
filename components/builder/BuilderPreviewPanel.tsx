@@ -168,7 +168,7 @@ export function BuilderPreviewPanel({
                   : 'border-zinc-800 hover:border-zinc-600'
               }`}
             >
-              <div className="absolute inset-0 pointer-events-none scale-[0.25] origin-top-left" style={{ width: '400%', height: '400%' }}>
+              <div className="absolute inset-0 pointer-events-none">
                 <SlideRenderer slide={slide} item={item} fitContainer={true} isThumbnail={true} />
               </div>
 
