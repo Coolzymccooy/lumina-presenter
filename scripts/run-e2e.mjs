@@ -91,6 +91,7 @@ const run = async () => {
 
     frontend = startProcess('frontend', [path.join(rootDir, 'node_modules', 'vite', 'bin', 'vite.js'), '--host', '127.0.0.1', '--port', String(FRONTEND_PORT)], {
       VITE_API_BASE_URL: `http://127.0.0.1:${SERVER_PORT}`,
+      VITE_E2E: 'true',
     });
     await waitForHttp(FRONTEND_URL, 90_000, frontend);
 

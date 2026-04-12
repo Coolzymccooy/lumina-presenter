@@ -2606,6 +2606,18 @@ function App() {
     const isRecentServerLoad = (updatedAt - workspaceSettingsUpdatedAtRef.current) < PERSIST_THRESHOLD;
 
     const persistSettings = async () => {
+      // Guard: the persistSettings effect and the load effect run in the same React
+      // batch. workspaceSettings is still at defaults (sessionId='live') while the
+      // load effect has already set the intent ref to the stored custom value.
+      // Writing 'live' here would clobber the stored custom session before the
+      // corrective re-render fires. Skip this write; the re-render will persist
+      // the correct value in the next effect invocation.
+      const intentSession = workspaceSettingsIntentRef.current.sessionId;
+      if (
+        isFallbackSessionId(workspaceSettings.sessionId) &&
+        intentSession?.value && !isFallbackSessionId(intentSession.value)
+      ) return;
+
       // 1. Save to local first for speed
       persistWorkspaceSettingsCache(workspaceSettings, updatedAt);
 
@@ -3092,8 +3104,17 @@ function App() {
     }
   })();
 
-  const selectedItem = schedule.find(i => i.id === selectedItemId) || null;
-  const activeItem = schedule.find(i => i.id === activeItemId) || null;
+  // Memoize to avoid new object references on every render (e.g. from timer ticks).
+  // Without this, SmartSlideEditor's init useEffect re-runs on every App re-render
+  // and resets in-progress slide edits mid-upload.
+  const selectedItem = useMemo(
+    () => schedule.find(i => i.id === selectedItemId) || null,
+    [schedule, selectedItemId],
+  );
+  const activeItem = useMemo(
+    () => schedule.find(i => i.id === activeItemId) || null,
+    [schedule, activeItemId],
+  );
   const activeSlide = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex] : null;
 
   // Detect PPTX visual items in the schedule (imported MEDIA, excluding video-url items)
@@ -7105,7 +7126,12 @@ function App() {
   }
 
   // ROUTING: LOGIN (If not authenticated, force login for studio — both browser and Electron)
-  if (!user && viewState === 'studio') {
+  // Exception: when running under Playwright E2E (VITE_E2E=true) with the Electron shell flag
+  // injected by addInitScript, skip the gate so tests can reach the studio without Firebase creds.
+  // This env var is never set in production builds; it is only passed by run-e2e.mjs.
+  // @ts-ignore
+  const _e2eElectronBypass = import.meta.env.VITE_E2E === 'true' && window.electron?.isElectron;
+  if (!user && viewState === 'studio' && !_e2eElectronBypass) {
     if (showOnboarding) {
       return (
         <WelcomeAnimation
@@ -7862,6 +7888,7 @@ function App() {
                 presenterPreviewItem && presenterPreviewSlide
                   ? (
                     <SlideRenderer
+                      key={presenterPreviewSlide ? `presenter-panel:${presenterPreviewSlide.id}:${presenterPreviewSlide.backgroundUrl || ''}` : 'presenter-panel:none'}
                       slide={presenterPreviewSlide}
                       item={presenterPreviewItem}
                       fitContainer={true}

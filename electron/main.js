@@ -121,15 +121,15 @@ function stopApiServer() {
 // http://localhost:8787 and http://127.0.0.1:8787 are needed for the local
 // Express API server that is spawned as a child process in packaged builds.
 const CSP = [
-  “default-src 'self' blob: data:”,
-  “script-src 'self' 'wasm-unsafe-eval'”,
-  “style-src 'self' 'unsafe-inline' https://fonts.googleapis.com”,
-  “font-src 'self' data: https://fonts.gstatic.com”,
-  “img-src 'self' blob: data: https:”,
-  “media-src 'self' blob: data: https:”,
-  “connect-src 'self' https: http://localhost:8787 http://127.0.0.1:8787 wss: ws:”,
-  “worker-src 'self' blob:”,
-  “frame-src 'none'”,
+  "default-src 'self' blob: data:",
+  "script-src 'self' 'wasm-unsafe-eval'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "img-src 'self' blob: data: https:",
+  "media-src 'self' blob: data: https:",
+  "connect-src 'self' https: http://localhost:8787 http://127.0.0.1:8787 wss: ws:",
+  "worker-src 'self' blob:",
+  "frame-src 'none'",
 ].join('; ');
 
 function normalizeOrigin(value) {
@@ -839,7 +839,7 @@ function createWindow() {
     }
   });
 
-  // Apply CSP in production only â€” Vite dev server needs unsafe-inline for HMR.
+  // Apply CSP in production only â€" Vite dev server needs unsafe-inline for HMR.
   if (isProd) {
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       callback({

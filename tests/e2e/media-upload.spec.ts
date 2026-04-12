@@ -490,7 +490,7 @@ test('public domain hymn library stays inside the sidebar and inserts into the r
 
   const searchInput = page.getByPlaceholder('Search title, first line, author, tune, theme...');
   await searchInput.fill('Abide with Me');
-  await page.getByTestId('hymn-result-abide-with-me').click();
+  await page.getByTestId('hymn-result-abide-with-me-fast-falls-the-eventide').click();
   await expect(page.getByTestId('hymn-insert-button')).toBeVisible();
 
   const layoutMetrics = await page.locator('[data-testid="hymn-library"]').evaluate((node) => {
@@ -518,7 +518,7 @@ test('public domain hymn library stays inside the sidebar and inserts into the r
 
   await page.getByTestId('hymn-insert-button').click();
   await page.getByTitle('SCHEDULE').click();
-  await expect(page.getByTestId('studio-sidebar-panel').getByText('Abide with Me', { exact: true }).first()).toBeVisible();
+  await expect(page.getByTestId('studio-sidebar-panel').getByText('Abide with me! fast falls the eventide', { exact: true }).first()).toBeVisible();
 });
 
 test('speaker timer studio stays open after save, drags freely, and leaves the studio interactive', async ({ page }) => {

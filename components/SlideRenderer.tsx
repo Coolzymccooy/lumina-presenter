@@ -438,6 +438,24 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     ));
   }, [buildRetainedAsset]);
 
+  // Stable ref so the callback ref below never changes identity between renders,
+  // avoiding the React "old ref gets null, new ref gets node" re-fire cycle.
+  const markCurrentMediaReadyRef = useRef(markCurrentMediaReady);
+  useEffect(() => {
+    markCurrentMediaReadyRef.current = markCurrentMediaReady;
+  }, [markCurrentMediaReady]);
+
+  // Callback ref for <img> elements.  When a blob URL is already in the
+  // browser's decoded-image cache, the 'load' event fires synchronously
+  // before React attaches the onLoad handler, so it is silently missed.
+  // Checking node.complete here catches that race and immediately marks the
+  // media ready, preventing the retained-floor from hanging forever.
+  const imgCallbackRef = useCallback((node: HTMLImageElement | null) => {
+    if (node && node.complete && node.naturalWidth > 0) {
+      markCurrentMediaReadyRef.current();
+    }
+  }, []); // intentionally empty — uses stable ref above
+
   useEffect(() => {
     setIsYoutubeReady(false);
   }, [youtubeId, resolvedUrl, slide?.id, item?.id]);
@@ -802,6 +820,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
               <img
                 data-testid="slide-renderer-image"
                 data-media-fit="contain"
+                ref={imgCallbackRef}
                 src={resolvedUrl}
                 alt=""
                 className="w-full h-full object-contain"
@@ -818,6 +837,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
         <img
           data-testid="slide-renderer-image"
           data-media-fit="cover"
+          ref={imgCallbackRef}
           src={resolvedUrl}
           alt=""
           className="w-full h-full object-cover"

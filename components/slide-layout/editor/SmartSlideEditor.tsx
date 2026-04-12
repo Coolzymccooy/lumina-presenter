@@ -501,7 +501,12 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
           const url = await persistUploadedMedia(file);
           uploadedSlides.push(createMediaOnlySlide(item, file.name.replace(/\.[^.]+$/, '') || `Slide ${index + 1}`, url, file.type.startsWith('video/') ? 'video' : 'image'));
         }
-        setSlides((current) => [...current, ...uploadedSlides]);
+        setSlides((current) => {
+          // Drop the empty "add mode" draft slide so uploads replace it rather
+          // than stack alongside it (mirrors the single-file upload behaviour).
+          const withoutDraft = current.filter((s) => !isDefaultSingleDraft(s, item));
+          return [...withoutDraft, ...uploadedSlides];
+        });
         const firstUploaded = uploadedSlides[0] || null;
         setCurrentSlideId(firstUploaded?.id || currentSlideId);
         setSelectedElementId(null);

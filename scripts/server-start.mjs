@@ -1,6 +1,27 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+
+// Auto-heal better-sqlite3 ABI mismatch: if the native module was compiled for
+// Electron (higher ABI) it won't load under system Node. Run prebuild-install to
+// swap in the correct prebuilt before importing the server.
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, '..');
+try {
+  const _require = createRequire(import.meta.url);
+  _require(path.join(rootDir, 'node_modules', 'better-sqlite3'));
+} catch (err) {
+  if (err?.code === 'ERR_DLOPEN_FAILED' || String(err).includes('NODE_MODULE_VERSION')) {
+    console.log('[server-start] better-sqlite3 ABI mismatch — fetching system-Node prebuilt...');
+    const prebuildBin = path.join(rootDir, 'node_modules', 'prebuild-install', 'bin.js');
+    const sqliteDir = path.join(rootDir, 'node_modules', 'better-sqlite3');
+    execFileSync(process.execPath, [prebuildBin], { cwd: sqliteDir, stdio: 'inherit' });
+    console.log('[server-start] better-sqlite3 prebuilt installed.');
+  }
+}
 
 const loadEnvFile = (filename) => {
   const filePath = path.resolve(process.cwd(), filename);
