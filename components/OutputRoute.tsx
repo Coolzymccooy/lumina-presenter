@@ -392,7 +392,6 @@ export const OutputRoute: React.FC = () => {
         <div className="w-full h-full bg-black flex items-center justify-center text-zinc-500 text-xs font-mono uppercase tracking-[0.25em]">WAITING FOR LIVE CONTENT</div>
       ) : (
         <SlideRenderer
-          key={display.slide ? `managed-output:${display.slide.id}:${display.slide.backgroundUrl || ''}` : 'managed-output:none'}
           slide={display.slide || null}
           item={display.item || null}
           fitContainer={true}

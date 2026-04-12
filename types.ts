@@ -75,6 +75,12 @@ export type SlideElement = TextSlideElement;
 export interface SlideMetadata {
   templateId?: string;
   notes?: string;
+  backgroundFallbackUrl?: string;
+  backgroundFallbackMediaType?: MediaType;
+  backgroundSourceUrl?: string;
+  backgroundProvider?: string;
+  backgroundCategory?: string;
+  backgroundTitle?: string;
   hymn?: HymnGeneratedSlideMetadata;
 }
 

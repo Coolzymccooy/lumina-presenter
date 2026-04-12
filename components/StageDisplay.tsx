@@ -921,7 +921,6 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
             {/* Scaled replica of the projected output */}
             <div className="shrink-0 rounded-xl overflow-hidden border border-zinc-700/50 shadow-xl" style={{ width: compact ? 320 : 480, aspectRatio: '16/9' }}>
               <SlideRenderer
-                key={`stage-current:${currentSlide.id}:${currentSlide.backgroundUrl || ''}`}
                 slide={currentSlide}
                 item={activeItem}
                 fitContainer={true}
@@ -1084,7 +1083,6 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
           <div className="flex gap-4 min-h-0 flex-1 overflow-hidden">
             <div className="shrink-0 rounded-lg overflow-hidden border border-zinc-700/40 opacity-80" style={{ width: compact ? 200 : 280, aspectRatio: '16/9' }}>
               <SlideRenderer
-                key={`stage-next:${nextSlide.id}:${nextSlide.backgroundUrl || ''}`}
                 slide={nextSlide}
                 item={activeItem}
                 fitContainer={true}

@@ -12,6 +12,7 @@ export type BackgroundSnapshot = {
 };
 
 const COLOR_TOKEN_PATTERN = /^(#|rgb\(|rgba\(|hsl\(|hsla\()/i;
+const isRemoteMediaUrl = (url: string) => /^https?:\/\//i.test(String(url || '').trim());
 
 const looksLikeVideoUrl = (url: string): boolean => {
   const normalized = String(url || '').trim().split('?')[0].toLowerCase();
@@ -61,12 +62,25 @@ export const getBackgroundSnapshotFromItem = (
   const themeUrl = String(item?.theme?.backgroundUrl || '').trim();
   const backgroundUrl = slideUrl || themeUrl;
   if (!backgroundUrl) return null;
+  const slideMetadata = slide?.metadata;
   const backgroundFallbackUrl = slideUrl
-    ? ''
+    ? String(slideMetadata?.backgroundFallbackUrl || '').trim()
     : String(item?.metadata?.backgroundFallbackUrl || '').trim();
   const backgroundFallbackMediaType = slideUrl
-    ? undefined
+    ? slideMetadata?.backgroundFallbackMediaType
     : item?.metadata?.backgroundFallbackMediaType;
+  const backgroundSourceUrl = slideUrl
+    ? String(slideMetadata?.backgroundSourceUrl || (isRemoteMediaUrl(slideUrl) ? slideUrl : '')).trim()
+    : String(item?.metadata?.backgroundSourceUrl || '').trim();
+  const backgroundProvider = slideUrl
+    ? String(slideMetadata?.backgroundProvider || '').trim()
+    : String(item?.metadata?.backgroundProvider || '').trim();
+  const backgroundCategory = slideUrl
+    ? String(slideMetadata?.backgroundCategory || '').trim()
+    : String(item?.metadata?.backgroundCategory || '').trim();
+  const backgroundTitle = slideUrl
+    ? String(slideMetadata?.backgroundTitle || '').trim()
+    : String(item?.metadata?.backgroundTitle || '').trim();
   return {
     backgroundUrl,
     mediaType: inferMediaType(backgroundUrl, slide?.mediaType || item?.theme?.mediaType),
@@ -74,10 +88,10 @@ export const getBackgroundSnapshotFromItem = (
     backgroundFallbackMediaType: backgroundFallbackUrl
       ? inferMediaType(backgroundFallbackUrl, backgroundFallbackMediaType || item?.theme?.mediaType)
       : undefined,
-    backgroundSourceUrl: String(item?.metadata?.backgroundSourceUrl || '').trim() || undefined,
-    backgroundProvider: String(item?.metadata?.backgroundProvider || '').trim() || undefined,
-    backgroundCategory: String(item?.metadata?.backgroundCategory || '').trim() || undefined,
-    backgroundTitle: String(item?.metadata?.backgroundTitle || '').trim() || undefined,
+    backgroundSourceUrl: backgroundSourceUrl || undefined,
+    backgroundProvider: backgroundProvider || undefined,
+    backgroundCategory: backgroundCategory || undefined,
+    backgroundTitle: backgroundTitle || undefined,
   };
 };
 

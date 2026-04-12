@@ -107,6 +107,7 @@ import {
   inheritPrevailingBackground,
   stampItemBackgroundSource,
 } from './services/backgroundPersistence';
+import { isProjectionSafeBackgroundUrl } from './services/mediaUrlStability';
 import type { RunSheetInsertionResult } from './services/runSheetInsertion';
 import { PlayIcon, PauseIcon, RewindIcon, ForwardIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon, ArrowDownIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon, CheckIcon, XIcon, PinIcon, MinimizeIcon, MaximizeIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon, RewindIcon, ForwardIcon, PauseIcon
 import { AppHeader } from './components/layout/AppHeader';
@@ -495,14 +496,6 @@ const looksLikeVideoUrl = (url: string): boolean => {
 const isRemoteMediaUrl = (url: string): boolean => /^https?:\/\//i.test(String(url || '').trim());
 const isBlobMediaUrl = (url: string): boolean => /^blob:/i.test(String(url || '').trim());
 const isDataMediaUrl = (url: string): boolean => /^data:/i.test(String(url || '').trim());
-const isProjectionSafeBackgroundUrl = (url: string): boolean => {
-  const trimmed = String(url || '').trim();
-  if (!trimmed) return false;
-  if (trimmed.startsWith('local://')) return true;
-  if (trimmed.startsWith('/')) return true;
-  if (trimmed.startsWith('./') || trimmed.startsWith('../')) return true;
-  return !isRemoteMediaUrl(trimmed) && !isBlobMediaUrl(trimmed) && !isDataMediaUrl(trimmed);
-};
 
 const extensionFromMimeType = (mimeType: string, mediaType: 'image' | 'video'): string => {
   const normalized = String(mimeType || '').toLowerCase();
@@ -7063,7 +7056,6 @@ function App() {
           <div className="w-full h-full bg-black flex items-center justify-center text-zinc-500 font-mono text-xs font-bold tracking-[0.2em]">WAITING_FOR_LIVE_CONTENT</div>
         ) : (
           <SlideRenderer
-            key={`output-live:${activeSlide.id}:${activeSlide.backgroundUrl || ''}`}
             slide={activeSlide}
             item={activeItem}
             isPlaying={isPlaying}
@@ -7888,7 +7880,6 @@ function App() {
                 presenterPreviewItem && presenterPreviewSlide
                   ? (
                     <SlideRenderer
-                      key={presenterPreviewSlide ? `presenter-panel:${presenterPreviewSlide.id}:${presenterPreviewSlide.backgroundUrl || ''}` : 'presenter-panel:none'}
                       slide={presenterPreviewSlide}
                       item={presenterPreviewItem}
                       fitContainer={true}
@@ -8550,7 +8541,6 @@ function App() {
                   <div data-testid="presenter-live-preview" className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group shadow-2xl overflow-hidden rounded-sm">
                     {renderPresenterHoldState() || (
                       <SlideRenderer
-                        key={activeSlide ? `presenter-preview:${activeSlide.id}:${activeSlide.backgroundUrl || ''}` : 'presenter-preview:none'}
                         slide={activeSlide}
                         item={activeItem}
                         isPlaying={isPlaying}
@@ -8942,7 +8932,6 @@ function App() {
                 }
                 return (
                   <SlideRenderer
-                    key={`output-window:${activeSlide.id}:${activeSlide.backgroundUrl || ''}`}
                     slide={activeSlide}
                     item={activeItem}
                     fitContainer={true}
