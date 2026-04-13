@@ -44,15 +44,16 @@ const PPTX_VIS_CACHE_VERSION = (() => {
 const PEXELS_API_KEY = String(process.env.PEXELS_API_KEY || process.env.VITE_PEXELS_API_KEY || "").trim();
 const PEXELS_API_BASE_URL = "https://api.pexels.com/videos/search";
 const SCRIPTURE_API_BIBLE_KEY = String(process.env.SCRIPTURE_API_BIBLE_KEY || "").trim();
-const SCRIPTURE_API_BASE_URL = "https://api.scripture.api.bible/v1";
+const SCRIPTURE_API_BASE_URL = "https://rest.api.bible/v1";
 
 // Translation ID map: Lumina translation code → API.Bible Bible ID.
-// Look up the exact IDs for your account at scripture.api.bible/dashboard.
+// NIV, NKJV, NLT are the 3 copyrighted translations active on the free-tier account.
+// ESV, AMP, MSG are not available on this account — leave as "" to trigger KJV fallback.
 const APIBIBLE_TRANSLATION_IDS = {
-  niv:  "",
-  nkjv: "",
+  niv:  "78a9f6124f344018-01",
+  nkjv: "63097d2a0a2f7db3-01",
   esv:  "",
-  nlt:  "",
+  nlt:  "d6e14a625393b4da-01",
   amp:  "",
   msg:  "",
 };
