@@ -34,6 +34,7 @@ export function RightDock({
       <div className="flex flex-col gap-1 p-2">
         {/* CONNECT */}
         <button
+          data-testid="rightdock-connect-btn"
           onClick={() => onOpenConnect('audience')}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-blue-600/10 border border-blue-900/30 text-blue-400 hover:bg-blue-600/20 text-[10px] font-black tracking-widest transition-all active:scale-95 text-left"
         >
@@ -46,6 +47,7 @@ export function RightDock({
 
         {/* AETHER */}
         <button
+          data-testid="rightdock-aether-btn"
           onClick={() => onOpenConnect('aether')}
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-cyan-600/10 border border-cyan-900/30 text-cyan-300 hover:bg-cyan-600/20 text-[10px] font-black tracking-widest transition-all active:scale-95 text-left"
         >
@@ -73,6 +75,7 @@ export function RightDock({
         {/* START SERVICE / MACHINE MODE */}
         {hasElectronDisplayControl ? (
           <button
+            data-testid="rightdock-start-service-btn"
             onClick={onOpenDisplaySetup}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[10px] font-black tracking-widest transition-all border text-left ${
               desktopServiceState?.outputOpen || desktopServiceState?.stageOpen

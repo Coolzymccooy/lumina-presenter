@@ -86,6 +86,13 @@ export interface GuideTarget {
   dataTestId?: string;
   mustBeVisible?: boolean;
   scrollIntoView?: boolean;
+  /**
+   * data-testid of an element to programmatically click BEFORE resolving this
+   * target. Use when the target lives inside a modal/panel that must be opened
+   * first (e.g. click "rightdock-start-service-btn" to open DisplaySetupModal
+   * before spotlighting "display-setup-ndi-btn" inside it).
+   */
+  prerequisiteClick?: string;
 }
 
 export interface StepWaitRule {

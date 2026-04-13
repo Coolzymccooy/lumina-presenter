@@ -108,8 +108,36 @@ export class GuideEngine {
   }
 
   private resolveElement(step: GuideStep, selector: string): void {
-    const startedAt = Date.now();
+    const prerequisiteTestId = step.target?.prerequisiteClick;
 
+    if (prerequisiteTestId) {
+      // Open the modal / panel that contains the target before polling for it.
+      // We also ensure the right dock is open first if the prerequisite is inside it.
+      const prereqEl = document.querySelector(`[data-testid="${prerequisiteTestId}"]`);
+      if (prereqEl) {
+        (prereqEl as HTMLElement).click();
+        // Wait for open animation to settle, then start polling.
+        setTimeout(() => this.pollForElement(step, selector, Date.now()), 500);
+        return;
+      }
+      // prerequisite element itself not found — try opening the right dock first,
+      // then retry the prerequisite click after it appears.
+      const dockToggle = document.querySelector('[data-testid="header-right-dock-btn"]');
+      if (dockToggle) {
+        (dockToggle as HTMLElement).click();
+        setTimeout(() => {
+          const prereqRetry = document.querySelector(`[data-testid="${prerequisiteTestId}"]`);
+          if (prereqRetry) (prereqRetry as HTMLElement).click();
+          setTimeout(() => this.pollForElement(step, selector, Date.now()), 500);
+        }, 300);
+        return;
+      }
+    }
+
+    this.pollForElement(step, selector, Date.now());
+  }
+
+  private pollForElement(step: GuideStep, selector: string, startedAt: number): void {
     const attempt = (): void => {
       const el = document.querySelector(selector);
       if (el) {

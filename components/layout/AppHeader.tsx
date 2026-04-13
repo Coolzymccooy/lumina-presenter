@@ -338,6 +338,7 @@ export function AppHeader({
             placement="bottom"
           >
             <button
+              data-testid="header-right-dock-btn"
               onClick={onToggleRightDock}
               className={`ml-1 p-2.5 rounded-xl text-[10px] font-black tracking-widest transition-all border ${
                 isRightDockOpen

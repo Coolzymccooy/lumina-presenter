@@ -52,12 +52,15 @@ export function GuideTooltip({
   };
   const tone = toneConfig[tooltip?.tone ?? 'info'] ?? toneConfig.info;
 
+  const arrow = targetRect ? buildArrow(targetRect, step.placement ?? 'auto', position) : null;
+
   return (
     <div
       data-testid="guide-tooltip"
       className={`fixed z-[9100] bg-zinc-900 border ${tone.border} rounded-2xl shadow-2xl shadow-black/70 text-zinc-200 animate-in fade-in slide-in-from-bottom-2 duration-200 overflow-hidden`}
       style={{ width: TOOLTIP_WIDTH, ...position }}
     >
+      {arrow}
       {/* ── Media section ── */}
       {hasMedia && (
         <div className="relative w-full bg-zinc-950 overflow-hidden" style={{ height: 180 }}>
@@ -222,4 +225,122 @@ function autoPlace(rect: DOMRect, W: number, H: number): TooltipPlacement {
   if (spaceAbove >= 200) return 'top';
   if (spaceRight >= TOOLTIP_WIDTH + TOOLTIP_OFFSET) return 'right';
   return 'left';
+}
+
+// ─── Arrow connector ──────────────────────────────────────────────────────────
+
+/**
+ * Renders a small CSS-triangle arrow on the edge of the tooltip that faces
+ * the spotlighted element.
+ *
+ * placement   meaning                arrow position on tooltip
+ * ----------  ---------------------  -------------------------
+ * bottom      tooltip below element  top edge  (arrow points ↑)
+ * top         tooltip above element  bottom edge (arrow points ↓)
+ * right       tooltip right          left edge (arrow points ←)
+ * left        tooltip left           right edge (arrow points →)
+ */
+function buildArrow(
+  targetRect: DOMRect,
+  placement: TooltipPlacement,
+  tooltipPos: CSSPosition,
+): React.ReactElement | null {
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  const effective = placement === 'auto' ? autoPlace(targetRect, W, H) : placement;
+
+  if (effective === 'center') return null;
+
+  const SIZE = 8; // half-width of arrow base
+  const BG = '#18181b'; // zinc-900 — match tooltip background
+  const BORDER = 'rgba(99,102,241,0.4)'; // subtle indigo tint
+
+  const base: React.CSSProperties = {
+    position: 'absolute',
+    width: 0,
+    height: 0,
+    pointerEvents: 'none',
+  };
+
+  // For bottom/top we horizontally centre the arrow over the element
+  const tooltipLeft =
+    typeof tooltipPos.left === 'number' ? tooltipPos.left : W / 2 - TOOLTIP_WIDTH / 2;
+  const elementCentreX = targetRect.left + targetRect.width / 2;
+  const arrowLeftRaw = elementCentreX - tooltipLeft - SIZE;
+  const arrowLeft = Math.max(12, Math.min(arrowLeftRaw, TOOLTIP_WIDTH - 12 - SIZE * 2));
+
+  switch (effective) {
+    case 'bottom':
+      return (
+        <div
+          style={{
+            ...base,
+            top: -SIZE,
+            left: arrowLeft,
+            borderLeft: `${SIZE}px solid transparent`,
+            borderRight: `${SIZE}px solid transparent`,
+            borderBottom: `${SIZE}px solid ${BG}`,
+            filter: `drop-shadow(0 -1px 0 ${BORDER})`,
+          }}
+        />
+      );
+    case 'top': {
+      const tooltipTop =
+        typeof tooltipPos.top === 'number' ? tooltipPos.top : undefined;
+      const tooltipHeight = tooltipTop ? H - tooltipTop : 240; // rough estimate
+      return (
+        <div
+          style={{
+            ...base,
+            bottom: -SIZE,
+            left: arrowLeft,
+            borderLeft: `${SIZE}px solid transparent`,
+            borderRight: `${SIZE}px solid transparent`,
+            borderTop: `${SIZE}px solid ${BG}`,
+            filter: `drop-shadow(0 1px 0 ${BORDER})`,
+          }}
+        />
+      );
+    }
+    case 'right': {
+      const elementCentreY = targetRect.top + targetRect.height / 2;
+      const tooltipTop2 =
+        typeof tooltipPos.top === 'number' ? tooltipPos.top : H / 2 - 120;
+      const arrowTop = Math.max(12, elementCentreY - tooltipTop2 - SIZE);
+      return (
+        <div
+          style={{
+            ...base,
+            top: arrowTop,
+            left: -SIZE,
+            borderTop: `${SIZE}px solid transparent`,
+            borderBottom: `${SIZE}px solid transparent`,
+            borderRight: `${SIZE}px solid ${BG}`,
+            filter: `drop-shadow(-1px 0 0 ${BORDER})`,
+          }}
+        />
+      );
+    }
+    case 'left': {
+      const elementCentreY2 = targetRect.top + targetRect.height / 2;
+      const tooltipTop3 =
+        typeof tooltipPos.top === 'number' ? tooltipPos.top : H / 2 - 120;
+      const arrowTop2 = Math.max(12, elementCentreY2 - tooltipTop3 - SIZE);
+      return (
+        <div
+          style={{
+            ...base,
+            top: arrowTop2,
+            right: -SIZE,
+            borderTop: `${SIZE}px solid transparent`,
+            borderBottom: `${SIZE}px solid transparent`,
+            borderLeft: `${SIZE}px solid ${BG}`,
+            filter: `drop-shadow(1px 0 0 ${BORDER})`,
+          }}
+        />
+      );
+    }
+    default:
+      return null;
+  }
 }

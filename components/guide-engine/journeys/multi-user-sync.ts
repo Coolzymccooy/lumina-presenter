@@ -4,11 +4,12 @@ import type { GuideJourney } from '../types/guide.types';
  * Enable Sync with Multiple Users
  *
  * data-testid targets used:
- *   header-connect-btn              — Connect / share button in AppHeader
+ *   header-right-dock-btn           — ✦ Quick Actions toggle in AppHeader
+ *   rightdock-connect-btn           — Connect button in RightDock
+ *   rightdock-aether-btn            — Aether button in RightDock
  *   connect-modal-tab-audience      — Audience tab in ConnectModal
  *   connect-modal-tab-aether        — Aether tab in ConnectModal
  *   connect-modal-copy-remote-url   — Copy button for the Remote URL
- *   connect-modal-copy-stage-url    — Copy button for the Stage/operator URL
  */
 export const multiUserSyncJourney: GuideJourney = {
   id: 'multi-user-sync',
@@ -36,19 +37,39 @@ export const multiUserSyncJourney: GuideJourney = {
       },
     },
     {
-      id: 'connect-btn',
-      title: 'Open Connect',
-      description: 'The Connect button opens the sharing and sync panel.',
+      id: 'open-right-dock',
+      title: 'Open Quick Actions',
+      description: 'The Connect and Aether buttons live in the Quick Actions panel.',
       target: {
-        dataTestId: 'header-connect-btn',
+        dataTestId: 'header-right-dock-btn',
         mustBeVisible: false,
-        scrollIntoView: true,
+        scrollIntoView: false,
       },
       placement: 'bottom',
       action: 'observe',
       tooltip: {
-        title: 'Connect Panel',
-        body: 'Click the Connect button in the header to open the sharing panel. From here you can generate URLs for the audience screen, stage display, and remote operator view.',
+        title: 'Quick Actions Panel',
+        body: 'Click the ✦ button (top-right of the header) to open the Quick Actions panel. You will find Connect and Aether buttons there for sharing your service with other devices.',
+        showBack: true,
+        showNext: true,
+        showSkip: true,
+      },
+    },
+    {
+      id: 'connect-btn',
+      title: 'Connect — Audience Devices',
+      description: 'The Connect button opens the audience sharing modal.',
+      target: {
+        dataTestId: 'rightdock-connect-btn',
+        mustBeVisible: false,
+        scrollIntoView: false,
+        prerequisiteClick: 'header-right-dock-btn',
+      },
+      placement: 'left',
+      action: 'observe',
+      tooltip: {
+        title: 'Connect Button',
+        body: 'Click Connect to open the sharing modal. From here you can copy URLs for the audience screen, stage display, and remote operator view.',
         showBack: true,
         showNext: true,
         showSkip: true,
@@ -62,6 +83,7 @@ export const multiUserSyncJourney: GuideJourney = {
         dataTestId: 'connect-modal-tab-audience',
         mustBeVisible: false,
         scrollIntoView: true,
+        prerequisiteClick: 'rightdock-connect-btn',
       },
       placement: 'bottom',
       action: 'observe',
