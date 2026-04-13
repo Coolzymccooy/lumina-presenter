@@ -1,3 +1,5 @@
+import { lookupBibleVerseLocal } from './bibleLocalData';
+
 export interface BibleVerse {
   book_id: string;
   book_name: string;
@@ -279,9 +281,18 @@ export const lookupBibleReference = async (query: string, version: string): Prom
   const normalized = normalizeBibleReference(query) || String(query || '').trim();
   if (!normalized) return [];
 
+  // 1. Memory + localStorage cache (unchanged)
   const cached = getCachedBibleVerses(normalized, version);
   if (cached?.length) return cached;
 
+  // 2. Local bundle (offline-first for kjv and web)
+  const localVerses = await lookupBibleVerseLocal(normalized, version);
+  if (localVerses?.length) {
+    setCachedBibleVerses(normalized, version, localVerses);
+    return localVerses;
+  }
+
+  // 3. Network (unchanged — copyrighted translations, non-bundled versions)
   const lookup = async (translation: string): Promise<BibleVerse[]> => {
     const response = await fetch(`https://bible-api.com/${encodeURIComponent(normalized)}?translation=${translation}`);
     const data = await response.json();
