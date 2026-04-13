@@ -402,7 +402,11 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1">
             <select
               value={item.timerCue?.presetId || ''}
-              onChange={(e) => updateTimerCue({ presetId: e.target.value || '' })}
+              onChange={(e) => {
+                const nextPresetId = e.target.value || '';
+                updateTimerCue({ presetId: nextPresetId });
+                if (nextPresetId) applyPreset(nextPresetId);
+              }}
               className="min-w-0 rounded-md border border-zinc-700 bg-zinc-950/90 px-2 py-2 text-[11px] text-zinc-200 shadow-inner shadow-black/20"
             >
               <option value="">None</option>

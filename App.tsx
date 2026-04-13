@@ -7647,7 +7647,7 @@ function App() {
     if (!selectedSpeakerPresetId) return;
     const preset = (workspaceSettings.speakerTimerPresets || []).find(p => p.id === selectedSpeakerPresetId);
     if (!preset) return;
-    const targetId = currentCueItemId || selectedItemId;
+    const targetId = currentCueItemId || selectedItemId || activeItemId;
     if (!targetId) return;
     applySpeakerPresetToItem(targetId, preset.id);
   };
@@ -8907,7 +8907,7 @@ function App() {
                               <option key={preset.id} value={preset.id}>{preset.name}</option>
                             ))}
                           </select>
-                          <button onClick={applySelectedPresetToCurrentCue} disabled={!selectedSpeakerPresetId || !(currentCueItemId || selectedItemId)} className="text-[9px] px-2.5 py-0.5 bg-emerald-700 hover:bg-emerald-600 rounded text-white font-bold transition-colors disabled:opacity-30 uppercase">Apply</button>
+                          <button onClick={applySelectedPresetToCurrentCue} disabled={!selectedSpeakerPresetId || !(currentCueItemId || selectedItemId || activeItemId)} className="text-[9px] px-2.5 py-0.5 bg-emerald-700 hover:bg-emerald-600 rounded text-white font-bold transition-colors disabled:opacity-30 uppercase">Apply</button>
                           <button onClick={openSpeakerPresetStudio} aria-label="Manage" data-testid="speaker-preset-studio-open" className="h-6 w-6 flex items-center justify-center rounded border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all"><Settings className="w-3 h-3" /></button>
                         </div>
                         <div className="flex items-center gap-1 bg-zinc-950 border border-zinc-800 rounded-lg px-2 h-9">
