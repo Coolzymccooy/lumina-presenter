@@ -43,6 +43,39 @@ const PPTX_VIS_CACHE_VERSION = (() => {
 })();
 const PEXELS_API_KEY = String(process.env.PEXELS_API_KEY || process.env.VITE_PEXELS_API_KEY || "").trim();
 const PEXELS_API_BASE_URL = "https://api.pexels.com/videos/search";
+const SCRIPTURE_API_BIBLE_KEY = String(process.env.SCRIPTURE_API_BIBLE_KEY || "").trim();
+const SCRIPTURE_API_BASE_URL = "https://rest.api.bible/v1";
+
+// Translation ID map: Lumina translation code → API.Bible Bible ID.
+// NIV, NKJV, NLT are the 3 copyrighted translations active on the free-tier account.
+// ESV, AMP, MSG are not available on this account — leave as "" to trigger KJV fallback.
+const APIBIBLE_TRANSLATION_IDS = {
+  niv:  "78a9f6124f344018-01",
+  nkjv: "63097d2a0a2f7db3-01",
+  esv:  "",
+  nlt:  "d6e14a625393b4da-01",
+  amp:  "",
+  msg:  "",
+};
+
+// OSIS book ID map — converts Lumina canonical book names to API.Bible passage IDs.
+const OSIS_BOOK_IDS = {
+  "Genesis":"GEN","Exodus":"EXO","Leviticus":"LEV","Numbers":"NUM","Deuteronomy":"DEU",
+  "Joshua":"JOS","Judges":"JDG","Ruth":"RUT","1 Samuel":"1SA","2 Samuel":"2SA",
+  "1 Kings":"1KI","2 Kings":"2KI","1 Chronicles":"1CH","2 Chronicles":"2CH",
+  "Ezra":"EZR","Nehemiah":"NEH","Esther":"EST","Job":"JOB","Psalms":"PSA",
+  "Proverbs":"PRO","Ecclesiastes":"ECC","Song of Solomon":"SNG","Isaiah":"ISA",
+  "Jeremiah":"JER","Lamentations":"LAM","Ezekiel":"EZK","Daniel":"DAN",
+  "Hosea":"HOS","Joel":"JOL","Amos":"AMO","Obadiah":"OBA","Jonah":"JON",
+  "Micah":"MIC","Nahum":"NAM","Habakkuk":"HAB","Zephaniah":"ZEP","Haggai":"HAG",
+  "Zechariah":"ZEC","Malachi":"MAL","Matthew":"MAT","Mark":"MRK","Luke":"LUK",
+  "John":"JHN","Acts":"ACT","Romans":"ROM","1 Corinthians":"1CO","2 Corinthians":"2CO",
+  "Galatians":"GAL","Ephesians":"EPH","Philippians":"PHP","Colossians":"COL",
+  "1 Thessalonians":"1TH","2 Thessalonians":"2TH","1 Timothy":"1TI","2 Timothy":"2TI",
+  "Titus":"TIT","Philemon":"PHM","Hebrews":"HEB","James":"JAS","1 Peter":"1PE",
+  "2 Peter":"2PE","1 John":"1JN","2 John":"2JN","3 John":"3JN","Jude":"JUD",
+  "Revelation":"REV",
+};
 const PEXELS_QUERY_MAX_LENGTH = 120;
 const PEXELS_DEFAULT_PER_PAGE = 12;
 const PEXELS_MAX_PER_PAGE = 24;
@@ -53,6 +86,59 @@ let pdftocairoVersionLine = "unknown";
 let cachedPdfToPng = null;
 let cachedPdfToPngLoadError = null;
 const PEXELS_SEARCH_CACHE = new Map();
+
+function buildApiBiblePassageId(normalizedRef) {
+  const matchFull = normalizedRef.match(/^(.+?)\s+(\d+)(?::(\d+)(?:-(\d+))?)?$/);
+  if (!matchFull) return null;
+  const [, bookName, chapter, verseFrom, verseTo] = matchFull;
+  const osisBook = OSIS_BOOK_IDS[bookName];
+  if (!osisBook) return null;
+  if (!verseFrom) {
+    return `${osisBook}.${chapter}`;
+  }
+  const start = `${osisBook}.${chapter}.${verseFrom}`;
+  const end = verseTo ? `${osisBook}.${chapter}.${verseTo}` : start;
+  return start === end ? start : `${start}-${end}`;
+}
+
+function parseApiBiblePassageText(rawContent, bookName, chapter, verseFrom, verseTo) {
+  const clean = String(rawContent || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const safeFrom = Number(verseFrom) || 1;
+  const safeTo = Number(verseTo) || safeFrom;
+
+  if (safeFrom === safeTo) {
+    return [{
+      book_name: bookName,
+      book_id: bookName.toLowerCase().replace(/\s+/g, ""),
+      chapter: Number(chapter),
+      verse: safeFrom,
+      text: clean.replace(/^\[\d+\]\s*/, "").trim(),
+    }];
+  }
+
+  const verses = [];
+  const parts = clean.split(/\[(\d+)\]\s*/);
+  for (let i = 1; i < parts.length - 1; i += 2) {
+    const verseNum = Number(parts[i]);
+    const text = String(parts[i + 1] || "").trim();
+    if (verseNum >= safeFrom && verseNum <= safeTo && text) {
+      verses.push({
+        book_name: bookName,
+        book_id: bookName.toLowerCase().replace(/\s+/g, ""),
+        chapter: Number(chapter),
+        verse: verseNum,
+        text,
+      });
+    }
+  }
+  return verses.length ? verses : [{
+    book_name: bookName,
+    book_id: bookName.toLowerCase().replace(/\s+/g, ""),
+    chapter: Number(chapter),
+    verse: safeFrom,
+    text: clean,
+  }];
+}
 
 const loadPdfToPngConverter = async () => {
   if (typeof cachedPdfToPng === "function") return cachedPdfToPng;
@@ -1880,6 +1966,77 @@ app.get("/api/media/pexels/videos", async (req, res) => {
       ok: false,
       error: isTimeout ? "PEXELS_TIMEOUT" : "PEXELS_PROXY_FAILED",
       message: isTimeout ? "Pexels request timed out." : "Could not reach Pexels from the server.",
+    });
+  }
+});
+
+app.get("/api/bible/verse", async (req, res) => {
+  if (!SCRIPTURE_API_BIBLE_KEY) {
+    return res.status(503).json({
+      ok: false,
+      error: "SCRIPTURE_API_BIBLE_KEY_MISSING",
+      message: "API.Bible key not configured on server. Add SCRIPTURE_API_BIBLE_KEY to .env.local.",
+    });
+  }
+
+  const ref = String(req.query?.ref || "").trim();
+  const translation = String(req.query?.translation || "").trim().toLowerCase();
+  if (!ref || !translation) {
+    return res.status(400).json({ ok: false, error: "REF_AND_TRANSLATION_REQUIRED" });
+  }
+
+  const bibleId = APIBIBLE_TRANSLATION_IDS[translation];
+  if (!bibleId) {
+    return res.status(422).json({
+      ok: false,
+      error: "TRANSLATION_NOT_CONFIGURED",
+      message: `Translation "${translation}" is not in APIBIBLE_TRANSLATION_IDS. Add its Bible ID from scripture.api.bible.`,
+    });
+  }
+
+  const passageId = buildApiBiblePassageId(ref);
+  if (!passageId) {
+    return res.status(400).json({ ok: false, error: "INVALID_REFERENCE", message: `Could not parse reference: ${ref}` });
+  }
+
+  try {
+    const url = new URL(`${SCRIPTURE_API_BASE_URL}/bibles/${bibleId}/passages/${passageId}`);
+    url.searchParams.set("content-type", "text");
+    url.searchParams.set("include-notes", "false");
+    url.searchParams.set("include-titles", "false");
+    url.searchParams.set("include-chapter-numbers", "false");
+    url.searchParams.set("include-verse-numbers", "true");
+    url.searchParams.set("include-verse-spans", "false");
+
+    const upstream = await fetch(url.toString(), {
+      headers: { "api-key": SCRIPTURE_API_BIBLE_KEY },
+      signal: AbortSignal.timeout(10000),
+    });
+
+    if (!upstream.ok) {
+      const status = upstream.status;
+      const msg = status === 401 || status === 403
+        ? "API.Bible authentication failed. Check SCRIPTURE_API_BIBLE_KEY."
+        : status === 404
+          ? `Passage not found: ${ref} in ${translation}`
+          : `API.Bible upstream error ${status}`;
+      return res.status(status).json({ ok: false, error: "UPSTREAM_ERROR", message: msg });
+    }
+
+    const data = await upstream.json();
+    const rawContent = data?.data?.content || "";
+
+    const refMatch = ref.match(/^(.+?)\s+(\d+)(?::(\d+)(?:-(\d+))?)?$/);
+    if (!refMatch) return res.status(400).json({ ok: false, error: "PARSE_FAILED" });
+    const [, bookName, chapter, verseFrom, verseTo] = refMatch;
+
+    const verses = parseApiBiblePassageText(rawContent, bookName, chapter, verseFrom, verseTo);
+    return res.json({ ok: true, verses, translation, reference: ref });
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: "BIBLE_FETCH_FAILED",
+      message: String(error?.message || error),
     });
   }
 });

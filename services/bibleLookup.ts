@@ -279,9 +279,24 @@ export const lookupBibleReference = async (query: string, version: string): Prom
   const normalized = normalizeBibleReference(query) || String(query || '').trim();
   if (!normalized) return [];
 
+  // 1. Cache — shared across all strategies
   const cached = getCachedBibleVerses(normalized, version);
   if (cached?.length) return cached;
 
+  // 2. API.Bible — for copyrighted translations (niv, nkjv, esv, nlt, amp, msg)
+  const { isApiBibleTranslation, lookupBibleVerseApiBible } = await import('./bibleApiBible.ts');
+  if (isApiBibleTranslation(version)) {
+    const apiBibleVerses = await lookupBibleVerseApiBible(normalized, version);
+    if (apiBibleVerses?.length) {
+      setCachedBibleVerses(normalized, version, apiBibleVerses);
+      return apiBibleVerses;
+    }
+    // Server unavailable or not configured — fall through to KJV via bible-api.com
+    const kjvFallback = await lookupBibleReference(normalized, 'kjv');
+    return kjvFallback;
+  }
+
+  // 3. bible-api.com — public domain translations (kjv, web, bbe, asv, ylt, etc.)
   const lookup = async (translation: string): Promise<BibleVerse[]> => {
     const response = await fetch(`https://bible-api.com/${encodeURIComponent(normalized)}?translation=${translation}`);
     const data = await response.json();

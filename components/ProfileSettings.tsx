@@ -217,10 +217,16 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({ onClose, onSav
                       onChange={e => setDefaultVersion(e.target.value)}
                       className="w-full bg-black border border-zinc-800 rounded-xl px-4 py-3.5 text-sm text-white focus:border-blue-500 focus:outline-none appearance-none cursor-pointer"
                     >
-                      <option value="kjv">KJV (King James)</option>
-                      <option value="web">WEB (World English)</option>
-                      <option value="niv">NIV (New International)</option>
-                      <option value="nkjv">NKJV (New King James)</option>
+                      <option value="kjv">KJV — King James Version</option>
+                      <option value="web">WEB — World English Bible</option>
+                      <option value="niv">NIV — New International Version</option>
+                      <option value="nkjv">NKJV — New King James Version</option>
+                      <option value="esv">ESV — English Standard Version</option>
+                      <option value="nlt">NLT — New Living Translation</option>
+                      <option value="amp">AMP — Amplified Bible</option>
+                      <option value="msg">MSG — The Message</option>
+                      <option value="bbe">BBE — Bible in Basic English</option>
+                      <option value="asv">ASV — American Standard Version</option>
                     </select>
                     <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-zinc-600">
                       <Globe size={16} />

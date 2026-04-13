@@ -83,14 +83,22 @@ type TranscriptionEngineMode = 'browser_stt' | 'cloud_fallback' | 'disabled';
 type CloudRecorderState = 'idle' | 'recording' | 'cooldown' | 'uploading' | 'error';
 
 const VERSIONS = [
-  { id: 'kjv', name: 'King James Version' },
-  { id: 'web', name: 'World English Bible' },
-  { id: 'bbe', name: 'Bible in Basic English' },
-  { id: 'asv', name: 'American Standard Version' },
-  { id: 'ylt', name: "Young's Literal Translation" },
+  // Public domain — no key required
+  { id: 'kjv',   name: 'King James Version' },
+  { id: 'web',   name: 'World English Bible' },
+  { id: 'bbe',   name: 'Bible in Basic English' },
+  { id: 'asv',   name: 'American Standard Version' },
+  { id: 'ylt',   name: "Young's Literal Translation" },
   { id: 'darby', name: 'Darby Translation' },
-  { id: 'dra', name: 'Douay-Rheims 1899' },
+  { id: 'dra',   name: 'Douay-Rheims 1899' },
   { id: 'webbe', name: 'WEB British Edition' },
+  // Licensed — requires SCRIPTURE_API_BIBLE_KEY on server
+  { id: 'niv',   name: 'New International Version' },
+  { id: 'nkjv',  name: 'New King James Version' },
+  { id: 'esv',   name: 'English Standard Version' },
+  { id: 'nlt',   name: 'New Living Translation' },
+  { id: 'amp',   name: 'Amplified Bible' },
+  { id: 'msg',   name: 'The Message' },
 ];
 
 const AUTO_DEBOUNCE_MS = 2500;
