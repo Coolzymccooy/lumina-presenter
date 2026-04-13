@@ -26,7 +26,8 @@
     "hymn:normalize": "node scripts/normalizePdHymn.mjs data/hymns/pd/",
     "hymn:build": "node scripts/buildPdBundle.mjs",
     "hymn:check": "node scripts/buildPdBundle.mjs --check",
-    "hymn:import": "node scripts/importFromHymnal.mjs"
+    "hymn:import": "node scripts/importFromHymnal.mjs",
+    "bible:bundle": "node scripts/buildBibleBundle.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.33.0",

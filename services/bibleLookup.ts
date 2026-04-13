@@ -1,3 +1,5 @@
+import { lookupBibleVerseLocal } from './bibleLocalData';
+
 export interface BibleVerse {
   book_id: string;
   book_name: string;
@@ -283,7 +285,14 @@ export const lookupBibleReference = async (query: string, version: string): Prom
   const cached = getCachedBibleVerses(normalized, version);
   if (cached?.length) return cached;
 
-  // 2. API.Bible — for copyrighted translations (niv, nkjv, esv, nlt, amp, msg)
+  // 2. Local bundle — offline-first for bundled translations (kjv, web)
+  const localVerses = await lookupBibleVerseLocal(normalized, version);
+  if (localVerses?.length) {
+    setCachedBibleVerses(normalized, version, localVerses);
+    return localVerses;
+  }
+
+  // 3. API.Bible — for copyrighted translations (niv, nkjv, esv, nlt, amp, msg)
   const { isApiBibleTranslation, lookupBibleVerseApiBible } = await import('./bibleApiBible.ts');
   if (isApiBibleTranslation(version)) {
     const apiBibleVerses = await lookupBibleVerseApiBible(normalized, version);
@@ -296,7 +305,7 @@ export const lookupBibleReference = async (query: string, version: string): Prom
     return kjvFallback;
   }
 
-  // 3. bible-api.com — public domain translations (kjv, web, bbe, asv, ylt, etc.)
+  // 4. bible-api.com — public domain translations (bbe, asv, ylt, etc.)
   const lookup = async (translation: string): Promise<BibleVerse[]> => {
     const response = await fetch(`https://bible-api.com/${encodeURIComponent(normalized)}?translation=${translation}`);
     const data = await response.json();

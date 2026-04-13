@@ -37,6 +37,7 @@ import {
   normalizeBibleReference,
   type BibleVerse as Verse,
 } from '../services/bibleLookup';
+import { isTranslationBundled } from '../services/bibleLocalData';
 
 interface BibleBrowserProps {
   onAddRequest: (item: ServiceItem) => void;
@@ -1810,6 +1811,9 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                     <option key={v.id} value={v.id}>{v.name} ({v.id.toUpperCase()})</option>
                   ))}
                 </select>
+                {!navigator.onLine && !isTranslationBundled(selectedVersion) && (
+                  <span className="text-xs text-amber-400 ml-1">(offline — switch to KJV or WEB)</span>
+                )}
               </div>
               <div className="flex flex-col gap-0.5">
                 <label className="text-[8px] text-zinc-600 uppercase tracking-wider px-0.5">Quick book</label>
