@@ -171,6 +171,7 @@ const normalizeLayout = (
     fontScale,
     variant,
     locked: !!raw.locked,
+    showWallClock: !!raw.showWallClock,
   };
 };
 
@@ -686,7 +687,14 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
         ? 'text-cyan-50 border-cyan-200/90 bg-cyan-950/42 shadow-[0_0_56px_rgba(34,211,238,0.36)]'
         : 'text-white border-white/90 bg-white/12 shadow-[0_0_56px_rgba(255,255,255,0.22)]';
   const timerWidgetToneClass = timerFlashActive ? flashToneClass : toneClass;
-  const timerFlashPulseClass = timerFlashActive ? 'lumina-stage-timer-flash' : '';
+  const timerAutoGlowClass = !timerFlashActive && isCountdown
+    ? isTimerOvertime
+      ? 'lumina-timer-overtime-pulse'
+      : remainingRatio <= safeRedPct / 100
+        ? 'lumina-timer-red-glow'
+        : ''
+    : '';
+  const timerFlashPulseClass = timerFlashActive ? 'lumina-stage-timer-flash' : timerAutoGlowClass;
   const timerFlashTextClass = timerFlashActive ? 'lumina-stage-timer-flash-text' : '';
 
   const startDrag = (mode: 'move' | 'resize', event: React.PointerEvent<HTMLElement>) => {
@@ -1137,6 +1145,7 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
           minHeight: layout.variant === 'compact-bar' ? 74 : 120,
           overflow: 'hidden',
           touchAction: layout.locked ? 'auto' : 'none',
+          transition: 'background-color 300ms ease, border-color 300ms ease, box-shadow 300ms ease',
         }}
       >
         <div
@@ -1172,14 +1181,97 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
 
           <div
             className={`font-mono font-black leading-none text-center whitespace-nowrap overflow-hidden ${timerFlashTextClass}`}
-            style={{ fontSize: timerTextSize }}
+            style={{
+              fontSize: timerTextSize,
+              fontVariantNumeric: 'tabular-nums',
+              textShadow: isTimerOvertime
+                ? '0 0 18px rgba(248,113,113,0.6), 0 0 40px rgba(225,29,72,0.3)'
+                : remainingRatio <= safeRedPct / 100
+                  ? '0 0 14px rgba(248,113,113,0.4)'
+                  : remainingRatio <= safeAmberPct / 100
+                    ? '0 0 12px rgba(252,211,77,0.35)'
+                    : '0 0 8px rgba(255,255,255,0.1)',
+              transition: 'text-shadow 300ms ease',
+            }}
           >
             {safeTimerDisplay}
           </div>
 
+          {isCountdown && layout.variant !== 'compact-bar' && (
+            (() => {
+              const ringSize = Math.min(measuredHeight * 0.28, measuredWidth * 0.12, 42);
+              const ringStroke = Math.max(2.5, ringSize * 0.12);
+              const ringRadius = (ringSize - ringStroke) / 2;
+              const ringCircumference = 2 * Math.PI * ringRadius;
+              const ringOffset = ringCircumference * (1 - clamp(remainingRatio, 0, 1));
+              const ringColor = isTimerOvertime
+                ? 'rgba(248,113,113,0.9)'
+                : remainingRatio <= safeRedPct / 100
+                  ? 'rgba(248,113,113,0.9)'
+                  : remainingRatio <= safeAmberPct / 100
+                    ? 'rgba(252,211,77,0.9)'
+                    : 'rgba(52,211,153,0.85)';
+              return (
+                <div className="absolute top-2.5 right-2.5 pointer-events-none" style={{ opacity: 0.85 }}>
+                  <svg width={ringSize} height={ringSize} viewBox={`0 0 ${ringSize} ${ringSize}`}>
+                    <circle
+                      cx={ringSize / 2}
+                      cy={ringSize / 2}
+                      r={ringRadius}
+                      fill="none"
+                      stroke="rgba(255,255,255,0.1)"
+                      strokeWidth={ringStroke}
+                    />
+                    <circle
+                      cx={ringSize / 2}
+                      cy={ringSize / 2}
+                      r={ringRadius}
+                      fill="none"
+                      stroke={ringColor}
+                      strokeWidth={ringStroke}
+                      strokeDasharray={ringCircumference}
+                      strokeDashoffset={ringOffset}
+                      strokeLinecap="round"
+                      transform={`rotate(-90 ${ringSize / 2} ${ringSize / 2})`}
+                      style={{ transition: 'stroke-dashoffset 1s linear, stroke 300ms ease' }}
+                    />
+                  </svg>
+                </div>
+              );
+            })()
+          )}
+
+          {isCountdown && layout.variant === 'compact-bar' && (
+            <div
+              className="absolute bottom-0 left-0 right-0 pointer-events-none"
+              style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.08)' }}
+            >
+              <div
+                style={{
+                  height: '100%',
+                  width: `${clamp(remainingRatio * 100, 0, 100)}%`,
+                  backgroundColor: isTimerOvertime
+                    ? 'rgba(248,113,113,0.9)'
+                    : remainingRatio <= safeRedPct / 100
+                      ? 'rgba(248,113,113,0.9)'
+                      : remainingRatio <= safeAmberPct / 100
+                        ? 'rgba(252,211,77,0.9)'
+                        : 'rgba(52,211,153,0.85)',
+                  transition: 'width 1s linear, background-color 300ms ease',
+                  borderRadius: '0 2px 2px 0',
+                }}
+              />
+            </div>
+          )}
+
           <div className="flex items-center justify-between gap-2 overflow-hidden">
-            <div className={`opacity-80 truncate ${timerFlashTextClass}`} style={{ fontSize: subtitleSize }}>
-              {isTimerOvertime ? 'OVERTIME' : (isCountdown ? `${safeAmberPct}% / ${safeRedPct}%` : 'Elapsed')}
+            <div className={`opacity-80 truncate flex items-center gap-2 ${timerFlashTextClass}`} style={{ fontSize: subtitleSize }}>
+              <span>{isTimerOvertime ? 'OVERTIME' : (isCountdown ? `${safeAmberPct}% / ${safeRedPct}%` : 'Elapsed')}</span>
+              {layout.showWallClock && (
+                <span className="opacity-60 font-mono tabular-nums">
+                  {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
             </div>
             {!layout.locked && !collapseControls && (
               <div className="flex gap-1 flex-wrap justify-end max-w-[72%] overflow-hidden">
@@ -1198,6 +1290,14 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
                   title="Increase timer text size"
                 >
                   A+
+                </button>
+                <button
+                  onPointerDown={stopWidgetDrag}
+                  onClick={() => publishLayout({ ...layout, showWallClock: !layout.showWallClock })}
+                  className={`text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded border ${layout.showWallClock ? 'border-white/70 text-white' : 'border-white/30 text-white/70 hover:border-white/60'}`}
+                  title={layout.showWallClock ? 'Hide wall clock' : 'Show wall clock'}
+                >
+                  Clock
                 </button>
                 {PRESET_VARIANTS.map((variant) => (
                   <button
@@ -1233,6 +1333,13 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
                   className="text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-white/30 text-white/80 hover:border-white/60"
                 >
                   A+
+                </button>
+                <button
+                  onPointerDown={stopWidgetDrag}
+                  onClick={() => publishLayout({ ...layout, showWallClock: !layout.showWallClock })}
+                  className={`text-[8px] uppercase tracking-wider px-1.5 py-0.5 rounded border ${layout.showWallClock ? 'border-white/70 text-white' : 'border-white/30 text-white/70 hover:border-white/60'}`}
+                >
+                  Clock
                 </button>
                 {PRESET_VARIANTS.map((variant) => (
                   <button
@@ -1409,6 +1516,20 @@ export const StageDisplay: React.FC<StageDisplayProps> = ({
         }
         .lumina-stage-timer-flash-text {
           animation: luminaStageTimerFlashText 0.78s ease-in-out infinite;
+        }
+        @keyframes luminaTimerRedGlow {
+          0%, 100% { box-shadow: 0 0 16px rgba(248,113,113,0.15), 0 0 32px rgba(225,29,72,0.08); }
+          50% { box-shadow: 0 0 24px rgba(248,113,113,0.3), 0 0 48px rgba(225,29,72,0.15); }
+        }
+        .lumina-timer-red-glow {
+          animation: luminaTimerRedGlow 2s ease-in-out infinite;
+        }
+        @keyframes luminaTimerOvertimePulse {
+          0%, 100% { box-shadow: 0 0 20px rgba(248,113,113,0.25), 0 0 48px rgba(225,29,72,0.12); }
+          50% { box-shadow: 0 0 36px rgba(248,113,113,0.45), 0 0 72px rgba(225,29,72,0.22); }
+        }
+        .lumina-timer-overtime-pulse {
+          animation: luminaTimerOvertimePulse 1.2s ease-in-out infinite;
         }
       `}</style>
     </div>

@@ -100,6 +100,7 @@ import { subscribeMacros, seedStarterMacrosIfEmpty } from './services/macroRegis
 import { archiveSermon, getArchivedSermons, deleteArchivedSermon, type ArchivedSermon } from './services/sermonArchive';
 import type { MacroDefinition, MacroAuditEntry } from './types/macros';
 import { matchTriggers, type MacroExecutionContext } from './services/macroEngine';
+import { timerChimeService } from './services/timerChimeService';
 import { nanoid } from 'nanoid';
 import { STARTER_MACROS } from './seed/starterMacros';
 import {
@@ -272,6 +273,7 @@ type WorkspaceSettings = {
   stageAlertLayout: StageAlertLayout;
   connectionTargetRoles: ConnectionRole[];
   speakerTimerPresets: SpeakerTimerPreset[];
+  timerChimesEnabled: boolean;
   aetherBridgeEnabled: boolean;
   aetherBridgeAutoSync: boolean;
   aetherBridgeUrl: string;
@@ -815,6 +817,10 @@ const sanitizeSpeakerTimerPreset = (value: unknown): SpeakerTimerPreset | null =
     redPercent,
     autoStartNextDefault: !!raw.autoStartNextDefault,
     speakerName: speakerName || undefined,
+    chimeOnAmber: typeof raw.chimeOnAmber === 'boolean' ? raw.chimeOnAmber : undefined,
+    chimeOnRed: typeof raw.chimeOnRed === 'boolean' ? raw.chimeOnRed : undefined,
+    chimeOnMilestones: typeof raw.chimeOnMilestones === 'boolean' ? raw.chimeOnMilestones : undefined,
+    overtimeBehavior: raw.overtimeBehavior === 'stop' || raw.overtimeBehavior === 'flash-and-stop' ? raw.overtimeBehavior : undefined,
   };
 };
 
@@ -867,6 +873,7 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
   if (Array.isArray(raw.speakerTimerPresets)) {
     safe.speakerTimerPresets = sanitizeSpeakerTimerPresets(raw.speakerTimerPresets);
   }
+  if (typeof raw.timerChimesEnabled === 'boolean') safe.timerChimesEnabled = raw.timerChimesEnabled;
   if (typeof raw.aetherBridgeEnabled === 'boolean') safe.aetherBridgeEnabled = raw.aetherBridgeEnabled;
   if (typeof raw.aetherBridgeAutoSync === 'boolean') safe.aetherBridgeAutoSync = raw.aetherBridgeAutoSync;
   if (typeof raw.aetherBridgeUrl === 'string') safe.aetherBridgeUrl = raw.aetherBridgeUrl.slice(0, 500);
@@ -1204,6 +1211,8 @@ function App() {
 
   // ✅ Projector popout window handle (opened in click handler to avoid popup blockers)
   const [outputWin, setOutputWin] = useState<Window | null>(null);
+  const [timerPopoutWin, setTimerPopoutWin] = useState<Window | null>(null);
+  const timerBroadcastRef = useRef<BroadcastChannel | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(() => {
     // Only show onboarding in the studio view for new users
     const hasSeen = localStorage.getItem('lumina_onboarding_v2.2.0');
@@ -1349,6 +1358,7 @@ function App() {
     stageAlertLayout: DEFAULT_STAGE_ALERT_LAYOUT,
     connectionTargetRoles: DEFAULT_CONNECTION_TARGET_ROLES,
     speakerTimerPresets: DEFAULT_SPEAKER_TIMER_PRESETS,
+    timerChimesEnabled: true,
     aetherBridgeEnabled: false,
     aetherBridgeAutoSync: true,
     aetherBridgeUrl: '',
@@ -1643,6 +1653,24 @@ function App() {
   const [presetStudioSaveState, setPresetStudioSaveState] = useState<{ at: number; mode: 'saved' | 'updated' } | null>(null);
   const [presetStudioWidthMode, setPresetStudioWidthMode] = useState<'standard' | 'wide'>('standard');
   const [presetStudioMinimized, setPresetStudioMinimized] = useState(false);
+  const [presetPreviewProgress, setPresetPreviewProgress] = useState<number | null>(null);
+  const presetPreviewIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startPresetPreview = useCallback(() => {
+    if (presetPreviewIntervalRef.current) clearInterval(presetPreviewIntervalRef.current);
+    setPresetPreviewProgress(1);
+    let step = 1;
+    const total = 40;
+    presetPreviewIntervalRef.current = setInterval(() => {
+      step += 1;
+      if (step > total) {
+        if (presetPreviewIntervalRef.current) clearInterval(presetPreviewIntervalRef.current);
+        presetPreviewIntervalRef.current = null;
+        setPresetPreviewProgress(null);
+        return;
+      }
+      setPresetPreviewProgress(1 - step / total);
+    }, 250);
+  }, []);
   // Handle Auto-Rotate Logic
   useEffect(() => {
     if (!audienceDisplay.autoRotate || audienceDisplay.queue.length === 0) return;
@@ -1788,6 +1816,8 @@ function App() {
     setIsPresetModalOpen(false);
     setPresetStudioDragging(false);
     setPresetStudioPosition(null);
+    if (presetPreviewIntervalRef.current) { clearInterval(presetPreviewIntervalRef.current); presetPreviewIntervalRef.current = null; }
+    setPresetPreviewProgress(null);
   }, []);
   const clampPresetStudioToViewport = useCallback(() => {
     const card = presetStudioCardRef.current;
@@ -2171,6 +2201,7 @@ function App() {
   const lastServerScheduleSnapshotAtRef = useRef<number | null>(null);
   const lastServerSermonFlashAtRef = useRef<number | null>(null);
   const lastCueAutoAdvanceKeyRef = useRef<string>('');
+  const lastChimeFiredRef = useRef<{ cueId: string; boundary: string }>({ cueId: '', boundary: '' });
   const lastSyncErrorRef = useRef<{ key: string; at: number } | null>(null);
   const syncFailureStreakRef = useRef(0);
   const syncBackoffUntilRef = useRef(0);
@@ -3596,6 +3627,12 @@ function App() {
   const currentCueSpeaker = (currentCue?.cue.speakerName || '').trim();
   const currentCueAmberPercent = currentCue?.cue.amberPercent || 25;
   const currentCueRedPercent = currentCue?.cue.redPercent || 10;
+  const currentCueOvertimeBehavior: 'count-up' | 'stop' | 'flash-and-stop' = (() => {
+    if (!currentCue) return 'count-up';
+    const presetId = schedule.find((item) => item.id === currentCue.itemId)?.timerCue?.presetId;
+    const preset = presetId ? (workspaceSettings.speakerTimerPresets || []).find((p) => p.id === presetId) : null;
+    return preset?.overtimeBehavior || 'count-up';
+  })();
   const effectiveTimerDurationSec = timerMode === 'COUNTDOWN' ? currentCueDurationSec : Math.max(1, timerDurationMin * 60);
   const applyManualCountdownMinutes = (nextMinutesRaw: number) => {
     const nextMinutes = Math.max(1, Math.min(180, Number(nextMinutesRaw) || 1));
@@ -6785,13 +6822,19 @@ function App() {
 
     const id = window.setInterval(() => {
       setTimerSeconds((prev) => {
-        if (timerMode === 'COUNTDOWN') return prev - 1;
+        if (timerMode === 'COUNTDOWN') {
+          const next = prev - 1;
+          if (next <= 0 && currentCueOvertimeBehavior !== 'count-up') {
+            return 0;
+          }
+          return next;
+        }
         return prev + 1;
       });
     }, 1000);
 
     return () => window.clearInterval(id);
-  }, [timerRunning, timerMode, currentCueItemId]);
+  }, [timerRunning, timerMode, currentCueItemId, currentCueOvertimeBehavior]);
 
   useEffect(() => {
     if (timerMode !== 'COUNTDOWN') return;
@@ -6825,11 +6868,81 @@ function App() {
     });
   }, [timerMode, timerRunning, timerSeconds, currentCue, currentCueIndex, enabledTimerCues, activateCueByItemId]);
 
+  // --- flash-and-stop overtime behavior ---
+  const flashStopGuardRef = useRef<string>('');
+  useEffect(() => {
+    if (timerMode !== 'COUNTDOWN' || !timerRunning || !currentCue) return;
+    if (timerSeconds > 0) return;
+    if (currentCueOvertimeBehavior !== 'flash-and-stop' && currentCueOvertimeBehavior !== 'stop') return;
+
+    const guardKey = `${currentCue.itemId}-stop`;
+    if (flashStopGuardRef.current === guardKey) return;
+    flashStopGuardRef.current = guardKey;
+
+    if (currentCueOvertimeBehavior === 'flash-and-stop') {
+      updateStageTimerFlash({ active: true, color: 'red', updatedAt: Date.now() });
+      setTimeout(() => {
+        updateStageTimerFlash({ active: false, updatedAt: Date.now() });
+        setTimerRunning(false);
+      }, 3000);
+    } else {
+      setTimerRunning(false);
+    }
+  }, [timerMode, timerRunning, timerSeconds, currentCue, currentCueOvertimeBehavior, updateStageTimerFlash]);
+
   useEffect(() => {
     if (timerRunning || timerSeconds > 0) {
       setCueZeroHold(false);
+      flashStopGuardRef.current = '';
     }
   }, [timerRunning, timerSeconds, currentCueItemId]);
+
+  // --- Chime threshold-crossing detection ---
+  useEffect(() => {
+    if (timerMode !== 'COUNTDOWN' || !timerRunning || !currentCue) return;
+    if (!workspaceSettings.timerChimesEnabled) return;
+
+    const dur = currentCue.cue.durationSec;
+    const amberPct = currentCue.cue.amberPercent;
+    const redPct = currentCue.cue.redPercent;
+    const amberSec = Math.round(dur * amberPct / 100);
+    const redSec = Math.round(dur * redPct / 100);
+    const cueId = currentCue.itemId;
+
+    // Find the active preset for chime config
+    const activePreset = (workspaceSettings.speakerTimerPresets || []).find(
+      (p) => p.id === (schedule.find((item) => item.id === cueId)?.timerCue?.presetId),
+    );
+    const chimeAmber = activePreset?.chimeOnAmber !== false;
+    const chimeRed = activePreset?.chimeOnRed !== false;
+    const chimeMilestones = activePreset?.chimeOnMilestones === true;
+
+    // Determine which boundary we just crossed
+    let boundary = '';
+    if (timerSeconds <= 0 && chimeRed) {
+      boundary = 'overtime';
+    } else if (timerSeconds <= redSec && timerSeconds > redSec - 1 && chimeRed) {
+      boundary = 'red';
+    } else if (timerSeconds <= amberSec && timerSeconds > amberSec - 1 && chimeAmber) {
+      boundary = 'amber';
+    } else if (chimeMilestones && timerSeconds === 30) {
+      boundary = 'milestone-30';
+    } else if (chimeMilestones && timerSeconds === 10) {
+      boundary = 'milestone-10';
+    }
+
+    if (!boundary) return;
+
+    // Guard: don't fire the same boundary for the same cue twice
+    const lastFired = lastChimeFiredRef.current;
+    if (lastFired.cueId === cueId && lastFired.boundary === boundary) return;
+    lastChimeFiredRef.current = { cueId, boundary };
+
+    if (boundary === 'amber') timerChimeService.playAmberChime();
+    else if (boundary === 'red') timerChimeService.playRedChime();
+    else if (boundary === 'overtime') timerChimeService.playOvertimeChime();
+    else timerChimeService.playMilestoneChime();
+  }, [timerMode, timerRunning, timerSeconds, currentCue, workspaceSettings.timerChimesEnabled, workspaceSettings.speakerTimerPresets, schedule]);
 
   useEffect(() => {
     if (!autoCueEnabled) return;
@@ -7058,6 +7171,85 @@ function App() {
     setIsStageDisplayLive(true);
     try { w.focus(); } catch { }
   };
+
+  // --- Timer Pop-out Window ---
+  const handleToggleTimerPopout = () => {
+    if (timerPopoutWin && !timerPopoutWin.closed) {
+      timerPopoutWin.close();
+      setTimerPopoutWin(null);
+      return;
+    }
+    const w = window.open(
+      'about:blank',
+      'LuminaTimerPopout',
+      'width=640,height=320,menubar=no,toolbar=no,location=no,status=no,resizable=yes',
+    );
+    if (!w) return;
+    setTimerPopoutWin(w);
+    w.document.write(`<!DOCTYPE html><html><head><title>Timer</title><style>
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,monospace;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;overflow:hidden}
+      #timer{font-size:min(28vw,28vh);font-weight:900;font-variant-numeric:tabular-nums;transition:color .3s,text-shadow .3s}
+      #label{font-size:min(3vw,3vh);text-transform:uppercase;letter-spacing:.25em;opacity:.6;margin-top:.5em}
+      #ring{position:absolute;top:12px;right:12px}
+      .green{color:#34d399;text-shadow:0 0 20px rgba(52,211,153,.3)}
+      .amber{color:#fcd34d;text-shadow:0 0 20px rgba(252,211,77,.3)}
+      .red{color:#f87171;text-shadow:0 0 24px rgba(248,113,113,.4)}
+      .overtime{color:#f87171;animation:pulse 1.2s ease-in-out infinite}
+      @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+    </style></head><body>
+      <svg id="ring" width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="4"/><circle id="arc" cx="32" cy="32" r="28" fill="none" stroke="#34d399" stroke-width="4" stroke-dasharray="${2 * Math.PI * 28}" stroke-dashoffset="0" stroke-linecap="round" transform="rotate(-90 32 32)" style="transition:stroke-dashoffset 1s linear,stroke .3s"/></svg>
+      <div id="timer">--:--</div>
+      <div id="label">Timer</div>
+      <script>
+        const C=${2 * Math.PI * 28};
+        const bc=new BroadcastChannel('lumina-timer-popout');
+        bc.onmessage=function(e){
+          var d=e.data;if(!d)return;
+          var el=document.getElementById('timer');
+          var arc=document.getElementById('arc');
+          var label=document.getElementById('label');
+          el.textContent=d.display||'--:--';
+          label.textContent=(d.speaker||d.label||'Timer')+(d.overtime?' — OVERTIME':'');
+          var cls=d.overtime?'overtime':d.zone==='red'?'red':d.zone==='amber'?'amber':'green';
+          el.className=cls;
+          var ratio=d.ratio!=null?d.ratio:1;
+          arc.setAttribute('stroke-dashoffset',String(C*(1-Math.max(0,Math.min(1,ratio)))));
+          arc.setAttribute('stroke',d.zone==='red'?'rgba(248,113,113,.9)':d.zone==='amber'?'rgba(252,211,77,.9)':'rgba(52,211,153,.85)');
+        };
+      <\/script></body></html>`);
+    w.document.close();
+    try { w.focus(); } catch {}
+  };
+
+  useEffect(() => {
+    if (timerPopoutWin && timerPopoutWin.closed) setTimerPopoutWin(null);
+    const check = window.setInterval(() => {
+      if (timerPopoutWin && timerPopoutWin.closed) { setTimerPopoutWin(null); }
+    }, 1000);
+    return () => window.clearInterval(check);
+  }, [timerPopoutWin]);
+
+  useEffect(() => {
+    if (!timerBroadcastRef.current) {
+      try { timerBroadcastRef.current = new BroadcastChannel('lumina-timer-popout'); } catch { return; }
+    }
+    const bc = timerBroadcastRef.current;
+    const remaining = timerMode === 'COUNTDOWN' ? timerSeconds : timerSeconds;
+    const duration = effectiveTimerDurationSec;
+    const ratio = duration > 0 ? Math.max(0, remaining / duration) : 1;
+    const amberPct = currentCueAmberPercent / 100;
+    const redPct = currentCueRedPercent / 100;
+    const zone = isTimerOvertime ? 'red' : ratio <= redPct ? 'red' : ratio <= amberPct ? 'amber' : 'green';
+    bc.postMessage({
+      display: formatTimer(timerSeconds),
+      ratio,
+      zone,
+      overtime: isTimerOvertime,
+      label: timerMode,
+      speaker: currentCueSpeaker,
+    });
+  }, [timerSeconds, timerMode, isTimerOvertime, effectiveTimerDurationSec, currentCueAmberPercent, currentCueRedPercent, currentCueSpeaker]);
 
   const shouldBypassAppAuthGate = (
     (viewState === 'output' && managedRouteParams.hasManagedOutputRoute)
@@ -8672,6 +8864,15 @@ function App() {
                           <div className={`text-[12px] font-mono font-black tabular-nums shrink-0 ${isTimerOvertime ? 'text-red-400 animate-pulse' : 'text-cyan-300'}`}>{formatTimer(timerSeconds)}</div>
                           <button onClick={() => { setCueZeroHold(false); setTimerRunning((p) => !p); }} className="text-[9px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-200 font-bold transition-colors shrink-0">{timerRunning ? 'Pause' : 'Start'}</button>
                           <button onClick={() => { setTimerRunning(false); setCueZeroHold(false); setTimerSeconds(timerMode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0); }} className="text-[9px] px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 rounded text-zinc-200 font-bold transition-colors shrink-0">Reset</button>
+                          <button
+                            onClick={() => {
+                              const next = !workspaceSettings.timerChimesEnabled;
+                              setWorkspaceSettings((prev) => ({ ...prev, timerChimesEnabled: next }));
+                              timerChimeService.muted = !next;
+                            }}
+                            title={workspaceSettings.timerChimesEnabled ? 'Mute timer chimes' : 'Unmute timer chimes'}
+                            className={`text-[9px] px-2 py-0.5 rounded font-bold transition-colors shrink-0 ${workspaceSettings.timerChimesEnabled ? 'bg-emerald-900/50 text-emerald-300 border border-emerald-700/40' : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700'}`}
+                          >{workspaceSettings.timerChimesEnabled ? 'Chime' : 'Muted'}</button>
                         </div>
                         <div className="flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 rounded-lg px-2 h-9 min-w-0">
                           <span className="text-[9px] text-zinc-500 font-black uppercase tracking-wider shrink-0">Cue</span>
@@ -8725,6 +8926,11 @@ function App() {
                           </select>
                         </div>
                         <button onClick={() => updateStageTimerFlash({ active: !stageTimerFlash.active })} className={`h-9 px-3 rounded-lg border font-black text-[9px] tracking-wider uppercase transition-all ${stageTimerFlash.active ? 'border-rose-600/60 bg-rose-950/40 text-rose-300 animate-pulse' : 'border-zinc-700 bg-zinc-900 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'}`}>Flash</button>
+                        <button
+                          onClick={handleToggleTimerPopout}
+                          className={`h-9 px-3 rounded-lg border font-black text-[9px] tracking-wider uppercase transition-all ${timerPopoutWin && !timerPopoutWin.closed ? 'border-cyan-600/60 bg-cyan-950/40 text-cyan-300' : 'border-zinc-700 bg-zinc-900 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'}`}
+                          title="Open timer in a fullscreen pop-out window for confidence monitors"
+                        >Timer Pop-out</button>
                         <button onClick={() => void copyShareUrl(obsOutputUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy OBS URL</button>
                         <button onClick={() => void copyShareUrl(cleanFeedUrl, 'Clean feed URL copied!')} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-violet-300 hover:border-violet-600 transition-all uppercase tracking-wider" title="No branding or audience overlays — use for recording or streaming">Copy Clean Feed</button>
                         <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy Stage URL</button>
@@ -9212,16 +9418,35 @@ function App() {
                     </div>
                   </div>
                   <div className="mt-3 space-y-2 pr-1">
-                    {speakerTimerPresets.map((preset) => {
+                    {speakerTimerPresets.map((preset, presetIdx) => {
                       const isLoaded = editingPresetId === preset.id;
                       const isSelected = activePresetCardId === preset.id;
                       const presetThresholds = normalizeSpeakerTimerThresholds(preset.amberPercent, preset.redPercent);
                       const amberRemainingSec = Math.max(1, Math.round(preset.durationSec * (presetThresholds.amberPercent / 100)));
                       const redRemainingSec = Math.max(1, Math.round(preset.durationSec * (presetThresholds.redPercent / 100)));
+                      const ringRunway = Math.max(0, 100 - presetThresholds.amberPercent);
+                      const ringAmber = Math.max(0, presetThresholds.amberPercent - presetThresholds.redPercent);
+                      const ringRed = presetThresholds.redPercent;
+                      const ringR = 13;
+                      const ringC = 2 * Math.PI * ringR;
                       return (
                         <div
                           key={preset.id}
-                          className={`rounded-[18px] border p-2.5 shadow-[0_12px_32px_rgba(0,0,0,0.16)] transition ${
+                          draggable
+                          onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(presetIdx)); e.dataTransfer.effectAllowed = 'move'; }}
+                          onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const fromIdx = parseInt(e.dataTransfer.getData('text/plain'), 10);
+                            if (Number.isNaN(fromIdx) || fromIdx === presetIdx) return;
+                            setWorkspaceSettings((prev) => {
+                              const arr = [...(prev.speakerTimerPresets || [])];
+                              const [moved] = arr.splice(fromIdx, 1);
+                              if (moved) arr.splice(presetIdx, 0, moved);
+                              return { ...prev, speakerTimerPresets: arr };
+                            });
+                          }}
+                          className={`rounded-[18px] border p-2.5 shadow-[0_12px_32px_rgba(0,0,0,0.16)] transition cursor-grab active:cursor-grabbing ${
                             isSelected
                               ? 'border-cyan-300/40 bg-[linear-gradient(180deg,rgba(8,47,73,0.45),rgba(9,9,11,0.78))]'
                               : 'border-white/10 bg-[linear-gradient(180deg,rgba(39,39,42,0.7),rgba(9,9,11,0.88))] hover:border-white/20'
@@ -9229,9 +9454,23 @@ function App() {
                         >
                           <button type="button" onClick={() => openEditPresetModal(preset)} className="w-full text-left">
                             <div className="flex items-center justify-between gap-2">
-                              <div className="min-w-0">
-                                <div className="truncate text-[13px] font-semibold text-white">{preset.name}</div>
-                                <div className="truncate text-[11px] text-zinc-400">{preset.speakerName || 'Open slot'}</div>
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <svg width="32" height="32" viewBox="0 0 32 32" className="shrink-0">
+                                  <circle cx="16" cy="16" r={ringR} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3" />
+                                  <circle cx="16" cy="16" r={ringR} fill="none" stroke="rgba(52,211,153,0.8)" strokeWidth="3"
+                                    strokeDasharray={ringC} strokeDashoffset={ringC * (1 - ringRunway / 100)}
+                                    transform="rotate(-90 16 16)" strokeLinecap="round" />
+                                  <circle cx="16" cy="16" r={ringR} fill="none" stroke="rgba(252,211,77,0.85)" strokeWidth="3"
+                                    strokeDasharray={ringC} strokeDashoffset={ringC * (1 - ringAmber / 100)}
+                                    transform={`rotate(${-90 + ringRunway * 3.6} 16 16)`} strokeLinecap="round" />
+                                  <circle cx="16" cy="16" r={ringR} fill="none" stroke="rgba(248,113,113,0.9)" strokeWidth="3"
+                                    strokeDasharray={ringC} strokeDashoffset={ringC * (1 - ringRed / 100)}
+                                    transform={`rotate(${-90 + (ringRunway + ringAmber) * 3.6} 16 16)`} strokeLinecap="round" />
+                                </svg>
+                                <div className="min-w-0">
+                                  <div className="truncate text-[13px] font-semibold text-white">{preset.name}</div>
+                                  <div className="truncate text-[11px] text-zinc-400">{preset.speakerName || 'Open slot'}</div>
+                                </div>
                               </div>
                               <div className="flex items-center gap-1">
                                 {isLoaded && (
@@ -9247,7 +9486,7 @@ function App() {
                               </div>
                             </div>
                             <div className="mt-2 flex items-end justify-between gap-2">
-                              <div className="text-2xl font-semibold tracking-tight text-white">{formatTimer(preset.durationSec)}</div>
+                              <div className="text-2xl font-semibold tracking-tight text-white tabular-nums">{formatTimer(preset.durationSec)}</div>
                               <div className="text-right text-[10px] leading-4 text-zinc-500">
                                 <div>{formatTimer(amberRemainingSec)} amb</div>
                                 <div>{formatTimer(redRemainingSec)} red</div>
@@ -9320,10 +9559,50 @@ function App() {
                               <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-semibold text-cyan-100">
                                 {presetDraftThresholds.amberPercent}% / {presetDraftThresholds.redPercent}%
                               </span>
+                              <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold ${(presetDraft.overtimeBehavior || 'count-up') === 'count-up' ? 'border border-emerald-400/20 bg-emerald-500/10 text-emerald-100' : 'border border-rose-400/20 bg-rose-500/10 text-rose-100'}`}>
+                                {(presetDraft.overtimeBehavior || 'count-up') === 'count-up' ? 'OT: Count up' : (presetDraft.overtimeBehavior === 'stop' ? 'OT: Stop' : 'OT: Flash+Stop')}
+                              </span>
                             </div>
                           </div>
                         </div>
                         <div className="mt-2">{renderSpeakerPresetThresholdBar(presetDraftThresholds.amberPercent, presetDraftThresholds.redPercent)}</div>
+                        {presetPreviewProgress !== null && (() => {
+                          const pAmber = presetDraftThresholds.amberPercent / 100;
+                          const pRed = presetDraftThresholds.redPercent / 100;
+                          const pr = presetPreviewProgress;
+                          const simSec = Math.round(pr * presetDraftDurationSec);
+                          const zone = pr <= pRed ? 'red' : pr <= pAmber ? 'amber' : 'green';
+                          const ringR = 20;
+                          const ringC = 2 * Math.PI * ringR;
+                          return (
+                            <div className="mt-2 flex items-center gap-3 rounded-[14px] border border-white/10 bg-black/30 p-2.5">
+                              <svg width="48" height="48" viewBox="0 0 48 48" className="shrink-0">
+                                <circle cx="24" cy="24" r={ringR} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3.5" />
+                                <circle cx="24" cy="24" r={ringR} fill="none"
+                                  stroke={zone === 'red' ? 'rgba(248,113,113,0.9)' : zone === 'amber' ? 'rgba(252,211,77,0.9)' : 'rgba(52,211,153,0.85)'}
+                                  strokeWidth="3.5" strokeDasharray={ringC} strokeDashoffset={ringC * (1 - clamp(pr, 0, 1))}
+                                  strokeLinecap="round" transform="rotate(-90 24 24)"
+                                  style={{ transition: 'stroke-dashoffset 250ms linear, stroke 250ms ease' }}
+                                />
+                              </svg>
+                              <div className="min-w-0">
+                                <div className={`font-mono font-black text-lg tabular-nums ${zone === 'red' ? 'text-red-400' : zone === 'amber' ? 'text-amber-300' : 'text-emerald-300'}`}
+                                  style={{ transition: 'color 250ms ease' }}
+                                >{formatTimer(simSec)}</div>
+                                <div className="text-[9px] uppercase tracking-wider text-zinc-500 font-bold">Preview</div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <button
+                            onClick={startPresetPreview}
+                            disabled={presetPreviewProgress !== null}
+                            className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border border-cyan-400/30 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20 transition disabled:opacity-40"
+                          >
+                            {presetPreviewProgress !== null ? 'Previewing...' : 'Preview'}
+                          </button>
+                        </div>
                         <div className={presetStudioHeroSummaryGridClass}>
                           <div className={presetStudioHeroSummaryCardClass}>
                             <div className="text-[9px] font-bold uppercase tracking-[0.16em] text-zinc-500">Runway</div>
@@ -9402,7 +9681,7 @@ function App() {
                             />
                           </label>
                         </div>
-                        <div className="mt-3 flex flex-wrap gap-1.5">
+                        <div className="mt-3 flex flex-wrap items-center gap-1.5">
                           {[300, 600, 900, 1200, 2100].map((durationSec) => (
                             <button
                               key={durationSec}
@@ -9416,6 +9695,23 @@ function App() {
                               {formatTimer(durationSec)}
                             </button>
                           ))}
+                          <label className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-zinc-300">
+                            <input
+                              type="number"
+                              min={1}
+                              max={120}
+                              placeholder="min"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  const val = Math.max(1, Math.min(120, Number((e.target as HTMLInputElement).value) || 5));
+                                  setPresetDraft((prev) => ({ ...prev, durationSec: val * 60 }));
+                                  (e.target as HTMLInputElement).value = '';
+                                }
+                              }}
+                              className="w-10 bg-transparent text-center text-[10px] text-zinc-200 outline-none placeholder:text-zinc-600"
+                            />
+                            <span className="text-zinc-500">min</span>
+                          </label>
                         </div>
                       </section>
 
@@ -9488,6 +9784,41 @@ function App() {
                             />
                             Auto-start next
                           </label>
+                        </div>
+                        <div className="mt-2.5 pt-2.5 border-t border-white/8">
+                          <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-zinc-500 mb-1.5">Audio chimes</div>
+                          <div className="flex flex-wrap gap-x-3 gap-y-1">
+                            <label className="inline-flex items-center gap-1.5 text-[10px] text-zinc-300">
+                              <input type="checkbox" checked={presetDraft.chimeOnAmber !== false} onChange={(e) => setPresetDraft((prev) => ({ ...prev, chimeOnAmber: e.target.checked }))} className="h-3 w-3 accent-amber-500" />
+                              Amber
+                            </label>
+                            <label className="inline-flex items-center gap-1.5 text-[10px] text-zinc-300">
+                              <input type="checkbox" checked={presetDraft.chimeOnRed !== false} onChange={(e) => setPresetDraft((prev) => ({ ...prev, chimeOnRed: e.target.checked }))} className="h-3 w-3 accent-rose-500" />
+                              Red
+                            </label>
+                            <label className="inline-flex items-center gap-1.5 text-[10px] text-zinc-300">
+                              <input type="checkbox" checked={presetDraft.chimeOnMilestones === true} onChange={(e) => setPresetDraft((prev) => ({ ...prev, chimeOnMilestones: e.target.checked }))} className="h-3 w-3 accent-cyan-500" />
+                              30s/10s
+                            </label>
+                          </div>
+                        </div>
+                        <div className="mt-2.5 pt-2.5 border-t border-white/8">
+                          <div className="text-[9px] font-bold uppercase tracking-[0.22em] text-zinc-500 mb-1.5">Overtime</div>
+                          <div className="flex flex-wrap gap-1">
+                            {([
+                              { value: 'count-up', label: 'Count up' },
+                              { value: 'stop', label: 'Stop' },
+                              { value: 'flash-and-stop', label: 'Flash+Stop' },
+                            ] as const).map((opt) => (
+                              <button
+                                key={opt.value}
+                                onClick={() => setPresetDraft((prev) => ({ ...prev, overtimeBehavior: opt.value === 'count-up' ? undefined : opt.value }))}
+                                className={`px-2 py-0.5 text-[9px] font-bold rounded border transition-colors ${(presetDraft.overtimeBehavior || 'count-up') === opt.value ? 'border-blue-500/50 bg-blue-600/20 text-blue-200' : 'border-white/10 bg-white/5 text-zinc-400 hover:text-zinc-200'}`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </section>
                     </div>
@@ -9631,6 +9962,60 @@ function App() {
                   />
                   Auto-start next cue by default
                 </label>
+
+                <div className="mt-2 pt-2 border-t border-zinc-800/60">
+                  <div className="text-[9px] uppercase tracking-[0.18em] text-zinc-500 font-black mb-1.5">Audio Chimes</div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    <label className="flex items-center gap-2 text-[11px] text-zinc-300">
+                      <input
+                        type="checkbox"
+                        checked={presetDraft.chimeOnAmber !== false}
+                        onChange={(e) => setPresetDraft((prev) => ({ ...prev, chimeOnAmber: e.target.checked }))}
+                        className="accent-amber-500"
+                      />
+                      Amber chime
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-zinc-300">
+                      <input
+                        type="checkbox"
+                        checked={presetDraft.chimeOnRed !== false}
+                        onChange={(e) => setPresetDraft((prev) => ({ ...prev, chimeOnRed: e.target.checked }))}
+                        className="accent-rose-500"
+                      />
+                      Red chime
+                    </label>
+                    <label className="flex items-center gap-2 text-[11px] text-zinc-300">
+                      <input
+                        type="checkbox"
+                        checked={presetDraft.chimeOnMilestones === true}
+                        onChange={(e) => setPresetDraft((prev) => ({ ...prev, chimeOnMilestones: e.target.checked }))}
+                        className="accent-cyan-500"
+                      />
+                      Milestone pips (30s, 10s)
+                    </label>
+                  </div>
+                </div>
+
+                <div className="mt-2 pt-2 border-t border-zinc-800/60">
+                  <div className="text-[9px] uppercase tracking-[0.18em] text-zinc-500 font-black mb-1.5">Overtime Behavior</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {([
+                      { value: 'count-up', label: 'Count up', desc: 'Continue as -MM:SS' },
+                      { value: 'stop', label: 'Stop', desc: 'Freeze at 00:00' },
+                      { value: 'flash-and-stop', label: 'Flash + Stop', desc: 'Flash red, then stop' },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setPresetDraft((prev) => ({ ...prev, overtimeBehavior: opt.value === 'count-up' ? undefined : opt.value }))}
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded border transition-colors ${(presetDraft.overtimeBehavior || 'count-up') === opt.value ? 'border-blue-500/60 bg-blue-600/25 text-blue-200' : 'border-zinc-700/50 bg-zinc-800/40 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600'}`}
+                        title={opt.desc}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="pt-1 flex items-center justify-end gap-2">
                   <button onClick={savePresetDraft} className="px-3 py-1.5 text-[10px] font-bold rounded border border-blue-600 bg-blue-600/30 text-blue-200">
                     Save Preset
