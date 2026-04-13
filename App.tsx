@@ -119,6 +119,10 @@ import type { RunSheetInsertionResult } from './services/runSheetInsertion';
 import { PlayIcon, PauseIcon, RewindIcon, ForwardIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon, ArrowDownIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon, CheckIcon, XIcon, PinIcon, MinimizeIcon, MaximizeIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon, RewindIcon, ForwardIcon, PauseIcon
 import { AppHeader } from './components/layout/AppHeader';
 import { RightDock } from './components/layout/RightDock';
+import { GuideProvider, GuideOverlay, GuidedToursPanel, registerAllJourneys } from './components/guide-engine';
+
+// Register all guided journeys at module load time
+registerAllJourneys();
 
 // --- CONSTANTS ---
 const STORAGE_KEY = 'lumina_session_v1';
@@ -1330,6 +1334,7 @@ function App() {
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isSlideEditorOpen, setIsSlideEditorOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isGuidedToursOpen, setIsGuidedToursOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false); // NEW
   const [ccliConnected, setCcliConnected] = useState(false);
   const [isStagePreviewEditorOpen, setIsStagePreviewEditorOpen] = useState(false);
@@ -8199,8 +8204,10 @@ function App() {
   ) : null;
 
   return (
+    <GuideProvider>
     <div className={`theme-${workspaceSettings.theme} flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] bg-zinc-950 text-zinc-200 font-sans selection:bg-blue-900 selection:text-white relative overflow-x-hidden`}>
       <audio ref={antiSleepAudioRef} src={SILENT_AUDIO_B64} loop muted />
+      <GuideOverlay />
       {saveError && <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-red-900/90 border border-red-500 text-white px-4 py-2 rounded-sm shadow-xl z-50 flex items-center gap-3 text-xs font-bold animate-pulse"><span>⚠ STORAGE FULL: Changes are NOT saving.</span><button onClick={() => setSaveError(false)} className="hover:text-zinc-300">✕</button></div>}
       
       {showSyncGuidance && syncIssueDisplay && (
@@ -8280,6 +8287,7 @@ function App() {
         onUpdateDismiss={() => setDismissedUpdateKey(currentUpdateKey)}
         onOpenSettings={() => setIsProfileOpen(true)}
         onOpenHelp={() => setIsHelpOpen(true)}
+        onOpenGuidedTours={() => setIsGuidedToursOpen(true)}
       />
 
       {/* MOBILE NAV BAR (Visible only on small screens) */}
@@ -9748,6 +9756,7 @@ function App() {
       )}
 
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+      <GuidedToursPanel isOpen={isGuidedToursOpen} onClose={() => setIsGuidedToursOpen(false)} />
       <ConnectModal
         isOpen={isConnectOpen}
         onClose={() => setIsConnectOpen(false)}
@@ -9962,6 +9971,7 @@ function App() {
         </div>
       )}
     </div>
+    </GuideProvider>
 );
 }
 

@@ -34,6 +34,7 @@ export const LibraryTray: React.FC<LibraryTrayProps> = ({
             {tabs.map((tab) => (
               <button
                 key={tab.id}
+                data-testid={`library-tray-${tab.id.toLowerCase()}-tab`}
                 onClick={() => onTabChange(tab.id)}
                 className={`rounded-lg border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] transition-all ${
                   activeTab === tab.id

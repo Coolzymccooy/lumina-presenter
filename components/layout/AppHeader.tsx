@@ -68,6 +68,7 @@ export interface AppHeaderProps {
   // Nav
   onOpenSettings: () => void;
   onOpenHelp: () => void;
+  onOpenGuidedTours?: () => void;
 }
 
 const MODE_BUTTONS: { label: string; mode: ViewMode }[] = [
@@ -108,6 +109,7 @@ export function AppHeader({
   onUpdateDismiss,
   onOpenSettings,
   onOpenHelp,
+  onOpenGuidedTours,
 }: AppHeaderProps) {
   const connectionsMetExpected = activeTargetConnectionCount >= targetConnectionRoleCount;
 
@@ -139,6 +141,7 @@ export function AppHeader({
             {MODE_BUTTONS.map(({ label, mode }) => (
               <button
                 key={mode}
+                data-testid={`header-mode-${mode.toLowerCase()}`}
                 onClick={() => onViewModeChange(mode)}
                 className={`px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all ${
                   viewMode === mode
@@ -228,6 +231,7 @@ export function AppHeader({
 
           {/* PROJECTION / LAUNCH LIVE */}
           <button
+            data-testid="header-launch-live-btn"
             onClick={onToggleOutput}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all border shadow-lg ${
               isOutputLive
@@ -265,6 +269,7 @@ export function AppHeader({
             placement="bottom"
           >
             <button
+              data-testid="header-stage-btn"
               onClick={onToggleStageDisplay}
               className={`px-3 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all border ${
                 isStageDisplayLive
@@ -305,6 +310,18 @@ export function AppHeader({
               <Settings className="w-4 h-4" />
             </button>
           </Tooltip>
+          {onOpenGuidedTours && (
+            <Tooltip content="Guided tours — learn Lumina step by step" placement="bottom">
+              <button
+                data-testid="header-guided-tours-btn"
+                onClick={onOpenGuidedTours}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all border border-indigo-700/50 bg-indigo-950/30 text-indigo-300 hover:bg-indigo-900/50 hover:border-indigo-600/70"
+              >
+                <HelpIcon className="w-3.5 h-3.5" />
+                Tours
+              </button>
+            </Tooltip>
+          )}
           <Tooltip content="Help & documentation" placement="bottom">
             <button
               onClick={onOpenHelp}
