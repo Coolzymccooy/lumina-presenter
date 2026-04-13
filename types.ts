@@ -169,6 +169,7 @@ export interface StageTimerLayout {
   fontScale: number;
   variant: StageTimerVariant;
   locked: boolean;
+  showWallClock?: boolean;
 }
 
 export interface StageAlertLayout {
@@ -217,6 +218,10 @@ export interface SpeakerTimerPreset {
   redPercent: number;
   autoStartNextDefault: boolean;
   speakerName?: string;
+  chimeOnAmber?: boolean;
+  chimeOnRed?: boolean;
+  chimeOnMilestones?: boolean;
+  overtimeBehavior?: 'count-up' | 'stop' | 'flash-and-stop';
 }
 
 export interface RunSheetFileRecord {
