@@ -1,5 +1,7 @@
 export const TEXT_CONTRAST_BACKGROUND_OVERLAY = 'rgba(0,0,0,0.10)';
 export const PROGRAM_MEDIA_PRESENTATION_FILTER = 'brightness(1.06) saturate(1.06) contrast(1.03)';
+/** Canvas-rendered motion backgrounds need a stronger boost to match the vibrancy of photos/videos. */
+export const MOTION_CANVAS_PRESENTATION_FILTER = 'brightness(0.95) saturate(1.35) contrast(1.12)';
 
 type ScriptureReadingPanelCandidate = {
   itemType?: string;

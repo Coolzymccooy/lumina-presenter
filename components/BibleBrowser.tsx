@@ -2,7 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BibleIcon, SearchIcon, PlayIcon, SparklesIcon } from './Icons';
 import { ServiceItem, ItemType, MediaType } from '../types';
 import { DEFAULT_BACKGROUNDS } from '../constants';
+import { getDefaultBackgroundUrl, getDefaultBackgroundMediaType } from '../services/userBackgroundPreference';
 import { BibleStylePicker } from './BibleStylePicker.tsx';
+import { SlideRenderer } from './SlideRenderer';
+import { areBibleGeneratedItemsVisuallyEqual, mergeBibleGeneratedItem } from '../services/bibleItemStability';
 import {
   generateBibleStyle,
   applyBibleStyle,
@@ -42,7 +45,7 @@ import { isTranslationBundled } from '../services/bibleLocalData';
 interface BibleBrowserProps {
   onAddRequest: (item: ServiceItem) => void;
   onProjectRequest: (item: ServiceItem) => void;
-  onLiveStyleUpdate?: (item: ServiceItem) => void;
+  onLiveStyleUpdate?: (item: ServiceItem) => boolean;
   speechLocaleMode: VisionarySpeechLocaleMode;
   onSpeechLocaleModeChange: (mode: VisionarySpeechLocaleMode) => void;
   compact?: boolean;
@@ -259,8 +262,9 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [selectedVersion, setSelectedVersion] = useState('kjv');
   const [showSuccess, setShowSuccess] = useState(false);
-  const [selectedBg, setSelectedBg] = useState<string>(DEFAULT_BACKGROUNDS[1]);
-  const [selectedMediaType, setSelectedMediaType] = useState<MediaType>('image');
+  const [draftPreviewItem, setDraftPreviewItem] = useState<ServiceItem | null>(null);
+  const [selectedBg, setSelectedBg] = useState<string>(() => getDefaultBackgroundUrl(DEFAULT_BACKGROUNDS[1]));
+  const [selectedMediaType, setSelectedMediaType] = useState<MediaType>(() => getDefaultBackgroundMediaType('image'));
   const [bibleLayout, setBibleLayout] = useState<'standard' | 'scripture_ref' | 'ticker'>('standard');
   const [bibleFontSize, setBibleFontSize] = useState<'small' | 'medium' | 'large' | 'xlarge'>('large');
   const [bibleStyleMode, setBibleStyleMode] = useState<BibleStyleMode>('classic');
@@ -640,6 +644,30 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     };
   }, [selectedBg, selectedMediaType, selectedVersion, bibleLayout, bibleFontSize, bibleStyleMode, bibleStyleFamily, bibleStyleSeed]);
 
+  useEffect(() => {
+    if (!results.length) {
+      setDraftPreviewItem(null);
+      return;
+    }
+    const nextDraft = createServiceItem(results);
+    setDraftPreviewItem((previous) => {
+      if (!previous) return nextDraft;
+      const merged = mergeBibleGeneratedItem(previous, nextDraft);
+      return areBibleGeneratedItemsVisuallyEqual(previous, merged) ? previous : merged;
+    });
+  }, [createServiceItem, results]);
+
+  const commitDraftToLive = useCallback(() => {
+    if (!results.length) return;
+    const item = createServiceItem(results);
+    const updatedExisting = onLiveStyleUpdate ? onLiveStyleUpdate(item) : false;
+    if (!updatedExisting) {
+      onProjectRequest(item);
+    }
+  }, [createServiceItem, onLiveStyleUpdate, onProjectRequest, results]);
+
+  const draftPreviewSlide = draftPreviewItem?.slides[0] || null;
+
   const fetchScripture = useCallback(async (query: string, useSemantic = false, silent = false): Promise<Verse[]> => {
     if (!query.trim()) return [];
     if (!silent) {
@@ -649,8 +677,8 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
 
     const showVerses = (verses: Verse[], ref: string) => {
       setResults(verses);
-      setSelectedBg(DEFAULT_BACKGROUNDS[1]);
-      setSelectedMediaType('image');
+      setSelectedBg(getDefaultBackgroundUrl(DEFAULT_BACKGROUNDS[1]));
+      setSelectedMediaType(getDefaultBackgroundMediaType('image'));
       const normalizedReference = normalizeBibleReference(ref);
       if (normalizedReference) {
         setReferenceInput(normalizedReference);
@@ -1036,8 +1064,8 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       title: summary.title || 'Sermon Recap',
       type: ItemType.ANNOUNCEMENT,
       theme: {
-        backgroundUrl: DEFAULT_BACKGROUNDS[1],
-        mediaType: 'image',
+        backgroundUrl: getDefaultBackgroundUrl(DEFAULT_BACKGROUNDS[1]),
+        mediaType: getDefaultBackgroundMediaType('image'),
         fontFamily: 'sans-serif',
         textColor: '#ffffff',
         shadow: true,
@@ -2040,7 +2068,10 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
             <div className="flex items-center gap-1.5">
               <span className="text-[7px] text-zinc-600 uppercase tracking-widest font-bold w-10 shrink-0">Layout</span>
               {([['standard', 'Standard'], ['scripture_ref', 'Scripture + Ref'], ['ticker', 'Ticker']] as const).map(([key, label]) => (
-                <button key={key} onClick={() => { setBibleLayout(key); (onLiveStyleUpdate ?? onProjectRequest)(createServiceItem(results, key)); }}
+                <button key={key} onClick={() => {
+                  if (bibleLayout === key) return;
+                  setBibleLayout(key);
+                }}
                   className={`px-2 py-1 rounded text-[8px] font-bold uppercase tracking-wide transition-all ${bibleLayout === key ? 'bg-blue-600 text-white shadow-md shadow-blue-900/40' : 'bg-zinc-800/80 text-zinc-500 border border-zinc-800 hover:text-zinc-300 hover:border-zinc-600'}`}
                 >{label}</button>
               ))}
@@ -2048,7 +2079,10 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
             <div className="flex items-center gap-1.5">
               <span className="text-[7px] text-zinc-600 uppercase tracking-widest font-bold w-10 shrink-0">Size</span>
               {([['small', 'SM'], ['medium', 'MD'], ['large', 'LG'], ['xlarge', 'XL']] as const).map(([key, label]) => (
-                <button key={key} onClick={() => { setBibleFontSize(key); (onLiveStyleUpdate ?? onProjectRequest)(createServiceItem(results, undefined, key)); }}
+                <button key={key} onClick={() => {
+                  if (bibleFontSize === key) return;
+                  setBibleFontSize(key);
+                }}
                   className={`px-2 py-1 rounded text-[8px] font-bold tracking-wide transition-all ${bibleFontSize === key ? 'bg-purple-600 text-white shadow-md shadow-purple-900/40' : 'bg-zinc-800/80 text-zinc-500 border border-zinc-800 hover:text-zinc-300 hover:border-zinc-600'}`}
                 >{label}</button>
               ))}
@@ -2057,26 +2091,41 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
               mode={bibleStyleMode}
               family={bibleStyleFamily}
               onModeChange={(m) => {
+                if (bibleStyleMode === m) return;
                 setBibleStyleMode(m);
-                (onLiveStyleUpdate ?? onProjectRequest)(createServiceItem(results, undefined, undefined, m));
               }}
               onFamilyChange={(f) => {
+                if (bibleStyleFamily === f) return;
                 setBibleStyleFamily(f);
-                (onLiveStyleUpdate ?? onProjectRequest)(createServiceItem(results, undefined, undefined, undefined, f));
               }}
               onRandomize={() => {
                 const newSeed = `rand-${Date.now()}`;
                 setBibleStyleSeed(newSeed);
-                (onLiveStyleUpdate ?? onProjectRequest)(createServiceItem(results, undefined, undefined, undefined, undefined, newSeed));
               }}
               compact={compact}
               hasPptxItems={hasPptxItems}
             />
+            {draftPreviewItem && draftPreviewSlide && (
+              <div className="rounded-sm border border-zinc-800 bg-zinc-950/80 p-2.5">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-[8px] font-black uppercase tracking-[0.18em] text-zinc-500">Draft Preview</span>
+                  <span className="text-[8px] font-mono text-zinc-600">{draftPreviewItem.slides.length} slide{draftPreviewItem.slides.length === 1 ? '' : 's'}</span>
+                </div>
+                <div className="relative aspect-video overflow-hidden rounded-sm border border-zinc-800 bg-black">
+                  <div className="absolute inset-0 pointer-events-none">
+                    <SlideRenderer slide={draftPreviewSlide} item={draftPreviewItem} fitContainer={true} isThumbnail={true} />
+                  </div>
+                </div>
+                <div className="mt-2 text-[8px] text-zinc-500">
+                  Style changes stay local here until you press `Project Now` or `Schedule`.
+                </div>
+              </div>
+            )}
           </div>
           {/* Action buttons */}
           <div className={actionFooterClassName}>
             <button
-              onClick={() => onProjectRequest(createServiceItem(results))}
+              onClick={commitDraftToLive}
               className={`flex-1 flex items-center justify-center gap-2 bg-red-950/20 hover:bg-red-600 text-red-500 hover:text-white border border-red-900/50 rounded-sm font-bold transition-all group active:scale-95 ${compact ? 'py-2 text-[9px]' : 'py-2.5 text-[10px]'}`}
             >
               <PlayIcon className="w-3 h-3 fill-current group-hover:text-white" />

@@ -88,6 +88,8 @@ import { storeCcliCredentials, getCcliCredentials, setCcliActor } from './servic
 import { initCcliProvider } from './services/ccliCatalogProvider';
 import { copyTextToClipboard } from './services/clipboardService';
 import { dispatchAetherBridgeEvent, type AetherBridgeEvent } from './services/aetherBridge';
+import { isMotionUrl } from './services/motionEngine';
+import { setUserDefaultBackground, getUserDefaultBackgroundSnapshot, getDefaultBgTheme } from './services/userBackgroundPreference';
 import { MacroPanel } from './components/MacroPanel';
 import { BuilderPreviewPanel } from './components/builder/BuilderPreviewPanel';
 import { StageWorkspace } from './components/builder/StageWorkspace';
@@ -107,6 +109,11 @@ import {
   inheritPrevailingBackground,
   stampItemBackgroundSource,
 } from './services/backgroundPersistence';
+import {
+  areBibleGeneratedItemsVisuallyEqual,
+  isBibleGeneratedItem,
+  mergeBibleGeneratedItem,
+} from './services/bibleItemStability';
 import { isProjectionSafeBackgroundUrl } from './services/mediaUrlStability';
 import type { RunSheetInsertionResult } from './services/runSheetInsertion';
 import { PlayIcon, PauseIcon, RewindIcon, ForwardIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon, ArrowDownIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon, CheckIcon, XIcon, PinIcon, MinimizeIcon, MaximizeIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon, RewindIcon, ForwardIcon, PauseIcon
@@ -3460,18 +3467,24 @@ function App() {
   }, [currentLiveBackground, persistBackgroundSnapshotForProjection]);
 
   const getPrevailingGeneratedBackground = useCallback(() => {
-    if (!isOutputLive) return null;
-    const liveSnapshot = currentLiveBackground || prevailingGeneratedBackgroundRef.current;
-    if (!liveSnapshot) return null;
-    const projectorSafeSnapshot = prevailingGeneratedBackgroundSafeRef.current;
-    if (
-      projectorSafeSnapshot
-      && projectorSafeSnapshot.backgroundUrl === liveSnapshot.backgroundUrl
-      && projectorSafeSnapshot.mediaType === liveSnapshot.mediaType
-    ) {
-      return projectorSafeSnapshot;
+    // 1. If output is live, prefer the current live background (projector-safe when available)
+    if (isOutputLive) {
+      const liveSnapshot = currentLiveBackground || prevailingGeneratedBackgroundRef.current;
+      if (liveSnapshot) {
+        const projectorSafeSnapshot = prevailingGeneratedBackgroundSafeRef.current;
+        if (
+          projectorSafeSnapshot
+          && projectorSafeSnapshot.backgroundUrl === liveSnapshot.backgroundUrl
+          && projectorSafeSnapshot.mediaType === liveSnapshot.mediaType
+        ) {
+          return projectorSafeSnapshot;
+        }
+        return prevailingGeneratedBackgroundRef.current || liveSnapshot;
+      }
     }
-    return prevailingGeneratedBackgroundRef.current || liveSnapshot;
+    // 2. Fall back to user's explicitly stored default background preference
+    //    This covers all cases: output not live, no live background, etc.
+    return getUserDefaultBackgroundSnapshot();
   }, [currentLiveBackground, isOutputLive]);
 
   const finalizeGeneratedItemBackground = useCallback((
@@ -5345,21 +5358,23 @@ function App() {
       }
     }
 
-    // Add to run sheet and go live
+    // Add to run sheet and go live — use user's default BG if set
+    const sermonBg = getDefaultBgTheme(DEFAULT_BACKGROUNDS[2]);
     const sermonItem = finalizeGeneratedItemBackground({
       id: `${stamp}-sermon`,
       title,
       type: ItemType.ANNOUNCEMENT,
       slides: slideItems,
       theme: {
-        backgroundUrl: DEFAULT_BACKGROUNDS[2],
+        backgroundUrl: sermonBg.backgroundUrl,
+        mediaType: sermonBg.mediaType,
         fontFamily: 'sans-serif',
         textColor: '#ffffff',
         shadow: true,
         fontSize: 'large' as const,
       },
       metadata: { source: 'manual', createdAt: Date.now() },
-    }, 'user');
+    }, 'system');
     addItem(sermonItem);
     goLive(sermonItem, 0);
   }, [finalizeGeneratedItemBackground, addItem, goLive]);
@@ -5376,14 +5391,15 @@ function App() {
     }
     if (summary.callToAction) slideItems.push({ id: `${stamp}-cta`, content: `CALL TO ACTION\n\n${summary.callToAction}`, label: 'Call to Action' });
     if (!slideItems.length) slideItems.push({ id: `${stamp}-0`, content: title, label: 'Sermon' });
+    const bgTheme = getDefaultBgTheme(DEFAULT_BACKGROUNDS[2]);
     return finalizeGeneratedItemBackground({
       id: `${stamp}-sermon`,
       title,
       type: ItemType.ANNOUNCEMENT,
       slides: slideItems,
-      theme: { backgroundUrl: DEFAULT_BACKGROUNDS[2], fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'large' as const },
+      theme: { backgroundUrl: bgTheme.backgroundUrl, mediaType: bgTheme.mediaType, fontFamily: 'sans-serif', textColor: '#ffffff', shadow: true, fontSize: 'large' as const },
       metadata: { source: 'manual', createdAt: Date.now() },
-    }, 'user');
+    }, 'system');
   }, [finalizeGeneratedItemBackground]);
 
   const handleSermonProjectToScreen = useCallback((summary: SermonSummary) => {
@@ -5702,26 +5718,42 @@ function App() {
     return normalizedItem;
   }, [addItem, finalizeGeneratedItemBackground, goLive]);
 
-  // Updates an already-live/active bible item in-place (style/layout chip presses).
-  // Preserves the existing item's ID so no duplicate runsheet entries are created.
-  const handleBibleLiveUpdate = useCallback((item: ServiceItem) => {
+  // Commits a drafted Bible item onto an existing selected/live Bible entry when possible.
+  // Returns true when the draft was applied in-place and should not be staged as a new item.
+  const handleBibleLiveUpdate = useCallback((item: ServiceItem): boolean => {
     const normalizedItem = finalizeGeneratedItemBackground({
       ...item,
       metadata: { ...item.metadata, source: item.metadata?.source || 'bible' },
     }, 'system');
-    const targetId = activeItemId || selectedItemId;
-    const existingItem = targetId ? schedule.find((i) => i.id === targetId) : null;
-    if (existingItem && (existingItem.type === ItemType.BIBLE || existingItem.type === ItemType.SCRIPTURE || existingItem.metadata?.source === 'bible')) {
-      const replacedItem: ServiceItem = { ...normalizedItem, id: existingItem.id };
-      pushHistory();
-      setSchedule((prev) => prev.map((i) => (i.id === existingItem.id ? replacedItem : i)));
-      setSelectedItemId(existingItem.id);
-      goLive(replacedItem, 0);
-      return;
+    const liveItem = activeItemId ? schedule.find((entry) => entry.id === activeItemId) || null : null;
+    const selectedItem = selectedItemId ? schedule.find((entry) => entry.id === selectedItemId) || null : null;
+    const targetItem = isBibleGeneratedItem(liveItem)
+      ? liveItem
+      : (isBibleGeneratedItem(selectedItem) ? selectedItem : null);
+
+    if (targetItem) {
+      const replacedItem = mergeBibleGeneratedItem(targetItem, normalizedItem);
+      const nextSlideIndex = liveItem && liveItem.id === targetItem.id
+        ? clamp(
+          activeSlideIndex >= 0 ? activeSlideIndex : 0,
+          0,
+          Math.max(0, replacedItem.slides.length - 1),
+        )
+        : 0;
+      const nextProjectedItem = areBibleGeneratedItemsVisuallyEqual(targetItem, replacedItem)
+        ? targetItem
+        : replacedItem;
+
+      if (!areBibleGeneratedItemsVisuallyEqual(targetItem, replacedItem)) {
+        pushHistory();
+        setSchedule((prev) => prev.map((entry) => (entry.id === targetItem.id ? replacedItem : entry)));
+      }
+      setSelectedItemId(targetItem.id);
+      goLive(nextProjectedItem, nextSlideIndex);
+      return true;
     }
-    // Fallback: no active bible item to update, stage as a fresh item
-    stageGeneratedItem({ ...item, metadata: { ...item.metadata, source: item.metadata?.source || 'bible' } }, 'system', { goLive: true });
-  }, [activeItemId, selectedItemId, schedule, finalizeGeneratedItemBackground, goLive, stageGeneratedItem]);
+    return false;
+  }, [activeItemId, activeSlideIndex, selectedItemId, schedule, finalizeGeneratedItemBackground, goLive, pushHistory]);
 
   const handleAIItemGenerated = (item: ServiceItem) => {
     const normalizedItem = finalizeGeneratedItemBackground({
@@ -5781,8 +5813,9 @@ function App() {
 
   const applyQuickBackgroundToItem = useCallback(async (targetItem: ServiceItem, selection: QuickBackgroundSelection) => {
     if (!targetItem?.id) return;
-    const resolvedMediaType: 'image' | 'video' = selection.mediaType === 'image' ? 'image' : 'video';
-    const resolvedUrl = await persistRemoteMotionLibraryAsset(selection.url, resolvedMediaType);
+    const isMotion = selection.mediaType === 'motion' || isMotionUrl(selection.url);
+    const resolvedMediaType = isMotion ? 'motion' as const : (selection.mediaType === 'image' ? 'image' as const : 'video' as const);
+    const resolvedUrl = isMotion ? selection.url : await persistRemoteMotionLibraryAsset(selection.url, resolvedMediaType as 'image' | 'video');
     const latestItem = scheduleRef.current.find((entry) => entry.id === targetItem.id);
     if (!latestItem) return;
 
@@ -5802,6 +5835,16 @@ function App() {
         backgroundThumbnailUrl: selection.thumb || undefined,
       },
     }, latestItem);
+
+    // Persist as user's default background for all future slide creation
+    setUserDefaultBackground({
+      url: resolvedUrl,
+      mediaType: resolvedMediaType,
+      provider: selection.provider,
+      category: selection.category,
+      title: selection.title,
+      sourceUrl: selection.sourceUrl || selection.url,
+    });
 
     pushHistory();
     setSchedule((prev) => prev.map((entry) => (entry.id === normalizedItem.id ? normalizedItem : entry)));
@@ -9829,12 +9872,26 @@ function App() {
               }
               const url = asset.url;
               const mediaType = asset.mediaType;
-              const resolvedMediaType: 'image' | 'video' = mediaType === 'image' ? 'image' : 'video';
-              const resolvedUrl = await persistRemoteMotionLibraryAsset(url, resolvedMediaType);
+              const isMotion = mediaType === 'motion' || isMotionUrl(url);
+              const resolvedMediaType = isMotion ? 'motion' as const : (mediaType === 'image' ? 'image' as const : 'video' as const);
+              // motion:// URLs are canvas-rendered locally — no need to download/persist
+              const resolvedUrl = isMotion ? url : await persistRemoteMotionLibraryAsset(url, resolvedMediaType as 'image' | 'video');
+
+              // Persist as user's default background for all future slide creation
+              setUserDefaultBackground({
+                url: resolvedUrl,
+                mediaType: resolvedMediaType,
+                provider: asset.provider,
+                category: asset.category,
+                title: asset.name,
+                sourceUrl: asset.sourceUrl || asset.url,
+              });
+
               if (motionLibraryMode === 'new-item') {
+                const itemTitle = isMotion ? 'Lumina Background' : (resolvedMediaType === 'image' ? 'Still Background' : 'Motion Background');
                 const nextItem = finalizeGeneratedItemBackground({
                   id: `item-${Date.now()}`,
-                  title: resolvedMediaType === 'image' ? 'Still Background' : 'Motion Background',
+                  title: itemTitle,
                   type: ItemType.MEDIA,
                   slides: [{
                     id: `slide-${Date.now()}`,

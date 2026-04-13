@@ -1,10 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Slide, MediaType } from '../types';
-import { DEFAULT_BACKGROUNDS, VIDEO_BACKGROUNDS, SOLID_COLORS } from '../constants';
+import { DEFAULT_BACKGROUNDS, VIDEO_BACKGROUNDS, SOLID_COLORS, LUMINA_MOTION_BACKGROUNDS } from '../constants';
 import { saveMedia, getMedia } from '../services/localMedia';
 import { RichTextEditor } from './RichTextEditor';
 import { uploadWorkspaceMedia, type ActorLike } from '../services/serverApi';
+import { MotionCanvas } from './MotionCanvas';
+import { isMotionUrl } from '../services/motionEngine';
 
 interface SlideEditorModalProps {
   isOpen: boolean;
@@ -25,6 +27,13 @@ const getYoutubeId = (url: string) => {
   return (match && match[2].length === 11) ? match[2] : null;
 };
 
+const inferMediaType = (explicitType: MediaType, url: string): MediaType => {
+  if (isMotionUrl(url)) return 'motion';
+  if (url.startsWith('#')) return 'color';
+  if (getYoutubeId(url)) return 'video';
+  return explicitType;
+};
+
 export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
   isOpen,
   onClose,
@@ -41,7 +50,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
   const [bgUrl, setBgUrl] = useState('');
   const [mediaType, setMediaType] = useState<MediaType>('image');
   const [mediaFit, setMediaFit] = useState<'cover' | 'contain'>('cover');
-  const [activeTab, setActiveTab] = useState<'image'|'video'|'color'>('image');
+  const [activeTab, setActiveTab] = useState<'image'|'video'|'color'|'motion'>('image');
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [pptxError, setPptxError] = useState<string | null>(null);
@@ -54,6 +63,12 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pptxVisualInputRef = useRef<HTMLInputElement>(null);
   const pptxTextInputRef = useRef<HTMLInputElement>(null);
+  const motionTabFor = (type?: MediaType, url = ''): 'image' | 'video' | 'color' | 'motion' => {
+    if (type === 'motion' || isMotionUrl(url)) return 'motion';
+    if (type === 'video' || type === 'video-alpha' || getYoutubeId(url)) return 'video';
+    if (type === 'color' || url.startsWith('#')) return 'color';
+    return 'image';
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -66,7 +81,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
         setBgUrl(slide.backgroundUrl || '');
         setMediaType(slide.mediaType || 'image');
         setMediaFit(slide.mediaFit || ((slide.backgroundUrl || '').startsWith('local://') && (slide.mediaType || 'image') === 'image' ? 'contain' : 'cover'));
-        if (slide.mediaType && slide.mediaType !== 'video-alpha') setActiveTab(slide.mediaType);
+        setActiveTab(motionTabFor(slide.mediaType, slide.backgroundUrl || ''));
       } else {
         setContent('');
         setLabel('New Slide');
@@ -111,12 +126,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
   if (!isOpen) return null;
 
   const handleSave = () => {
-    let finalMediaType = mediaType;
-    if (bgUrl && getYoutubeId(bgUrl)) {
-        finalMediaType = 'video';
-    } else if (bgUrl && bgUrl.startsWith('#')) {
-        finalMediaType = 'color';
-    }
+    const finalMediaType = bgUrl ? inferMediaType(mediaType, bgUrl) : mediaType;
 
     const newSlide: Slide = {
       id: slide ? slide.id : Date.now().toString(),
@@ -131,15 +141,17 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
   };
 
   const handleMediaSelect = (url: string, type: MediaType) => {
+    const nextMediaType = inferMediaType(type, url);
     setBgUrl(url);
-    setMediaType(type);
-    if (type !== 'image') {
+    setMediaType(nextMediaType);
+    if (nextMediaType !== 'image') {
       setMediaFit('cover');
     } else if (url.startsWith('local://') && !slide?.mediaFit) {
       setMediaFit('contain');
     }
     setUploadError(null);
     setPptxError(null);
+    setActiveTab(motionTabFor(nextMediaType, url));
   };
 
   const clearBackground = () => {
@@ -227,7 +239,7 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
     const nextType: MediaType = importedSlide.mediaType || 'image';
     setMediaType(nextType);
     setMediaFit(importedSlide.mediaFit || ((importedSlide.backgroundUrl || '').startsWith('local://') && nextType === 'image' ? 'contain' : 'cover'));
-    setActiveTab(nextType === 'video' ? 'video' : nextType === 'color' ? 'color' : 'image');
+    setActiveTab(motionTabFor(nextType, importedSlide.backgroundUrl || ''));
   };
 
   const handlePowerPointImport = async (
@@ -350,13 +362,19 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
                 >
                   Color
                 </button>
+                <button 
+                  onClick={() => setActiveTab('motion')}
+                  className={`px-4 py-1.5 text-xs font-medium transition-colors flex-1 ${activeTab === 'motion' ? 'bg-zinc-600 text-white' : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800'}`}
+                >
+                  Motion
+                </button>
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex-1 relative">
                         <input 
                             type="text"
-                            placeholder={activeTab === 'image' ? "URL..." : activeTab === 'video' ? "YouTube / Video URL..." : "Hex Color..."}
+                            placeholder={activeTab === 'image' ? "URL..." : activeTab === 'video' ? "YouTube / Video URL..." : activeTab === 'motion' ? "motion://scene-id" : "Hex Color..."}
                             className="w-full bg-zinc-900 border border-zinc-700 rounded-sm px-3 py-2 text-xs text-zinc-300 focus:border-blue-600 focus:outline-none font-mono"
                             value={bgUrl}
                             onChange={e => handleMediaSelect(e.target.value, activeTab)}
@@ -448,9 +466,11 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
                     </div>
                   )}
 
-                  {previewUrl && (activeTab === 'image' || activeTab === 'video') && (
+                  {((previewUrl && (activeTab === 'image' || activeTab === 'video')) || (activeTab === 'motion' && bgUrl)) && (
                     <div className="aspect-video w-full max-w-xs rounded-sm border border-zinc-700 bg-black overflow-hidden relative">
-                         {activeTab === 'video' || (previewUrl.startsWith('blob:') && mediaType === 'video') ? (
+                         {activeTab === 'motion' ? (
+                             <MotionCanvas motionUrl={bgUrl} isPlaying className="absolute inset-0 w-full h-full" />
+                         ) : activeTab === 'video' || (previewUrl.startsWith('blob:') && mediaType === 'video') ? (
                              <video src={previewUrl} className="w-full h-full object-cover" muted />
                          ) : (
                              <div className={`w-full h-full bg-center bg-no-repeat ${mediaFit === 'contain' ? 'bg-contain bg-black' : 'bg-cover'}`} style={{ backgroundImage: `url(${previewUrl})` }} />
@@ -504,6 +524,17 @@ export const SlideEditorModal: React.FC<SlideEditorModalProps> = ({
                            className={`aspect-video rounded-sm border-2 overflow-hidden ${bgUrl === color ? 'border-blue-500' : 'border-transparent opacity-80 hover:opacity-100'}`}
                            style={{ backgroundColor: color }}
                          />
+                      ))}
+
+                      {activeTab === 'motion' && LUMINA_MOTION_BACKGROUNDS.map((bg) => (
+                        <button
+                          key={bg.id}
+                          onClick={() => handleMediaSelect(bg.url, 'motion')}
+                          className={`aspect-video rounded-sm border-2 overflow-hidden bg-black ${bgUrl === bg.url ? 'border-blue-500 opacity-100' : 'border-transparent opacity-80 hover:opacity-100'}`}
+                          title={bg.name}
+                        >
+                          <img src={bg.poster} alt={bg.name} className="w-full h-full object-cover" loading="lazy" />
+                        </button>
                       ))}
                     </div>
                   </div>

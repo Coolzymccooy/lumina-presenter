@@ -1,10 +1,12 @@
 
 import React, { useCallback, useRef, useState } from 'react';
 import { ServiceItem, SpeakerTimerPreset } from '../types';
-import { DEFAULT_BACKGROUNDS } from '../constants';
+import { DEFAULT_BACKGROUNDS, LUMINA_MOTION_BACKGROUNDS } from '../constants';
 import { PlusIcon } from './Icons';
 import { searchPexelsMotion } from '../services/serverApi';
 import type { RemoteMotionAsset } from '../services/serverApi';
+import { MotionCanvas } from './MotionCanvas';
+import { isMotionUrl } from '../services/motionEngine';
 
 const BG_PRESETS = [
   { label: 'Worship',     query: 'worship background' },
@@ -22,7 +24,7 @@ const BG_PRESETS = [
 export type QuickBackgroundSelection = {
   url: string;
   thumb: string;
-  mediaType: 'video' | 'image';
+  mediaType: 'video' | 'image' | 'motion';
   provider: string;
   category: string;
   title: string;
@@ -31,6 +33,7 @@ export type QuickBackgroundSelection = {
 
 function SmartBgSearch({ onApply }: { onApply: (selection: QuickBackgroundSelection) => Promise<void> | void }) {
   const [open, setOpen] = useState(false);
+  const [showLumina, setShowLumina] = useState(false);
   const [query, setQuery] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('Quick BG');
@@ -38,6 +41,7 @@ function SmartBgSearch({ onApply }: { onApply: (selection: QuickBackgroundSelect
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [applyingAssetId, setApplyingAssetId] = useState<string | null>(null);
+  const [hoveredLuminaId, setHoveredLuminaId] = useState<string | null>(null);
   const cacheRef = useRef<Record<string, RemoteMotionAsset[]>>({});
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -103,16 +107,48 @@ function SmartBgSearch({ onApply }: { onApply: (selection: QuickBackgroundSelect
     }
   }, [activeCategory, applyingAssetId, onApply]);
 
+  const handleLuminaToggle = useCallback(() => {
+    setShowLumina((prev) => !prev);
+    setOpen(false);
+    setActiveQuery('');
+  }, []);
+
+  const handleLuminaApply = useCallback(async (bg: typeof LUMINA_MOTION_BACKGROUNDS[0]) => {
+    if (applyingAssetId) return;
+    setApplyingAssetId(bg.id);
+    try {
+      await onApply({
+        url: bg.url,
+        thumb: bg.poster,
+        mediaType: 'motion',
+        provider: 'lumina',
+        category: 'Lumina',
+        title: bg.name,
+        sourceUrl: bg.url,
+      });
+      setShowLumina(false);
+    } catch {
+      setError('Could not apply that background.');
+    } finally {
+      setApplyingAssetId(null);
+    }
+  }, [applyingAssetId, onApply]);
+
   return (
     <div className="flex flex-col gap-2">
       {/* Preset chips + search row */}
       <div className="flex items-center gap-1.5 flex-wrap">
         <span className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-600 shrink-0">Quick BG</span>
+        <button
+          disabled={!!applyingAssetId}
+          onClick={handleLuminaToggle}
+          className={`h-6 px-2 rounded-md border text-[9px] font-bold uppercase tracking-wider transition-all disabled:opacity-50 ${showLumina ? 'border-purple-500/60 bg-purple-950/40 text-purple-300' : 'border-purple-800/50 bg-purple-950/20 text-purple-400 hover:border-purple-500 hover:text-purple-200'}`}
+        >Lumina</button>
         {BG_PRESETS.map((p) => (
           <button
             key={p.label}
             disabled={!!applyingAssetId}
-            onClick={() => handlePreset(p)}
+            onClick={() => { setShowLumina(false); handlePreset(p); }}
             className={`h-6 px-2 rounded-md border text-[9px] font-bold uppercase tracking-wider transition-all disabled:opacity-50 ${activeQuery === p.query && open ? 'border-blue-600/60 bg-blue-950/40 text-blue-300' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'}`}
           >{p.label}</button>
         ))}
@@ -129,8 +165,8 @@ function SmartBgSearch({ onApply }: { onApply: (selection: QuickBackgroundSelect
         </form>
       </div>
 
-      {/* Results panel */}
-      {open && (
+      {/* Pexels results panel */}
+      {open && !showLumina && (
         <div className="rounded-xl border border-zinc-800/70 bg-zinc-950/80 p-2">
           {loading && (
             <div className="grid grid-cols-6 gap-1.5">
@@ -169,6 +205,43 @@ function SmartBgSearch({ onApply }: { onApply: (selection: QuickBackgroundSelect
               <div className="mt-1.5 text-[8px] text-zinc-700 text-right">Powered by Pexels</div>
             </>
           )}
+        </div>
+      )}
+
+      {/* Lumina Quick BG panel */}
+      {showLumina && (
+        <div className="rounded-xl border border-purple-900/40 bg-purple-950/20 p-2">
+          <div className="grid grid-cols-6 gap-1.5">
+            {LUMINA_MOTION_BACKGROUNDS.map((bg) => (
+              <button
+                key={bg.id}
+                type="button"
+                onClick={() => void handleLuminaApply(bg)}
+                onMouseEnter={() => setHoveredLuminaId(bg.id)}
+                onMouseLeave={() => setHoveredLuminaId((current) => (current === bg.id ? null : current))}
+                onFocus={() => setHoveredLuminaId(bg.id)}
+                onBlur={() => setHoveredLuminaId((current) => (current === bg.id ? null : current))}
+                disabled={!!applyingAssetId}
+                className="group relative aspect-video rounded-md overflow-hidden border border-zinc-800 hover:border-purple-500 transition-all shadow-md"
+                title={bg.name}
+              >
+                <div className="w-full h-full">
+                  {hoveredLuminaId === bg.id ? (
+                    <MotionCanvas motionUrl={bg.url} isPlaying pauseWhenOffscreen />
+                  ) : (
+                    <img src={bg.poster} alt={bg.name} className="w-full h-full object-cover" loading="lazy" />
+                  )}
+                </div>
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
+                  <span className="opacity-0 group-hover:opacity-100 text-white text-[8px] font-black uppercase tracking-wider bg-purple-600/80 rounded px-1.5 py-0.5 transition-all">
+                    {applyingAssetId === bg.id ? 'Applying...' : bg.name}
+                  </span>
+                </div>
+                <div className="absolute bottom-0.5 right-0.5 bg-purple-900/60 rounded px-1 py-0.5 text-[7px] font-bold text-purple-200 uppercase">Lumina</div>
+              </button>
+            ))}
+          </div>
+          <div className="mt-1.5 text-[8px] text-purple-400/60 text-right">Lumina Motion — always available offline</div>
         </div>
       )}
     </div>

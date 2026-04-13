@@ -1,4 +1,5 @@
 import type { MediaType, ServiceItem, ServiceItemBackgroundSource, Slide } from '../types';
+import { isMotionUrl } from './motionEngine';
 
 export type BackgroundSnapshot = {
   backgroundUrl: string;
@@ -23,9 +24,10 @@ const looksLikeVideoUrl = (url: string): boolean => {
 };
 
 const inferMediaType = (backgroundUrl: string, explicitType?: MediaType): MediaType => {
-  if (explicitType === 'image' || explicitType === 'video' || explicitType === 'color') return explicitType;
+  if (explicitType === 'image' || explicitType === 'video' || explicitType === 'color' || explicitType === 'motion') return explicitType;
   const trimmed = String(backgroundUrl || '').trim();
   if (!trimmed) return 'image';
+  if (isMotionUrl(trimmed)) return 'motion';
   if (COLOR_TOKEN_PATTERN.test(trimmed)) return 'color';
   return looksLikeVideoUrl(trimmed) ? 'video' : 'image';
 };

@@ -2,8 +2,11 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { Slide, ServiceItem, MediaType, AudienceDisplayState, AudienceQrProjectionState } from "../types";
 
 import { getMediaAsset, getCachedMediaAsset } from "../services/localMedia";
+import { isMotionUrl, buildMotionUrl, isRegisteredMotionUrl, normalizeMotionUrl } from "../services/motionEngine";
+import { getDefaultBackgroundUrl, getDefaultBackgroundMediaType } from "../services/userBackgroundPreference";
+import { MotionCanvas } from "./MotionCanvas";
 import { ElementRenderer } from "./slide-layout/render/ElementRenderer";
-import { PROGRAM_MEDIA_PRESENTATION_FILTER, shouldShowScriptureReferenceLabel, shouldUseScriptureReadingPanel, TEXT_CONTRAST_BACKGROUND_OVERLAY } from "./slide-layout/render/backgroundTone";
+import { PROGRAM_MEDIA_PRESENTATION_FILTER, MOTION_CANVAS_PRESENTATION_FILTER, shouldShowScriptureReferenceLabel, shouldUseScriptureReadingPanel, TEXT_CONTRAST_BACKGROUND_OVERLAY } from "./slide-layout/render/backgroundTone";
 import { getRenderableElements } from "./slide-layout/utils/slideHydration";
 import { SlideBrandingOverlay, type SlideBrandingConfig } from "./SlideBrandingOverlay";
 import { VideoBackground } from "./video/VideoBackground";
@@ -255,6 +258,11 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   }, [slideBackgroundUrl, rawBgUrl, itemBackgroundSourceUrl]);
 
   const hasBackground = !!rawBgUrl;
+  const normalizedMotionUrl = useMemo(
+    () => (isMotionUrl(rawBgUrl) ? normalizeMotionUrl(rawBgUrl, 'sermon-clean') : ''),
+    [rawBgUrl],
+  );
+  const activeMotionUrl = normalizedMotionUrl || rawBgUrl;
 
   // Prevent loading spinner flashes for cached local:// media
   const [resolvedUrl, setResolvedUrl] = useState<string>(() => {
@@ -360,6 +368,8 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   const mediaType: MediaType = useMemo(() => {
     if (!hasBackground) return "image";
     const effectiveUrl = resolvedUrl || rawBgUrl;
+    // Lumina motion backgrounds are always immediately available
+    if (isMotionUrl(rawBgUrl)) return "motion";
     if (slideBackgroundUrl) {
       if (slide?.mediaType === "color" || effectiveUrl.startsWith("#")) return "color";
       if (slide?.mediaType === "video") return "video";
@@ -389,6 +399,10 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     if (mediaType === 'image' && rawBgUrl.startsWith('local://')) return 'contain';
     return 'cover';
   }, [slide?.mediaFit, mediaType, rawBgUrl]);
+  const usesFallbackMotionScene = useMemo(
+    () => isMotionUrl(rawBgUrl) && activeMotionUrl !== rawBgUrl,
+    [activeMotionUrl, rawBgUrl],
+  );
 
   // Reset errors when slide changes
   useEffect(() => {
@@ -413,6 +427,15 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
         youtubeId: null,
       };
     }
+    // Motion backgrounds are always available via their URL — no resolvedUrl needed
+    if (mediaType === "motion" && rawBgUrl) {
+      return {
+        url: activeMotionUrl,
+        mediaType: "motion",
+        imageFit,
+        youtubeId: null,
+      };
+    }
     if (!resolvedUrl) return null;
     return {
       url: resolvedUrl,
@@ -420,7 +443,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       imageFit,
       youtubeId,
     };
-  }, [hasBackground, mediaType, rawBgUrl, resolvedUrl, imageFit, youtubeId]);
+  }, [activeMotionUrl, hasBackground, mediaType, rawBgUrl, resolvedUrl, imageFit, youtubeId]);
 
   const markCurrentMediaReady = useCallback(() => {
     setIsCurrentMediaReady(true);
@@ -473,13 +496,13 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     setIsCurrentMediaReady(false);
   }, [hasBackground, rawBgUrl, resolvedUrl, mediaType, youtubeId]);
 
-  // For instant-ready types (solid color, data-URI image) notify immediately.
+  // For instant-ready types (solid color, data-URI image, motion canvas) notify immediately.
   useEffect(() => {
     if (!hasBackground) return;
-    if (!mediaError && !isLoading && (mediaType === "color" || (isDataUriBg && mediaType !== "video"))) {
+    if (!mediaError && !isLoading && (mediaType === "color" || (mediaType === "motion" && isRegisteredMotionUrl(activeMotionUrl)) || (isDataUriBg && mediaType !== "video"))) {
       markCurrentMediaReady();
     }
-  }, [hasBackground, mediaError, isLoading, mediaType, isDataUriBg, markCurrentMediaReady]);
+  }, [activeMotionUrl, hasBackground, mediaError, isLoading, mediaType, isDataUriBg, markCurrentMediaReady]);
 
   // HTML5 video play/pause and seek are now handled inside VideoBackground.
 
@@ -568,7 +591,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   const renderRetainedBackground = (message?: string, loading = false) => {
     const retained = lastStableBackgroundRef.current;
     const retainedMediaStyle = !isThumbnail && retained?.mediaType !== "color"
-      ? { filter: PROGRAM_MEDIA_PRESENTATION_FILTER }
+      ? { filter: retained?.mediaType === "motion" ? MOTION_CANVAS_PRESENTATION_FILTER : PROGRAM_MEDIA_PRESENTATION_FILTER }
       : undefined;
     const overlay = !isThumbnail && message ? (
       <div className="absolute top-3 right-3 text-[9px] uppercase tracking-wider bg-black/60 text-amber-100 border border-amber-300/30 px-2 py-1 rounded">
@@ -577,8 +600,23 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     ) : null;
 
     if (!retained) {
+      // Instead of a black screen, use the user's default BG or fall back to a Lumina motion scene
+      const preferredFallbackUrl = getDefaultBackgroundUrl(buildMotionUrl('sermon-clean'));
+      const fallbackUrl = isMotionUrl(preferredFallbackUrl)
+        ? normalizeMotionUrl(preferredFallbackUrl, 'sermon-clean')
+        : preferredFallbackUrl;
+      const fallbackMediaType = isMotionUrl(fallbackUrl)
+        ? 'motion'
+        : getDefaultBackgroundMediaType('motion');
+      const useLuminaFallback = fallbackMediaType === 'motion' && isRegisteredMotionUrl(fallbackUrl);
       return (
         <div className="w-full h-full relative bg-black">
+          {useLuminaFallback && (
+            <MotionCanvas motionUrl={fallbackUrl} isPlaying={!isThumbnail} className="absolute inset-0 w-full h-full" style={!isThumbnail ? { filter: MOTION_CANVAS_PRESENTATION_FILTER } : undefined} />
+          )}
+          {!useLuminaFallback && fallbackUrl && (
+            <div className="absolute inset-0 w-full h-full bg-cover bg-center" style={{ backgroundImage: `url(${fallbackUrl})` }} />
+          )}
           {loading && !isThumbnail && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/35">
               <div className="w-8 h-8 border-2 border-zinc-800 border-t-zinc-300 rounded-full animate-spin" />
@@ -590,7 +628,15 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
     }
 
     let content: React.ReactNode;
-    if (retained.mediaType === "color") {
+    if (retained.mediaType === "motion" && isMotionUrl(retained.url)) {
+      content = (
+        <MotionCanvas
+          motionUrl={normalizeMotionUrl(retained.url, 'sermon-clean')}
+          isPlaying={!isThumbnail}
+          className="w-full h-full"
+        />
+      );
+    } else if (retained.mediaType === "color") {
       content = <div className="w-full h-full" style={{ backgroundColor: retained.url }} />;
     } else if (retained.mediaType === "video" && retained.youtubeId) {
       const origin = getBestOrigin();
@@ -680,6 +726,18 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   const renderMedia = () => {
     if (!hasBackground) {
       return <div className="w-full h-full bg-black" />;
+    }
+
+    // Lumina motion backgrounds – canvas-rendered, always available, never fail.
+    if (mediaType === "motion" && isMotionUrl(rawBgUrl)) {
+      return (
+        <MotionCanvas
+          motionUrl={activeMotionUrl}
+          isPlaying={!isThumbnail && !!isPlaying}
+          className="w-full h-full"
+          style={!isThumbnail ? { filter: MOTION_CANVAS_PRESENTATION_FILTER } : undefined}
+        />
+      );
     }
 
     // Data URIs (SVG split-panel, gradient SVG) are always immediately available in memory.
@@ -851,7 +909,11 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       );
     }
 
-    return renderRetainedBackground("Background unavailable - keeping last live visual");
+    return renderRetainedBackground(
+      usesFallbackMotionScene
+        ? "Motion scene unavailable - using safe fallback"
+        : "Background unavailable - keeping last live visual",
+    );
   };
 
   // ── Scale-canvas rendering ─────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 
 import { ItemType } from './types.ts';
 import type { ServiceItem } from './types.ts';
+import { LUMINA_MOTION_PRESETS, buildMotionUrl, generateMotionPoster } from './services/motionEngine';
 
 export interface GospelTrack {
   id: string;
@@ -76,6 +77,16 @@ const REMOTE_VIDEO_BACKGROUNDS = [
 ];
 
 export const VIDEO_BACKGROUNDS = [...LOCAL_VIDEO_BACKGROUNDS, ...REMOTE_VIDEO_BACKGROUNDS];
+
+/** Lumina-native motion backgrounds – canvas-rendered, always offline, never fail */
+export const LUMINA_MOTION_BACKGROUNDS = LUMINA_MOTION_PRESETS.map((preset) => ({
+  id: preset.id,
+  name: preset.name,
+  url: buildMotionUrl(preset.id),
+  poster: generateMotionPoster(preset),
+  category: preset.category,
+  kind: preset.kind,
+}));
 
 export const SOLID_COLORS = [
   "#000000", // Black

@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MediaType } from '../../types';
 import { VideoBackground } from './VideoBackground';
+import { isMotionUrl, normalizeMotionUrl } from '../../services/motionEngine';
+import { MotionCanvas } from '../MotionCanvas';
+import { MOTION_CANVAS_PRESENTATION_FILTER } from '../slide-layout/render/backgroundTone';
 
 export interface BackgroundLayerProps {
   url: string;
@@ -245,6 +248,19 @@ const StaticBackground: React.FC<StaticBackgroundProps> = ({
   onError,
   onYoutubeLoad,
 }) => {
+  // Lumina motion backgrounds – canvas-rendered, always available offline
+  if (mediaType === 'motion' || isMotionUrl(url)) {
+    const safeMotionUrl = normalizeMotionUrl(url, 'sermon-clean');
+    return (
+      <MotionCanvas
+        motionUrl={safeMotionUrl}
+        isPlaying={isPlaying && !isThumbnail}
+        className="absolute inset-0 w-full h-full"
+        style={!isThumbnail && filter ? { filter: MOTION_CANVAS_PRESENTATION_FILTER } : undefined}
+      />
+    );
+  }
+
   if (mediaType === 'color') {
     return <div className="absolute inset-0 w-full h-full" style={{ backgroundColor: url }} />;
   }

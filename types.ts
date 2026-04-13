@@ -10,7 +10,7 @@ export enum ItemType {
   BIBLE = 'BIBLE'
 }
 
-export type MediaType = 'image' | 'video' | 'color' | 'video-alpha';
+export type MediaType = 'image' | 'video' | 'color' | 'video-alpha' | 'motion';
 export type ServiceItemBackgroundSource = 'system' | 'user' | 'inherited';
 
 export type SlideType = 'custom' | 'lyrics' | 'scripture' | 'announcement' | 'offering' | 'hymn';

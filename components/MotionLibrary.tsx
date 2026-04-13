@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PlayIcon } from './Icons';
-import { DEFAULT_BACKGROUNDS, VIDEO_BACKGROUNDS } from '../constants';
+import { DEFAULT_BACKGROUNDS, VIDEO_BACKGROUNDS, LUMINA_MOTION_BACKGROUNDS } from '../constants';
 import { MediaType } from '../types';
 import { searchPexelsMotion } from '../services/serverApi';
 import { getCachedMedia, getMedia, listSavedBackgrounds } from '../services/localMedia';
+import { isMotionUrl } from '../services/motionEngine';
+import { MotionCanvas } from './MotionCanvas';
 
 type MotionTab = 'curated' | 'stills' | 'alpha' | 'pexels' | 'pixabay' | 'saved';
 
@@ -67,6 +69,17 @@ const CURATED_STILL_ASSETS: MotionAsset[] = DEFAULT_BACKGROUNDS.map((url, idx) =
   attribution: 'Built-in',
 }));
 
+const LUMINA_MOTION_ASSETS: MotionAsset[] = LUMINA_MOTION_BACKGROUNDS.map((bg) => ({
+  id: `lumina-${bg.id}`,
+  name: bg.name,
+  thumb: bg.poster,
+  url: bg.url,
+  mediaType: 'motion' as MediaType,
+  provider: 'lumina',
+  category: bg.category.charAt(0).toUpperCase() + bg.category.slice(1),
+  attribution: 'Lumina — always available offline',
+}));
+
 const resolvePrettyCategory = (value: string) => (
   String(value || '').trim()
     .split(/[\s_-]+/)
@@ -75,13 +88,16 @@ const resolvePrettyCategory = (value: string) => (
     .join(' ') || 'Used'
 );
 
-const MotionTile: React.FC<{ motion: MotionAsset; onSelect: (asset: MotionAsset) => void }> = ({ motion, onSelect }) => {
+const AUTO_PREVIEW_TILE_LIMIT = 4;
+
+const MotionTile: React.FC<{ motion: MotionAsset; onSelect: (asset: MotionAsset) => void; autoPreview?: boolean }> = ({ motion, onSelect, autoPreview = false }) => {
   const [resolvedUrl, setResolvedUrl] = useState<string>(() => (
     motion.url.startsWith('local://') ? (getCachedMedia(motion.url) || '') : motion.url
   ));
   const [resolvedThumb, setResolvedThumb] = useState<string>(() => (
     motion.thumb.startsWith('local://') ? (getCachedMedia(motion.thumb) || '') : motion.thumb
   ));
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,13 +139,22 @@ const MotionTile: React.FC<{ motion: MotionAsset; onSelect: (asset: MotionAsset)
 
   const poster = resolvedThumb || DEFAULT_BACKGROUNDS[0];
   const playableUrl = resolvedUrl || motion.url;
+  const showLivePreview = isHovered || autoPreview;
 
   return (
     <div
       className="group relative aspect-video bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800 hover:border-blue-500 transition-all cursor-pointer"
       onClick={() => onSelect(motion)}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onFocus={() => setIsHovered(true)}
+      onBlur={() => setIsHovered(false)}
     >
-      {motion.mediaType === 'video' && playableUrl && !playableUrl.startsWith('local://') ? (
+      {motion.mediaType === 'motion' && isMotionUrl(motion.url) && showLivePreview ? (
+        <div className="w-full h-full opacity-70 group-hover:opacity-100 transition-opacity">
+          <MotionCanvas motionUrl={motion.url} isPlaying pauseWhenOffscreen />
+        </div>
+      ) : motion.mediaType === 'video' && playableUrl && !playableUrl.startsWith('local://') && showLivePreview ? (
         <video
           src={playableUrl}
           poster={poster}
@@ -173,7 +198,7 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
   const [activeTab, setActiveTab] = useState<MotionTab>('curated');
   const [queryInput, setQueryInput] = useState('worship background');
   const [debouncedQuery, setDebouncedQuery] = useState('worship background');
-  const [assets, setAssets] = useState<MotionAsset[]>(CURATED_VIDEO_ASSETS);
+  const [assets, setAssets] = useState<MotionAsset[]>([...LUMINA_MOTION_ASSETS, ...CURATED_VIDEO_ASSETS]);
   const [savedAssets, setSavedAssets] = useState<MotionAsset[]>([]);
   const [savedCategoryFilter, setSavedCategoryFilter] = useState('all');
   const [savedProviderFilter, setSavedProviderFilter] = useState('all');
@@ -224,7 +249,7 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
 
       if (activeTab === 'curated') {
         setLoading(false);
-        setAssets(CURATED_VIDEO_ASSETS);
+        setAssets([...LUMINA_MOTION_ASSETS, ...CURATED_VIDEO_ASSETS]);
         return;
       }
 
@@ -430,10 +455,11 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
             <div className="text-zinc-400 text-xs">Loading assets...</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {visibleAssets.map((motion) => (
+              {visibleAssets.map((motion, index) => (
                 <MotionTile
                   key={motion.id}
                   motion={motion}
+                  autoPreview={index < AUTO_PREVIEW_TILE_LIMIT}
                   onSelect={(asset) => onSelect(
                     asset.mediaType === 'video-alpha'
                       ? { ...asset, alphaOverlayUrl: asset.url }
