@@ -398,11 +398,12 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
   }, [activeTab, debouncedQuery, pixabayKey]);
 
   return (
-    <div className="fixed inset-0 bg-black/85 z-[140] p-3 md:p-6 overflow-hidden">
+    <div data-testid="motion-library" className="fixed inset-0 bg-black/85 z-[140] p-3 md:p-6 overflow-hidden">
       <div className="bg-zinc-950 border border-zinc-800 rounded-lg h-full max-h-full overflow-hidden flex flex-col">
         <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
           <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-widest">Motion Library</h3>
           <button
+            data-testid="motion-library-close-btn"
             onClick={onClose}
             className="h-8 px-3 text-xs font-bold rounded border border-zinc-700 bg-zinc-900 text-zinc-300 hover:text-white hover:border-zinc-500"
             aria-label="Close motion library"
@@ -412,14 +413,15 @@ export const MotionLibrary: React.FC<MotionLibraryProps> = ({ onSelect, onClose 
         </div>
 
         <div className="p-4 border-b border-zinc-900 flex flex-wrap items-center gap-2">
-          <button onClick={() => setActiveTab('curated')} className={`px-3 py-1 text-xs rounded ${activeTab === 'curated' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Default Loops</button>
-          <button onClick={() => setActiveTab('stills')} className={`px-3 py-1 text-xs rounded ${activeTab === 'stills' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Safe Stills</button>
-          <button onClick={() => setActiveTab('alpha')} className={`px-3 py-1 text-xs rounded ${activeTab === 'alpha' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Alpha Loops</button>
-          <button onClick={() => setActiveTab('saved')} className={`px-3 py-1 text-xs rounded ${activeTab === 'saved' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Saved</button>
-          <button onClick={() => setActiveTab('pexels')} className={`px-3 py-1 text-xs rounded ${activeTab === 'pexels' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Pexels</button>
-          <button onClick={() => setActiveTab('pixabay')} className={`px-3 py-1 text-xs rounded ${activeTab === 'pixabay' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Pixabay</button>
+          <button data-testid="motion-library-tab-curated" onClick={() => setActiveTab('curated')} className={`px-3 py-1 text-xs rounded ${activeTab === 'curated' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Default Loops</button>
+          <button data-testid="motion-library-tab-stills" onClick={() => setActiveTab('stills')} className={`px-3 py-1 text-xs rounded ${activeTab === 'stills' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Safe Stills</button>
+          <button data-testid="motion-library-tab-alpha" onClick={() => setActiveTab('alpha')} className={`px-3 py-1 text-xs rounded ${activeTab === 'alpha' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Alpha Loops</button>
+          <button data-testid="motion-library-tab-saved" onClick={() => setActiveTab('saved')} className={`px-3 py-1 text-xs rounded ${activeTab === 'saved' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Saved</button>
+          <button data-testid="motion-library-tab-pexels" onClick={() => setActiveTab('pexels')} className={`px-3 py-1 text-xs rounded ${activeTab === 'pexels' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Pexels</button>
+          <button data-testid="motion-library-tab-pixabay" onClick={() => setActiveTab('pixabay')} className={`px-3 py-1 text-xs rounded ${activeTab === 'pixabay' ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-500'}`}>Pixabay</button>
           {activeTab !== 'saved' && (
             <input
+              data-testid="motion-library-search"
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
               placeholder="Search worship, sunrise, abstract..."

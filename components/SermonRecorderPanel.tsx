@@ -343,7 +343,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   const panelPad = compact ? 'p-3' : 'p-4';
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden w-full">
+    <div data-testid="sermon-recorder-panel" className="flex flex-col h-full bg-zinc-950 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden w-full">
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-zinc-800 flex-shrink-0">
         <div className="flex items-center gap-2">
           <div
@@ -414,6 +414,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
                     <option value="kenyan">Kenyan English</option>
                   </select>
                   <button
+                    data-testid="sermon-recorder-start-btn"
                     onClick={handleStartRecording}
                     className="w-full py-2 rounded-lg bg-red-700/80 hover:bg-red-600 text-white text-[11px] font-bold tracking-wide transition-colors"
                   >
@@ -424,12 +425,14 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
               {phase === 'recording' && (
                 <>
                   <button
+                    data-testid="sermon-recorder-pause-btn"
                     onClick={recActions.pause}
                     className="flex-1 py-2 rounded-lg border border-amber-600/70 text-amber-300 bg-amber-950/30 hover:bg-amber-950/60 text-[11px] font-bold transition-colors"
                   >
                     Pause
                   </button>
                   <button
+                    data-testid="sermon-recorder-stop-btn"
                     onClick={recActions.stop}
                     className="flex-1 py-2 rounded-lg border border-zinc-600 text-zinc-300 bg-zinc-800/60 hover:bg-zinc-700 text-[11px] font-bold transition-colors"
                   >
@@ -440,12 +443,14 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
               {phase === 'paused' && (
                 <>
                   <button
+                    data-testid="sermon-recorder-resume-btn"
                     onClick={recActions.resume}
                     className="flex-1 py-2 rounded-lg bg-red-700/80 hover:bg-red-600 text-white text-[11px] font-bold transition-colors"
                   >
                     Resume
                   </button>
                   <button
+                    data-testid="sermon-recorder-stop-btn"
                     onClick={recActions.stop}
                     className="flex-1 py-2 rounded-lg border border-zinc-600 text-zinc-300 bg-zinc-800/60 hover:bg-zinc-700 text-[11px] font-bold transition-colors"
                   >
@@ -584,6 +589,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
             <div className="space-y-1.5">
               <div className="flex gap-2">
                 <button
+                  data-testid="sermon-recorder-summarize-btn"
                   onClick={handleSummarize}
                   disabled={summarizing || !canSummarize(currentTranscript)}
                   className="flex-1 py-2 rounded-lg text-[11px] font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-purple-900/50 hover:bg-purple-800/70 border border-purple-700/50 text-purple-200"
@@ -649,6 +655,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
             )}
           </div>
           <button
+            data-testid="sermon-recorder-flash-btn"
             onClick={handleFlash}
             disabled={!canFlash}
             className={`w-full py-1.5 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${

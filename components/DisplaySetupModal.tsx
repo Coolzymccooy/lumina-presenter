@@ -204,6 +204,7 @@ export const DisplaySetupModal: React.FC<DisplaySetupModalProps> = ({
                 </div>
                 <div className="mt-3 grid gap-2">
                   <button
+                    data-testid="display-setup-auto-assign-btn"
                     onClick={() => {
                       void runBusyAction('auto', onAutoAssign);
                     }}
@@ -262,6 +263,7 @@ export const DisplaySetupModal: React.FC<DisplaySetupModalProps> = ({
                     Opens the audience output as a 1920×1080 window named <span className="font-mono text-zinc-300">Lumina Output (Projector)</span> — select it by name in NDI Tools Screen Capture or vMix Window Capture. No display assignment needed.
                   </div>
                   <button
+                    data-testid="display-setup-ndi-btn"
                     onClick={() => {
                       void runBusyAction('ndi', () => { onLaunchNdiWindow(); });
                     }}
@@ -282,6 +284,7 @@ export const DisplaySetupModal: React.FC<DisplaySetupModalProps> = ({
             <div className="border-t border-zinc-900 px-5 py-4">
               <div className="grid gap-2">
                 <button
+                  data-testid="display-setup-save-mapping-btn"
                   onClick={() => {
                     void runBusyAction('save', onSaveMapping);
                   }}
@@ -291,6 +294,7 @@ export const DisplaySetupModal: React.FC<DisplaySetupModalProps> = ({
                   <CheckIcon className="h-3.5 w-3.5" /> {busyAction === 'save' ? 'Saving' : 'Save Mapping'}
                 </button>
                 <button
+                  data-testid="display-setup-start-service-btn"
                   onClick={() => {
                     void runBusyAction('start', onStartService);
                   }}

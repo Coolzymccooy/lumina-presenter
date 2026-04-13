@@ -290,6 +290,7 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                 <div className="px-5 pt-4 shrink-0" data-no-drag>
                     <div className="grid grid-cols-2 gap-2">
                         <button
+                            data-testid="connect-modal-tab-audience"
                             onClick={() => setActivePanel('audience')}
                             className={`px-3 py-2 rounded-lg text-[10px] font-black tracking-widest border transition-all ${
                                 activePanel === 'audience'
@@ -300,6 +301,7 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                             AUDIENCE
                         </button>
                         <button
+                            data-testid="connect-modal-tab-aether"
                             onClick={() => setActivePanel('aether')}
                             className={`px-3 py-2 rounded-lg text-[10px] font-black tracking-widest border transition-all ${
                                 activePanel === 'aether'
@@ -421,6 +423,7 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({
                                             <div className="text-[10px] font-mono text-zinc-500 truncate">{entry.value}</div>
                                         </div>
                                         <button
+                                            data-testid={`connect-modal-copy-${entry.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
                                             onClick={() => void copyAnyUrl(entry.value, entry.label)}
                                             className="p-2 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-white transition-colors"
                                             data-no-drag

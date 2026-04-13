@@ -387,6 +387,7 @@ export const FilesPanel: React.FC<FilesPanelProps> = ({
       {/* ── Tab bar ── */}
       <div className="flex shrink-0 border-b border-zinc-800 bg-zinc-950/60">
         <button
+          data-testid="files-panel-tab-runsheets"
           onClick={() => setTab('runsheets')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-black uppercase tracking-wider transition-colors border-b-2 ${
             tab === 'runsheets'
@@ -402,6 +403,7 @@ export const FilesPanel: React.FC<FilesPanelProps> = ({
           )}
         </button>
         <button
+          data-testid="files-panel-tab-sermons"
           onClick={() => setTab('sermons')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-black uppercase tracking-wider transition-colors border-b-2 ${
             tab === 'sermons'
@@ -417,6 +419,7 @@ export const FilesPanel: React.FC<FilesPanelProps> = ({
           )}
         </button>
         <button
+          data-testid="files-panel-tab-import"
           onClick={() => setTab('import')}
           className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[10px] font-black uppercase tracking-wider transition-colors border-b-2 ${
             tab === 'import'
@@ -629,6 +632,7 @@ export const FilesPanel: React.FC<FilesPanelProps> = ({
             </label>
 
             <button
+              data-testid="files-panel-import-pptx-btn"
               onClick={onOpenLyricsImport}
               disabled={isImportingDeck}
               className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl border bg-zinc-900/60 transition-colors group text-left ${isImportingDeck ? 'opacity-50 cursor-not-allowed border-zinc-800' : 'border-zinc-800 hover:bg-zinc-800/80 hover:border-zinc-600 cursor-pointer'}`}
@@ -663,6 +667,7 @@ export const FilesPanel: React.FC<FilesPanelProps> = ({
               </p>
               <div className="flex gap-1.5">
                 <input
+                  data-testid="files-panel-video-url-input"
                   type="url"
                   value={videoUrlDraft}
                   onChange={(e) => setVideoUrlDraft(e.target.value)}
@@ -676,6 +681,7 @@ export const FilesPanel: React.FC<FilesPanelProps> = ({
                   className="flex-1 min-w-0 bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-2 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-500"
                 />
                 <button
+                  data-testid="files-panel-add-video-btn"
                   onClick={() => {
                     if (!videoUrlDraft.trim()) return;
                     onAddVideoUrl(videoUrlDraft.trim());
