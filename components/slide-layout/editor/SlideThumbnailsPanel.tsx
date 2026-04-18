@@ -216,17 +216,36 @@ export const SlideThumbnailsPanel: React.FC<SlideThumbnailsPanelProps> = ({
     return (
       <>
         <div className="flex h-full min-h-0 flex-col border-r border-zinc-800 bg-[#05070e]">
-          <div className="border-b border-zinc-800 px-2 py-3">
-            <div className="flex items-center justify-between gap-2 rounded-xl border border-zinc-800 bg-zinc-950/80 px-2.5 py-2">
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Slides</div>
-              <div className="flex items-center gap-1 rounded-lg border border-zinc-800 bg-black/20 p-1">
-                <button type="button" onClick={() => onPasteSlide(activeSlideId)} disabled={!canPasteSlide} className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1 text-[9px] font-bold text-zinc-200 transition-colors hover:border-zinc-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-35">
-                  Paste
-                </button>
-                <button type="button" onClick={onAddSlide} className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-zinc-700 bg-zinc-900 text-[11px] font-bold text-zinc-200 transition-colors hover:border-zinc-500 hover:text-white">
+          <div className="border-b border-zinc-800 px-2 py-2">
+            <div className="flex flex-col gap-1.5 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-900/90 to-zinc-950/90 p-1.5 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]">
+              <div className="flex items-center justify-between gap-1.5">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-400">Slides</span>
+                  <span className="inline-flex h-4 min-w-[1.1rem] items-center justify-center rounded bg-zinc-800 px-1 text-[9px] font-bold tabular-nums text-zinc-300">
+                    {slides.length}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={onAddSlide}
+                  title="Add new slide"
+                  aria-label="Add new slide"
+                  className="inline-flex h-6 w-6 items-center justify-center rounded-md border border-cyan-500/60 bg-gradient-to-b from-cyan-600/40 to-cyan-700/40 text-[12px] font-bold leading-none text-cyan-100 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)] transition-all hover:border-cyan-400 hover:from-cyan-500/50 hover:to-cyan-600/50 hover:text-white active:scale-[0.92]"
+                >
                   +
                 </button>
               </div>
+              <button
+                type="button"
+                onClick={() => onPasteSlide(activeSlideId)}
+                disabled={!canPasteSlide}
+                title="Paste slide (Ctrl+V)"
+                aria-label="Paste slide"
+                className="inline-flex h-6 w-full items-center justify-center gap-1 rounded-md border border-zinc-700 bg-zinc-900/80 px-2 text-[9px] font-bold uppercase tracking-[0.16em] text-zinc-200 transition-all hover:border-zinc-500 hover:bg-zinc-800 hover:text-white active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-35 disabled:active:scale-100"
+              >
+                <span aria-hidden className="text-[10px] leading-none">⎘</span>
+                <span className="leading-none">Paste</span>
+              </button>
             </div>
           </div>
           <div className="flex-1 space-y-2 overflow-y-auto p-2 custom-scrollbar">
