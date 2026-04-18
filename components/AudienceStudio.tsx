@@ -16,16 +16,16 @@ import {
 } from '../types';
 import {
     ChatIcon,
-    SparklesIcon,
-    HelpIcon,
-    HeartIcon,
-    UserIcon,
-    TrashIcon,
-    PlayIcon,
-    CheckIcon,
     RefreshIcon,
-    XIcon
 } from './Icons';
+import { CAT_CONFIG } from './audience-studio/constants';
+import { useAudienceMode } from './audience-studio/hooks/useAudienceMode';
+import { ModeSwitcher } from './audience-studio/primitives/ModeSwitcher';
+import { SubmissionsPanel } from './audience-studio/panels/SubmissionsPanel';
+import { QueuePanel } from './audience-studio/panels/QueuePanel';
+import { StagePanel } from './audience-studio/panels/StagePanel';
+import { BroadcastPanel } from './audience-studio/panels/BroadcastPanel';
+import { ModeCounts } from './audience-studio/types';
 
 interface AudienceStudioProps {
     workspaceId: string;
@@ -43,14 +43,6 @@ interface AudienceStudioProps {
     onClearStageAlert: () => void;
     canUseStageAlert: boolean;
 }
-
-const CAT_CONFIG: Record<AudienceCategory, { label: string; icon: any; color: string; border: string; bg: string }> = {
-    qa: { label: 'Q&A', icon: HelpIcon, color: 'text-blue-400', border: 'border-blue-900/30', bg: 'bg-blue-950/20' },
-    prayer: { label: 'Prayer', icon: HeartIcon, color: 'text-rose-400', border: 'border-rose-900/30', bg: 'bg-rose-950/20' },
-    testimony: { label: 'Testimony', icon: SparklesIcon, color: 'text-purple-400', border: 'border-purple-900/30', bg: 'bg-purple-950/20' },
-    welcome: { label: 'Welcome', icon: UserIcon, color: 'text-emerald-400', border: 'border-emerald-900/30', bg: 'bg-emerald-950/20' },
-    poll: { label: 'Poll', icon: ChatIcon, color: 'text-amber-400', border: 'border-amber-900/30', bg: 'bg-amber-950/20' },
-};
 
 export const AudienceStudio: React.FC<AudienceStudioProps> = ({
     workspaceId,
@@ -79,23 +71,7 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
     const [broadcastHistory, setBroadcastHistory] = useState<AudienceMessage[]>([]);
     const refreshInFlightRef = useRef(false);
     const refreshQueuedRef = useRef(false);
-    const stageTemplates: Record<StageMessageCategory, Array<{ key: string; label: string }>> = {
-        urgent: [
-            { key: 'wrap_up_now', label: 'Wrap up now' },
-            { key: 'hold_position', label: 'Please hold' },
-            { key: 'mic_issue', label: 'Mic issue' },
-        ],
-        timing: [
-            { key: 'two_mins_left', label: '2 mins left' },
-            { key: 'thirty_seconds', label: '30 seconds' },
-            { key: 'overtime', label: 'Overtime' },
-        ],
-        logistics: [
-            { key: 'move_stage_left', label: 'Move stage left' },
-            { key: 'handheld_mic', label: 'Take handheld mic' },
-            { key: 'close_in_prayer', label: 'Close in prayer' },
-        ],
-    };
+    const [mode, setMode] = useAudienceMode('broadcast');
 
     const loadMessages = useCallback(async (options?: { silent?: boolean }) => {
         if (!user) return;
@@ -238,12 +214,6 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
     };
 
     const stageQueue = Array.isArray(stageMessageCenter?.queue) ? stageMessageCenter.queue : [];
-    const activeStageId = stageMessageCenter?.activeMessageId || null;
-    const activeStageIdx = activeStageId ? stageQueue.findIndex((entry) => entry.id === activeStageId) : -1;
-
-    const handleStageTemplate = (label: string) => {
-        setStageAlertDraft(label);
-    };
 
     const isAdminBroadcastMessage = (message: AudienceMessage) =>
         message.id < 0 && (message.submitter_name || '').trim().toUpperCase() === 'ADMIN';
@@ -355,465 +325,114 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
 
     const adminBroadcastQueue = displayState.queue.filter(isAdminBroadcastMessage);
 
+    const pendingSubmissionsCount = messages.filter((m) => m.status === 'pending').length;
+    const modeCounts: ModeCounts = {
+        broadcast: 0,
+        stage: stageQueue.length,
+        queue: displayState.queue.length,
+        submissions: pendingSubmissionsCount,
+    };
+
+    useEffect(() => {
+        const handler = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement | null;
+            if (target) {
+                const tag = target.tagName;
+                if (tag === 'INPUT' || tag === 'TEXTAREA' || target.isContentEditable) return;
+            }
+            if (e.metaKey || e.ctrlKey || e.altKey) return;
+            if (e.key === '1') { setMode('broadcast'); e.preventDefault(); }
+            else if (e.key === '2') { setMode('stage'); e.preventDefault(); }
+            else if (e.key === '3') { setMode('queue'); e.preventDefault(); }
+            else if (e.key === '4') { setMode('submissions'); e.preventDefault(); }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [setMode]);
+
     return (
         <div className="flex flex-col h-full min-h-0 bg-zinc-950 text-zinc-300 font-sans">
             {/* Header */}
-            <header className="p-3 sm:p-4 border-b border-zinc-900 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between bg-zinc-900/30 backdrop-blur-md">
-                <div className="flex items-center gap-2 min-w-0">
-                    <ChatIcon className="w-5 h-5 text-blue-500" />
-                    <h2 className="text-sm font-black uppercase tracking-widest text-white truncate">Audience Studio</h2>
-                    <span className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded-full border border-blue-500/20 ml-2">
+            <header className="px-3 py-2 border-b border-zinc-900 flex items-center gap-2 bg-zinc-900/30 backdrop-blur-md">
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <ChatIcon className="w-4 h-4 text-blue-500 shrink-0" />
+                    <h2 className="text-[11px] font-black uppercase tracking-wider text-white whitespace-nowrap">Audience</h2>
+                    <span className="text-[9px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded-full border border-blue-500/20 shrink-0">
                         LIVE
                     </span>
                 </div>
-                <div className="flex items-center gap-3 sm:gap-4 justify-between sm:justify-end">
-                    <div className="text-[9px] text-zinc-500 font-mono">
-                        LAST UPDATE: {new Date(lastRefresh).toLocaleTimeString()}
+                <div className="flex items-center gap-2 shrink-0">
+                    <div className="text-[9px] text-zinc-500 font-mono hidden sm:block">
+                        {new Date(lastRefresh).toLocaleTimeString()}
                     </div>
                     <button
                         onClick={() => {
                             void loadMessages();
                         }}
-                        className="p-1.5 hover:bg-zinc-800 rounded-md transition-colors text-zinc-500 hover:text-white"
+                        className="p-1 hover:bg-zinc-800 rounded-md transition-all active:scale-90 text-zinc-500 hover:text-white"
+                        title="Refresh"
                     >
-                        <RefreshIcon className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                        <RefreshIcon className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
                     </button>
                 </div>
             </header>
 
-            {/* Filters */}
-            <div className="p-3 sm:p-4 pb-0">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {(['all', 'pending', 'approved', 'projected', 'dismissed'] as const).map(f => (
-                    <button
-                        key={f}
-                        onClick={() => setFilter(f)}
-                        className={`w-full px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border truncate ${filter === f
-                            ? 'bg-blue-600 text-white border-transparent shadow-lg shadow-blue-900/20'
-                            : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-700'
-                            }`}
-                    >
-                        {f}
-                    </button>
-                ))}
-                </div>
-            </div>
+            <ModeSwitcher
+                active={mode}
+                onChange={setMode}
+                counts={modeCounts}
+                pulseSubmissions={pendingSubmissionsCount > 0}
+            />
 
-            {/* Advanced Controls */}
-            <div className="px-3 sm:px-4 py-3 border-b border-zinc-900 bg-zinc-900/10 space-y-3 max-h-[48vh] overflow-y-auto custom-scrollbar">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div className="flex items-center justify-between gap-2 min-w-0">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 truncate">Pin Visible</span>
-                        <div className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${displayState.pinnedMessageId ? 'bg-blue-600' : 'bg-zinc-800'}`}
-                            onClick={() => onUpdateDisplay({ pinnedMessageId: displayState.pinnedMessageId ? null : displayState.activeMessageId })}>
-                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${displayState.pinnedMessageId ? 'left-4' : 'left-0.5'}`} />
-                        </div>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 min-w-0">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 truncate">Ticker Running</span>
-                        <div className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${displayState.tickerEnabled ? 'bg-blue-600' : 'bg-zinc-800'}`}
-                            onClick={() => onUpdateDisplay({ tickerEnabled: !displayState.tickerEnabled })}>
-                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${displayState.tickerEnabled ? 'left-4' : 'left-0.5'}`} />
-                        </div>
-                    </div>
-                </div>
+            <div key={mode} className="animate-mode-fade">
+            {mode === 'stage' && (
+                <StagePanel
+                    canUseStageAlert={canUseStageAlert}
+                    stageAlert={stageAlert}
+                    stageMessageCenter={stageMessageCenter}
+                    stageAlertDraft={stageAlertDraft}
+                    onStageAlertDraftChange={setStageAlertDraft}
+                    stageCategory={stageCategory}
+                    onStageCategoryChange={setStageCategory}
+                    onQueueStageMessage={onQueueStageMessage}
+                    onSendStageMessageNow={onSendStageMessageNow}
+                    onPromoteStageMessage={onPromoteStageMessage}
+                    onRemoveQueuedStageMessage={onRemoveQueuedStageMessage}
+                    onSendStageAlert={onSendStageAlert}
+                    onClearStageAlert={onClearStageAlert}
+                />
+            )}
 
-                <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center justify-between gap-2 min-w-[180px] flex-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Auto-Rotate</span>
-                        <div className={`w-8 h-4 rounded-full transition-colors relative cursor-pointer ${displayState.autoRotate ? 'bg-blue-600' : 'bg-zinc-800'}`}
-                            onClick={() => onUpdateDisplay({ autoRotate: !displayState.autoRotate })}>
-                            <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full transition-all ${displayState.autoRotate ? 'left-4' : 'left-0.5'}`} />
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 sm:ml-auto">
-                        <input
-                            type="number"
-                            value={displayState.rotateSeconds}
-                            onChange={(e) => onUpdateDisplay({ rotateSeconds: parseInt(e.target.value) || 5 })}
-                            className="w-10 bg-zinc-800 border border-zinc-700 rounded text-[10px] px-1 py-0.5 text-white font-mono text-center"
-                        />
-                        <span className="text-[9px] text-zinc-600 uppercase">SEC</span>
-                    </div>
-                </div>
+            {mode === 'queue' && (
+                <QueuePanel displayState={displayState} onUpdateDisplay={onUpdateDisplay} />
+            )}
 
-                {displayState.queue.length > 0 && (
-                    <div className="bg-black/20 rounded-lg p-2 border border-zinc-800/50">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">{displayState.queue.length} messages in queue</span>
-                            <button
-                                onClick={() => onUpdateDisplay({ queue: [], activeMessageId: null, pinnedMessageId: null })}
-                                className="text-[9px] text-rose-500 hover:text-rose-400 uppercase font-black"
-                            >
-                                Clear
-                            </button>
-                        </div>
-                        <div className="flex gap-1 overflow-x-auto pb-1 custom-scrollbar-h">
-                            {displayState.queue.map(m => (
-                                <div
-                                    key={m.id}
-                                    onClick={() => onUpdateDisplay({ activeMessageId: m.id })}
-                                    className={`shrink-0 w-24 p-1.5 rounded border transition-all cursor-pointer ${displayState.activeMessageId === m.id ? 'bg-blue-600/20 border-blue-500/50' : 'bg-zinc-800/50 border-zinc-700 hover:border-zinc-500'}`}
-                                >
-                                    <div className="text-[8px] font-bold text-zinc-300 truncate mb-1">
-                                        {m.submitter_name || CAT_CONFIG[m.category].label}
-                                    </div>
-                                    <div className="text-[9px] text-zinc-500 leading-tight line-clamp-2 italic">"{m.text}"</div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
+            {mode === 'submissions' && (
+                <SubmissionsPanel
+                    messages={messages}
+                    filter={filter}
+                    onFilterChange={setFilter}
+                    onStatusUpdate={(id, status) => { void handleStatusUpdate(id, status); }}
+                    onDelete={(id) => { void handleDelete(id); }}
+                />
+            )}
 
-                <div className="bg-black/20 rounded-lg p-2 border border-zinc-800/50">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Audience Broadcast (Ticker/Pin)</span>
-                        <span className={`text-[9px] font-black uppercase tracking-widest ${canUseStageAlert ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            Admin allowlisted: {canUseStageAlert ? 'Yes' : 'No'}
-                        </span>
-                    </div>
-                    <div className="mb-2 flex flex-wrap gap-1.5">
-                        {(['welcome', 'qa', 'prayer', 'testimony', 'poll'] as AudienceCategory[]).map((cat) => (
-                            <button
-                                key={cat}
-                                onClick={() => setBroadcastCategory(cat)}
-                                disabled={!canUseStageAlert}
-                                className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${
-                                    broadcastCategory === cat
-                                        ? 'bg-blue-600/20 border-blue-500/40 text-blue-300'
-                                        : 'bg-zinc-900 border-zinc-800 text-zinc-400'
-                                } disabled:opacity-40`}
-                            >
-                                {cat}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="mb-2 flex flex-wrap gap-1.5">
-                        {[
-                            'Scan the QR code to submit prayer requests and questions.',
-                            'Please include your name with your message.',
-                            'We are receiving live testimonies now. Scan and share.',
-                        ].map((template) => (
-                            <button
-                                key={template}
-                                onClick={() => setBroadcastDraft(template)}
-                                disabled={!canUseStageAlert}
-                                className="px-2 py-1 rounded-md text-[10px] font-bold border border-zinc-700 text-zinc-300 hover:border-blue-500/60 hover:text-blue-200 disabled:opacity-40"
-                            >
-                                {template.length > 30 ? `${template.slice(0, 30)}...` : template}
-                            </button>
-                        ))}
-                    </div>
-                    <textarea
-                        rows={2}
-                        value={broadcastDraft}
-                        onChange={(e) => setBroadcastDraft(e.target.value)}
-                        placeholder={canUseStageAlert ? "Broadcast audience message (ticker or pinned)..." : "Only allowlisted admin can broadcast audience notices."}
-                        disabled={!canUseStageAlert}
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-2 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-blue-600 disabled:opacity-60 resize-none"
-                    />
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                        <button
-                            onClick={() => pushBroadcastToAudience('ticker')}
-                            disabled={!canUseStageAlert || !broadcastDraft.trim()}
-                            className="px-3 py-1.5 rounded-md text-[10px] font-bold border border-transparent bg-blue-600 text-white disabled:opacity-40"
-                        >
-                            SEND TO TICKER
-                        </button>
-                        <button
-                            onClick={() => pushBroadcastToAudience('pinned')}
-                            disabled={!canUseStageAlert || !broadcastDraft.trim()}
-                            className="px-3 py-1.5 rounded-md text-[10px] font-bold border border-zinc-700 text-zinc-200 disabled:opacity-40 hover:border-zinc-600"
-                        >
-                            SHOW PINNED
-                        </button>
-                    </div>
-                    <div className="mt-2 border border-zinc-800 rounded-md p-2 bg-zinc-900/40">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
-                                Broadcast History ({broadcastHistory.length})
-                            </span>
-                            <button
-                                onClick={removeAllAdminBroadcasts}
-                                disabled={!canUseStageAlert || adminBroadcastQueue.length === 0}
-                                className="px-2 py-1 text-[9px] font-bold border border-rose-900/70 rounded text-rose-300 disabled:opacity-40"
-                            >
-                                Remove All Admin Broadcasts
-                            </button>
-                        </div>
-                        {broadcastHistory.length === 0 ? (
-                            <div className="text-[10px] text-zinc-600">No admin broadcasts sent yet.</div>
-                        ) : (
-                            <div className="space-y-1.5 max-h-28 overflow-y-auto custom-scrollbar">
-                                {broadcastHistory.map((entry) => {
-                                    const inQueue = displayState.queue.some((message) => message.id === entry.id);
-                                    return (
-                                        <div key={entry.id} className="p-1.5 rounded border border-zinc-800 bg-zinc-950/60">
-                                            <div className="flex items-start justify-between gap-2">
-                                                <div className="min-w-0">
-                                                    <div className="text-[9px] uppercase tracking-wider font-bold text-zinc-500">
-                                                        {entry.category} {inQueue ? '- active in queue' : '- archived'}
-                                                    </div>
-                                                    <div className="text-[11px] text-zinc-200 truncate">{entry.text}</div>
-                                                </div>
-                                                <div className="flex items-center gap-1">
-                                                    <button
-                                                        onClick={() => resendFromHistory(entry, 'ticker')}
-                                                        disabled={!canUseStageAlert}
-                                                        className="px-1.5 py-0.5 text-[9px] font-bold border border-zinc-700 rounded text-zinc-200 disabled:opacity-40"
-                                                    >
-                                                        Ticker
-                                                    </button>
-                                                    <button
-                                                        onClick={() => resendFromHistory(entry, 'pinned')}
-                                                        disabled={!canUseStageAlert}
-                                                        className="px-1.5 py-0.5 text-[9px] font-bold border border-zinc-700 rounded text-zinc-200 disabled:opacity-40"
-                                                    >
-                                                        Pin
-                                                    </button>
-                                                    {inQueue && (
-                                                        <button
-                                                            onClick={() => removeAdminBroadcast(entry.id)}
-                                                            disabled={!canUseStageAlert}
-                                                            className="px-1.5 py-0.5 text-[9px] font-bold border border-rose-900/70 rounded text-rose-300 disabled:opacity-40"
-                                                        >
-                                                            Remove
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="bg-black/20 rounded-lg p-2 border border-zinc-800/50">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Pastor Message Center (Stage Only)</span>
-                        <span className={`text-[9px] font-black uppercase tracking-widest ${canUseStageAlert ? 'text-emerald-400' : 'text-rose-400'}`}>
-                            Admin allowlisted: {canUseStageAlert ? 'Yes' : 'No'}
-                        </span>
-                    </div>
-                    <div className="mb-2 grid grid-cols-3 gap-1">
-                        {(['urgent', 'timing', 'logistics'] as StageMessageCategory[]).map((cat) => (
-                            <button
-                                key={cat}
-                                onClick={() => setStageCategory(cat)}
-                                className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border ${stageCategory === cat ? 'bg-blue-600/20 border-blue-500/40 text-blue-300' : 'bg-zinc-900 border-zinc-800 text-zinc-400'}`}
-                            >
-                                {cat}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="mb-2 flex flex-wrap gap-1.5">
-                        {stageTemplates[stageCategory].map((template) => (
-                            <button
-                                key={template.key}
-                                onClick={() => handleStageTemplate(template.label)}
-                                disabled={!canUseStageAlert}
-                                className="px-2 py-1 rounded-md text-[10px] font-bold border border-zinc-700 text-zinc-300 hover:border-amber-500/60 hover:text-amber-200 disabled:opacity-40"
-                            >
-                                {template.label}
-                            </button>
-                        ))}
-                    </div>
-                    <textarea
-                        rows={2}
-                        value={stageAlertDraft}
-                        onChange={(e) => setStageAlertDraft(e.target.value)}
-                        placeholder={canUseStageAlert ? "Send private alert to stage display..." : "Only allowlisted admin can send stage alerts."}
-                        disabled={!canUseStageAlert}
-                        className="w-full bg-zinc-900 border border-zinc-800 rounded-md p-2 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-amber-600 disabled:opacity-60 resize-none"
-                    />
-                    <div className="mt-2 grid grid-cols-2 gap-2">
-                        <button
-                            onClick={() => {
-                                const text = stageAlertDraft.trim();
-                                if (!text) return;
-                                onQueueStageMessage({ text, category: stageCategory, priority: stageCategory === 'urgent' ? 'high' : 'normal' });
-                                setStageAlertDraft('');
-                            }}
-                            disabled={!canUseStageAlert || !stageAlertDraft.trim()}
-                            className="px-3 py-1.5 rounded-md text-[10px] font-bold border border-zinc-700 text-zinc-200 disabled:opacity-40 hover:border-zinc-600"
-                        >
-                            QUEUE
-                        </button>
-                        <button
-                            onClick={() => {
-                                const text = stageAlertDraft.trim();
-                                if (!text) return;
-                                onSendStageMessageNow({ text, category: stageCategory, priority: stageCategory === 'urgent' ? 'high' : 'normal' });
-                                setStageAlertDraft('');
-                            }}
-                            disabled={!canUseStageAlert || !stageAlertDraft.trim()}
-                            className="px-3 py-1.5 rounded-md text-[10px] font-bold border border-transparent bg-amber-600 text-white disabled:opacity-40"
-                        >
-                            SEND NOW
-                        </button>
-                    </div>
-                    <div className="mt-2 flex items-center justify-end gap-2">
-                        <button
-                            onClick={() => {
-                                setStageAlertDraft('');
-                                onClearStageAlert();
-                            }}
-                            disabled={!canUseStageAlert || !stageAlert?.active}
-                            className="px-3 py-1.5 rounded-md text-[10px] font-bold border border-zinc-700 text-zinc-400 disabled:opacity-40 hover:border-zinc-600"
-                        >
-                            CLEAR ACTIVE
-                        </button>
-                        <button
-                            onClick={() => onSendStageAlert(stageAlertDraft)}
-                            disabled={!canUseStageAlert || !stageAlertDraft.trim()}
-                            className="px-3 py-1.5 rounded-md text-[10px] font-bold border border-zinc-700 text-zinc-300 disabled:opacity-40"
-                        >
-                            LEGACY SEND
-                        </button>
-                    </div>
-                    {stageQueue.length > 0 && (
-                        <div className="mt-2 border border-zinc-800 rounded-md p-2 bg-zinc-900/40">
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
-                                    Queue {activeStageIdx >= 0 ? `${activeStageIdx + 1}/${stageQueue.length}` : `0/${stageQueue.length}`}
-                                </span>
-                            </div>
-                            <div className="space-y-1.5 max-h-28 overflow-y-auto custom-scrollbar">
-                                {stageQueue.map((entry) => (
-                                    <div key={entry.id} className={`p-1.5 rounded border ${entry.id === activeStageId ? 'border-amber-500/60 bg-amber-900/20' : 'border-zinc-800 bg-zinc-950/60'}`}>
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div className="min-w-0">
-                                                <div className="text-[9px] uppercase tracking-wider font-bold text-zinc-400">
-                                                    {entry.category} {entry.priority === 'high' ? '• HIGH' : ''}
-                                                </div>
-                                                <div className="text-[11px] text-zinc-200 truncate">{entry.text}</div>
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                {entry.id !== activeStageId && (
-                                                    <button
-                                                        onClick={() => onPromoteStageMessage(entry.id)}
-                                                        className="px-1.5 py-0.5 text-[9px] font-bold border border-zinc-700 rounded text-zinc-200"
-                                                    >
-                                                        Promote
-                                                    </button>
-                                                )}
-                                                <button
-                                                    onClick={() => onRemoveQueuedStageMessage(entry.id)}
-                                                    className="px-1.5 py-0.5 text-[9px] font-bold border border-rose-900/70 rounded text-rose-300"
-                                                >
-                                                    Remove
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Message List */}
-            <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 pb-24 md:pb-4 space-y-3 custom-scrollbar">
-                {messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-64 opacity-20">
-                        <ChatIcon className="w-12 h-12 mb-4" />
-                        <p className="text-xs uppercase tracking-[0.2em]">No messages found</p>
-                    </div>
-                ) : (
-                    messages.map(msg => {
-                        const config = CAT_CONFIG[msg.category];
-                        const Icon = config.icon;
-
-                        return (
-                            <div
-                                key={msg.id}
-                                className={`group relative bg-zinc-900/40 border ${config.border} rounded-xl p-4 transition-all hover:bg-zinc-900/60 overflow-hidden animate-in slide-in-from-bottom-2 duration-300`}
-                            >
-                                {/* Background Decor */}
-                                <div className={`absolute -right-4 -bottom-4 opacity-[0.03] transition-opacity group-hover:opacity-[0.07]`}>
-                                    <Icon className="w-32 h-32" />
-                                </div>
-
-                                <div className="relative z-10">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-2">
-                                            <div className={`p-1.5 rounded-lg ${config.bg}`}>
-                                                <Icon className={`w-4 h-4 ${config.color}`} />
-                                            </div>
-                                            <span className={`text-[10px] font-black uppercase tracking-wider ${config.color}`}>
-                                                {config.label}
-                                            </span>
-                                            {msg.submitter_name && (
-                                                <>
-                                                    <span className="text-zinc-700 text-[10px]">•</span>
-                                                    <span className="text-[10px] font-bold text-zinc-400 capitalize">
-                                                        {msg.submitter_name}
-                                                    </span>
-                                                </>
-                                            )}
-                                        </div>
-                                        <div className="text-[9px] text-zinc-600 font-mono">
-                                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </div>
-                                    </div>
-
-                                    <p className="text-sm text-zinc-200 leading-relaxed font-medium mb-4 pr-12">
-                                        "{msg.text}"
-                                    </p>
-
-                                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                                        <div className="flex gap-2 flex-wrap">
-                                            {msg.status === 'pending' && (
-                                                <button
-                                                    onClick={() => handleStatusUpdate(msg.id, 'approved')}
-                                                    className="flex items-center gap-1.5 bg-zinc-800 hover:bg-emerald-600/20 text-emerald-500 border border-zinc-700 hover:border-emerald-500/30 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all active:scale-95"
-                                                >
-                                                    <CheckIcon className="w-3.5 h-3.5" />
-                                                    APPROVE
-                                                </button>
-                                            )}
-
-                                            {(msg.status === 'pending' || msg.status === 'approved' || msg.status === 'projected') && (
-                                                <button
-                                                    onClick={() => handleStatusUpdate(msg.id, 'projected')}
-                                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all active:scale-95 border ${msg.status === 'projected'
-                                                        ? 'bg-amber-600 text-white border-transparent animate-pulse'
-                                                        : 'bg-zinc-800 hover:bg-blue-600/20 text-blue-500 border-zinc-700 hover:border-blue-500/30'
-                                                        }`}
-                                                >
-                                                    <PlayIcon className="w-3.5 h-3.5" />
-                                                    {msg.status === 'projected' ? 'PROJECTING...' : 'PROJECT NOW'}
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        <div className="flex gap-1.5">
-                                            {msg.status !== 'dismissed' && (
-                                                <button
-                                                    onClick={() => handleStatusUpdate(msg.id, 'dismissed')}
-                                                    className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-500 hover:text-zinc-300 rounded-lg transition-all active:scale-90"
-                                                    title="Dismiss"
-                                                >
-                                                    <XIcon className="w-3.5 h-3.5" />
-                                                </button>
-                                            )}
-                                            <button
-                                                onClick={() => handleDelete(msg.id)}
-                                                className="p-1.5 bg-zinc-800 hover:bg-rose-950/40 text-rose-900 hover:text-rose-500 rounded-lg transition-all active:scale-90"
-                                                title="Delete"
-                                            >
-                                                <TrashIcon className="w-3.5 h-3.5" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })
-                )}
+            {mode === 'broadcast' && (
+                <BroadcastPanel
+                    canUseStageAlert={canUseStageAlert}
+                    broadcastCategory={broadcastCategory}
+                    onBroadcastCategoryChange={setBroadcastCategory}
+                    broadcastDraft={broadcastDraft}
+                    onBroadcastDraftChange={setBroadcastDraft}
+                    broadcastHistory={broadcastHistory}
+                    displayState={displayState}
+                    adminBroadcastQueue={adminBroadcastQueue}
+                    onPushBroadcast={pushBroadcastToAudience}
+                    onResendFromHistory={resendFromHistory}
+                    onRemoveAdminBroadcast={removeAdminBroadcast}
+                    onRemoveAllAdminBroadcasts={removeAllAdminBroadcasts}
+                />
+            )}
             </div>
 
             <style>{`
@@ -821,6 +440,8 @@ export const AudienceStudio: React.FC<AudienceStudioProps> = ({
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #444; }
+        @keyframes modeFadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-mode-fade { animation: modeFadeIn 140ms ease-out; }
       `}</style>
         </div>
     );
