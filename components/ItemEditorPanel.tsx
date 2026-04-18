@@ -7,6 +7,13 @@ import { searchPexelsMotion } from '../services/serverApi';
 import type { RemoteMotionAsset } from '../services/serverApi';
 import { MotionCanvas } from './MotionCanvas';
 import { isMotionUrl } from '../services/motionEngine';
+import { Tooltip } from './ui';
+
+const DEFAULT_TITLE_RE = /^(new item|untitled|new slide|new song|new sermon)$/i;
+const isDefaultItemTitle = (title: string): boolean => {
+  const trimmed = title.trim();
+  return trimmed.length === 0 || DEFAULT_TITLE_RE.test(trimmed);
+};
 
 const BG_PRESETS = [
   { label: 'Worship',     query: 'worship background' },
@@ -304,13 +311,45 @@ export const ItemEditorPanel: React.FC<ItemEditorPanelProps> = ({ item, onUpdate
     <div className="bg-zinc-950 border-b border-zinc-900 p-3 flex flex-col gap-3">
       {/* Title Editor */}
       <div className="flex-1">
-        <input 
-          type="text" 
-          value={item.title}
-          onChange={(e) => updateTitle(e.target.value)}
-          className="bg-zinc-900 text-lg font-bold text-zinc-200 focus:outline-none border border-zinc-800 focus:border-blue-600 w-full px-3 py-1.5 rounded-sm placeholder-zinc-700 transition-colors"
-          placeholder="Item Title"
-        />
+        <div className="flex items-center gap-1.5 mb-1 px-1">
+          <span className="text-[8px] text-zinc-500 font-black uppercase tracking-widest">
+            Run Sheet Item Name
+          </span>
+          {isDefaultItemTitle(item.title) && (
+            <span
+              aria-hidden="true"
+              className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_6px_rgba(251,191,36,0.6)]"
+            />
+          )}
+        </div>
+        <Tooltip
+          variant="info"
+          placement="bottom"
+          content={
+            isDefaultItemTitle(item.title)
+              ? 'Give this item a clear name so it\u2019s easy to find later \u2014 e.g. \u201CWelcome\u201D, \u201CSermon \u2014 Title\u201D, \u201CClosing Prayer\u201D.'
+              : 'Click to rename this item. A clear name makes your Run Sheet easier to scan.'
+          }
+        >
+          <input
+            type="text"
+            value={item.title}
+            onChange={(e) => updateTitle(e.target.value)}
+            title={
+              isDefaultItemTitle(item.title)
+                ? 'Rename this item \u2014 e.g. \u201CWelcome\u201D, \u201CSermon \u2014 Title\u201D'
+                : 'Rename this item'
+            }
+            aria-label="Run Sheet item name"
+            data-testid="item-editor-title-input"
+            className={`bg-zinc-900 text-lg font-bold text-zinc-200 focus:outline-none border w-full px-3 py-1.5 rounded-sm placeholder-zinc-700 transition-colors focus:border-blue-600 ${
+              isDefaultItemTitle(item.title)
+                ? 'border-amber-500/40 focus:border-amber-400'
+                : 'border-zinc-800'
+            }`}
+            placeholder="Item Title — e.g. Welcome, Sermon, Closing Prayer"
+          />
+        </Tooltip>
       </div>
 
       {/* Theme Controls Bar */}

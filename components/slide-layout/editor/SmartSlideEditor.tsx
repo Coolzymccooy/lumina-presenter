@@ -1,12 +1,14 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { LayoutPreset, Slide, SlideEditorTool, SlideElement, TextSlideElement, ServiceItem } from '../../../types.ts';
+import { LayoutPreset, Slide, SlideEditorTool, SlideElement, TextElementStyle, TextSlideElement, ServiceItem } from '../../../types.ts';
 import { layoutPresets, getLayoutPreset } from '../presets/index.ts';
 import { buildStructuredSlide, createTextElement, getRenderableElements, summarizeElementsToLegacyContent } from '../utils/slideHydration.ts';
 import { SlideThumbnailsPanel } from './SlideThumbnailsPanel.tsx';
 import { SlideCanvas } from './SlideCanvas.tsx';
 import { InspectorPanel } from './InspectorPanel.tsx';
 import { EditorToolbar } from './EditorToolbar.tsx';
+import { FindReplaceModal, FindReplaceMode } from './FindReplaceModal.tsx';
+import { SpeakerNotesDrawer } from './SpeakerNotesDrawer.tsx';
 import { bringElementForward, sendElementBackward } from '../utils/selectionMath.ts';
 import { saveMedia } from '../../../services/localMedia.ts';
 import { uploadWorkspaceMedia, type ActorLike } from '../../../services/serverApi.ts';
@@ -165,12 +167,33 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
   const [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [slideClipboard, setSlideClipboard] = useState<Slide | null>(() => readStoredSlideClipboard());
   const [editorNotice, setEditorNotice] = useState('');
-  const [presetsCollapsed, setPresetsCollapsed] = useState(false);
+  const [presetsCollapsed, setPresetsCollapsed] = useState(true);
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
+  const [undoStack, setUndoStack] = useState<Slide[][]>([]);
+  const [redoStack, setRedoStack] = useState<Slide[][]>([]);
+  const [zoom, setZoom] = useState<number>(1);
+  const [findReplaceOpen, setFindReplaceOpen] = useState(false);
+  const [findReplaceMode, setFindReplaceMode] = useState<FindReplaceMode>('find');
+  const [findQuery, setFindQuery] = useState('');
+  const [findReplacement, setFindReplacement] = useState('');
+  const [findMatchCase, setFindMatchCase] = useState(false);
+  const [findMatchIndex, setFindMatchIndex] = useState(0);
+  const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
+  const [paintSource, setPaintSource] = useState<{ style: TextElementStyle; sourceId: string } | null>(null);
   const uploadRef = useRef<HTMLInputElement | null>(null);
   const folderUploadRef = useRef<HTMLInputElement | null>(null);
+  const imageInsertRef = useRef<HTMLInputElement | null>(null);
+  const videoInsertRef = useRef<HTMLInputElement | null>(null);
+  const logoInsertRef = useRef<HTMLInputElement | null>(null);
   const pptxVisualRef = useRef<HTMLInputElement | null>(null);
   const pptxTextRef = useRef<HTMLInputElement | null>(null);
   const pendingAsyncTaskCountRef = useRef(0);
+  const prevSlidesRef = useRef<Slide[]>([]);
+  const pendingSnapshotRef = useRef<Slide[] | null>(null);
+  const isRestoringRef = useRef<boolean>(false);
+  const snapshotTimerRef = useRef<number | null>(null);
+  const HISTORY_LIMIT = 50;
+  const SNAPSHOT_DEBOUNCE_MS = 350;
 
   useEffect(() => {
     if (!isOpen || !item) return;
@@ -194,10 +217,60 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
     setPptxError(null);
     setPptxStatus('');
     setEditorNotice('');
-    setPresetsCollapsed(window.innerWidth < 1500 || window.innerHeight < 860);
+    setPresetsCollapsed(true);
+    setInspectorCollapsed(false);
     pendingAsyncTaskCountRef.current = 0;
     setPendingAsyncTaskCount(0);
+    setUndoStack([]);
+    setRedoStack([]);
+    setZoom(1);
+    setFindReplaceOpen(false);
+    setFindReplaceMode('find');
+    setFindQuery('');
+    setFindReplacement('');
+    setFindMatchCase(false);
+    setFindMatchIndex(0);
+    setNotesDrawerOpen(false);
+    setPaintSource(null);
+    prevSlidesRef.current = nextSlides;
+    pendingSnapshotRef.current = null;
+    isRestoringRef.current = false;
+    if (snapshotTimerRef.current) {
+      window.clearTimeout(snapshotTimerRef.current);
+      snapshotTimerRef.current = null;
+    }
   }, [isOpen, item, initialSlideId, mode]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (isRestoringRef.current) {
+      isRestoringRef.current = false;
+      prevSlidesRef.current = slides;
+      return;
+    }
+    const previousSlides = prevSlidesRef.current;
+    if (!previousSlides.length) {
+      prevSlidesRef.current = slides;
+      return;
+    }
+    if (previousSlides === slides) return;
+    if (!pendingSnapshotRef.current) {
+      pendingSnapshotRef.current = previousSlides;
+    }
+    prevSlidesRef.current = slides;
+    if (snapshotTimerRef.current) window.clearTimeout(snapshotTimerRef.current);
+    snapshotTimerRef.current = window.setTimeout(() => {
+      const toSnapshot = pendingSnapshotRef.current;
+      pendingSnapshotRef.current = null;
+      snapshotTimerRef.current = null;
+      if (!toSnapshot) return;
+      setUndoStack((stack) => {
+        const next = [...stack, toSnapshot];
+        return next.length > HISTORY_LIMIT ? next.slice(next.length - HISTORY_LIMIT) : next;
+      });
+      setRedoStack([]);
+    }, SNAPSHOT_DEBOUNCE_MS);
+  }, [slides, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -223,7 +296,7 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
   const shouldStackInspector = viewport.width < 1180;
   const presetsColumnWidth = presetsCollapsed ? '3.5rem' : viewport.width < 1440 ? '11rem' : '13rem';
   const slidesColumnWidth = viewport.width < 1440 ? '7rem' : '7.5rem';
-  const inspectorColumnWidth = viewport.width < 1440 ? '17rem' : '18.5rem';
+  const inspectorColumnWidth = inspectorCollapsed ? '2.25rem' : viewport.width < 1440 ? '17rem' : '18.5rem';
 
   useEffect(() => {
     if (!currentSlide) {
@@ -281,6 +354,223 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
     });
     activateSlide(nextSlide);
     setEditorNotice(notice);
+  };
+
+  const handleUndo = () => {
+    if (snapshotTimerRef.current) {
+      window.clearTimeout(snapshotTimerRef.current);
+      snapshotTimerRef.current = null;
+    }
+    const pending = pendingSnapshotRef.current;
+    pendingSnapshotRef.current = null;
+    const effectiveStack = pending ? [...undoStack, pending] : undoStack;
+    if (effectiveStack.length === 0) return;
+    const target = effectiveStack[effectiveStack.length - 1];
+    const nextUndo = effectiveStack.slice(0, -1);
+    setUndoStack(nextUndo);
+    setRedoStack((redo) => {
+      const next = [...redo, prevSlidesRef.current];
+      return next.length > HISTORY_LIMIT ? next.slice(next.length - HISTORY_LIMIT) : next;
+    });
+    isRestoringRef.current = true;
+    prevSlidesRef.current = target;
+    setSlides(target);
+    if (!target.some((slide) => slide.id === currentSlideId)) {
+      activateSlide(target[0] || null);
+    }
+    setEditorNotice('Undid last change.');
+  };
+
+  const handleRedo = () => {
+    if (snapshotTimerRef.current) {
+      window.clearTimeout(snapshotTimerRef.current);
+      snapshotTimerRef.current = null;
+    }
+    if (redoStack.length === 0) return;
+    const target = redoStack[redoStack.length - 1];
+    const nextRedo = redoStack.slice(0, -1);
+    setRedoStack(nextRedo);
+    setUndoStack((undo) => {
+      const next = [...undo, prevSlidesRef.current];
+      return next.length > HISTORY_LIMIT ? next.slice(next.length - HISTORY_LIMIT) : next;
+    });
+    isRestoringRef.current = true;
+    prevSlidesRef.current = target;
+    setSlides(target);
+    if (!target.some((slide) => slide.id === currentSlideId)) {
+      activateSlide(target[0] || null);
+    }
+    setEditorNotice('Redid change.');
+  };
+
+  const ZOOM_MIN = 0.25;
+  const ZOOM_MAX = 4;
+  const ZOOM_STEPS: number[] = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
+  const clampZoomValue = (value: number): number => {
+    if (!Number.isFinite(value)) return 1;
+    return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(value * 100) / 100));
+  };
+  const handleSetZoom = (value: number) => setZoom(clampZoomValue(value));
+  const handleZoomIn = () => {
+    setZoom((current) => {
+      const next = ZOOM_STEPS.find((step) => step > current + 0.001);
+      return clampZoomValue(next ?? ZOOM_MAX);
+    });
+  };
+  const handleZoomOut = () => {
+    setZoom((current) => {
+      const reversed = [...ZOOM_STEPS].reverse();
+      const next = reversed.find((step) => step < current - 0.001);
+      return clampZoomValue(next ?? ZOOM_MIN);
+    });
+  };
+  const handleZoomReset = () => setZoom(1);
+
+  interface FindMatch {
+    slideId: string;
+    elementId: string;
+    start: number;
+    end: number;
+  }
+
+  const findMatches = useMemo<FindMatch[]>(() => {
+    const query = findQuery;
+    if (!query) return [];
+    const needle = findMatchCase ? query : query.toLowerCase();
+    if (!needle) return [];
+    const results: FindMatch[] = [];
+    for (const slide of slides) {
+      const elements = getRenderableElements(slide, item);
+      for (const element of elements) {
+        if (element.type !== 'text') continue;
+        const haystack = String(element.content || '');
+        if (!haystack) continue;
+        const target = findMatchCase ? haystack : haystack.toLowerCase();
+        let offset = 0;
+        while (offset <= target.length - needle.length) {
+          const idx = target.indexOf(needle, offset);
+          if (idx < 0) break;
+          results.push({ slideId: slide.id, elementId: element.id, start: idx, end: idx + needle.length });
+          offset = idx + Math.max(1, needle.length);
+        }
+      }
+    }
+    return results;
+  }, [slides, findQuery, findMatchCase, item]);
+
+  useEffect(() => {
+    if (findMatches.length === 0) {
+      if (findMatchIndex !== 0) setFindMatchIndex(0);
+      return;
+    }
+    if (findMatchIndex >= findMatches.length) {
+      setFindMatchIndex(findMatches.length - 1);
+    }
+  }, [findMatches, findMatchIndex]);
+
+  useEffect(() => {
+    if (!paintSource) return;
+    if (!selectedElement || selectedElement.type !== 'text') return;
+    if (selectedElement.id === paintSource.sourceId) return;
+    const targetId = selectedElement.id;
+    const capturedStyle = paintSource.style;
+    updateCurrentSlide((slide) => ({
+      ...slide,
+      elements: getRenderableElements(slide, item).map((element) => {
+        if (element.id !== targetId || element.type !== 'text') return element;
+        return { ...element, style: { ...capturedStyle } };
+      }),
+    }));
+    setPaintSource(null);
+    setEditorNotice('Formatting applied.');
+  }, [selectedElement, paintSource, item]);
+
+  const handleOpenFind = () => {
+    setFindReplaceMode('find');
+    setFindReplaceOpen(true);
+  };
+
+  const handleOpenReplace = () => {
+    setFindReplaceMode('replace');
+    setFindReplaceOpen(true);
+  };
+
+  const handleCloseFindReplace = () => {
+    setFindReplaceOpen(false);
+  };
+
+  const handleFindNavigate = (direction: -1 | 1) => {
+    if (findMatches.length === 0) return;
+    const next = (findMatchIndex + direction + findMatches.length) % findMatches.length;
+    setFindMatchIndex(next);
+    const match = findMatches[next];
+    if (!match) return;
+    if (match.slideId !== currentSlideId) {
+      setCurrentSlideId(match.slideId);
+    }
+    setSelectedElementId(match.elementId);
+  };
+
+  const escapeFindRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const handleReplaceCurrent = () => {
+    if (findMatches.length === 0 || !findQuery) return;
+    const match = findMatches[findMatchIndex];
+    if (!match) return;
+    updateSlides((current) => current.map((slide) => {
+      if (slide.id !== match.slideId) return slide;
+      const elements = getRenderableElements(slide, item);
+      const nextElements = elements.map((element) => {
+        if (element.id !== match.elementId || element.type !== 'text') return element;
+        const content = String(element.content || '');
+        if (match.end > content.length) return element;
+        const before = content.slice(0, match.start);
+        const after = content.slice(match.end);
+        return { ...element, content: `${before}${findReplacement}${after}` };
+      });
+      return { ...slide, elements: nextElements };
+    }));
+    setEditorNotice('Replaced match.');
+  };
+
+  const handleReplaceAll = () => {
+    if (!findQuery || findMatches.length === 0) return;
+    const flags = findMatchCase ? 'g' : 'gi';
+    const pattern = new RegExp(escapeFindRegex(findQuery), flags);
+    const count = findMatches.length;
+    updateSlides((current) => current.map((slide) => {
+      const elements = getRenderableElements(slide, item);
+      const nextElements = elements.map((element) => {
+        if (element.type !== 'text') return element;
+        const content = String(element.content || '');
+        if (!content) return element;
+        const replaced = content.replace(pattern, findReplacement);
+        if (replaced === content) return element;
+        return { ...element, content: replaced };
+      });
+      return { ...slide, elements: nextElements };
+    }));
+    setEditorNotice(`Replaced ${count} match${count === 1 ? '' : 'es'}.`);
+  };
+
+  const handleToggleNotes = () => setNotesDrawerOpen((current) => !current);
+  const handleCloseNotes = () => setNotesDrawerOpen(false);
+  const handleNotesChange = (value: string) => {
+    updateCurrentSlide((slide) => ({ ...slide, notes: value }));
+  };
+
+  const handleTogglePaintFormat = () => {
+    if (paintSource) {
+      setPaintSource(null);
+      setEditorNotice('Format painter cancelled.');
+      return;
+    }
+    if (!selectedElement || selectedElement.type !== 'text') {
+      setEditorNotice('Select a text block first to copy its formatting.');
+      return;
+    }
+    setPaintSource({ style: { ...selectedElement.style }, sourceId: selectedElement.id });
+    setEditorNotice('Format painter armed — pick a text block to apply the formatting.');
   };
 
   const updateElement = (elementId: string, updater: (element: TextSlideElement) => TextSlideElement) => {
@@ -385,6 +675,76 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
     updateCurrentSlide((slide) => ({ ...slide, elements: [...getRenderableElements(slide, item), nextElement] }));
     setSelectedElementId(nextElement.id);
     setActiveTool('select');
+  };
+
+  const handleInsertShape = () => {
+    if (!currentSlide) return;
+    const nextElement = createTextElement({
+      name: 'Shape',
+      role: 'body',
+      content: '',
+      frame: {
+        x: 0.35,
+        y: 0.35,
+        width: 0.3,
+        height: 0.2,
+        zIndex: getRenderableElements(currentSlide, item).length + 1,
+      },
+      item,
+      style: { backgroundColor: '#3b82f6', borderRadius: 8, fontSize: 24 },
+    });
+    updateCurrentSlide((slide) => ({ ...slide, elements: [...getRenderableElements(slide, item), nextElement] }));
+    setSelectedElementId(nextElement.id);
+    setActiveTool('select');
+    setEditorNotice('Shape inserted — drag to reposition, resize, or recolor.');
+  };
+
+  const handleInsertImage = () => {
+    imageInsertRef.current?.click();
+  };
+
+  const handleInsertVideo = () => {
+    videoInsertRef.current?.click();
+  };
+
+  const handleInsertLogo = () => {
+    logoInsertRef.current?.click();
+  };
+
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const MAX_LOGO_SIZE_MB = 10;
+    const files = Array.from(event.target.files || []);
+    event.target.value = '';
+    const file = files[0];
+    if (!file || !currentSlide) return;
+    setUploadError(null);
+
+    if (!/^image\//i.test(file.type)) {
+      setUploadError('Logo must be an image file (PNG, JPG, SVG, WebP).');
+      return;
+    }
+    if (file.size > MAX_LOGO_SIZE_MB * 1024 * 1024) {
+      setUploadError(`Logo exceeds ${MAX_LOGO_SIZE_MB}MB limit.`);
+      return;
+    }
+
+    beginAsyncTask();
+    setIsUploading(true);
+    try {
+      const logoUrl = await persistUploadedMedia(file);
+      updateCurrentSlide((slide) => ({
+        ...slide,
+        logoUrl,
+        logoPosition: slide.logoPosition || 'bottom-right',
+        logoSize: slide.logoSize || 12,
+      }));
+      setEditorNotice('Logo added — resize or reposition from the inspector.');
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Failed to add logo.');
+    } finally {
+      setIsUploading(false);
+      endAsyncTask();
+    }
   };
 
   const handleDuplicateElement = () => {
@@ -550,7 +910,12 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
     try {
       const importedSlides = await importer(file);
       const structuredSlides = importedSlides.map((slide) => buildStructuredSlide(cloneSlide(slide), item));
-      setSlides((current) => [...current, ...structuredSlides]);
+      setSlides((current) => {
+        // Drop the empty "add mode" draft so imports replace it rather than
+        // leave a phantom blank slide alongside the freshly imported deck.
+        const withoutDraft = current.filter((s) => !isDefaultSingleDraft(s, item));
+        return [...withoutDraft, ...structuredSlides];
+      });
       const firstImported = structuredSlides[0] || null;
       activateSlide(firstImported);
       setPptxStatus(`${structuredSlides.length} slide(s) imported.`);
@@ -604,6 +969,31 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
       if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
       const shortcut = event.ctrlKey || event.metaKey;
       const key = event.key.toLowerCase();
+      if (shortcut && key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        handleUndo();
+        return;
+      }
+      if (shortcut && (key === 'y' || (key === 'z' && event.shiftKey))) {
+        event.preventDefault();
+        handleRedo();
+        return;
+      }
+      if (shortcut && (key === '=' || key === '+')) {
+        event.preventDefault();
+        handleZoomIn();
+        return;
+      }
+      if (shortcut && (key === '-' || key === '_')) {
+        event.preventDefault();
+        handleZoomOut();
+        return;
+      }
+      if (shortcut && key === '0') {
+        event.preventDefault();
+        handleZoomReset();
+        return;
+      }
       if (shortcut && key === 'c') {
         event.preventDefault();
         handleCopySlide(currentSlide.id);
@@ -619,6 +1009,57 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
         handleDuplicateSlide(currentSlide.id);
         return;
       }
+      if (shortcut && key === 'f') {
+        event.preventDefault();
+        handleOpenFind();
+        return;
+      }
+      if (shortcut && key === 'h') {
+        event.preventDefault();
+        handleOpenReplace();
+        return;
+      }
+      if (shortcut && event.shiftKey && key === 'n') {
+        event.preventDefault();
+        handleToggleNotes();
+        return;
+      }
+      if (shortcut && event.shiftKey && key === 'p') {
+        event.preventDefault();
+        handleTogglePaintFormat();
+        return;
+      }
+      if (shortcut && key === 't' && !event.shiftKey) {
+        event.preventDefault();
+        handleAddTextBlock();
+        return;
+      }
+      if (!shortcut && !event.shiftKey && !event.altKey && key === 'v') {
+        event.preventDefault();
+        setActiveTool('select');
+        return;
+      }
+      if (!shortcut && !event.shiftKey && !event.altKey && key === 't') {
+        event.preventDefault();
+        setActiveTool('add-text');
+        return;
+      }
+      if (event.key === 'Escape' && findReplaceOpen) {
+        event.preventDefault();
+        handleCloseFindReplace();
+        return;
+      }
+      if (event.key === 'Escape' && notesDrawerOpen) {
+        event.preventDefault();
+        handleCloseNotes();
+        return;
+      }
+      if (event.key === 'Escape' && paintSource) {
+        event.preventDefault();
+        setPaintSource(null);
+        setEditorNotice('Format painter cancelled.');
+        return;
+      }
       if ((event.key === 'Delete' || event.key === 'Backspace') && !selectedElement) {
         event.preventDefault();
         handleDeleteSlide(currentSlide.id);
@@ -626,7 +1067,7 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [currentSlide, isOpen, selectedElement, slideClipboard, slides]);
+  }, [currentSlide, isOpen, selectedElement, slideClipboard, slides, undoStack, redoStack, zoom, findReplaceOpen, findMatches, findMatchIndex, notesDrawerOpen, paintSource]);
 
   if (!isOpen || !item) return null;
 
@@ -637,7 +1078,16 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
   };
   const handleConfirmSave = () => {
     if (pendingAsyncTaskCountRef.current > 0) return;
-    onSaveSlides(slides.map((slide) => buildStructuredSlide(slide, item)), currentSlideId);
+    // Strip any untouched default draft so we don't persist a phantom blank
+    // slide when the user has real content alongside it. Keep the draft if
+    // it's the only slide (user explicitly wants a blank slide).
+    const pruned = slides.length > 1
+      ? slides.filter((slide) => !isDefaultSingleDraft(slide, item))
+      : slides;
+    const nextCurrentId = pruned.some((s) => s.id === currentSlideId)
+      ? currentSlideId
+      : pruned[0]?.id || currentSlideId;
+    onSaveSlides(pruned.map((slide) => buildStructuredSlide(slide, item)), nextCurrentId);
   };
 
   const presetsColumn = (
@@ -690,24 +1140,30 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
 
   const canvasAndToolbar = (
     <div className="relative z-0 flex min-w-0 min-h-0 flex-col overflow-hidden bg-zinc-950" data-testid="smart-editor-canvas-shell">
-      <div className="border-b border-zinc-800 px-3 py-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-[12rem]">
-            <div className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500">Canvas</div>
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              <div className="text-sm font-semibold text-zinc-100">{currentSlide?.label || 'New Slide'}</div>
-              <span className="rounded border border-zinc-800 bg-zinc-900 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-zinc-400">
-                {getLayoutPreset(currentSlide?.layoutType || 'single').label}
-              </span>
-            </div>
+      <div className="border-b border-zinc-800 px-3 py-1.5">
+        <div className="flex flex-nowrap items-center gap-2">
+          <div
+            className="inline-flex shrink-0 items-center gap-1.5 rounded border border-zinc-800 bg-zinc-900/70 px-1.5 py-1"
+            title={`${currentSlide?.label || 'New Slide'} · ${getLayoutPreset(currentSlide?.layoutType || 'single').label}`}
+          >
+            <span className="max-w-[6rem] truncate text-[10px] font-semibold text-zinc-100">
+              {currentSlide?.label || 'New Slide'}
+            </span>
+            <span className="rounded bg-zinc-950 px-1 py-0.5 text-[8px] font-bold uppercase tracking-[0.12em] text-zinc-400">
+              {getLayoutPreset(currentSlide?.layoutType || 'single').label}
+            </span>
           </div>
           <EditorToolbar
             canActOnSlide={!!currentSlide}
             canDeleteSlide={slides.length > 1}
             canPasteSlide={!!slideClipboard}
             canActOnElement={!!selectedElement}
+            canUndo={undoStack.length > 0 || pendingSnapshotRef.current !== null}
+            canRedo={redoStack.length > 0}
             activeTool={activeTool}
             onSetTool={setActiveTool}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
             onCopySlide={() => currentSlide && handleCopySlide(currentSlide.id)}
             onPasteSlide={() => handlePasteSlide(currentSlideId)}
             onDuplicateSlide={() => currentSlide && handleDuplicateSlide(currentSlide.id)}
@@ -724,10 +1180,52 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
             showSafeArea={showSafeArea}
             onToggleGrid={() => setShowGrid((current) => !current)}
             onToggleSafeArea={() => setShowSafeArea((current) => !current)}
+            zoom={zoom}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onZoomReset={handleZoomReset}
+            onZoomChange={handleSetZoom}
+            onOpenFind={handleOpenFind}
+            onOpenReplace={handleOpenReplace}
+            onToggleNotes={handleToggleNotes}
+            onTogglePaintFormat={handleTogglePaintFormat}
+            paintFormatArmed={!!paintSource}
+            onInsertShape={handleInsertShape}
+            onInsertImage={handleInsertImage}
+            onInsertVideo={handleInsertVideo}
+            onInsertLogo={handleInsertLogo}
+            selectedTextElement={selectedElement && selectedElement.type === 'text' ? selectedElement : null}
+            onUpdateTextElement={updateElement}
           />
         </div>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col px-3 py-3">
+      {findReplaceOpen ? (
+        <FindReplaceModal
+          mode={findReplaceMode}
+          query={findQuery}
+          replacement={findReplacement}
+          matchCase={findMatchCase}
+          matchCount={findMatches.length}
+          currentIndex={findMatchIndex}
+          onQueryChange={setFindQuery}
+          onReplacementChange={setFindReplacement}
+          onMatchCaseChange={setFindMatchCase}
+          onNavigate={handleFindNavigate}
+          onReplaceCurrent={handleReplaceCurrent}
+          onReplaceAll={handleReplaceAll}
+          onSwitchMode={setFindReplaceMode}
+          onClose={handleCloseFindReplace}
+        />
+      ) : null}
+      {notesDrawerOpen ? (
+        <SpeakerNotesDrawer
+          slideLabel={currentSlide?.label || 'Current slide'}
+          notes={currentSlide?.notes || ''}
+          onNotesChange={handleNotesChange}
+          onClose={handleCloseNotes}
+        />
+      ) : null}
+      <div className="flex min-h-0 flex-1 flex-col px-3 py-2">
         <div className="min-h-0 flex-1">
           <SlideCanvas
             slide={currentSlide}
@@ -735,16 +1233,17 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
             selectedElementId={selectedElementId}
             showGrid={showGrid}
             showSafeArea={showSafeArea}
+            zoom={zoom}
             onSelectElement={setSelectedElementId}
             onUpdateSlide={updateCurrentSlide}
           />
         </div>
       </div>
-      <div className="border-t border-zinc-800 bg-[#060810] px-3 py-2">
+      <div className="border-t border-zinc-800 bg-[#060810] px-3 py-1">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             {currentSlide?.elements?.length ? (
-              <button type="button" onClick={() => updateCurrentSlide((slide) => ({ ...slide, elements: [], content: '', layoutType: 'media' }))} className="rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-300 hover:border-zinc-500">
+              <button type="button" onClick={() => updateCurrentSlide((slide) => ({ ...slide, elements: [], content: '', layoutType: 'media' }))} className="rounded border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-300 hover:border-zinc-500 active:scale-[0.96]">
                 Clear Text Blocks
               </button>
             ) : (
@@ -762,6 +1261,9 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
   const editorShell = (
     <div className="fixed inset-0 z-[120] bg-black/95 backdrop-blur-sm">
       <input ref={uploadRef} type="file" className="hidden" multiple accept="image/*,video/*" data-testid="slide-editor-upload-input" onChange={handleBackgroundUpload} />
+      <input ref={imageInsertRef} type="file" className="hidden" accept="image/*" data-testid="slide-editor-insert-image-input" onChange={handleBackgroundUpload} />
+      <input ref={videoInsertRef} type="file" className="hidden" accept="video/*" data-testid="slide-editor-insert-video-input" onChange={handleBackgroundUpload} />
+      <input ref={logoInsertRef} type="file" className="hidden" accept="image/*" data-testid="slide-editor-insert-logo-input" onChange={handleLogoUpload} />
       {/* @ts-expect-error webkitdirectory is a non-standard attribute */}
       <input ref={folderUploadRef} type="file" className="hidden" multiple accept="image/*,video/*" webkitdirectory="" onChange={handleBackgroundUpload} data-testid="slide-editor-folder-upload-input" />
       <input ref={pptxVisualRef} type="file" className="hidden" accept=".pptx,.ppt,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint" onChange={(event) => handlePowerPointImport(event, 'visual')} />
@@ -820,6 +1322,7 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
                   onTriggerPptxVisual={() => pptxVisualRef.current?.click()}
                   onTriggerPptxText={() => pptxTextRef.current?.click()}
                   onClearBackground={() => updateCurrentSlide((slide) => ({ ...slide, backgroundUrl: '', mediaType: 'image', mediaFit: 'cover' }))}
+                  onTriggerLogoUpload={handleInsertLogo}
                 />
               </div>
             </div>
@@ -845,19 +1348,48 @@ export const SmartSlideEditor: React.FC<SmartSlideEditorProps> = ({
               rail
             />
             {canvasAndToolbar}
-            <InspectorPanel
-              slide={currentSlide}
-              selectedElement={selectedElement}
-              presets={layoutPresets}
-              onUpdateSlide={updateCurrentSlide}
-              onUpdateElement={updateElement}
-              onApplyPreset={handleApplyPreset}
-              onTriggerUpload={() => uploadRef.current?.click()}
-              onTriggerFolderUpload={() => folderUploadRef.current?.click()}
-              onTriggerPptxVisual={() => pptxVisualRef.current?.click()}
-              onTriggerPptxText={() => pptxTextRef.current?.click()}
-              onClearBackground={() => updateCurrentSlide((slide) => ({ ...slide, backgroundUrl: '', mediaType: 'image', mediaFit: 'cover' }))}
-            />
+            {inspectorCollapsed ? (
+              <div className="flex min-h-0 flex-col items-center border-l border-zinc-800 bg-zinc-950 py-2">
+                <button
+                  type="button"
+                  onClick={() => setInspectorCollapsed(false)}
+                  title="Expand inspector"
+                  aria-label="Expand inspector"
+                  className="mb-2 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-[10px] font-bold text-zinc-300 transition-colors hover:border-zinc-500 active:scale-[0.94]"
+                >
+                  {'<'}
+                </button>
+                <div className="rotate-180 text-[9px] font-black uppercase tracking-[0.24em] text-zinc-500" style={{ writingMode: 'vertical-rl' }}>
+                  Inspector
+                </div>
+              </div>
+            ) : (
+              <div className="relative flex min-h-0 flex-col">
+                <button
+                  type="button"
+                  onClick={() => setInspectorCollapsed(true)}
+                  title="Collapse inspector"
+                  aria-label="Collapse inspector"
+                  className="absolute left-1 top-1 z-10 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-[10px] font-bold text-zinc-300 transition-colors hover:border-zinc-500 active:scale-[0.94]"
+                >
+                  {'>'}
+                </button>
+                <InspectorPanel
+                  slide={currentSlide}
+                  selectedElement={selectedElement}
+                  presets={layoutPresets}
+                  onUpdateSlide={updateCurrentSlide}
+                  onUpdateElement={updateElement}
+                  onApplyPreset={handleApplyPreset}
+                  onTriggerUpload={() => uploadRef.current?.click()}
+                  onTriggerFolderUpload={() => folderUploadRef.current?.click()}
+                  onTriggerPptxVisual={() => pptxVisualRef.current?.click()}
+                  onTriggerPptxText={() => pptxTextRef.current?.click()}
+                  onClearBackground={() => updateCurrentSlide((slide) => ({ ...slide, backgroundUrl: '', mediaType: 'image', mediaFit: 'cover' }))}
+                  onTriggerLogoUpload={handleInsertLogo}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>

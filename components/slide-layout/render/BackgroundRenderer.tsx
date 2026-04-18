@@ -76,7 +76,18 @@ export const BackgroundRenderer: React.FC<BackgroundRendererProps> = ({
 
   if (resolvedUrl) {
     const objectClass = mediaFit === 'contain' ? 'object-contain' : 'object-cover';
-    return <img className={`absolute inset-0 h-full w-full ${objectClass}`} src={resolvedUrl} alt="" draggable={false} />;
+    return (
+      <img
+        className={`absolute inset-0 h-full w-full ${objectClass}`}
+        src={resolvedUrl}
+        alt=""
+        draggable={false}
+        onError={() => {
+          setResolvedUrl('');
+          setResolvedKind(null);
+        }}
+      />
+    );
   }
 
   return <div className="absolute inset-0 bg-black" />;

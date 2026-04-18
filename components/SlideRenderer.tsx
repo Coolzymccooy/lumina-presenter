@@ -11,6 +11,7 @@ import { getRenderableElements } from "./slide-layout/utils/slideHydration";
 import { SlideBrandingOverlay, type SlideBrandingConfig } from "./SlideBrandingOverlay";
 import { VideoBackground } from "./video/VideoBackground";
 import { AlphaOverlay } from "./video/AlphaOverlay";
+import { LogoOverlay } from "./slide-layout/render/LogoOverlay";
 
 interface SlideRendererProps {
   slide: Slide | null;
@@ -1123,6 +1124,11 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
         {alphaOverlayUrl && (
           <AlphaOverlay src={alphaOverlayUrl} isThumbnail={isThumbnail} />
         )}
+
+        {/* Slide-level logo — above background, below text */}
+        {slide.logoUrl ? (
+          <LogoOverlay logoUrl={slide.logoUrl} position={slide.logoPosition} sizePercent={slide.logoSize} />
+        ) : null}
 
         {/* Soft overlay — z-30 */}
         {hasTextOverlay && hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
