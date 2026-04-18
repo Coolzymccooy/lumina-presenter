@@ -9,6 +9,7 @@ import {
   CopyIcon,
 } from '../Icons';
 import { Tooltip } from '../ui';
+import { StatusHub } from './StatusHub';
 
 type DesktopUpdateState = 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'not-available' | 'error';
 
@@ -33,6 +34,7 @@ export interface AppHeaderProps {
 
   // Telemetry
   liveSessionId: string;
+  isSessionIdFallback?: boolean;
   syncPendingCount: number;
   syncIssue?: string | null;
   onOpenSyncGuidance?: () => void;
@@ -45,8 +47,6 @@ export interface AppHeaderProps {
   onToggleOutput: () => void;
   isStageDisplayLive: boolean;
   onToggleStageDisplay: () => void;
-  blackout: boolean;
-  onToggleBlackout: () => void;
 
   // Right dock
   isRightDockOpen: boolean;
@@ -84,6 +84,7 @@ export function AppHeader({
   onHomeClick,
   isPresenterBeta,
   liveSessionId,
+  isSessionIdFallback,
   syncPendingCount,
   syncIssue,
   onOpenSyncGuidance,
@@ -94,8 +95,6 @@ export function AppHeader({
   onToggleOutput,
   isStageDisplayLive,
   onToggleStageDisplay,
-  blackout,
-  onToggleBlackout,
   isRightDockOpen,
   onToggleRightDock,
   remoteControlUrl,
@@ -111,8 +110,6 @@ export function AppHeader({
   onOpenHelp,
   onOpenGuidedTours,
 }: AppHeaderProps) {
-  const connectionsMetExpected = activeTargetConnectionCount >= targetConnectionRoleCount;
-
   return (
     <>
       {/* ── MAIN HEADER ── */}
@@ -161,56 +158,20 @@ export function AppHeader({
           )}
         </div>
 
-        {/* CENTRE: TELEMETRY STRIP */}
-        <div className="hidden lg:flex items-center gap-4 bg-zinc-900/20 px-4 py-1.5 rounded-full border border-zinc-800/30">
-          <div className="flex flex-col items-center">
-            <span className="text-[8px] text-zinc-600 font-black uppercase tracking-widest">Session ID</span>
-            <span className="text-[10px] font-mono text-zinc-400" data-testid="studio-session-id">
-              {liveSessionId}
-            </span>
-          </div>
-
-          <div className="h-4 w-px bg-zinc-800" />
-
-          <div className="flex items-center gap-2">
-            <div className={`w-1.5 h-1.5 rounded-full ${navigator.onLine ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-            <span className={`text-[9px] font-black tracking-widest ${navigator.onLine ? 'text-emerald-500/80' : 'text-amber-500/80'}`}>
-              {navigator.onLine ? 'SYSTEM ONLINE' : 'OFFLINE MODE'}
-            </span>
-          </div>
-
-          {syncPendingCount > 0 && (
-            <>
-              <div className="h-4 w-px bg-zinc-800" />
-              <span className="text-[9px] font-black text-amber-500 animate-pulse tracking-widest">
-                SYNCING {syncPendingCount}
-              </span>
-            </>
-          )}
-
-          <div className="h-4 w-px bg-zinc-800" />
-
-          <div
-            className="flex items-center gap-1.5 cursor-pointer"
-            title={syncIssue || 'Cloud sync healthy'}
-            onClick={() => { if (syncIssue && onOpenSyncGuidance) onOpenSyncGuidance(); }}
-          >
-            <div className={`w-1.5 h-1.5 rounded-full ${syncIssue ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
-            <span className={`text-[9px] font-black tracking-widest ${syncIssue ? 'text-red-400/80' : 'text-emerald-500/80'}`}>
-              {syncIssue ? 'SYNC ISSUE' : 'CLOUD SYNC'}
-            </span>
-          </div>
-
-          <div className="h-4 w-px bg-zinc-800" />
-
-          <div
-            className="flex items-center gap-2"
-            title={`controller:${connectionCountsByRole.controller || 0} output:${connectionCountsByRole.output || 0} stage:${connectionCountsByRole.stage || 0} remote:${connectionCountsByRole.remote || 0}`}
-          >
-            <span className={`text-[9px] font-black tracking-widest ${connectionsMetExpected ? 'text-emerald-400' : 'text-amber-400'}`}>
-              CONNECTIONS {activeTargetConnectionCount}/{targetConnectionRoleCount}
-            </span>
-          </div>
+        {/* CENTRE: STATUS HUB — single pill consolidating Session, System, Cloud Sync, Connections */}
+        <div className="hidden lg:flex items-center">
+          <StatusHub
+            liveSessionId={liveSessionId}
+            isSessionIdFallback={isSessionIdFallback}
+            isOnline={typeof navigator !== 'undefined' ? navigator.onLine : true}
+            syncPendingCount={syncPendingCount}
+            cloudSyncStatus={syncIssue ? 'error' : 'ok'}
+            cloudSyncMessage={syncIssue}
+            connections={{ current: activeTargetConnectionCount, total: targetConnectionRoleCount }}
+            connectionCountsByRole={connectionCountsByRole}
+            onSessionIdClick={onOpenSettings}
+            onCloudSyncIssueClick={onOpenSyncGuidance}
+          />
         </div>
 
         {/* RIGHT: COMMAND CLUSTER */}
@@ -242,25 +203,6 @@ export function AppHeader({
             <MonitorIcon className="w-3.5 h-3.5" />
             {isOutputLive ? 'PROJECTION ON' : 'LAUNCH LIVE'}
           </button>
-
-          {/* BLACKOUT */}
-          <Tooltip
-            content="Blackout all projection outputs"
-            variant="warning"
-            shortcut="B"
-            placement="bottom"
-          >
-            <button
-              onClick={onToggleBlackout}
-              className={`px-3 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all border ${
-                blackout
-                  ? 'bg-red-900 border-red-700 text-red-200'
-                  : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'
-              }`}
-            >
-              BLACKOUT
-            </button>
-          </Tooltip>
 
           {/* STAGE display */}
           <Tooltip
