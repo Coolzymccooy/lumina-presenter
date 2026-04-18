@@ -1,1 +1,1 @@
-export const ENABLE_RECORDER_V2 = false;
+export const ENABLE_RECORDER_V2 = true;

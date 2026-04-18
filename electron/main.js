@@ -149,23 +149,74 @@ function isTrustedRendererOrigin(value) {
   return TRUSTED_DEV_ORIGINS.has(origin);
 }
 
+function resolveTrustedMediaPermissionContext(webContents, requestingOrigin, details) {
+  const webContentsUrl = typeof webContents?.getURL === 'function'
+    ? String(webContents.getURL() || '')
+    : '';
+  const candidates = [
+    ['requestingOrigin', String(requestingOrigin || '')],
+    ['securityOrigin', String(details?.securityOrigin || '')],
+    ['requestingUrl', String(details?.requestingUrl || '')],
+    ['embeddingOrigin', String(details?.embeddingOrigin || '')],
+    ['webContentsUrl', webContentsUrl],
+  ];
+  const trustedCandidate = candidates.find(([, value]) => isTrustedRendererOrigin(value));
+
+  return {
+    allowed: Boolean(trustedCandidate),
+    trustedSource: trustedCandidate?.[0] || '',
+    trustedValue: trustedCandidate?.[1] || '',
+    candidates: {
+      requestingOrigin: String(requestingOrigin || ''),
+      securityOrigin: String(details?.securityOrigin || ''),
+      requestingUrl: String(details?.requestingUrl || ''),
+      embeddingOrigin: String(details?.embeddingOrigin || ''),
+      webContentsUrl,
+      isMainFrame: Boolean(details?.isMainFrame),
+      mediaType: String(details?.mediaType || ''),
+    },
+  };
+}
+
 function installMediaPermissionHandlers() {
   const ses = session.defaultSession;
   if (!ses) return;
+  const shouldLog = !app.isPackaged || SHOULD_OPEN_DEVTOOLS;
 
-  ses.setPermissionCheckHandler((_webContents, permission, requestingOrigin) => {
-    if (!MEDIA_PERMISSIONS.has(String(permission))) return false;
-    return isTrustedRendererOrigin(String(requestingOrigin || ''));
+  ses.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
+    const normalizedPermission = String(permission);
+    if (!MEDIA_PERMISSIONS.has(normalizedPermission)) return false;
+    const resolution = resolveTrustedMediaPermissionContext(webContents, requestingOrigin, details);
+    if (shouldLog) {
+      console.info('[media-permission] check', {
+        permission: normalizedPermission,
+        allowed: resolution.allowed,
+        trustedSource: resolution.trustedSource,
+        trustedValue: resolution.trustedValue,
+        ...resolution.candidates,
+      });
+    }
+    return resolution.allowed;
   });
 
-  ses.setPermissionRequestHandler((_webContents, permission, callback, details) => {
-    if (!MEDIA_PERMISSIONS.has(String(permission))) {
+  ses.setPermissionRequestHandler((webContents, permission, callback, details) => {
+    const normalizedPermission = String(permission);
+    if (!MEDIA_PERMISSIONS.has(normalizedPermission)) {
       callback(false);
       return;
     }
 
-    const requestingUrl = String(details?.requestingUrl || details?.embeddingOrigin || '');
-    callback(isTrustedRendererOrigin(requestingUrl));
+    const resolution = resolveTrustedMediaPermissionContext(webContents, '', details);
+    if (shouldLog) {
+      console.info('[media-permission] request', {
+        permission: normalizedPermission,
+        allowed: resolution.allowed,
+        trustedSource: resolution.trustedSource,
+        trustedValue: resolution.trustedValue,
+        ...resolution.candidates,
+      });
+    }
+    callback(resolution.allowed);
   });
 }
 

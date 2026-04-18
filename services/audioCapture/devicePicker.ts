@@ -16,6 +16,10 @@ export interface RankedDevice {
   hint: string;
 }
 
+export function isSafeDefaultDeviceKind(kind: DeviceKind): boolean {
+  return kind !== 'virtual' && kind !== 'phone';
+}
+
 const MATCHERS: [DeviceKind, RegExp][] = [
   ['mixer', /mixer|interface|focusrite|behringer|presonus|yamaha|allen|midas|x32|m32|scarlett|audient/i],
   ['virtual', /virtual|cable|vb-audio|loopback|blackhole|ndi|obs/i],
@@ -42,7 +46,7 @@ const KIND_HINTS: Record<DeviceKind, string> = {
   'usb-mic': 'Good — dedicated USB microphone',
   'webcam-mic': 'Decent — webcam microphone',
   camera: 'Camera audio — may need cleanup',
-  virtual: 'Virtual audio device',
+  virtual: 'Virtual audio device — select only if you expect routed audio',
   'laptop-mic': 'Built-in mic — expect room noise',
   unknown: 'Unknown device',
   phone: 'Phone microphone — not ideal',
@@ -80,9 +84,15 @@ export function rankDevices(devices: MediaDeviceInfo[]): RankedDevice[] {
 
   ranked.sort((a, b) => b.score - a.score);
 
-  if (ranked.length > 0) {
-    ranked[0].recommended = true;
+  const recommended = ranked.find((entry) => isSafeDefaultDeviceKind(entry.kind));
+  if (recommended) {
+    recommended.recommended = true;
   }
 
   return ranked;
+}
+
+export function pickSafeDefaultDevice(devices: MediaDeviceInfo[]): MediaDeviceInfo | null {
+  const ranked = rankDevices(devices);
+  return ranked.find((entry) => entry.recommended)?.device ?? null;
 }

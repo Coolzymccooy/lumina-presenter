@@ -11,6 +11,7 @@ export {
   type DeviceKind,
   type RankedDevice,
   classifyDevice,
+  pickSafeDefaultDevice,
   suggestCaptureMode,
   rankDevices,
 } from './devicePicker';
@@ -25,3 +26,16 @@ export {
   type RecordCheckResult,
   analyseStream,
 } from './recordCheck';
+
+export {
+  type AudioProbeMode,
+  type AudioInputProbeStatus,
+  type AudioInputRequestVariant,
+  type AudioTrackDiagnostic,
+  type AudioInputProbeResult,
+  type AudioInputDiagnostic,
+  buildPreferredAudioConstraints,
+  collectAudioTrackDiagnostics,
+  createAudioInputDiagnostic,
+  probeAudioInput,
+} from './mediaDiagnostics';

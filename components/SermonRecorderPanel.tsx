@@ -9,7 +9,7 @@
  * - "Flash to Screen" to push transcript/summary to StageDisplay
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   useSermonRecorder,
   type SermonAccentHint,
@@ -20,6 +20,19 @@ import {
   summarizeSermon,
   type SermonSummary,
 } from '../services/sermonSummaryService';
+import { ENABLE_RECORDER_V2 } from '../services/audioCapture/featureFlag';
+import {
+  CAPTURE_MODE_MAP,
+  DEFAULT_CAPTURE_MODE,
+  classifyDevice,
+  pickSafeDefaultDevice,
+  suggestCaptureMode,
+  type CaptureModeId,
+} from '../services/audioCapture';
+import { SourcePicker } from './sermon-recorder/SourcePicker';
+import { CaptureModePicker } from './sermon-recorder/CaptureModePicker';
+import { RecordCheckPanel } from './sermon-recorder/RecordCheckPanel';
+import type { AudioInputDiagnostic } from '../services/audioCapture/mediaDiagnostics';
 
 export interface SermonRecorderPanelProps {
   onClose: () => void;
@@ -114,6 +127,84 @@ const formatTime = (seconds: number): string => {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
+const formatLinearDb = (linear: number): string => {
+  if (!(linear > 0)) return '-∞ dB';
+  return `${Math.round(20 * Math.log10(linear))} dB`;
+};
+
+const labelForRequestVariant: Record<AudioInputDiagnostic['requestVariant'], string> = {
+  preferred: 'preferred',
+  'without-device': 'without-device',
+  'bare-audio': 'bare-audio',
+  none: 'none',
+};
+
+const InputDiagnosticPanel: React.FC<{
+  diagnostic: AudioInputDiagnostic;
+  selectedSourceLabel: string;
+  resolvedDefaultSourceLabel: string | null;
+}> = ({ diagnostic, selectedSourceLabel, resolvedDefaultSourceLabel }) => (
+  <div className="rounded-lg border border-cyan-900/60 bg-cyan-950/20 px-3 py-2.5 space-y-2">
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-[9px] font-black uppercase tracking-widest text-cyan-300/80">
+        Input Debug
+      </span>
+      <span className="text-[8px] font-mono text-cyan-200/70 uppercase">
+        {diagnostic.phase} · {diagnostic.status}
+      </span>
+    </div>
+    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[9px] text-zinc-300">
+      <span>Selected: {selectedSourceLabel}</span>
+      <span>Request: {labelForRequestVariant[diagnostic.requestVariant]}</span>
+      <span>Actual: {diagnostic.label}</span>
+      <span>Track: {diagnostic.readyState}{diagnostic.muted ? ' · muted' : ''}</span>
+      <span>Peak: {formatLinearDb(diagnostic.rawPeak)}</span>
+      <span>RMS: {formatLinearDb(diagnostic.rawRms)}</span>
+      <span>Sample Rate: {diagnostic.settingsSampleRate ?? 'n/a'}</span>
+      <span>Device ID: {diagnostic.settingsDeviceId || 'default'}</span>
+    </div>
+    {selectedSourceLabel === 'Default microphone' && (
+      <p className="text-[9px] leading-relaxed text-cyan-200/70">
+        {resolvedDefaultSourceLabel
+          ? `V2 resolves Default microphone to ${resolvedDefaultSourceLabel} so it avoids silent virtual inputs by default.`
+          : 'No safe physical default was found, so V2 is using the raw OS default route.'}
+      </p>
+    )}
+    {diagnostic.warning && (
+      <p className="text-[9px] leading-relaxed text-amber-300">{diagnostic.warning}</p>
+    )}
+  </div>
+);
+
+const CurrentSetupPanel: React.FC<{
+  selectedSourceLabel: string;
+  resolvedDefaultSourceLabel: string | null;
+  captureMode: CaptureModeId;
+}> = ({ selectedSourceLabel, resolvedDefaultSourceLabel, captureMode }) => {
+  const captureModeName = CAPTURE_MODE_MAP.get(captureMode)?.name ?? captureMode;
+  const effectiveSourceLabel = selectedSourceLabel === 'Default microphone' && resolvedDefaultSourceLabel
+    ? `${selectedSourceLabel} -> ${resolvedDefaultSourceLabel}`
+    : selectedSourceLabel;
+
+  return (
+    <div className="rounded-lg border border-red-900/50 bg-red-950/20 px-3 py-2.5 space-y-2">
+      <div className="text-[9px] font-black uppercase tracking-widest text-red-200/80">
+        Current Setup
+      </div>
+      <div className="grid grid-cols-1 gap-2 text-[10px] text-zinc-200">
+        <div>
+          <div className="text-[8px] font-bold uppercase tracking-wider text-zinc-500">Audio Source</div>
+          <div className="mt-0.5 font-semibold">{effectiveSourceLabel}</div>
+        </div>
+        <div>
+          <div className="text-[8px] font-bold uppercase tracking-wider text-zinc-500">Capture Mode</div>
+          <div className="mt-0.5 font-semibold">{captureModeName}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const InlineSummary: React.FC<{ summary: SermonSummary }> = ({ summary }) => (
   <div className="mt-3 rounded-xl bg-purple-950/30 border border-purple-800/40 px-3 py-3 space-y-2.5 text-xs">
     <div>
@@ -166,6 +257,8 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   const [accentHint, setAccentHint] = useState<SermonAccentHint>('standard');
   const [audioDeviceId, setAudioDeviceId] = useState<string | undefined>(undefined);
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [captureMode, setCaptureMode] = useState<CaptureModeId>(DEFAULT_CAPTURE_MODE);
+  const [captureModeTouched, setCaptureModeTouched] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -185,7 +278,54 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
     };
   }, []);
 
-  const [recState, recActions] = useSermonRecorder({ locale, accentHint, audioDeviceId });
+  const safeDefaultDevice = useMemo<MediaDeviceInfo | null>(() => {
+    if (!ENABLE_RECORDER_V2) return null;
+    return pickSafeDefaultDevice(audioDevices);
+  }, [audioDevices]);
+
+  const handleAudioDeviceSelect = useCallback((id: string | undefined) => {
+    setAudioDeviceId(id);
+  }, []);
+
+  const resolvedAudioDeviceId = useMemo(() => {
+    if (!ENABLE_RECORDER_V2) return audioDeviceId;
+    if (audioDeviceId) return audioDeviceId;
+    return safeDefaultDevice?.deviceId;
+  }, [audioDeviceId, safeDefaultDevice]);
+
+  const resolvedDefaultSourceLabel = useMemo(() => {
+    if (!ENABLE_RECORDER_V2) return null;
+    return safeDefaultDevice?.label || null;
+  }, [safeDefaultDevice]);
+
+  const suggestedCaptureMode = useMemo<CaptureModeId>(() => {
+    if (!ENABLE_RECORDER_V2) return DEFAULT_CAPTURE_MODE;
+    if (!audioDeviceId) {
+      return DEFAULT_CAPTURE_MODE;
+    }
+    const selected = audioDevices.find((d) => d.deviceId === audioDeviceId);
+    if (!selected) return DEFAULT_CAPTURE_MODE;
+    return suggestCaptureMode(classifyDevice(selected.label));
+  }, [audioDevices, audioDeviceId]);
+
+  useEffect(() => {
+    if (!ENABLE_RECORDER_V2) return;
+    if (captureModeTouched) return;
+    setCaptureMode(suggestedCaptureMode);
+  }, [suggestedCaptureMode, captureModeTouched]);
+
+  const handleCaptureModeSelect = useCallback((id: CaptureModeId) => {
+    setCaptureMode(id);
+    setCaptureModeTouched(true);
+  }, []);
+
+  const [recState, recActions] = useSermonRecorder({
+    locale,
+    accentHint,
+    audioDeviceId: resolvedAudioDeviceId,
+    selectedAudioDeviceId: audioDeviceId,
+    captureMode,
+  });
   const {
     phase,
     liveTranscript,
@@ -199,6 +339,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
     chunkError,
     processingJob,
     processingSummary,
+    inputDiagnostic,
   } = recState;
 
   const sttWarning = (() => {
@@ -220,6 +361,12 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   const [saving, setSaving] = useState(false);
 
   const transcriptScrollRef = useRef<HTMLDivElement>(null);
+
+  const selectedSourceLabel = useMemo(() => {
+    if (!audioDeviceId) return 'Default microphone';
+    const selectedDevice = audioDevices.find((device) => device.deviceId === audioDeviceId);
+    return selectedDevice?.label || `Microphone ${audioDeviceId.slice(0, 6)}`;
+  }, [audioDeviceId, audioDevices]);
 
   const processingStatusText = (() => {
     if (processingJob?.status === 'queued') {
@@ -254,6 +401,12 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
       transcriptScrollRef.current.scrollTop = transcriptScrollRef.current.scrollHeight;
     }
   }, [cloudTranscript, liveTranscript, interimText]);
+
+  useEffect(() => {
+    if (!ENABLE_RECORDER_V2) return;
+    if (phase !== 'idle') return;
+    recActions.setInputDiagnostic(null);
+  }, [audioDeviceId, captureMode, phase, recActions.setInputDiagnostic, resolvedAudioDeviceId]);
 
   const resetEditorState = useCallback(() => {
     setEditableTranscript('');
@@ -387,19 +540,46 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
             <div className="flex items-center gap-2">
               {phase === 'idle' && (
                 <div className="flex-1 space-y-2">
-                  {audioDevices.length > 1 && (
-                    <select
-                      value={audioDeviceId ?? ''}
-                      onChange={(e) => setAudioDeviceId(e.target.value || undefined)}
-                      className="w-full rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] px-2 py-1.5 focus:outline-none focus:border-zinc-500"
-                    >
-                      <option value="">Default microphone</option>
-                      {audioDevices.map((d) => (
-                        <option key={d.deviceId} value={d.deviceId}>
-                          {d.label || `Microphone ${d.deviceId.slice(0, 6)}`}
-                        </option>
-                      ))}
-                    </select>
+                  {ENABLE_RECORDER_V2 ? (
+                    <>
+                      <SourcePicker
+                        devices={audioDevices}
+                        selectedId={audioDeviceId}
+                        resolvedDefaultLabel={resolvedDefaultSourceLabel}
+                        onSelect={handleAudioDeviceSelect}
+                      />
+                      <CaptureModePicker
+                        selected={captureMode}
+                        suggested={suggestedCaptureMode}
+                        onSelect={handleCaptureModeSelect}
+                      />
+                      <CurrentSetupPanel
+                        selectedSourceLabel={selectedSourceLabel}
+                        resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
+                        captureMode={captureMode}
+                      />
+                      <RecordCheckPanel
+                        selectedDeviceId={audioDeviceId}
+                        resolvedDeviceId={resolvedAudioDeviceId}
+                        preset={CAPTURE_MODE_MAP.get(captureMode) ?? CAPTURE_MODE_MAP.get(DEFAULT_CAPTURE_MODE)!}
+                        onDiagnostic={recActions.setInputDiagnostic}
+                      />
+                    </>
+                  ) : (
+                    audioDevices.length > 1 && (
+                      <select
+                        value={audioDeviceId ?? ''}
+                        onChange={(e) => setAudioDeviceId(e.target.value || undefined)}
+                        className="w-full rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] px-2 py-1.5 focus:outline-none focus:border-zinc-500"
+                      >
+                        <option value="">Default microphone</option>
+                        {audioDevices.map((d) => (
+                          <option key={d.deviceId} value={d.deviceId}>
+                            {d.label || `Microphone ${d.deviceId.slice(0, 6)}`}
+                          </option>
+                        ))}
+                      </select>
+                    )
                   )}
                   <select
                     value={accentHint}
@@ -467,12 +647,27 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
                 </div>
               )}
             </div>
+
+            {ENABLE_RECORDER_V2 && inputDiagnostic && (
+              <InputDiagnosticPanel
+                diagnostic={inputDiagnostic}
+                selectedSourceLabel={selectedSourceLabel}
+                resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
+              />
+            )}
           </div>
         )}
 
         {phase === 'error' && (
           <div className="rounded-xl bg-red-950/40 border border-red-800/50 px-3 py-3 space-y-2">
             <p className="text-red-300 text-[11px] font-semibold">{error || 'An error occurred.'}</p>
+            {ENABLE_RECORDER_V2 && inputDiagnostic && (
+              <InputDiagnosticPanel
+                diagnostic={inputDiagnostic}
+                selectedSourceLabel={selectedSourceLabel}
+                resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
+              />
+            )}
             <div className="flex gap-2">
               {processingJob?.status === 'failed' && (
                 <button

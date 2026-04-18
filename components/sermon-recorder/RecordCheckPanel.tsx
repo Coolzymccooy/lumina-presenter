@@ -1,11 +1,19 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { analyseStream, type RecordCheckResult } from '../../services/audioCapture/recordCheck';
 import type { CaptureModePreset } from '../../services/audioCapture/capturePresets';
+import {
+  createAudioInputDiagnostic,
+  probeAudioInput,
+  type AudioInputDiagnostic,
+  type AudioInputProbeResult,
+} from '../../services/audioCapture/mediaDiagnostics';
 
 interface RecordCheckPanelProps {
-  deviceId: string | undefined;
+  selectedDeviceId: string | undefined;
+  resolvedDeviceId: string | undefined;
   preset: CaptureModePreset;
   onResult?: (result: RecordCheckResult) => void;
+  onDiagnostic?: (diagnostic: AudioInputDiagnostic | null) => void;
 }
 
 const VERDICT_STYLES: Record<string, { bg: string; text: string; border: string }> = {
@@ -24,10 +32,48 @@ const VERDICT_LABELS: Record<string, string> = {
   clipping: 'Clipping',
 };
 
+const toDb = (linear: number): number => (
+  linear <= 0 ? -Infinity : 20 * Math.log10(linear)
+);
+
+function buildProbeFailureResult(probe: AudioInputProbeResult): RecordCheckResult {
+  let suggestion: string;
+  switch (probe.status) {
+    case 'muted-live':
+      suggestion = 'The selected source returned a live but muted track, so no usable audio samples were captured.';
+      break;
+    case 'ended':
+      suggestion = 'The selected source ended before Lumina captured any usable audio samples.';
+      break;
+    case 'silent-raw':
+      suggestion = 'The selected source returned digital silence. Try another source or use the default microphone.';
+      break;
+    case 'request-failed':
+      suggestion = probe.errorMessage || 'Could not access microphone.';
+      break;
+    default:
+      suggestion = 'No audio detected. Check that the mic is connected and not muted.';
+      break;
+  }
+
+  return {
+    verdict: 'no-signal',
+    rmsDb: toDb(probe.rawRms),
+    peakDb: toDb(probe.rawPeak),
+    noiseFloorDb: -Infinity,
+    clipFrames: 0,
+    speechLikelihood: 0,
+    qualityScore: 0,
+    suggestion,
+  };
+}
+
 export const RecordCheckPanel: React.FC<RecordCheckPanelProps> = ({
-  deviceId,
+  selectedDeviceId,
+  resolvedDeviceId,
   preset,
   onResult,
+  onDiagnostic,
 }) => {
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<RecordCheckResult | null>(null);
@@ -41,21 +87,35 @@ export const RecordCheckPanel: React.FC<RecordCheckPanelProps> = ({
 
     setChecking(true);
     setResult(null);
+    onDiagnostic?.(null);
 
     try {
-      const constraints: MediaStreamConstraints = {
-        audio: {
-          channelCount: 1,
-          echoCancellation: preset.constraints.echoCancellation,
-          noiseSuppression: preset.constraints.noiseSuppression,
-          autoGainControl: preset.constraints.autoGainControl,
-          ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
-        },
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
+      const probe = await probeAudioInput({
+        deviceId: resolvedDeviceId,
+        preset,
+        mode: 'record-check',
+        signal: ac.signal,
+        strictRawSignal: false,
+      });
+      onDiagnostic?.(
+        createAudioInputDiagnostic('record-check', selectedDeviceId ?? resolvedDeviceId, probe),
+      );
 
-      const checkResult = await analyseStream(stream, preset, 4000, ac.signal);
+      if (!probe.stream || probe.status !== 'usable') {
+        const failedResult = buildProbeFailureResult(probe);
+        setResult(failedResult);
+        onResult?.(failedResult);
+        return;
+      }
+
+      streamRef.current = probe.stream;
+      let checkResult = await analyseStream(probe.stream, preset, 4000, ac.signal);
+      if (probe.warning) {
+        checkResult = {
+          ...checkResult,
+          suggestion: `${checkResult.suggestion} ${probe.warning}`.trim(),
+        };
+      }
       setResult(checkResult);
       onResult?.(checkResult);
     } catch (err) {
@@ -74,25 +134,28 @@ export const RecordCheckPanel: React.FC<RecordCheckPanelProps> = ({
     } finally {
       const stream = streamRef.current;
       if (stream) {
-        stream.getTracks().forEach((t) => { try { t.stop(); } catch { /* no-op */ } });
+        stream.getTracks().forEach((track) => { try { track.stop(); } catch { /* no-op */ } });
         streamRef.current = null;
       }
       if (!ac.signal.aborted) {
         setChecking(false);
       }
     }
-  }, [deviceId, preset, onResult]);
+  }, [onDiagnostic, onResult, preset, resolvedDeviceId, selectedDeviceId]);
 
   const style = result ? VERDICT_STYLES[result.verdict] : null;
 
   return (
     <div className="space-y-1">
+      <p className="text-[9px] text-zinc-500 leading-relaxed">
+        Speak normally for a few seconds while the check runs.
+      </p>
       <button
         onClick={runCheck}
         disabled={checking}
         className="w-full py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-300 text-[10px] font-medium hover:bg-zinc-750 hover:border-zinc-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        {checking ? 'Checking…' : 'Run Record Check'}
+        {checking ? 'Checking... speak now' : 'Run Record Check'}
       </button>
 
       {result && style && (

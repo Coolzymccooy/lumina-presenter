@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classifyDevice, rankDevices, suggestCaptureMode } from './devicePicker';
+import { classifyDevice, pickSafeDefaultDevice, rankDevices, suggestCaptureMode } from './devicePicker';
 
 function mockDevice(label: string, deviceId = 'test-id'): MediaDeviceInfo {
   return {
@@ -120,6 +120,25 @@ describe('rankDevices', () => {
     expect(recommended).toHaveLength(1);
   });
 
+  it('does not recommend virtual devices over a physical mic', () => {
+    const devices = [
+      mockDevice('Default - Webcam 4 (NDI Webcam Audio)', 'ndi'),
+      mockDevice('Microphone Array (Realtek)', 'realtek'),
+    ];
+    const ranked = rankDevices(devices);
+    expect(ranked.find((device) => device.recommended)?.kind).toBe('laptop-mic');
+    expect(ranked.find((device) => device.kind === 'virtual')?.recommended).toBe(false);
+  });
+
+  it('does not recommend any device when only virtual and phone sources exist', () => {
+    const devices = [
+      mockDevice('Default - Webcam 4 (NDI Webcam Audio)', 'ndi'),
+      mockDevice('Continuity Microphone', 'phone'),
+    ];
+    const ranked = rankDevices(devices);
+    expect(ranked.some((device) => device.recommended)).toBe(false);
+  });
+
   it('returns empty array for empty input', () => {
     expect(rankDevices([])).toEqual([]);
   });
@@ -130,5 +149,24 @@ describe('rankDevices', () => {
     for (const r of ranked) {
       expect(r.hint.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('pickSafeDefaultDevice', () => {
+  it('prefers a usb mic over virtual devices', () => {
+    const devices = [
+      mockDevice('Default - Webcam 4 (NDI Webcam Audio)', 'ndi'),
+      mockDevice('CABLE Output (VB-Audio Virtual Cable)', 'cable'),
+      mockDevice('Blue Yeti', 'yeti'),
+    ];
+    expect(pickSafeDefaultDevice(devices)?.deviceId).toBe('yeti');
+  });
+
+  it('returns null when no safe physical device exists', () => {
+    const devices = [
+      mockDevice('Default - Webcam 4 (NDI Webcam Audio)', 'ndi'),
+      mockDevice('CABLE Output (VB-Audio Virtual Cable)', 'cable'),
+    ];
+    expect(pickSafeDefaultDevice(devices)).toBeNull();
   });
 });

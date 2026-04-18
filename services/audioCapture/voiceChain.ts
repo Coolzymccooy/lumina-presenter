@@ -1,4 +1,7 @@
 import type { CaptureModePreset } from './capturePresets';
+// Vite resolves `?url` to a stable runtime URL that survives Electron packaging,
+// unlike `new URL(..., import.meta.url)` which breaks under file:// protocol.
+import noiseGateWorkletUrl from './worklets/noise-gate-worklet.js?url';
 
 export interface VoiceChainNodes {
   analyser: AnalyserNode;
@@ -11,9 +14,7 @@ let workletRegistered = false;
 async function ensureWorklet(ctx: AudioContext): Promise<boolean> {
   if (workletRegistered) return true;
   try {
-    await ctx.audioWorklet.addModule(
-      new URL('./worklets/noise-gate-worklet.js', import.meta.url).href,
-    );
+    await ctx.audioWorklet.addModule(noiseGateWorkletUrl);
     workletRegistered = true;
     return true;
   } catch {
@@ -26,6 +27,10 @@ export async function buildVoiceChain(
   source: MediaStreamAudioSourceNode,
   preset: CaptureModePreset,
 ): Promise<VoiceChainNodes> {
+  if (ctx.state === 'suspended') {
+    await ctx.resume().catch(() => undefined);
+  }
+
   const nodes: AudioNode[] = [];
 
   const hpf = ctx.createBiquadFilter();
