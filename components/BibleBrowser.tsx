@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { BibleIcon, SearchIcon, PlayIcon, SparklesIcon } from './Icons';
 import { ServiceItem, ItemType, MediaType } from '../types';
 import { DEFAULT_BACKGROUNDS } from '../constants';
@@ -42,6 +42,18 @@ import {
   type BibleVerse as Verse,
 } from '../services/bibleLookup';
 import { isTranslationBundled } from '../services/bibleLocalData';
+import { useCloudListener } from '../hooks/useCloudListener';
+import {
+  CAPTURE_MODE_MAP,
+  DEFAULT_CAPTURE_MODE,
+  classifyDevice,
+  pickSafeDefaultDevice,
+  suggestCaptureMode,
+  type CaptureModeId,
+} from '../services/audioCapture';
+import { SourcePicker } from './sermon-recorder/SourcePicker';
+import { CaptureModePicker } from './sermon-recorder/CaptureModePicker';
+import type { AudioInputDiagnostic } from '../services/audioCapture/mediaDiagnostics';
 
 interface BibleBrowserProps {
   onAddRequest: (item: ServiceItem) => void;
@@ -84,7 +96,7 @@ interface WindowWithSpeech extends Window {
 }
 
 type VisionarySpeechLocaleMode = 'auto' | 'en-GB' | 'en-US';
-type TranscriptionEngineMode = 'browser_stt' | 'cloud_fallback' | 'disabled';
+type TranscriptionEngineMode = 'browser_stt' | 'cloud' | 'cloud_fallback' | 'disabled';
 type CloudRecorderState = 'idle' | 'recording' | 'cooldown' | 'uploading' | 'error';
 
 const VERSIONS = [
@@ -237,6 +249,65 @@ export const resolveSpeechLanguageCandidates = (
   return ['en-US', 'en-GB'];
 };
 
+const BibleAutoCurrentSetup: React.FC<{
+  selectedSourceLabel: string;
+  resolvedDefaultSourceLabel: string | null;
+  captureModeLabel: string;
+}> = ({ selectedSourceLabel, resolvedDefaultSourceLabel, captureModeLabel }) => {
+  const effectiveSourceLabel = selectedSourceLabel === 'Default microphone' && resolvedDefaultSourceLabel
+    ? `${selectedSourceLabel} -> ${resolvedDefaultSourceLabel}`
+    : selectedSourceLabel;
+
+  return (
+    <div className="rounded-sm border border-cyan-900/40 bg-cyan-950/20 p-2 space-y-1.5">
+      <div className="text-[9px] text-cyan-300 font-mono uppercase tracking-widest">Current Setup</div>
+      <div className="space-y-1">
+        <div>
+          <div className="text-[8px] text-zinc-500 uppercase tracking-wider">Audio Source</div>
+          <div className="text-[9px] text-zinc-200 font-semibold">{effectiveSourceLabel}</div>
+        </div>
+        <div>
+          <div className="text-[8px] text-zinc-500 uppercase tracking-wider">Capture Mode</div>
+          <div className="text-[9px] text-zinc-200 font-semibold">{captureModeLabel}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const BibleAutoInputDebug: React.FC<{
+  diagnostic: AudioInputDiagnostic;
+  selectedSourceLabel: string;
+  resolvedDefaultSourceLabel: string | null;
+}> = ({ diagnostic, selectedSourceLabel, resolvedDefaultSourceLabel }) => (
+  <div className="rounded-sm border border-cyan-900/60 bg-cyan-950/20 p-2 space-y-1.5">
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-[9px] text-cyan-300 font-mono uppercase tracking-widest">Input Debug</span>
+      <span className="text-[8px] text-cyan-200 font-mono uppercase">{diagnostic.phase} · {diagnostic.status}</span>
+    </div>
+    <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[9px] text-zinc-300">
+      <span>Selected: {selectedSourceLabel}</span>
+      <span>Request: {diagnostic.requestVariant}</span>
+      <span>Actual: {diagnostic.label}</span>
+      <span>Track: {diagnostic.readyState}{diagnostic.muted ? ' · muted' : ''}</span>
+      <span>Peak: {diagnostic.rawPeak > 0 ? `${Math.round(20 * Math.log10(diagnostic.rawPeak))} dB` : '-∞ dB'}</span>
+      <span>RMS: {diagnostic.rawRms > 0 ? `${Math.round(20 * Math.log10(diagnostic.rawRms))} dB` : '-∞ dB'}</span>
+      <span>Sample Rate: {diagnostic.settingsSampleRate ?? 'n/a'}</span>
+      <span>Device ID: {diagnostic.settingsDeviceId || 'default'}</span>
+    </div>
+    {selectedSourceLabel === 'Default microphone' && (
+      <div className="text-[9px] text-cyan-200/80 leading-relaxed">
+        {resolvedDefaultSourceLabel
+          ? `Bible Hub resolves Default microphone to ${resolvedDefaultSourceLabel} so it avoids silent virtual inputs by default.`
+          : 'No safe physical default was found, so Bible Hub is using the raw OS default route.'}
+      </div>
+    )}
+    {diagnostic.warning && (
+      <div className="text-[9px] text-amber-300 leading-relaxed">{diagnostic.warning}</div>
+    )}
+  </div>
+);
+
 export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   onAddRequest,
   onProjectRequest,
@@ -280,6 +351,13 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const [autoReferences, setAutoReferences] = useState<string[]>([]);
   const [autoError, setAutoError] = useState<string | null>(null);
   const [autoSupportError, setAutoSupportError] = useState<string | null>(null);
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [audioDeviceId, setAudioDeviceId] = useState<string | undefined>(undefined);
+  const [captureMode, setCaptureMode] = useState<CaptureModeId>(DEFAULT_CAPTURE_MODE);
+  const [captureModeTouched, setCaptureModeTouched] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean>(() => (
+    typeof navigator === 'undefined' ? true : navigator.onLine
+  ));
   const [activeSpeechLanguage, setActiveSpeechLanguage] = useState('en-US');
   const [transcriptionEngine, setTranscriptionEngine] = useState<TranscriptionEngineMode>('disabled');
   const [cloudRecorderState, setCloudRecorderState] = useState<CloudRecorderState>('idle');
@@ -433,6 +511,133 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     }
   };
 
+  const refreshAudioDevices = useCallback(async () => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices || typeof navigator.mediaDevices.enumerateDevices !== 'function') {
+      return;
+    }
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      setAudioDevices(devices.filter((device) => device.kind === 'audioinput'));
+    } catch {
+      /* ignore device enumeration failures */
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshAudioDevices();
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) return;
+    const mediaDevices = navigator.mediaDevices as MediaDevices & {
+      addEventListener?: (type: string, listener: EventListenerOrEventListenerObject) => void;
+      removeEventListener?: (type: string, listener: EventListenerOrEventListenerObject) => void;
+    };
+    const handleDeviceChange = () => {
+      void refreshAudioDevices();
+    };
+    mediaDevices.addEventListener?.('devicechange', handleDeviceChange);
+    return () => {
+      mediaDevices.removeEventListener?.('devicechange', handleDeviceChange);
+    };
+  }, [refreshAudioDevices]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const resolvedCandidates = useMemo(
+    () => resolveSpeechLanguageCandidates(speechLocaleMode, getNavigatorLocales()),
+    [speechLocaleMode],
+  );
+  const listenerLocale = resolvedCandidates[0] === 'en-GB' ? 'en-GB' : 'en-US';
+  const selectedAudioDevice = useMemo(
+    () => audioDevices.find((device) => device.deviceId === audioDeviceId) ?? null,
+    [audioDeviceId, audioDevices],
+  );
+  const safeDefaultDevice = useMemo(
+    () => pickSafeDefaultDevice(audioDevices),
+    [audioDevices],
+  );
+  const effectiveAudioDevice = selectedAudioDevice ?? safeDefaultDevice ?? null;
+  const effectiveAudioDeviceId = effectiveAudioDevice?.deviceId;
+  const selectedSourceLabel = selectedAudioDevice?.label || 'Default microphone';
+  const resolvedDefaultSourceLabel = safeDefaultDevice?.label || null;
+  const suggestedCaptureMode = useMemo<CaptureModeId>(() => {
+    if (!effectiveAudioDevice?.label) return DEFAULT_CAPTURE_MODE;
+    return suggestCaptureMode(classifyDevice(effectiveAudioDevice.label));
+  }, [effectiveAudioDevice]);
+  const captureModeLabel = CAPTURE_MODE_MAP.get(captureMode)?.name ?? 'Basic Clean';
+
+  useEffect(() => {
+    if (captureModeTouched) return;
+    setCaptureMode(suggestedCaptureMode);
+  }, [captureModeTouched, suggestedCaptureMode]);
+
+  const handleSelectAudioSource = useCallback((deviceId: string | undefined) => {
+    setAudioDeviceId(deviceId);
+    setAutoError(null);
+  }, []);
+
+  const handleSelectCaptureMode = useCallback((modeId: CaptureModeId) => {
+    setCaptureModeTouched(true);
+    setCaptureMode(modeId);
+  }, []);
+
+  const scheduleAutoProcess = useCallback(() => {
+    clearTimer(processTimerRef);
+    processTimerRef.current = window.setTimeout(() => {
+      void processAutoTranscriptRef.current();
+    }, AUTO_DEBOUNCE_MS);
+  }, []);
+
+  const appendTranscriptChunk = useCallback((chunk: string) => {
+    const cleaned = String(chunk || '').trim();
+    if (!cleaned) return;
+    const next = `${transcriptBufferRef.current} ${cleaned}`.trim().split(/\s+/).slice(-AUTO_WORD_BUFFER).join(' ');
+    transcriptBufferRef.current = next;
+    setAutoTranscript(next);
+    setAutoError(null);
+    scheduleAutoProcess();
+    if (sermonRecordingRef.current) {
+      sermonTranscriptRef.current = sermonTranscriptRef.current
+        ? `${sermonTranscriptRef.current} ${cleaned}`
+        : cleaned;
+      const wc = sermonTranscriptRef.current.trim().split(/\s+/).filter(Boolean).length;
+      setSermonWordCount(wc);
+    }
+  }, [scheduleAutoProcess]);
+
+  const {
+    start: startCloudListener,
+    stop: stopCloudListener,
+    state: cloudListenerState,
+    inputDiagnostic,
+  } = useCloudListener({
+    audioDeviceId: effectiveAudioDeviceId,
+    selectedAudioDeviceId: audioDeviceId,
+    captureMode,
+    locale: listenerLocale,
+    accentHint: listenerLocale === 'en-GB' ? 'uk' : 'standard',
+    workspaceId,
+    onTranscript: appendTranscriptChunk,
+    onError: (err) => {
+      if (err.kind === 'cooldown') {
+        const retryAfterMs = Math.max(1000, Number(err.retryAfterMs || 0));
+        setCloudCooldownUntil(Date.now() + retryAfterMs);
+        setAutoError(`Cloud transcription cooling down. Retrying in ${Math.max(1, Math.ceil(retryAfterMs / 1000))}s.`);
+        return;
+      }
+      setCloudCooldownUntil(0);
+      setAutoError(err.message);
+    },
+  });
+
   const stopRecognition = useCallback(() => {
     clearTimer(restartTimerRef);
     const recognition = recognitionRef.current;
@@ -469,6 +674,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
         },
       });
       stream.getTracks().forEach((track) => track.stop());
+      void refreshAudioDevices();
       micPreflightOkRef.current = true;
       micPreflightAtRef.current = Date.now();
       return { ok: true };
@@ -488,7 +694,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       }
       return { ok: false, reason: 'Microphone preflight failed. Check OS mic permission, input device, and internet.' };
     }
-  }, []);
+  }, [refreshAudioDevices]);
 
   const showEngineToast = useCallback((message: string) => {
     setEngineToast(message);
@@ -530,9 +736,10 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
 
   const stopAllVisionaryCapture = useCallback(() => {
     stopRecognition();
+    stopCloudListener();
     stopCloudFallbackCapture();
     setAutoListening(false);
-  }, [stopCloudFallbackCapture, stopRecognition]);
+  }, [stopCloudFallbackCapture, stopCloudListener, stopRecognition]);
 
   const selectBook = (book: { name: string; chapters: number }) => {
     setSelectedBook(book);
@@ -761,31 +968,6 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       setAiLoading(false);
     }
   }, [resolveSemanticReference, selectedVersion, syncStructuredSelection, referenceInput]);
-
-  const scheduleAutoProcess = useCallback(() => {
-    clearTimer(processTimerRef);
-    processTimerRef.current = window.setTimeout(() => {
-      void processAutoTranscriptRef.current();
-    }, AUTO_DEBOUNCE_MS);
-  }, []);
-
-  const appendTranscriptChunk = useCallback((chunk: string) => {
-    const cleaned = String(chunk || '').trim();
-    if (!cleaned) return;
-    const next = `${transcriptBufferRef.current} ${cleaned}`.trim().split(/\s+/).slice(-AUTO_WORD_BUFFER).join(' ');
-    transcriptBufferRef.current = next;
-    setAutoTranscript(next);
-    setAutoError(null);
-    scheduleAutoProcess();
-    // Also feed the full sermon accumulator when recording
-    if (sermonRecordingRef.current) {
-      sermonTranscriptRef.current = sermonTranscriptRef.current
-        ? `${sermonTranscriptRef.current} ${cleaned}`
-        : cleaned;
-      const wc = sermonTranscriptRef.current.trim().split(/\s+/).filter(Boolean).length;
-      setSermonWordCount(wc);
-    }
-  }, [scheduleAutoProcess]);
 
   const stopSermonCapture = useCallback(() => {
     try {
@@ -1412,15 +1594,60 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       return;
     }
     setAutoSupportError(null);
-    if (transcriptionEngine === 'disabled') {
-      setTranscriptionEngine(isElectronRuntime() ? 'cloud_fallback' : 'browser_stt');
+  }, [autoVisionaryEnabled, isVisionaryMode, stopAllVisionaryCapture]);
+
+  useEffect(() => {
+    if (!autoEnabledRef.current) return;
+    const nextEngine: TranscriptionEngineMode = isOnline ? 'cloud' : 'browser_stt';
+    if (transcriptionEngine === nextEngine) return;
+    stopAllVisionaryCapture();
+    setCloudCooldownUntil(0);
+    setAutoError(null);
+    setTranscriptionEngine(nextEngine);
+    setActiveSpeechLanguage(listenerLocale);
+    showEngineToast(nextEngine === 'cloud'
+      ? 'Listening with cloud transcription.'
+      : 'Offline mode: using browser speech recognition.');
+  }, [isOnline, listenerLocale, showEngineToast, stopAllVisionaryCapture, transcriptionEngine]);
+
+  useEffect(() => {
+    if (transcriptionEngine !== 'cloud') return;
+    setActiveSpeechLanguage(listenerLocale);
+    setAutoListening(
+      cloudListenerState === 'starting'
+      || cloudListenerState === 'listening'
+      || (cloudListenerState === 'cooldown' && cloudCooldownUntil > Date.now()),
+    );
+    if (cloudListenerState !== 'cooldown') {
+      setCloudCooldownUntil(0);
     }
-  }, [autoVisionaryEnabled, isVisionaryMode, stopAllVisionaryCapture, transcriptionEngine]);
+  }, [cloudCooldownUntil, cloudListenerState, listenerLocale, transcriptionEngine]);
+
+  useEffect(() => {
+    if (!autoEnabledRef.current || transcriptionEngine !== 'cloud') return;
+    let cancelled = false;
+    setAutoSupportError(null);
+    setAutoError(null);
+    const initializeCloudListener = async () => {
+      const started = await startCloudListener();
+      if (cancelled || !autoEnabledRef.current || transcriptionEngine !== 'cloud') return;
+      if (!started) {
+        setAutoListening(false);
+        return;
+      }
+      void refreshAudioDevices();
+    };
+    void initializeCloudListener();
+    return () => {
+      cancelled = true;
+      stopCloudListener();
+    };
+  }, [refreshAudioDevices, startCloudListener, stopCloudListener, transcriptionEngine]);
 
   useEffect(() => {
     if (!autoEnabledRef.current || transcriptionEngine !== 'browser_stt') return;
     let cancelled = false;
-    stopCloudFallbackCapture();
+    stopCloudListener();
     const initializeRecognition = async () => {
       const SpeechCtor = getSpeechCtor();
       if (!SpeechCtor) {
@@ -1441,6 +1668,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
         setAutoVisionaryEnabled(false);
         return;
       }
+      void refreshAudioDevices();
 
       consecutiveNetworkErrorsRef.current = 0;
       restartDelayMsRef.current = AUTO_RESTART_BASE_MS;
@@ -1495,13 +1723,8 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
           lastSpeechErrorAtRef.current = nowTs;
           const currentLanguage = recognition.lang || speechCandidatesRef.current[activeSpeechCandidateIndexRef.current] || 'en-US';
 
-          if (consecutiveNetworkErrorsRef.current >= AUTO_NETWORK_FALLBACK_THRESHOLD) {
-            void activateCloudFallback();
-            return;
-          }
-
           if (consecutiveNetworkErrorsRef.current >= AUTO_NETWORK_ERROR_LIMIT) {
-            setAutoError(`Speech service unreachable on ${currentLanguage}. Turn Auto Visionary OFF/ON to retry.`);
+            setAutoError(`Browser speech recognition is unavailable on ${currentLanguage}. Reconnect to the internet or turn Auto Visionary OFF/ON to retry.`);
             setAutoVisionaryEnabled(false);
             stopRecognition();
             return;
@@ -1517,8 +1740,8 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
             languageForMessage = nextLanguage;
           }
 
-          const triesLeft = AUTO_NETWORK_FALLBACK_THRESHOLD - consecutiveNetworkErrorsRef.current;
-          setAutoError(`Temporary speech network glitch on ${languageForMessage}. ${Math.max(0, triesLeft)} browser retry left before cloud fallback.`);
+          const triesLeft = AUTO_NETWORK_ERROR_LIMIT - consecutiveNetworkErrorsRef.current;
+          setAutoError(`Temporary browser speech glitch on ${languageForMessage}. ${Math.max(0, triesLeft)} retry left.`);
           restartDelayMsRef.current = Math.min(3000, AUTO_RESTART_BASE_MS + (consecutiveNetworkErrorsRef.current * 700));
           return;
         }
@@ -1556,7 +1779,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       cancelled = true;
       stopRecognition();
     };
-  }, [activateCloudFallback, appendTranscriptChunk, browserRestartNonce, ensureMicCaptureReady, speechLocaleMode, stopCloudFallbackCapture, stopRecognition, transcriptionEngine]);
+  }, [appendTranscriptChunk, browserRestartNonce, ensureMicCaptureReady, refreshAudioDevices, speechLocaleMode, stopCloudListener, stopRecognition, transcriptionEngine]);
 
   useEffect(() => {
     if (!autoEnabledRef.current || transcriptionEngine !== 'cloud_fallback') return;
@@ -1610,14 +1833,15 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
 
   const chapterCount = selectedBook?.chapters ?? 150;
   const verseCount = selectedBook ? getChapterVerseCount(selectedBook.name, chapter) : 50;
-  const resolvedCandidates = resolveSpeechLanguageCandidates(speechLocaleMode, getNavigatorLocales());
   const localeModeLabel = speechLocaleMode === 'auto' ? 'Auto' : 'Manual';
-  const localeStatusLanguage = autoListening ? activeSpeechLanguage : resolvedCandidates[0];
+  const localeStatusLanguage = autoListening ? activeSpeechLanguage : listenerLocale;
   const engineLabel = (
-    transcriptionEngine === 'cloud_fallback'
-      ? 'Cloud Fallback'
+    transcriptionEngine === 'cloud'
+      ? 'Cloud'
       : transcriptionEngine === 'browser_stt'
-        ? 'Browser STT'
+        ? 'Offline (Browser STT)'
+        : transcriptionEngine === 'cloud_fallback'
+          ? 'Cloud Fallback'
         : 'Disabled'
   );
   const sermonTranscribingStatusText = sermonProcessingJob?.status === 'queued'
@@ -1630,15 +1854,17 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const autoStatusText = autoSupportError
     || (!isVisionaryMode ? 'Turn on Visionary mode to enable auto listening.' : '')
     || (autoBusy ? 'Analyzing live speech...' : '')
-    || (transcriptionEngine === 'cloud_fallback'
+    || (transcriptionEngine === 'cloud'
       ? (
-        cloudRecorderState === 'cooldown'
-          ? 'Cloud fallback cooling down...'
-          : cloudRecorderState === 'uploading'
-            ? 'Cloud fallback uploading audio chunk...'
-            : cloudRecorderState === 'recording'
-              ? 'Cloud fallback listening for sermon context...'
-          : 'Cloud fallback starting...'
+        cloudCooldownUntil > Date.now()
+          ? 'Cloud transcription cooling down...'
+          : cloudListenerState === 'starting'
+            ? 'Starting cloud microphone...'
+            : cloudListenerState === 'listening'
+              ? 'Listening with cloud transcription.'
+              : cloudListenerState === 'error'
+                ? 'Cloud transcription could not start.'
+                : (autoVisionaryEnabled ? 'Starting cloud microphone...' : 'Auto listen is off.')
       )
       : (autoListening ? 'Listening for sermon context...' : (autoVisionaryEnabled ? 'Starting microphone...' : 'Auto listen is off.')));
   const rootClassName = compact
@@ -1745,6 +1971,22 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                     {autoProjectEnabled ? 'ON' : 'OFF'}
                   </button>
                 </div>
+                <SourcePicker
+                  devices={audioDevices}
+                  selectedId={audioDeviceId}
+                  resolvedDefaultLabel={resolvedDefaultSourceLabel}
+                  onSelect={handleSelectAudioSource}
+                />
+                <CaptureModePicker
+                  selected={captureMode}
+                  suggested={suggestedCaptureMode}
+                  onSelect={handleSelectCaptureMode}
+                />
+                <BibleAutoCurrentSetup
+                  selectedSourceLabel={selectedSourceLabel}
+                  resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
+                  captureModeLabel={captureModeLabel}
+                />
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[9px] text-zinc-400 uppercase tracking-wider">Speech Dialect</span>
                   <select
@@ -1762,7 +2004,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                 </div>
                 <div className="flex items-center gap-2 text-[9px] font-mono">
                   <span className="text-zinc-400">Engine:</span>
-                  <span className={`font-bold ${transcriptionEngine === 'cloud_fallback' ? 'text-amber-300' : 'text-emerald-300'}`}>
+                  <span className={`font-bold ${transcriptionEngine === 'browser_stt' ? 'text-amber-300' : 'text-emerald-300'}`}>
                     {engineLabel}
                   </span>
                 </div>
@@ -1776,6 +2018,13 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                   <div className="text-[9px] text-amber-300 font-mono">
                     Cooldown: {Math.max(1, Math.ceil((cloudCooldownUntil - Date.now()) / 1000))}s
                   </div>
+                )}
+                {inputDiagnostic && (autoVisionaryEnabled || transcriptionEngine === 'cloud') && (
+                  <BibleAutoInputDebug
+                    diagnostic={inputDiagnostic}
+                    selectedSourceLabel={selectedSourceLabel}
+                    resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
+                  />
                 )}
                 {autoReferences.length > 0 && (
                   <div className="flex flex-col gap-1">
