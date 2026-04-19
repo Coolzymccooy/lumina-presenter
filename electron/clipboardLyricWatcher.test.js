@@ -1,6 +1,6 @@
 // electron/clipboardLyricWatcher.test.js
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createClipboardLyricWatcher } from './clipboardLyricWatcher.js';
+import { createClipboardLyricWatcher } from './clipboardLyricWatcher.cjs';
 
 function makeClipboard(initial = '') {
   let current = initial;
