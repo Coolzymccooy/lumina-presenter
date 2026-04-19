@@ -23,12 +23,21 @@ export function useLyricSearchOrchestrator(query: string): LyricSearchReturn {
     (async () => {
       const catalogHits = searchCatalogHymns(q);
       if (cancelled) return;
-      if (catalogHits.length > 0) {
-        setState({ kind: 'catalog', hymnId: catalogHits[0].hymn.id });
+      const top = catalogHits[0];
+      const isStrongCatalogMatch = !!top && (
+        top.score >= 200 ||
+        (top.matchedFields.includes('title') && top.score >= 165)
+      );
+      if (isStrongCatalogMatch) {
+        setState({ kind: 'catalog', hymnId: top.hymn.id });
         return;
       }
 
       if (!isWebLyricsFetchEnabled()) {
+        if (top) {
+          setState({ kind: 'catalog', hymnId: top.hymn.id });
+          return;
+        }
         setState({ kind: 'empty', reason: 'flag-off' });
         return;
       }
@@ -43,6 +52,10 @@ export function useLyricSearchOrchestrator(query: string): LyricSearchReturn {
       if (cancelled) return;
       if (results.length > 0) { setState({ kind: 'web', results }); return; }
 
+      if (top) {
+        setState({ kind: 'catalog', hymnId: top.hymn.id });
+        return;
+      }
       setState({ kind: 'empty', reason: 'no-results' });
     })().catch((err) => {
       if (cancelled) return;
