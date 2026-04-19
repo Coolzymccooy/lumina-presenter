@@ -7,10 +7,6 @@
  * API reference: https://github.com/stagetimerio/grandiose
  */
 
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
-
 let grandiose = null;
 let ndiAvailable = false;
 
@@ -57,7 +53,7 @@ let currentSourceName = 'Lumina Presenter';
  * @param {number} height
  * @returns {Promise<{ ok: boolean, error?: string }>}
  */
-export async function startNdiSend(sourceName, width, height) {
+async function startNdiSend(sourceName, width, height) {
   const load = loadGrandiose();
   if (!load.ok) return load;
 
@@ -92,7 +88,7 @@ export async function startNdiSend(sourceName, width, height) {
  * @param {number} height
  * @returns {Promise<void>}
  */
-export async function sendFrame(bgraBuffer, width, height) {
+async function sendFrame(bgraBuffer, width, height) {
   if (!active || !sender) return;
   if (!bgraBuffer || !Buffer.isBuffer(bgraBuffer) || width <= 0 || height <= 0) return;
 
@@ -119,7 +115,7 @@ export async function sendFrame(bgraBuffer, width, height) {
  * Destroy the active sender cleanly.
  * @returns {Promise<void>}
  */
-export async function stopNdiSend() {
+async function stopNdiSend() {
   active = false;
 
   if (!sender) return;
@@ -136,16 +132,25 @@ export async function stopNdiSend() {
 }
 
 /** @returns {boolean} */
-export function isActive() {
+function isActive() {
   return active;
 }
 
 /** @returns {string} */
-export function getSourceName() {
+function getSourceName() {
   return currentSourceName;
 }
 
 /** @returns {{ width: number, height: number }} */
-export function getResolution() {
+function getResolution() {
   return { ...currentResolution };
 }
+
+module.exports = {
+  startNdiSend,
+  sendFrame,
+  stopNdiSend,
+  isActive,
+  getSourceName,
+  getResolution,
+};

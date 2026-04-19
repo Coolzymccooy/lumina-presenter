@@ -1,11 +1,8 @@
-import { app, BrowserWindow, screen, session, Menu, shell, ipcMain, clipboard, dialog, utilityProcess } from 'electron';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
-import * as ndiSender from './ndiSender.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const { app, BrowserWindow, screen, session, Menu, shell, ipcMain, clipboard, dialog, utilityProcess } = require('electron');
+const path = require('path');
+const fs = require('fs');
+const ndiSender = require('./ndiSender.cjs');
+const { registerLyricClipboardIpc } = require('./ipc/lyricClipboard.cjs');
 const DIST_INDEX_PATH = path.join(__dirname, '../dist/index.html');
 const DEV_SERVER_URL = process.env.ELECTRON_RENDERER_URL || 'http://localhost:5173';
 const SHOULD_OPEN_DEVTOOLS = process.env.LUMINA_OPEN_DEVTOOLS === '1';
@@ -148,6 +145,7 @@ function isTrustedRendererOrigin(value) {
   if (origin === 'file://') return true;
   return TRUSTED_DEV_ORIGINS.has(origin);
 }
+module.exports.isTrustedRendererOrigin = isTrustedRendererOrigin;
 
 function resolveTrustedMediaPermissionContext(webContents, requestingOrigin, details) {
   const webContentsUrl = typeof webContents?.getURL === 'function'
@@ -234,6 +232,7 @@ function installClipboardHandlers() {
       return false;
     }
   });
+  registerLyricClipboardIpc({ isTrustedRendererOrigin });
 }
 
 function getDisplayLabel(display, index = 0) {
