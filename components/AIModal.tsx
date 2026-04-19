@@ -328,6 +328,14 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
     if (clipboardCapture.captured) setCaptureStatus('captured');
   }, [clipboardCapture.captured]);
 
+  // Disarm clipboard watcher when modal closes — privacy guardrail per spec.
+  const clipboardDisarm = clipboardCapture.disarm;
+  useEffect(() => {
+    if (isOpen) return;
+    clipboardDisarm();
+    setCaptureStatus('idle');
+  }, [isOpen, clipboardDisarm]);
+
   const handleOpenSource = useCallback(async (result: { url: string }) => {
     const ok = await clipboardCapture.arm(result.url);
     if (ok) setCaptureStatus('armed');
