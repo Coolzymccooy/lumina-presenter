@@ -1,0 +1,45 @@
+import { ipcMain, clipboard, shell, BrowserWindow } from 'electron';
+import { createClipboardLyricWatcher } from '../clipboardLyricWatcher.js';
+
+const CHANNEL_ARM = 'lyric-clipboard:arm';
+const CHANNEL_DISARM = 'lyric-clipboard:disarm';
+const CHANNEL_CAPTURED = 'lyric-clipboard:captured';
+
+let watcher = null;
+
+function broadcastCaptured(payload) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send(CHANNEL_CAPTURED, payload);
+  }
+}
+
+export function registerLyricClipboardIpc() {
+  if (watcher) return; // idempotent
+  watcher = createClipboardLyricWatcher({
+    clipboard,
+    onCaptured: broadcastCaptured,
+  });
+
+  ipcMain.handle(CHANNEL_ARM, async (_event, payload) => {
+    const url = String(payload?.url || '');
+    if (!url) return { ok: false, error: 'URL_REQUIRED' };
+    watcher.arm(url);
+    try { await shell.openExternal(url); } catch (err) {
+      return { ok: false, error: 'OPEN_EXTERNAL_FAILED', message: String(err?.message || err) };
+    }
+    return { ok: true };
+  });
+
+  ipcMain.handle(CHANNEL_DISARM, async () => {
+    watcher.disarm();
+    return { ok: true };
+  });
+}
+
+export function disposeLyricClipboardIpc() {
+  if (!watcher) return;
+  watcher.dispose();
+  watcher = null;
+  ipcMain.removeHandler(CHANNEL_ARM);
+  ipcMain.removeHandler(CHANNEL_DISARM);
+}

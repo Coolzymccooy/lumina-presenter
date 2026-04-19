@@ -43,4 +43,13 @@ contextBridge.exposeInMainWorld('electron', {
       return () => ipcRenderer.removeListener('app-update:status', listener);
     },
   },
+  lyricClipboard: {
+    arm: (url) => ipcRenderer.invoke('lyric-clipboard:arm', { url }),
+    disarm: () => ipcRenderer.invoke('lyric-clipboard:disarm'),
+    onCaptured: (callback) => {
+      const listener = (_event, payload) => callback(payload);
+      ipcRenderer.on('lyric-clipboard:captured', listener);
+      return () => ipcRenderer.removeListener('lyric-clipboard:captured', listener);
+    },
+  },
 });

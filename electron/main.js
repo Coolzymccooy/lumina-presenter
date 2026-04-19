@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import * as ndiSender from './ndiSender.js';
+import { registerLyricClipboardIpc } from './ipc/lyricClipboard.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -183,6 +184,7 @@ function installClipboardHandlers() {
       return false;
     }
   });
+  registerLyricClipboardIpc();
 }
 
 function getDisplayLabel(display, index = 0) {
