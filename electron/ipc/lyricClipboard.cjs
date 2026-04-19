@@ -1,6 +1,5 @@
-import { ipcMain, clipboard, shell, BrowserWindow } from 'electron';
-import { createClipboardLyricWatcher } from '../clipboardLyricWatcher.js';
-import { isTrustedRendererOrigin } from '../main.js';
+const { ipcMain, clipboard, shell, BrowserWindow } = require('electron');
+const { createClipboardLyricWatcher } = require('../clipboardLyricWatcher.cjs');
 
 const CHANNEL_ARM = 'lyric-clipboard:arm';
 const CHANNEL_DISARM = 'lyric-clipboard:disarm';
@@ -14,8 +13,11 @@ function broadcastCaptured(payload) {
   }
 }
 
-export function registerLyricClipboardIpc() {
+function registerLyricClipboardIpc({ isTrustedRendererOrigin } = {}) {
   if (watcher) return; // idempotent
+  if (typeof isTrustedRendererOrigin !== 'function') {
+    throw new Error('registerLyricClipboardIpc requires isTrustedRendererOrigin');
+  }
   watcher = createClipboardLyricWatcher({
     clipboard,
     onCaptured: broadcastCaptured,
@@ -43,10 +45,12 @@ export function registerLyricClipboardIpc() {
   });
 }
 
-export function disposeLyricClipboardIpc() {
+function disposeLyricClipboardIpc() {
   if (!watcher) return;
   watcher.dispose();
   watcher = null;
   ipcMain.removeHandler(CHANNEL_ARM);
   ipcMain.removeHandler(CHANNEL_DISARM);
 }
+
+module.exports = { registerLyricClipboardIpc, disposeLyricClipboardIpc };

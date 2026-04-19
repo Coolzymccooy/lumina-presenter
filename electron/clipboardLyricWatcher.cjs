@@ -1,10 +1,10 @@
 // electron/clipboardLyricWatcher.js
-import { looksLikeLyrics } from '../services/lyricSources/lyricHeuristic.ts';
+const { looksLikeLyrics } = require('../services/lyricSources/lyricHeuristic.cjs');
 
 const DEFAULT_POLL_MS = 1000;
 const DEFAULT_TTL_MS = 5 * 60 * 1000;
 
-export function createClipboardLyricWatcher(opts) {
+function createClipboardLyricWatcher(opts) {
   const clipboard = opts.clipboard;
   const pollIntervalMs = opts.pollIntervalMs || DEFAULT_POLL_MS;
   const ttlMs = opts.ttlMs || DEFAULT_TTL_MS;
@@ -56,3 +56,5 @@ export function createClipboardLyricWatcher(opts) {
 
   return { arm, disarm, dispose: disarm, getState: () => state };
 }
+
+module.exports = { createClipboardLyricWatcher };
