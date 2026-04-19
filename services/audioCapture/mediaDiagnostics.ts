@@ -7,7 +7,7 @@ const RAW_PROBE_FFT_SIZE = 2048;
 const RAW_SILENCE_PEAK_THRESHOLD = 0.0001;
 const RAW_SILENCE_RMS_THRESHOLD = 0.00001;
 
-export type AudioProbeMode = 'record-check' | 'recording';
+export type AudioProbeMode = 'record-check' | 'recording' | 'listening';
 export type AudioInputProbeStatus = 'usable' | 'muted-live' | 'ended' | 'silent-raw' | 'request-failed';
 export type AudioInputRequestVariant = 'preferred' | 'without-device' | 'bare-audio' | 'none';
 

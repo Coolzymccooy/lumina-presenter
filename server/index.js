@@ -1309,6 +1309,8 @@ const buildSermonTranscriptionPrompt = (locale, accentHintRaw) => {
     localeInstruction,
     accentInstruction,
     "Preserve Bible references, quoted phrases, and code-switching exactly as spoken.",
+    "If there is no clearly audible speech, return an empty string.",
+    "Do not describe silence, do not say '[Silence]', and do not narrate the absence of speech or audio.",
   ].join(" ");
 };
 
