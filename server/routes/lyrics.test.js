@@ -49,6 +49,22 @@ describe('POST /api/lyrics/lrclib', () => {
     const res = await callJson(app, '/api/lyrics/lrclib', {});
     expect(res.status).toBe(400);
   });
+
+  it('returns 400 when query exceeds 500 chars', async () => {
+    const app = makeApp({ AI_WEB_LYRICS_FETCH: 'true' });
+    const res = await callJson(app, '/api/lyrics/lrclib', { query: 'a'.repeat(501) });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('QUERY_TOO_LONG');
+  });
+
+  it('does not leak raw error message on upstream failure', async () => {
+    globalThis.fetch = vi.fn(async () => { throw new Error('socket hang up at internal-host:5432'); });
+    const app = makeApp({ AI_WEB_LYRICS_FETCH: 'true' });
+    const res = await callJson(app, '/api/lyrics/lrclib', { query: 'Way Maker' });
+    expect(res.status).toBe(502);
+    expect(res.body.error).toBe('LRCLIB_FETCH_FAILED');
+    expect(res.body.message).toBeUndefined();
+  });
 });
 
 describe('POST /api/lyrics/web-search', () => {
@@ -64,6 +80,22 @@ describe('POST /api/lyrics/web-search', () => {
     const res = await callJson(app, '/api/lyrics/web-search', { query: 'any' });
     expect(res.status).toBe(503);
     expect(res.body.error).toBe('FEATURE_DISABLED');
+  });
+
+  it('returns 400 when query exceeds 500 chars', async () => {
+    const app = makeApp({ AI_WEB_LYRICS_FETCH: 'true', BRAVE_SEARCH_API_KEY: 'x' });
+    const res = await callJson(app, '/api/lyrics/web-search', { query: 'a'.repeat(501) });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('QUERY_TOO_LONG');
+  });
+
+  it('does not leak raw error message on upstream failure', async () => {
+    globalThis.fetch = vi.fn(async () => { throw new Error('ECONNREFUSED 10.0.0.1:443'); });
+    const app = makeApp({ AI_WEB_LYRICS_FETCH: 'true', BRAVE_SEARCH_API_KEY: 'x' });
+    const res = await callJson(app, '/api/lyrics/web-search', { query: 'any' });
+    expect(res.status).toBe(502);
+    expect(res.body.error).toBe('BRAVE_FETCH_FAILED');
+    expect(res.body.message).toBeUndefined();
   });
 
   it('returns mapped results on success', async () => {

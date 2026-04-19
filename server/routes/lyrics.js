@@ -5,6 +5,7 @@ const BRAVE_ENDPOINT = 'https://api.search.brave.com/res/v1/web/search';
 const TIMEOUT_MS = 10_000;
 const MAX_RESULTS = 5;
 const MAX_SNIPPET_WORDS = 40;
+const MAX_QUERY_LEN = 500;
 
 function isFlagOn(env) {
   const raw = String(env?.AI_WEB_LYRICS_FETCH || '').trim().toLowerCase();
@@ -35,6 +36,7 @@ export function createLyricsRouter(options = {}) {
     if (!isFlagOn(env)) return res.status(503).json({ ok: false, error: 'FEATURE_DISABLED' });
     const query = String(req.body?.query || '').trim();
     if (!query) return res.status(400).json({ ok: false, error: 'QUERY_REQUIRED' });
+    if (query.length > MAX_QUERY_LEN) return res.status(400).json({ ok: false, error: 'QUERY_TOO_LONG' });
 
     try {
       const url = `${LRCLIB_ENDPOINT}?q=${encodeURIComponent(query)}`;
@@ -58,7 +60,8 @@ export function createLyricsRouter(options = {}) {
         },
       });
     } catch (err) {
-      return res.status(502).json({ ok: false, error: 'LRCLIB_FETCH_FAILED', message: String(err?.message || err) });
+      console.error('[lyrics/lrclib] upstream fetch failed', err);
+      return res.status(502).json({ ok: false, error: 'LRCLIB_FETCH_FAILED' });
     }
   });
 
@@ -69,6 +72,7 @@ export function createLyricsRouter(options = {}) {
 
     const query = String(req.body?.query || '').trim();
     if (!query) return res.status(400).json({ ok: false, error: 'QUERY_REQUIRED' });
+    if (query.length > MAX_QUERY_LEN) return res.status(400).json({ ok: false, error: 'QUERY_TOO_LONG' });
 
     try {
       const url = `${BRAVE_ENDPOINT}?q=${encodeURIComponent(query + ' lyrics')}&count=10`;
@@ -92,7 +96,8 @@ export function createLyricsRouter(options = {}) {
         : [];
       return res.status(200).json({ ok: true, data: { results } });
     } catch (err) {
-      return res.status(502).json({ ok: false, error: 'BRAVE_FETCH_FAILED', message: String(err?.message || err) });
+      console.error('[lyrics/web-search] upstream fetch failed', err);
+      return res.status(502).json({ ok: false, error: 'BRAVE_FETCH_FAILED' });
     }
   });
 
