@@ -1,5 +1,6 @@
 import { ipcMain, clipboard, shell, BrowserWindow } from 'electron';
 import { createClipboardLyricWatcher } from '../clipboardLyricWatcher.js';
+import { isTrustedRendererOrigin } from '../main.js';
 
 const CHANNEL_ARM = 'lyric-clipboard:arm';
 const CHANNEL_DISARM = 'lyric-clipboard:disarm';
@@ -20,7 +21,10 @@ export function registerLyricClipboardIpc() {
     onCaptured: broadcastCaptured,
   });
 
-  ipcMain.handle(CHANNEL_ARM, async (_event, payload) => {
+  ipcMain.handle(CHANNEL_ARM, async (event, payload) => {
+    if (!isTrustedRendererOrigin(String(event?.senderFrame?.url || ''))) {
+      return { ok: false, error: 'UNTRUSTED_ORIGIN' };
+    }
     const url = String(payload?.url || '');
     if (!url) return { ok: false, error: 'URL_REQUIRED' };
     watcher.arm(url);
@@ -30,7 +34,10 @@ export function registerLyricClipboardIpc() {
     return { ok: true };
   });
 
-  ipcMain.handle(CHANNEL_DISARM, async () => {
+  ipcMain.handle(CHANNEL_DISARM, async (event) => {
+    if (!isTrustedRendererOrigin(String(event?.senderFrame?.url || ''))) {
+      return { ok: false, error: 'UNTRUSTED_ORIGIN' };
+    }
     watcher.disarm();
     return { ok: true };
   });

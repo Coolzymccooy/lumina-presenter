@@ -143,7 +143,7 @@ function normalizeOrigin(value) {
   }
 }
 
-function isTrustedRendererOrigin(value) {
+export function isTrustedRendererOrigin(value) {
   const origin = normalizeOrigin(value);
   if (!origin) return false;
   if (origin === 'file://') return true;
