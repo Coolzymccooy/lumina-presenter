@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { SlideRenderer } from '../SlideRenderer';
 import { RichTextEditor } from '../RichTextEditor';
+import { Tooltip } from '../ui/Tooltip';
 import { hydrateLegacySlideElements } from '../slide-layout/utils/slideHydration';
 import type { ServiceItem, Slide, TextElementStyle } from '../../types';
 
@@ -257,9 +258,9 @@ export function BuilderPreviewPanel({
             <span className="text-[9px] font-mono text-zinc-600">{focusedSlide.label || `Slide ${focusedIdx + 1}`}</span>
           </div>
 
-          {/* Live preview canvas */}
-          <div className="p-3 shrink-0">
-            <div className="aspect-video w-full border border-zinc-700 rounded-sm overflow-hidden bg-black shadow-lg relative">
+          {/* Live preview canvas — caps at ~32vh so Speaker Notes stays reachable on short viewports */}
+          <div className="px-3 pt-2 pb-2 shrink-0">
+            <div className="aspect-video w-full border border-zinc-700 rounded-sm overflow-hidden bg-black shadow-lg relative max-h-[32vh] mx-auto" style={{ aspectRatio: '16 / 9' }}>
               <SlideRenderer
                 slide={focusedSlide}
                 item={item}
@@ -311,53 +312,67 @@ export function BuilderPreviewPanel({
                 resetKey={focusedSlide.id}
                 align={align}
                 onAlignChange={setAlign}
-                contentClassName="min-h-[100px] max-h-[200px] overflow-y-auto"
+                contentClassName="min-h-[70px] max-h-[160px] overflow-y-auto"
               />
             </div>
 
             {/* Speaker Notes toggle */}
             <div className="rounded-sm overflow-hidden border border-zinc-800/70">
-              <button
-                type="button"
-                onClick={() => setNotesOpen(o => !o)}
-                className={`w-full flex items-center gap-2 px-3 py-2 transition-colors ${
-                  notesOpen
-                    ? 'bg-amber-950/30 border-b border-amber-900/40'
-                    : 'bg-zinc-900/40 hover:bg-zinc-800/40'
-                }`}
-              >
-                {/* Mic / notes icon */}
-                <svg className={`w-3 h-3 shrink-0 transition-colors ${notesOpen ? 'text-amber-400' : 'text-zinc-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 1 3 3v8a3 3 0 0 1-6 0V4a3 3 0 0 1 3-3z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v4M8 23h8" />
-                </svg>
-
-                <span className={`text-[9px] font-black uppercase tracking-[0.22em] transition-colors ${notesOpen ? 'text-amber-400' : 'text-zinc-500'}`}>
-                  Speaker Notes
-                </span>
-
-                {/* Notes preview / dot indicator when collapsed */}
-                {!notesOpen && (
-                  <span className="flex-1 flex items-center gap-1.5 min-w-0 overflow-hidden">
-                    {focusedSlide.notes?.trim() ? (
-                      <>
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500/70 shrink-0" />
-                        <NotesPreview text={focusedSlide.notes} />
-                      </>
-                    ) : (
-                      <span className="text-[9px] text-zinc-700 italic">tap to add notes</span>
-                    )}
+              <Tooltip
+                content={
+                  <span>
+                    <strong className="text-amber-300">Your private cue card.</strong>
+                    <br />
+                    Drop reminders, transitions, scripture refs, or pronunciation notes here. The audience never sees them — but on <strong className="text-amber-300">Stage view</strong> they appear front-and-centre, big and readable, so you can preach without losing your place.
+                    <br />
+                    Tap to open and start typing.
                   </span>
-                )}
-
-                {/* Chevron */}
-                <svg
-                  className={`w-3 h-3 shrink-0 text-zinc-600 transition-transform ${notesOpen ? 'rotate-180' : ''}`}
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}
+                }
+                variant="ai"
+                placement="top"
+              >
+                <button
+                  type="button"
+                  onClick={() => setNotesOpen(o => !o)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 transition-colors ${
+                    notesOpen
+                      ? 'bg-amber-950/30 border-b border-amber-900/40'
+                      : 'bg-zinc-900/40 hover:bg-zinc-800/40'
+                  }`}
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+                  {/* Mic / notes icon */}
+                  <svg className={`w-3 h-3 shrink-0 transition-colors ${notesOpen ? 'text-amber-400' : 'text-zinc-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 1a3 3 0 0 1 3 3v8a3 3 0 0 1-6 0V4a3 3 0 0 1 3-3z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 10v1a7 7 0 0 1-14 0v-1M12 19v4M8 23h8" />
+                  </svg>
+
+                  <span className={`text-[9px] font-black uppercase tracking-[0.22em] transition-colors ${notesOpen ? 'text-amber-400' : 'text-zinc-500'}`}>
+                    Speaker Notes
+                  </span>
+
+                  {/* Notes preview / dot indicator when collapsed */}
+                  {!notesOpen && (
+                    <span className="flex-1 flex items-center gap-1.5 min-w-0 overflow-hidden">
+                      {focusedSlide.notes?.trim() ? (
+                        <>
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500/70 shrink-0" />
+                          <NotesPreview text={focusedSlide.notes} />
+                        </>
+                      ) : (
+                        <span className="text-[9px] text-zinc-700 italic">tap to add notes</span>
+                      )}
+                    </span>
+                  )}
+
+                  {/* Chevron */}
+                  <svg
+                    className={`w-3 h-3 shrink-0 text-zinc-600 transition-transform ${notesOpen ? 'rotate-180' : ''}`}
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </Tooltip>
 
               {notesOpen && (
                 <div className="bg-amber-950/10 p-2.5">

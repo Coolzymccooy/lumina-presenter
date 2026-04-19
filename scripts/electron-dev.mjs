@@ -44,19 +44,28 @@ const waitForDevServer = async (url, timeoutMs) => {
   throw new Error(`Timed out waiting for dev server at ${url}`);
 };
 
+const buildChildEnv = () => {
+  const env = { ...process.env };
+  // ELECTRON_RUN_AS_NODE forces Electron to run as a plain Node runtime and
+  // breaks desktop-app boot (require('electron') returns a string path).
+  delete env.ELECTRON_RUN_AS_NODE;
+  return env;
+};
+
 const runNpm = (args) => {
+  const env = buildChildEnv();
   if (npmCli) {
     // Most reliable on Windows/Git Bash: call npm CLI via the current Node runtime.
     return spawn(process.execPath, [npmCli, ...args], {
       stdio: "inherit",
-      env: process.env,
+      env,
     });
   }
   // Fallback for direct invocation outside npm context.
   const command = process.platform === "win32" ? "npm.cmd" : "npm";
   return spawn(command, args, {
     stdio: "inherit",
-    env: process.env,
+    env,
     shell: process.platform === "win32",
   });
 };

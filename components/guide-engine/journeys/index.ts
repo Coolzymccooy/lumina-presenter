@@ -16,6 +16,7 @@ import { usingPresenterModeJourney } from './using-presenter-mode';
 import { usingStageModeJourney } from './using-stage-display';
 import { controllingStageViewJourney } from './controlling-stage-view';
 import { usingSpeakerNotesJourney } from './using-speaker-notes';
+import { addingNewSlideJourney } from './adding-new-slide';
 
 export function registerAllJourneys(): void {
   registerJourney(firstTimeSetupJourney);
@@ -35,6 +36,7 @@ export function registerAllJourneys(): void {
   registerJourney(usingStageModeJourney);
   registerJourney(controllingStageViewJourney);
   registerJourney(usingSpeakerNotesJourney);
+  registerJourney(addingNewSlideJourney);
 }
 
 export {
@@ -55,4 +57,5 @@ export {
   usingStageModeJourney,
   controllingStageViewJourney,
   usingSpeakerNotesJourney,
+  addingNewSlideJourney,
 };

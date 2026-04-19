@@ -14,7 +14,22 @@ interface InspectorPanelProps {
   onTriggerPptxVisual: () => void;
   onTriggerPptxText: () => void;
   onClearBackground: () => void;
+  onTriggerLogoUpload: () => void;
 }
+
+type LogoPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+
+const LOGO_POSITIONS: Array<{ value: LogoPosition; label: string }> = [
+  { value: 'top-left', label: 'TL' },
+  { value: 'top-right', label: 'TR' },
+  { value: 'bottom-left', label: 'BL' },
+  { value: 'bottom-right', label: 'BR' },
+];
+
+const clampLogoSize = (value: number): number => {
+  if (!Number.isFinite(value)) return 12;
+  return Math.min(50, Math.max(1, Math.round(value)));
+};
 
 const FONT_FAMILY_OPTIONS = [
   { label: 'Aptos', value: '"Aptos", "Segoe UI", system-ui, sans-serif' },
@@ -79,12 +94,13 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
   onTriggerPptxVisual,
   onTriggerPptxText,
   onClearBackground,
+  onTriggerLogoUpload,
 }) => {
   const textElement = selectedElement?.type === 'text' ? selectedElement : null;
   const showCompactTextEditor = !!textElement;
 
   return (
-    <div className="flex h-full min-h-0 flex-col border-l border-zinc-800 bg-zinc-950">
+    <div data-inspector-root className="flex h-full min-h-0 flex-col border-l border-zinc-800 bg-zinc-950">
       <div className="border-b border-zinc-800 px-4 py-3">
         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Inspector</div>
         <div className="mt-1 text-xs text-zinc-200">{slide?.label || 'New Slide'}</div>
@@ -641,6 +657,74 @@ export const InspectorPanel: React.FC<InspectorPanelProps> = ({
                   </button>
                 </div>
               </div>
+            </Section>
+
+            <Section title="Logo">
+              {slide.logoUrl ? (
+                <>
+                  <div>
+                    <FieldLabel>Position</FieldLabel>
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {LOGO_POSITIONS.map((option) => {
+                        const active = (slide.logoPosition || 'bottom-right') === option.value;
+                        return (
+                          <ToggleButton
+                            key={option.value}
+                            active={active}
+                            onClick={() => onUpdateSlide((current) => ({ ...current, logoPosition: option.value }))}
+                            title={`Anchor logo to ${option.value.replace('-', ' ')}`}
+                          >
+                            {option.label}
+                          </ToggleButton>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div>
+                    <FieldLabel>Size ({clampLogoSize(slide.logoSize ?? 12)}% of stage)</FieldLabel>
+                    <input
+                      type="range"
+                      min={1}
+                      max={50}
+                      step={1}
+                      value={clampLogoSize(slide.logoSize ?? 12)}
+                      onChange={(event) => {
+                        const next = clampLogoSize(Number(event.target.value));
+                        onUpdateSlide((current) => ({ ...current, logoSize: next }));
+                      }}
+                      className="w-full accent-cyan-500"
+                      aria-label="Logo size"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={onTriggerLogoUpload}
+                      className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-100 hover:border-cyan-600 hover:text-white active:scale-[0.96] transition-all"
+                    >
+                      Replace
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onUpdateSlide((current) => ({ ...current, logoUrl: undefined }))}
+                      className="rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400 hover:border-rose-600 hover:text-rose-200 active:scale-[0.96] transition-all"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <div className="mb-2 text-[10px] text-zinc-500">No logo on this slide.</div>
+                  <button
+                    type="button"
+                    onClick={onTriggerLogoUpload}
+                    className="w-full rounded border border-zinc-700 bg-zinc-900 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-100 hover:border-cyan-600 hover:text-white active:scale-[0.96] transition-all"
+                  >
+                    Add Logo
+                  </button>
+                </div>
+              )}
             </Section>
           </>
         )}

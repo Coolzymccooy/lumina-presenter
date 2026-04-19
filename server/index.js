@@ -10,6 +10,7 @@ import { promisify } from "node:util";
 import Database from "better-sqlite3";
 import multer from "multer";
 import { GoogleGenAI, Type } from "@google/genai";
+import { createLyricsRouter } from './routes/lyrics.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -476,6 +477,7 @@ db.prepare(`
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: JSON_LIMIT }));
+app.use('/api/lyrics', createLyricsRouter());
 fs.mkdirSync(VIS_MEDIA_DIR, { recursive: true });
 fs.mkdirSync(WORKSPACE_MEDIA_DIR, { recursive: true });
 fs.mkdirSync(SERMON_PROCESSING_AUDIO_DIR, { recursive: true });
@@ -1307,6 +1309,8 @@ const buildSermonTranscriptionPrompt = (locale, accentHintRaw) => {
     localeInstruction,
     accentInstruction,
     "Preserve Bible references, quoted phrases, and code-switching exactly as spoken.",
+    "If there is no clearly audible speech, return an empty string.",
+    "Do not describe silence, do not say '[Silence]', and do not narrate the absence of speech or audio.",
   ].join(" ");
 };
 

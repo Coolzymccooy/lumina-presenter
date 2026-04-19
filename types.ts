@@ -145,6 +145,11 @@ export interface Slide {
   metadata?: SlideMetadata;
   /** WebM VP9 alpha-channel overlay rendered above the background, below text */
   alphaOverlayUrl?: string;
+  /** Slide-level branding logo. Rendered above the background, below text. */
+  logoUrl?: string;
+  logoPosition?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  /** Logo width as a percentage of slide width (1-50). Defaults to 12. */
+  logoSize?: number;
 }
 
 export interface TimerCue {

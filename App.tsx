@@ -119,8 +119,10 @@ import { isProjectionSafeBackgroundUrl } from './services/mediaUrlStability';
 import type { RunSheetInsertionResult } from './services/runSheetInsertion';
 import { PlayIcon, PauseIcon, RewindIcon, ForwardIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon, ArrowDownIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon, CheckIcon, XIcon, PinIcon, MinimizeIcon, MaximizeIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon, RewindIcon, ForwardIcon, PauseIcon
 import { AppHeader } from './components/layout/AppHeader';
+import { CollapsiblePanel } from './components/ui/CollapsiblePanel';
+import { Tooltip } from './components/ui/Tooltip';
 import { RightDock } from './components/layout/RightDock';
-import { GuideProvider, GuideOverlay, GuidedToursPanel, registerAllJourneys } from './components/guide-engine';
+import { GuideProvider, GuideOverlay, GuidedToursPanel, AutoTriggerOnPresenter, registerAllJourneys, guideStorage } from './components/guide-engine';
 
 // Register all guided journeys at module load time
 registerAllJourneys();
@@ -1342,6 +1344,7 @@ function App() {
 
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isSlideEditorOpen, setIsSlideEditorOpen] = useState(false);
+  const [showSaveProjectionHint, setShowSaveProjectionHint] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isGuidedToursOpen, setIsGuidedToursOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false); // NEW
@@ -5666,6 +5669,12 @@ function App() {
     updateItem({ ...selectedItem, slides: normalizedSlides });
     setIsSlideEditorOpen(false);
     setEditingSlide(null);
+    try {
+      const dismissed = guideStorage.load().dismissedHints.includes('adding-new-slide-post-save');
+      if (!dismissed) setShowSaveProjectionHint(true);
+    } catch {
+      setShowSaveProjectionHint(true);
+    }
   }, [selectedItem, updateItem]);
 
   const handleEditSlide = (slide: Slide) => {
@@ -7424,20 +7433,42 @@ function App() {
                 }
               }
             }}
-            className={`px-3 py-3 cursor-pointer flex items-center justify-between group transition-colors border-l-2 ${
-              selectedItemId === item.id ? 'bg-zinc-900 border-l-blue-600' : 'hover:bg-zinc-900/50 border-l-transparent'
-            } ${activeItemId === item.id ? 'bg-red-950/20' : ''} ${
+            className={`relative px-3 py-3 cursor-pointer flex items-center justify-between group transition-all ${
+              activeItemId === item.id
+                ? 'bg-gradient-to-r from-red-950/60 via-red-950/30 to-transparent animate-liveGlow'
+                : (selectedItemId === item.id
+                    ? 'bg-zinc-900 border-l-2 border-l-blue-600'
+                    : 'hover:bg-zinc-900/50 border-l-2 border-l-transparent')
+            } ${
               scheduleDropIndicator?.itemId === item.id && draggedScheduleItemId && draggedScheduleItemId !== item.id
                 ? (scheduleDropIndicator.after ? 'border-b-2 border-b-blue-500' : 'border-t-2 border-t-blue-500')
                 : ''
             }`}
           >
             <div className="flex flex-col truncate flex-1 min-w-0 pr-2">
-              <span className={`font-medium text-sm truncate ${activeItemId === item.id ? 'text-red-500' : 'text-zinc-300'}`}>{item.title}</span>
-              <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold mt-1 flex items-center gap-1">{item.type}</span>
+              <span className={`font-semibold text-sm truncate ${
+                activeItemId === item.id
+                  ? 'text-red-300 drop-shadow-[0_0_6px_rgba(239,68,68,0.8)]'
+                  : 'text-zinc-300'
+              }`}>
+                {item.title}
+              </span>
+              <span className={`text-[10px] uppercase tracking-wider font-semibold mt-1 flex items-center gap-1 ${
+                activeItemId === item.id ? 'text-red-400/80' : 'text-zinc-500'
+              }`}>
+                {activeItemId === item.id && (
+                  <span className="text-[9px] font-black tracking-[0.2em] text-red-400 mr-1">● LIVE</span>
+                )}
+                {item.type}
+              </span>
             </div>
             <div className="flex gap-1 items-center">
-              {activeItemId === item.id && <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse mr-2"></div>}
+              {activeItemId === item.id && (
+                <span className="relative flex items-center justify-center mr-2 w-3 h-3">
+                  <span className="absolute inline-flex w-full h-full rounded-full bg-red-500 opacity-75 animate-liveRing"></span>
+                  <span className="relative inline-flex w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_2px_rgba(239,68,68,0.8)]"></span>
+                </span>
+              )}
               {viewMode === 'BUILDER' ? (
                 <>
                   <span
@@ -7474,7 +7505,16 @@ function App() {
                   <button onClick={(e) => { e.stopPropagation(); removeItem(item.id); }} className="p-1 hover:text-red-400 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity"><TrashIcon className="w-4 h-4" /></button>
                 </>
               ) : (
-                <button onClick={(e) => { e.stopPropagation(); goLive(item); }} className={`p-1 transition-colors ${activeItemId === item.id ? 'text-red-500' : 'text-zinc-600 hover:text-white'}`}><PlayIcon className="w-4 h-4 fill-current" /></button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); goLive(item); }}
+                  className={`p-1 transition-all rounded-sm ${
+                    activeItemId === item.id
+                      ? 'text-white bg-red-600 shadow-[0_0_10px_rgba(239,68,68,0.7)] ring-1 ring-red-300/40'
+                      : 'text-zinc-600 hover:text-white hover:bg-zinc-800'
+                  }`}
+                >
+                  <PlayIcon className="w-4 h-4 fill-current" />
+                </button>
               )}
             </div>
           </div>
@@ -8025,9 +8065,9 @@ function App() {
       badge={<span className="rounded-full border border-cyan-800/50 bg-cyan-950/30 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300">Beta</span>}
       actions={
         <div className="flex items-center gap-1">
-          <button onClick={() => setIsTemplateOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">TPL</button>
-          <button onClick={() => setIsLyricsImportOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">LYR</button>
-          <button onClick={addEmptyItem} className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-sm transition-colors"><PlusIcon className="w-3.5 h-3.5" /></button>
+          <button data-testid="runsheet-template-btn" title="Templates — start from a pre-built slide (announcements, scripture cards, sermon titles)" aria-label="Open template gallery" onClick={() => setIsTemplateOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">TPL</button>
+          <button data-testid="runsheet-lyrics-btn" title="Lyrics — paste song lyrics and Lumina splits verses, choruses, bridges into slides" aria-label="Import song lyrics" onClick={() => setIsLyricsImportOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">LYR</button>
+          <button data-testid="runsheet-add-slide-btn" title="Add a blank slide — opens the Smart Layout Slide Editor" aria-label="Add blank slide" onClick={addEmptyItem} className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-sm transition-colors"><PlusIcon className="w-3.5 h-3.5" /></button>
         </div>
       }
     >
@@ -8400,6 +8440,51 @@ function App() {
     <div className={`theme-${workspaceSettings.theme} flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] bg-zinc-950 text-zinc-200 font-sans selection:bg-blue-900 selection:text-white relative overflow-x-hidden`}>
       <audio ref={antiSleepAudioRef} src={SILENT_AUDIO_B64} loop muted />
       <GuideOverlay />
+      <AutoTriggerOnPresenter isPresenterActive={viewMode === 'PRESENTER'} />
+      {showSaveProjectionHint && (
+        <div className="fixed bottom-6 right-6 z-[60] max-w-sm rounded-lg border border-emerald-500/40 bg-zinc-900/95 shadow-2xl backdrop-blur-md p-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex items-start gap-3">
+            <div className="shrink-0 mt-0.5 h-8 w-8 rounded-full bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-zinc-100">Slide saved</p>
+              <p className="mt-1 text-xs text-zinc-300 leading-relaxed">
+                Find it at the bottom of your Run Sheet — tap to load, then press <span className="font-semibold text-emerald-300">NEXT</span> or <span className="font-semibold text-emerald-300">Spacebar</span> to project it.
+              </p>
+              <div className="mt-3 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    try { guideStorage.dismissHint('adding-new-slide-post-save'); } catch {}
+                    setShowSaveProjectionHint(false);
+                  }}
+                  className="text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors px-2 py-1"
+                >
+                  Don't show again
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSaveProjectionHint(false)}
+                  className="text-[11px] font-semibold text-zinc-100 bg-emerald-600 hover:bg-emerald-500 transition-colors px-3 py-1.5 rounded"
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSaveProjectionHint(false)}
+              aria-label="Dismiss"
+              className="shrink-0 -mr-1 -mt-1 p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+            >
+              <XIcon className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
       {saveError && <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-red-900/90 border border-red-500 text-white px-4 py-2 rounded-sm shadow-xl z-50 flex items-center gap-3 text-xs font-bold animate-pulse"><span>⚠ STORAGE FULL: Changes are NOT saving.</span><button onClick={() => setSaveError(false)} className="hover:text-zinc-300">✕</button></div>}
       
       {showSyncGuidance && syncIssueDisplay && (
@@ -8454,6 +8539,7 @@ function App() {
         onHomeClick={() => setViewState(isElectronShell ? 'studio' : 'landing')}
         isPresenterBeta={isPresenterBeta}
         liveSessionId={liveSessionId}
+        isSessionIdFallback={isFallbackSessionId(workspaceSettings.sessionId)}
         syncPendingCount={syncPendingCount}
         syncIssue={syncIssue}
         onOpenSyncGuidance={() => { if (syncIssue) setDismissedSyncGuidance({}); }}
@@ -8464,8 +8550,6 @@ function App() {
         onToggleOutput={handleToggleOutput}
         isStageDisplayLive={isStageDisplayLive}
         onToggleStageDisplay={handleToggleStageDisplay}
-        blackout={blackout}
-        onToggleBlackout={() => setBlackout(prev => !prev)}
         isRightDockOpen={isRightDockOpen}
         onToggleRightDock={() => setIsRightDockOpen(prev => !prev)}
         remoteControlUrl={remoteControlUrl}
@@ -8544,16 +8628,112 @@ function App() {
               </button>
             </div>
             <div className="flex flex-col flex-1 p-1 gap-1">
-              <button onClick={() => handleSidebarTabSelect('SCHEDULE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'SCHEDULE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="SCHEDULE"><MonitorIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Schedule</span></button>
-              <button onClick={() => handleSidebarTabSelect('HYMNS')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'HYMNS' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="HYMN LIBRARY"><MusicIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Hymns</span></button>
-              <button onClick={() => handleSidebarTabSelect('FILES')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'FILES' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="RUN SHEET FILES"><CopyIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Files</span></button>
-              <button onClick={() => handleSidebarTabSelect('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIO MIXER"><Volume2Icon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audio Mixer</span></button>
-              <button onClick={() => handleSidebarTabSelect('BIBLE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'BIBLE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="BIBLE LIBRARY"><BibleIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Bible Hub</span></button>
-              <button onClick={() => handleSidebarTabSelect('AUDIENCE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIENCE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="AUDIENCE STUDIO"><ChatIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audience</span></button>
-              <button onClick={() => handleSidebarTabSelect('MACROS')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'MACROS' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`} title="MACROS"><SparklesIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Macros</span></button>
+              <Tooltip
+                placement="right"
+                variant="info"
+                content={
+                  <span>
+                    <strong className="text-blue-300">Today's run sheet.</strong>
+                    <br />
+                    Build and reorder the live order of service — songs, scriptures, sermons, videos, announcements. The whole flow your team will run on Sunday.
+                  </span>
+                }
+              >
+                <button onClick={() => handleSidebarTabSelect('SCHEDULE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'SCHEDULE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><MonitorIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Schedule</span></button>
+              </Tooltip>
+              <Tooltip
+                placement="right"
+                variant="info"
+                content={
+                  <span>
+                    <strong className="text-blue-300">Your hymn & song library.</strong>
+                    <br />
+                    Search, add, or import worship songs (CCLI, OpenLyrics, custom). Drop any hymn straight onto the Schedule with a click — verses, chorus, and chord sheets travel with it.
+                  </span>
+                }
+              >
+                <button onClick={() => handleSidebarTabSelect('HYMNS')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'HYMNS' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><MusicIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Hymns</span></button>
+              </Tooltip>
+              <Tooltip
+                placement="right"
+                variant="info"
+                content={
+                  <span>
+                    <strong className="text-blue-300">Saved run sheets & templates.</strong>
+                    <br />
+                    Re-open last week's service, load a recurring template (e.g. Communion Sunday), or back up the current schedule for next time. Nothing prepped is ever lost.
+                  </span>
+                }
+              >
+                <button onClick={() => handleSidebarTabSelect('FILES')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'FILES' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><CopyIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Files</span></button>
+              </Tooltip>
+              <Tooltip
+                placement="right"
+                variant="info"
+                content={
+                  <span>
+                    <strong className="text-blue-300">Live sound control.</strong>
+                    <br />
+                    Adjust per-source volume, mute/solo channels, and route audio between mic, video, and music players in real time — without leaving the Presenter.
+                  </span>
+                }
+              >
+                <button onClick={() => handleSidebarTabSelect('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><Volume2Icon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audio Mixer</span></button>
+              </Tooltip>
+              <Tooltip
+                placement="right"
+                variant="ai"
+                content={
+                  <span>
+                    <strong className="text-violet-300">Scripture, instantly.</strong>
+                    <br />
+                    Look up any passage across multiple translations, queue verses to the screen, and turn on <strong className="text-violet-300">Auto Listening</strong> — Lumina hears the preacher say a reference and projects it for you, hands-free.
+                  </span>
+                }
+              >
+                <button onClick={() => handleSidebarTabSelect('BIBLE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'BIBLE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><BibleIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Bible Hub</span></button>
+              </Tooltip>
+              <Tooltip
+                placement="right"
+                variant="info"
+                content={
+                  <span>
+                    <strong className="text-blue-300">Engage the room.</strong>
+                    <br />
+                    Open polls, prayer requests, Q&A, giving prompts, and live audience interactions — pushed to phones in the congregation. Watch responses come in as you preach.
+                  </span>
+                }
+              >
+                <button onClick={() => handleSidebarTabSelect('AUDIENCE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIENCE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><ChatIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audience</span></button>
+              </Tooltip>
+              <Tooltip
+                placement="right"
+                variant="ai"
+                content={
+                  <span>
+                    <strong className="text-violet-300">One-tap automations.</strong>
+                    <br />
+                    Chain actions into a single button — e.g. "Start Service" can lower lights, fade music, switch to Welcome slide, and start the timer. Built once, fired anytime.
+                  </span>
+                }
+              >
+                <button onClick={() => handleSidebarTabSelect('MACROS')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'MACROS' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><SparklesIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Macros</span></button>
+              </Tooltip>
             </div>
             <div className="p-1 border-t border-zinc-800">
-              <button onClick={() => setIsProfileOpen(true)} className="w-full p-2.5 rounded-sm flex items-center gap-3 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors" title="SETTINGS"><Settings className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Settings</span></button>
+              <Tooltip
+                placement="right"
+                variant="info"
+                content={
+                  <span>
+                    <strong className="text-blue-300">Profile, themes & preferences.</strong>
+                    <br />
+                    Switch user, customise default fonts and slide themes, manage cloud sync, integrations (CCLI, ProPresenter import), and keyboard shortcuts.
+                  </span>
+                }
+              >
+                <button onClick={() => setIsProfileOpen(true)} className="w-full p-2.5 rounded-sm flex items-center gap-3 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"><Settings className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Settings</span></button>
+              </Tooltip>
             </div>
           </div>
 
@@ -8581,9 +8761,9 @@ function App() {
               <div className="p-3 border-b border-zinc-900 flex items-center justify-between shrink-0">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Run Sheet</h3>
                 <div className="flex gap-1">
-                  <button onClick={() => setIsTemplateOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">TPL</button>
-                  <button onClick={() => setIsLyricsImportOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">LYR</button>
-                  <button onClick={addEmptyItem} className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-sm transition-colors"><PlusIcon className="w-3.5 h-3.5" /></button>
+                  <button data-testid="runsheet-template-btn" title="Templates — start from a pre-built slide (announcements, scripture cards, sermon titles)" aria-label="Open template gallery" onClick={() => setIsTemplateOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">TPL</button>
+                  <button data-testid="runsheet-lyrics-btn" title="Lyrics — paste song lyrics and Lumina splits verses, choruses, bridges into slides" aria-label="Import song lyrics" onClick={() => setIsLyricsImportOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">LYR</button>
+                  <button data-testid="runsheet-add-slide-btn" title="Add a blank slide — opens the Smart Layout Slide Editor" aria-label="Add blank slide" onClick={addEmptyItem} className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-sm transition-colors"><PlusIcon className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
               {renderScheduleList()}
@@ -8811,11 +8991,16 @@ function App() {
                   <div className={`grid gap-2.5 max-w-[1400px] mx-auto ${presenterMainWorkspaceWidth < 1060 ? 'grid-cols-1' : 'grid-cols-2'}`}>
 
                     {/* Card 1: TRANSPORT */}
-                    <div className="rounded-xl border border-zinc-800/80 bg-[linear-gradient(160deg,rgba(28,28,34,0.95),rgba(10,10,14,1))] p-3 shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="text-[9px] uppercase tracking-[0.22em] text-zinc-500 font-black">Transport</span>
+                    <CollapsiblePanel
+                      id="transport"
+                      title="Transport"
+                      defaultCollapsed={false}
+                      className="rounded-xl border border-zinc-800/80 bg-[linear-gradient(160deg,rgba(28,28,34,0.95),rgba(10,10,14,1))] p-3 shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
+                      data-testid="presenter-panel-transport"
+                      badge={
                         <span className="rounded-full border border-blue-800/50 bg-blue-950/30 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] text-blue-300">Live Flow</span>
-                      </div>
+                      }
+                    >
                       <div className="flex flex-wrap items-center gap-1.5">
                         <button onClick={prevSlide} className="h-9 w-10 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 flex items-center justify-center border border-zinc-700 active:scale-95 transition-all">
                           <ArrowLeftIcon className="w-4 h-4" />
@@ -8846,14 +9031,19 @@ function App() {
                           </select>
                         </label>
                       </div>
-                    </div>
+                    </CollapsiblePanel>
 
                     {/* Card 2: TIMER + CUE */}
-                    <div className="rounded-xl border border-zinc-800/80 bg-[linear-gradient(160deg,rgba(28,28,34,0.95),rgba(10,10,14,1))] p-3 shadow-[0_4px_16px_rgba(0,0,0,0.4)]">
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="text-[9px] uppercase tracking-[0.22em] text-zinc-500 font-black">Timer + Cue</span>
+                    <CollapsiblePanel
+                      id="timer-cue"
+                      title="Timer + Cue"
+                      defaultCollapsed={false}
+                      className="rounded-xl border border-zinc-800/80 bg-[linear-gradient(160deg,rgba(28,28,34,0.95),rgba(10,10,14,1))] p-3 shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
+                      data-testid="presenter-panel-timer-cue"
+                      badge={
                         <span className="rounded-full border border-cyan-800/50 bg-cyan-950/30 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300">Cue Engine</span>
-                      </div>
+                      }
+                    >
                       <div className={`grid gap-1.5 ${presenterMainWorkspaceWidth < 760 ? 'grid-cols-1' : 'grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,1fr)]'}`}>
                         <div className="flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 rounded-lg px-2 h-9 min-w-0">
                           <select value={timerMode} onChange={(e) => {
@@ -8899,14 +9089,19 @@ function App() {
                           </div>
                         </div>
                       </div>
-                    </div>
+                    </CollapsiblePanel>
 
                     {/* Card 3: RUNDOWN + OUTPUT — always full width */}
-                    <div className={`rounded-xl border border-zinc-800/80 bg-[linear-gradient(160deg,rgba(28,28,34,0.95),rgba(10,10,14,1))] p-3 shadow-[0_4px_16px_rgba(0,0,0,0.4)] ${presenterMainWorkspaceWidth < 1060 ? '' : 'col-span-2'}`}>
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="text-[9px] uppercase tracking-[0.22em] text-zinc-500 font-black">Rundown + Output</span>
+                    <CollapsiblePanel
+                      id="rundown-output"
+                      title="Rundown + Output"
+                      defaultCollapsed={true}
+                      className={`rounded-xl border border-zinc-800/80 bg-[linear-gradient(160deg,rgba(28,28,34,0.95),rgba(10,10,14,1))] p-3 shadow-[0_4px_16px_rgba(0,0,0,0.4)] ${presenterMainWorkspaceWidth < 1060 ? '' : 'col-span-2'}`}
+                      data-testid="presenter-panel-rundown-output"
+                      badge={
                         <span className="rounded-full border border-emerald-800/50 bg-emerald-950/30 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] text-emerald-300">Stage Ops</span>
-                      </div>
+                      }
+                    >
                       <div className="flex flex-wrap items-center gap-1.5">
                         <div className="flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 rounded-lg px-2 h-9">
                           <span className="text-[9px] text-zinc-500 font-black uppercase shrink-0">Preset</span>
@@ -8976,7 +9171,7 @@ function App() {
                           {blackout ? 'Go Live' : 'BLACKOUT'}
                         </button>
                       </div>
-                    </div>
+                    </CollapsiblePanel>
 
                   </div>
                 </div>

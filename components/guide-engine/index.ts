@@ -7,6 +7,9 @@ export { GuideOverlay } from './components/GuideOverlay';
 // Guided tours picker panel
 export { GuidedToursPanel } from './components/GuidedToursPanel';
 
+// Auto-trigger helpers
+export { AutoTriggerOnPresenter } from './components/AutoTriggerOnPresenter';
+
 // Hooks
 export { useGuideEngine, useJourney } from './hooks/useGuideEngine';
 
@@ -30,7 +33,11 @@ export {
   usingStageModeJourney,
   controllingStageViewJourney,
   usingSpeakerNotesJourney,
+  addingNewSlideJourney,
 } from './journeys/index';
+
+// Storage service (for hint dismissal etc.)
+export { guideStorage } from './services/guide-storage.service';
 
 // Types (re-exported for consumers)
 export type {

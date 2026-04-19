@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { searchCatalogHymns } from '../services/hymnCatalog';
 import { generateSlidesFromHymn } from '../services/hymnGenerator';
 import { getSuggestedBackgroundForHymn } from '../services/hymnThemeRouter';
@@ -14,6 +14,9 @@ import {
 import { ItemType, ServiceItem } from '../types';
 import type { Hymn } from '../types/hymns';
 import { SparklesIcon, SearchIcon, MusicIcon } from './Icons';
+import { useLyricSearchOrchestrator } from '../hooks/useLyricSearchOrchestrator';
+import { useLyricClipboardCapture } from '../hooks/useLyricClipboardCapture';
+import { WebSearchResultCard } from './ai-modal/WebSearchResultCard';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -315,6 +318,66 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
   const [aiResult, setAiResult] = useState<AIAssistResult | null>(null);
   const [detectedIntent, setDetectedIntent] = useState<AIMode | null>(null);
 
+  // Lyric search orchestrator + clipboard capture
+  const isSearchLyrics = mode === 'SEARCH' && detectedIntent === 'SONG';
+  const orchestrator = useLyricSearchOrchestrator(isSearchLyrics ? searchQuery.trim() : '');
+  const clipboardCapture = useLyricClipboardCapture();
+  const [captureStatus, setCaptureStatus] = useState<'idle' | 'armed' | 'captured'>('idle');
+
+  useEffect(() => {
+    if (clipboardCapture.captured) setCaptureStatus('captured');
+  }, [clipboardCapture.captured]);
+
+  // Disarm clipboard watcher when modal closes — privacy guardrail per spec.
+  const clipboardDisarm = clipboardCapture.disarm;
+  useEffect(() => {
+    if (isOpen) return;
+    clipboardDisarm();
+    setCaptureStatus('idle');
+  }, [isOpen, clipboardDisarm]);
+
+  const handleOpenSource = useCallback(async (result: { url: string }) => {
+    const ok = await clipboardCapture.arm(result.url);
+    if (ok) setCaptureStatus('armed');
+  }, [clipboardCapture]);
+
+  const handleGenerateFromCaptured = useCallback(async () => {
+    if (!clipboardCapture.captured) return;
+    setIsProcessing(true);
+    setError(null);
+    try {
+      const slideData = await generateSlidesFromText(clipboardCapture.captured.text);
+      if (!slideData) throw new Error('AI returned no slide content.');
+      const themeKeyword = await suggestVisualTheme(clipboardCapture.captured.text);
+      const bgUrl = `https://picsum.photos/seed/${encodeURIComponent(themeKeyword)}/1920/1080`;
+      const slides = slideData.slides;
+      onGenerate({
+        id: Date.now().toString(),
+        title: slides[0]?.content.substring(0, 24) || 'AI Generated',
+        type: ItemType.SONG,
+        theme: {
+          backgroundUrl: bgUrl,
+          fontFamily: 'serif',
+          textColor: '#ffffff',
+          shadow: true,
+          fontSize: 'large',
+        },
+        slides: slides.map((s, idx) => ({
+          id: `gen-${Date.now()}-${idx}`,
+          content: s.content,
+          label: s.label || `Slide ${idx + 1}`,
+        })),
+      });
+      clipboardCapture.clearCaptured();
+      setCaptureStatus('idle');
+      onClose();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to generate slides.');
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [clipboardCapture, onGenerate, onClose]);
+
   // Sermon validation (preserve existing feature)
   const [sermonValidation, setSermonValidation] = useState<{ references: string[]; points: string[] } | null>(null);
 
@@ -598,6 +661,59 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
                     </>
                   )}
                 </div>
+              )}
+
+              {isSearchLyrics && orchestrator.state.kind === 'lrclib' && (
+                <div className="rounded-xl border border-emerald-700 bg-emerald-900/30 p-4">
+                  <p className="text-xs uppercase text-emerald-300">Lyrics via LRCLIB</p>
+                  <p className="mt-1 text-sm font-medium text-white">{orchestrator.state.hit.trackName} — {orchestrator.state.hit.artistName}</p>
+                  <button
+                    type="button"
+                    disabled={isProcessing}
+                    className="mt-3 rounded-md bg-emerald-600 px-4 py-1.5 text-sm text-white hover:bg-emerald-500 disabled:opacity-50"
+                    onClick={async () => {
+                      if (orchestrator.state.kind !== 'lrclib') return;
+                      setIsProcessing(true);
+                      try {
+                        const slideData = await generateSlidesFromText(orchestrator.state.hit.plainLyrics);
+                        if (slideData) {
+                          const bg = `https://picsum.photos/seed/${encodeURIComponent(orchestrator.state.hit.trackName)}/1920/1080`;
+                          const slides = slideData.slides;
+                          onGenerate({
+                            id: Date.now().toString(),
+                            title: orchestrator.state.hit.trackName,
+                            type: ItemType.SONG,
+                            theme: {
+                              backgroundUrl: bg,
+                              fontFamily: 'serif',
+                              textColor: '#ffffff',
+                              shadow: true,
+                              fontSize: 'large',
+                            },
+                            slides: slides.map((s, idx) => ({
+                              id: `gen-${Date.now()}-${idx}`,
+                              content: s.content,
+                              label: s.label || `Slide ${idx + 1}`,
+                            })),
+                          });
+                          onClose();
+                        }
+                      } catch (e: unknown) { setError(e instanceof Error ? e.message : 'AI failed.'); }
+                      finally { setIsProcessing(false); }
+                    }}
+                  >
+                    Generate slides from LRCLIB lyrics
+                  </button>
+                </div>
+              )}
+
+              {isSearchLyrics && orchestrator.state.kind === 'web' && (
+                <WebSearchResultCard
+                  results={orchestrator.state.results}
+                  captureStatus={captureStatus}
+                  onOpenSource={handleOpenSource}
+                  onGenerate={handleGenerateFromCaptured}
+                />
               )}
 
               {/* AI search error */}

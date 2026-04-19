@@ -1,11 +1,8 @@
-import { app, BrowserWindow, screen, session, Menu, shell, ipcMain, clipboard, dialog, utilityProcess } from 'electron';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import fs from 'fs';
-import * as ndiSender from './ndiSender.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const { app, BrowserWindow, screen, session, Menu, shell, ipcMain, clipboard, dialog, utilityProcess } = require('electron');
+const path = require('path');
+const fs = require('fs');
+const ndiSender = require('./ndiSender.cjs');
+const { registerLyricClipboardIpc } = require('./ipc/lyricClipboard.cjs');
 const DIST_INDEX_PATH = path.join(__dirname, '../dist/index.html');
 const DEV_SERVER_URL = process.env.ELECTRON_RENDERER_URL || 'http://localhost:5173';
 const SHOULD_OPEN_DEVTOOLS = process.env.LUMINA_OPEN_DEVTOOLS === '1';
@@ -148,24 +145,76 @@ function isTrustedRendererOrigin(value) {
   if (origin === 'file://') return true;
   return TRUSTED_DEV_ORIGINS.has(origin);
 }
+module.exports.isTrustedRendererOrigin = isTrustedRendererOrigin;
+
+function resolveTrustedMediaPermissionContext(webContents, requestingOrigin, details) {
+  const webContentsUrl = typeof webContents?.getURL === 'function'
+    ? String(webContents.getURL() || '')
+    : '';
+  const candidates = [
+    ['requestingOrigin', String(requestingOrigin || '')],
+    ['securityOrigin', String(details?.securityOrigin || '')],
+    ['requestingUrl', String(details?.requestingUrl || '')],
+    ['embeddingOrigin', String(details?.embeddingOrigin || '')],
+    ['webContentsUrl', webContentsUrl],
+  ];
+  const trustedCandidate = candidates.find(([, value]) => isTrustedRendererOrigin(value));
+
+  return {
+    allowed: Boolean(trustedCandidate),
+    trustedSource: trustedCandidate?.[0] || '',
+    trustedValue: trustedCandidate?.[1] || '',
+    candidates: {
+      requestingOrigin: String(requestingOrigin || ''),
+      securityOrigin: String(details?.securityOrigin || ''),
+      requestingUrl: String(details?.requestingUrl || ''),
+      embeddingOrigin: String(details?.embeddingOrigin || ''),
+      webContentsUrl,
+      isMainFrame: Boolean(details?.isMainFrame),
+      mediaType: String(details?.mediaType || ''),
+    },
+  };
+}
 
 function installMediaPermissionHandlers() {
   const ses = session.defaultSession;
   if (!ses) return;
+  const shouldLog = !app.isPackaged || SHOULD_OPEN_DEVTOOLS;
 
-  ses.setPermissionCheckHandler((_webContents, permission, requestingOrigin) => {
-    if (!MEDIA_PERMISSIONS.has(String(permission))) return false;
-    return isTrustedRendererOrigin(String(requestingOrigin || ''));
+  ses.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
+    const normalizedPermission = String(permission);
+    if (!MEDIA_PERMISSIONS.has(normalizedPermission)) return false;
+    const resolution = resolveTrustedMediaPermissionContext(webContents, requestingOrigin, details);
+    if (shouldLog) {
+      console.info('[media-permission] check', {
+        permission: normalizedPermission,
+        allowed: resolution.allowed,
+        trustedSource: resolution.trustedSource,
+        trustedValue: resolution.trustedValue,
+        ...resolution.candidates,
+      });
+    }
+    return resolution.allowed;
   });
 
-  ses.setPermissionRequestHandler((_webContents, permission, callback, details) => {
-    if (!MEDIA_PERMISSIONS.has(String(permission))) {
+  ses.setPermissionRequestHandler((webContents, permission, callback, details) => {
+    const normalizedPermission = String(permission);
+    if (!MEDIA_PERMISSIONS.has(normalizedPermission)) {
       callback(false);
       return;
     }
 
-    const requestingUrl = String(details?.requestingUrl || details?.embeddingOrigin || '');
-    callback(isTrustedRendererOrigin(requestingUrl));
+    const resolution = resolveTrustedMediaPermissionContext(webContents, '', details);
+    if (shouldLog) {
+      console.info('[media-permission] request', {
+        permission: normalizedPermission,
+        allowed: resolution.allowed,
+        trustedSource: resolution.trustedSource,
+        trustedValue: resolution.trustedValue,
+        ...resolution.candidates,
+      });
+    }
+    callback(resolution.allowed);
   });
 }
 
@@ -183,6 +232,7 @@ function installClipboardHandlers() {
       return false;
     }
   });
+  registerLyricClipboardIpc({ isTrustedRendererOrigin });
 }
 
 function getDisplayLabel(display, index = 0) {
