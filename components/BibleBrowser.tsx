@@ -275,14 +275,18 @@ const BibleAutoCurrentSetup: React.FC<{
   );
 };
 
+function formatBibleDeviceId(id: string | null | undefined): string {
+  if (!id) return 'default';
+  return id.length > 8 ? `${id.slice(0, 8)}…` : id;
+}
+
 const BibleAutoInputDebug: React.FC<{
   diagnostic: AudioInputDiagnostic;
   selectedSourceLabel: string;
   resolvedDefaultSourceLabel: string | null;
 }> = ({ diagnostic, selectedSourceLabel, resolvedDefaultSourceLabel }) => (
-  <div className="rounded-sm border border-cyan-900/60 bg-cyan-950/20 p-2 space-y-1.5">
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-[9px] text-cyan-300 font-mono uppercase tracking-widest">Input Debug</span>
+  <div className="space-y-1.5">
+    <div className="flex items-center justify-end gap-2">
       <span className="text-[8px] text-cyan-200 font-mono uppercase">{diagnostic.phase} · {diagnostic.status}</span>
     </div>
     <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[9px] text-zinc-300">
@@ -293,7 +297,7 @@ const BibleAutoInputDebug: React.FC<{
       <span>Peak: {diagnostic.rawPeak > 0 ? `${Math.round(20 * Math.log10(diagnostic.rawPeak))} dB` : '-∞ dB'}</span>
       <span>RMS: {diagnostic.rawRms > 0 ? `${Math.round(20 * Math.log10(diagnostic.rawRms))} dB` : '-∞ dB'}</span>
       <span>Sample Rate: {diagnostic.settingsSampleRate ?? 'n/a'}</span>
-      <span>Device ID: {diagnostic.settingsDeviceId || 'default'}</span>
+      <span title={diagnostic.settingsDeviceId || 'default'}>Device ID: {formatBibleDeviceId(diagnostic.settingsDeviceId)}</span>
     </div>
     {selectedSourceLabel === 'Default microphone' && (
       <div className="text-[9px] text-cyan-200/80 leading-relaxed">
@@ -1967,7 +1971,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
               id="bible-audio-source"
               title="Audio Source"
               defaultCollapsed={true}
-              className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2"
+              className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
             >
               <SourcePicker
                 devices={audioDevices}
@@ -1981,7 +1985,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
               id="bible-capture-mode"
               title="Capture Mode"
               defaultCollapsed={true}
-              className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2"
+              className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
             >
               <div className="space-y-2">
                 <CaptureModePicker
@@ -2001,7 +2005,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
               id="bible-speech-dialect"
               title="Speech Dialect"
               defaultCollapsed={true}
-              className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2"
+              className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
             >
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
@@ -2030,11 +2034,18 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                 </div>
               )}
               {inputDiagnostic && (autoVisionaryEnabled || transcriptionEngine === 'cloud') && (
-                <BibleAutoInputDebug
-                  diagnostic={inputDiagnostic}
-                  selectedSourceLabel={selectedSourceLabel}
-                  resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
-                />
+                <CollapsiblePanel
+                  id="bible-input-debug"
+                  title="Input Debug"
+                  defaultCollapsed={true}
+                  className="rounded-sm border border-cyan-900/60 bg-cyan-950/20 p-1"
+                >
+                  <BibleAutoInputDebug
+                    diagnostic={inputDiagnostic}
+                    selectedSourceLabel={selectedSourceLabel}
+                    resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
+                  />
+                </CollapsiblePanel>
               )}
               {autoReferences.length > 0 && (
                 <div className="flex flex-col gap-1">

@@ -140,16 +140,18 @@ const labelForRequestVariant: Record<AudioInputDiagnostic['requestVariant'], str
   none: 'none',
 };
 
+function formatDeviceId(id: string | null | undefined): string {
+  if (!id) return 'default';
+  return id.length > 8 ? `${id.slice(0, 8)}…` : id;
+}
+
 const InputDiagnosticPanel: React.FC<{
   diagnostic: AudioInputDiagnostic;
   selectedSourceLabel: string;
   resolvedDefaultSourceLabel: string | null;
 }> = ({ diagnostic, selectedSourceLabel, resolvedDefaultSourceLabel }) => (
-  <div className="rounded-lg border border-cyan-900/60 bg-cyan-950/20 px-3 py-2.5 space-y-2">
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-[9px] font-black uppercase tracking-widest text-cyan-300/80">
-        Input Debug
-      </span>
+  <div className="space-y-2">
+    <div className="flex items-center justify-end gap-2">
       <span className="text-[8px] font-mono text-cyan-200/70 uppercase">
         {diagnostic.phase} · {diagnostic.status}
       </span>
@@ -162,7 +164,7 @@ const InputDiagnosticPanel: React.FC<{
       <span>Peak: {formatLinearDb(diagnostic.rawPeak)}</span>
       <span>RMS: {formatLinearDb(diagnostic.rawRms)}</span>
       <span>Sample Rate: {diagnostic.settingsSampleRate ?? 'n/a'}</span>
-      <span>Device ID: {diagnostic.settingsDeviceId || 'default'}</span>
+      <span title={diagnostic.settingsDeviceId || 'default'}>Device ID: {formatDeviceId(diagnostic.settingsDeviceId)}</span>
     </div>
     {selectedSourceLabel === 'Default microphone' && (
       <p className="text-[9px] leading-relaxed text-cyan-200/70">
@@ -547,7 +549,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
                         id="sermon-audio-source"
                         title="Audio Source"
                         defaultCollapsed={true}
-                        className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2"
+                        className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
                       >
                         <SourcePicker
                           devices={audioDevices}
@@ -560,7 +562,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
                         id="sermon-capture-mode"
                         title="Capture Mode"
                         defaultCollapsed={true}
-                        className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2"
+                        className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
                       >
                         <div className="space-y-2">
                           <CaptureModePicker
@@ -579,7 +581,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
                         id="sermon-record-check"
                         title="Record Check"
                         defaultCollapsed={true}
-                        className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2"
+                        className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
                       >
                         <RecordCheckPanel
                           selectedDeviceId={audioDeviceId}
@@ -609,7 +611,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
                     id="sermon-speech-dialect"
                     title="Speech Dialect"
                     defaultCollapsed={true}
-                    className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2"
+                    className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
                   >
                     <select
                       value={accentHint}
@@ -680,11 +682,18 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
             </div>
 
             {ENABLE_RECORDER_V2 && inputDiagnostic && (
-              <InputDiagnosticPanel
-                diagnostic={inputDiagnostic}
-                selectedSourceLabel={selectedSourceLabel}
-                resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
-              />
+              <CollapsiblePanel
+                id="sermon-input-debug"
+                title="Input Debug"
+                defaultCollapsed={true}
+                className="rounded-sm border border-cyan-900/60 bg-cyan-950/20 p-1"
+              >
+                <InputDiagnosticPanel
+                  diagnostic={inputDiagnostic}
+                  selectedSourceLabel={selectedSourceLabel}
+                  resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
+                />
+              </CollapsiblePanel>
             )}
           </div>
         )}
@@ -693,11 +702,18 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
           <div className="rounded-xl bg-red-950/40 border border-red-800/50 px-3 py-3 space-y-2">
             <p className="text-red-300 text-[11px] font-semibold">{error || 'An error occurred.'}</p>
             {ENABLE_RECORDER_V2 && inputDiagnostic && (
-              <InputDiagnosticPanel
-                diagnostic={inputDiagnostic}
-                selectedSourceLabel={selectedSourceLabel}
-                resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
-              />
+              <CollapsiblePanel
+                id="sermon-input-debug"
+                title="Input Debug"
+                defaultCollapsed={true}
+                className="rounded-sm border border-cyan-900/60 bg-cyan-950/20 p-1"
+              >
+                <InputDiagnosticPanel
+                  diagnostic={inputDiagnostic}
+                  selectedSourceLabel={selectedSourceLabel}
+                  resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
+                />
+              </CollapsiblePanel>
             )}
             <div className="flex gap-2">
               {processingJob?.status === 'failed' && (
