@@ -24,6 +24,9 @@ test.describe('Sermon Recorder v2 — Source Picker & Capture Mode', () => {
   });
 
   test('renders SourcePicker with ranked devices and Recommended badge', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('lumina.panel.sermon-audio-source', '0');
+    });
     await page.goto('/');
 
     const panel = page.locator('[data-testid="sermon-recorder-panel"]');
@@ -38,6 +41,9 @@ test.describe('Sermon Recorder v2 — Source Picker & Capture Mode', () => {
   });
 
   test('renders CaptureModePicker with all 4 presets', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('lumina.panel.sermon-capture-mode', '0');
+    });
     await page.goto('/');
 
     const panel = page.locator('[data-testid="sermon-recorder-panel"]');
@@ -53,6 +59,10 @@ test.describe('Sermon Recorder v2 — Source Picker & Capture Mode', () => {
   });
 
   test('auto-suggests Church Mixer mode when mixer device is selected', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('lumina.panel.sermon-audio-source', '0');
+      localStorage.setItem('lumina.panel.sermon-capture-mode', '0');
+    });
     await page.goto('/');
 
     const panel = page.locator('[data-testid="sermon-recorder-panel"]');
@@ -79,6 +89,9 @@ test.describe('Sermon Recorder v2 — Source Picker & Capture Mode', () => {
   });
 
   test('Run Record Check button renders', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('lumina.panel.sermon-record-check', '0');
+    });
     await page.goto('/');
 
     const panel = page.locator('[data-testid="sermon-recorder-panel"]');
@@ -87,5 +100,29 @@ test.describe('Sermon Recorder v2 — Source Picker & Capture Mode', () => {
     }
 
     await expect(panel.getByText('Run Record Check')).toBeVisible();
+  });
+
+  test('Setup sections render as sibling CollapsiblePanels (collapsed by default)', async ({ page }) => {
+    await page.goto('/');
+
+    const panel = page.locator('[data-testid="sermon-recorder-panel"]');
+    if (!(await panel.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip(true, 'Sermon recorder panel not visible in this layout');
+    }
+
+    const audioSourcePanel = panel.locator('[data-collapsible-id="sermon-audio-source"]');
+    const captureModePanel = panel.locator('[data-collapsible-id="sermon-capture-mode"]');
+    const recordCheckPanel = panel.locator('[data-collapsible-id="sermon-record-check"]');
+    const dialectPanel = panel.locator('[data-collapsible-id="sermon-speech-dialect"]');
+
+    await expect(audioSourcePanel).toBeVisible();
+    await expect(captureModePanel).toBeVisible();
+    await expect(recordCheckPanel).toBeVisible();
+    await expect(dialectPanel).toBeVisible();
+
+    await expect(audioSourcePanel).toHaveAttribute('data-collapsed', 'true');
+    await expect(captureModePanel).toHaveAttribute('data-collapsed', 'true');
+    await expect(recordCheckPanel).toHaveAttribute('data-collapsed', 'true');
+    await expect(dialectPanel).toHaveAttribute('data-collapsed', 'true');
   });
 });

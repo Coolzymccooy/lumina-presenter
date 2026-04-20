@@ -32,6 +32,7 @@ import {
 import { SourcePicker } from './sermon-recorder/SourcePicker';
 import { CaptureModePicker } from './sermon-recorder/CaptureModePicker';
 import { RecordCheckPanel } from './sermon-recorder/RecordCheckPanel';
+import { CollapsiblePanel } from './ui/CollapsiblePanel';
 import type { AudioInputDiagnostic } from '../services/audioCapture/mediaDiagnostics';
 
 export interface SermonRecorderPanelProps {
@@ -542,28 +543,51 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
                 <div className="flex-1 space-y-2">
                   {ENABLE_RECORDER_V2 ? (
                     <>
-                      <SourcePicker
-                        devices={audioDevices}
-                        selectedId={audioDeviceId}
-                        resolvedDefaultLabel={resolvedDefaultSourceLabel}
-                        onSelect={handleAudioDeviceSelect}
-                      />
-                      <CaptureModePicker
-                        selected={captureMode}
-                        suggested={suggestedCaptureMode}
-                        onSelect={handleCaptureModeSelect}
-                      />
-                      <CurrentSetupPanel
-                        selectedSourceLabel={selectedSourceLabel}
-                        resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
-                        captureMode={captureMode}
-                      />
-                      <RecordCheckPanel
-                        selectedDeviceId={audioDeviceId}
-                        resolvedDeviceId={resolvedAudioDeviceId}
-                        preset={CAPTURE_MODE_MAP.get(captureMode) ?? CAPTURE_MODE_MAP.get(DEFAULT_CAPTURE_MODE)!}
-                        onDiagnostic={recActions.setInputDiagnostic}
-                      />
+                      <CollapsiblePanel
+                        id="sermon-audio-source"
+                        title="Audio Source"
+                        defaultCollapsed={true}
+                        className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2"
+                      >
+                        <SourcePicker
+                          devices={audioDevices}
+                          selectedId={audioDeviceId}
+                          resolvedDefaultLabel={resolvedDefaultSourceLabel}
+                          onSelect={handleAudioDeviceSelect}
+                        />
+                      </CollapsiblePanel>
+                      <CollapsiblePanel
+                        id="sermon-capture-mode"
+                        title="Capture Mode"
+                        defaultCollapsed={true}
+                        className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2"
+                      >
+                        <div className="space-y-2">
+                          <CaptureModePicker
+                            selected={captureMode}
+                            suggested={suggestedCaptureMode}
+                            onSelect={handleCaptureModeSelect}
+                          />
+                          <CurrentSetupPanel
+                            selectedSourceLabel={selectedSourceLabel}
+                            resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
+                            captureMode={captureMode}
+                          />
+                        </div>
+                      </CollapsiblePanel>
+                      <CollapsiblePanel
+                        id="sermon-record-check"
+                        title="Record Check"
+                        defaultCollapsed={true}
+                        className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2"
+                      >
+                        <RecordCheckPanel
+                          selectedDeviceId={audioDeviceId}
+                          resolvedDeviceId={resolvedAudioDeviceId}
+                          preset={CAPTURE_MODE_MAP.get(captureMode) ?? CAPTURE_MODE_MAP.get(DEFAULT_CAPTURE_MODE)!}
+                          onDiagnostic={recActions.setInputDiagnostic}
+                        />
+                      </CollapsiblePanel>
                     </>
                   ) : (
                     audioDevices.length > 1 && (
@@ -581,18 +605,25 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
                       </select>
                     )
                   )}
-                  <select
-                    value={accentHint}
-                    onChange={(e) => setAccentHint(e.target.value as SermonAccentHint)}
-                    className="w-full rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] px-2 py-1.5 focus:outline-none focus:border-zinc-500"
+                  <CollapsiblePanel
+                    id="sermon-speech-dialect"
+                    title="Speech Dialect"
+                    defaultCollapsed={true}
+                    className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2"
                   >
-                    <option value="standard">Standard English</option>
-                    <option value="uk">British English</option>
-                    <option value="nigerian">Nigerian English</option>
-                    <option value="ghanaian">Ghanaian English</option>
-                    <option value="southafrican">South African English</option>
-                    <option value="kenyan">Kenyan English</option>
-                  </select>
+                    <select
+                      value={accentHint}
+                      onChange={(e) => setAccentHint(e.target.value as SermonAccentHint)}
+                      className="w-full rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] px-2 py-1.5 focus:outline-none focus:border-zinc-500"
+                    >
+                      <option value="standard">Standard English</option>
+                      <option value="uk">British English</option>
+                      <option value="nigerian">Nigerian English</option>
+                      <option value="ghanaian">Ghanaian English</option>
+                      <option value="southafrican">South African English</option>
+                      <option value="kenyan">Kenyan English</option>
+                    </select>
+                  </CollapsiblePanel>
                   <button
                     data-testid="sermon-recorder-start-btn"
                     onClick={handleStartRecording}
