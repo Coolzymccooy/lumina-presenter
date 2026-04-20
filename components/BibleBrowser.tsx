@@ -1875,7 +1875,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     ? 'h-9 px-2.5 border-b border-zinc-900 font-bold text-zinc-500 text-[9px] uppercase tracking-[0.22em] flex items-center justify-between bg-zinc-950'
     : 'h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex items-center justify-between bg-zinc-950';
   const controlsClassName = compact
-    ? 'shrink-0 px-2.5 py-2 space-y-2 border-b border-zinc-900/80 bg-zinc-950/95 overflow-y-auto custom-scrollbar max-h-[60%]'
+    ? 'shrink-0 px-2.5 py-2 space-y-2 border-b border-zinc-900/80 bg-zinc-950/95 overflow-y-auto custom-scrollbar'
     : 'p-3 space-y-2';
   const resultsClassName = compact
     ? 'min-h-0 flex-1 overflow-y-auto p-2 custom-scrollbar'
