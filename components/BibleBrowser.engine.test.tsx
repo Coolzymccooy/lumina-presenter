@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import React, { useState, act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { resolveTranscriptionEngine, type TranscriptionEngineMode } from '../utils/transcriptionEngine';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { CollapsiblePanel } from './ui/CollapsiblePanel';
 
 let container: HTMLDivElement;
 let root: Root;
@@ -163,60 +166,86 @@ describe('BibleBrowser.engine - transcription engine resolution', () => {
 // ─── Task 4: Auto Listening UI Restructure Tests ────────────────────────────────
 
 describe('BibleBrowser.ui - Auto Listening collapsible panels', () => {
-  it('verifies bible-audio-source panel ID exists with defaultCollapsed=true', () => {
-    // Create a minimal test div to simulate the panel
-    const panelDiv = document.createElement('div');
-    panelDiv.setAttribute('data-collapsible-id', 'bible-audio-source');
-    panelDiv.setAttribute('data-collapsed', 'true');
-    document.body.appendChild(panelDiv);
-
-    expect(panelDiv.getAttribute('data-collapsible-id')).toBe('bible-audio-source');
-    expect(panelDiv.getAttribute('data-collapsed')).toBe('true');
-
-    document.body.removeChild(panelDiv);
+  beforeEach(() => {
+    // Clear localStorage to ensure defaultCollapsed={true} takes effect
+    localStorage.removeItem('lumina.panel.bible-audio-source');
+    localStorage.removeItem('lumina.panel.bible-capture-mode');
+    localStorage.removeItem('lumina.panel.bible-speech-dialect');
   });
 
-  it('verifies bible-capture-mode panel ID exists with defaultCollapsed=true', () => {
-    const panelDiv = document.createElement('div');
-    panelDiv.setAttribute('data-collapsible-id', 'bible-capture-mode');
-    panelDiv.setAttribute('data-collapsed', 'true');
-    document.body.appendChild(panelDiv);
+  describe('CollapsiblePanel behavior', () => {
+    it('renders three new panels with correct attributes and defaultCollapsed=true', () => {
+      act(() => {
+        root.render(
+          <>
+            <CollapsiblePanel
+              id="bible-audio-source"
+              title="Audio Source"
+              defaultCollapsed={true}
+            >
+              <div>Audio content</div>
+            </CollapsiblePanel>
+            <CollapsiblePanel
+              id="bible-capture-mode"
+              title="Capture Mode"
+              defaultCollapsed={true}
+            >
+              <div>Capture content</div>
+            </CollapsiblePanel>
+            <CollapsiblePanel
+              id="bible-speech-dialect"
+              title="Speech Dialect"
+              defaultCollapsed={true}
+            >
+              <div>Dialect content</div>
+            </CollapsiblePanel>
+          </>
+        );
+      });
 
-    expect(panelDiv.getAttribute('data-collapsible-id')).toBe('bible-capture-mode');
-    expect(panelDiv.getAttribute('data-collapsed')).toBe('true');
+      // Verify all three panels are rendered with correct attributes
+      const audioPanel = container.querySelector('[data-collapsible-id="bible-audio-source"]');
+      const capturePanel = container.querySelector('[data-collapsible-id="bible-capture-mode"]');
+      const dialectPanel = container.querySelector('[data-collapsible-id="bible-speech-dialect"]');
 
-    document.body.removeChild(panelDiv);
-  });
+      expect(audioPanel).not.toBeNull();
+      expect(audioPanel?.getAttribute('data-collapsed')).toBe('true');
 
-  it('verifies bible-speech-dialect panel ID exists with defaultCollapsed=true', () => {
-    const panelDiv = document.createElement('div');
-    panelDiv.setAttribute('data-collapsible-id', 'bible-speech-dialect');
-    panelDiv.setAttribute('data-collapsed', 'true');
-    document.body.appendChild(panelDiv);
+      expect(capturePanel).not.toBeNull();
+      expect(capturePanel?.getAttribute('data-collapsed')).toBe('true');
 
-    expect(panelDiv.getAttribute('data-collapsible-id')).toBe('bible-speech-dialect');
-    expect(panelDiv.getAttribute('data-collapsed')).toBe('true');
-
-    document.body.removeChild(panelDiv);
-  });
-
-  it('verifies localStorage keys for new panels are initialized correctly', () => {
-    const STORAGE_PREFIX = 'lumina.panel.';
-    const panelIds = ['bible-audio-source', 'bible-capture-mode', 'bible-speech-dialect'];
-
-    panelIds.forEach((id) => {
-      localStorage.removeItem(STORAGE_PREFIX + id);
-      expect(localStorage.getItem(STORAGE_PREFIX + id)).toBeNull();
+      expect(dialectPanel).not.toBeNull();
+      expect(dialectPanel?.getAttribute('data-collapsed')).toBe('true');
     });
   });
 
-  it('verifies old bible-auto-visionary panel ID no longer exists', () => {
-    // This test confirms the refactoring removed the old panel
-    const STORAGE_PREFIX = 'lumina.panel.';
-    const oldPanelId = 'bible-auto-visionary';
+  describe('Source-level regression guards', () => {
+    const bibleBrowserSrc = readFileSync(
+      resolve(__dirname, 'BibleBrowser.tsx'),
+      'utf8'
+    );
 
-    // The old panel should not be used in new renders
-    // (This is a documentation test confirming the refactor removed this ID)
-    expect(oldPanelId).toBe('bible-auto-visionary');
+    it('uses new bible-audio-source panel id', () => {
+      expect(bibleBrowserSrc).toContain('id="bible-audio-source"');
+    });
+
+    it('uses new bible-capture-mode panel id', () => {
+      expect(bibleBrowserSrc).toContain('id="bible-capture-mode"');
+    });
+
+    it('uses new bible-speech-dialect panel id', () => {
+      expect(bibleBrowserSrc).toContain('id="bible-speech-dialect"');
+    });
+
+    it('no longer references old bible-auto-visionary panel id', () => {
+      expect(bibleBrowserSrc).not.toContain('bible-auto-visionary');
+    });
+
+    it('each new panel uses defaultCollapsed={true}', () => {
+      // Check that defaultCollapsed={true} appears multiple times (at least 3)
+      const matches = bibleBrowserSrc.match(/defaultCollapsed=\{true\}/g);
+      expect(matches).not.toBeNull();
+      expect(matches!.length).toBeGreaterThanOrEqual(3);
+    });
   });
 });
