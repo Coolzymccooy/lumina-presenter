@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { BibleIcon, SearchIcon, PlayIcon, SparklesIcon } from './Icons';
 import { ServiceItem, ItemType, MediaType } from '../types';
+import { TranscriptionEngineMode, resolveTranscriptionEngine } from '../utils/transcriptionEngine';
 import { DEFAULT_BACKGROUNDS } from '../constants';
 import { getDefaultBackgroundUrl, getDefaultBackgroundMediaType } from '../services/userBackgroundPreference';
 import { BibleStylePicker } from './BibleStylePicker.tsx';
@@ -96,7 +97,6 @@ interface WindowWithSpeech extends Window {
 }
 
 type VisionarySpeechLocaleMode = 'auto' | 'en-GB' | 'en-US';
-type TranscriptionEngineMode = 'browser_stt' | 'cloud' | 'cloud_fallback' | 'disabled';
 type CloudRecorderState = 'idle' | 'recording' | 'cooldown' | 'uploading' | 'error';
 
 const VERSIONS = [
@@ -1597,8 +1597,9 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   }, [autoVisionaryEnabled, isVisionaryMode, stopAllVisionaryCapture]);
 
   useEffect(() => {
-    if (!autoEnabledRef.current) return;
-    const nextEngine: TranscriptionEngineMode = isOnline ? 'cloud' : 'browser_stt';
+    const enabled = autoVisionaryEnabled && isVisionaryMode;
+    if (!enabled) return;
+    const nextEngine = resolveTranscriptionEngine({ autoEnabled: enabled, isOnline });
     if (transcriptionEngine === nextEngine) return;
     stopAllVisionaryCapture();
     setCloudCooldownUntil(0);
@@ -1608,7 +1609,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     showEngineToast(nextEngine === 'cloud'
       ? 'Listening with cloud transcription.'
       : 'Offline mode: using browser speech recognition.');
-  }, [isOnline, listenerLocale, showEngineToast, stopAllVisionaryCapture, transcriptionEngine]);
+  }, [autoVisionaryEnabled, isVisionaryMode, isOnline, listenerLocale, showEngineToast, stopAllVisionaryCapture, transcriptionEngine]);
 
   useEffect(() => {
     if (transcriptionEngine !== 'cloud') return;
