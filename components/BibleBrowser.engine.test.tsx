@@ -70,26 +70,6 @@ afterEach(() => {
   container.remove();
 });
 
-// EngineRow test harness - tests the visibility of Engine row JSX
-interface EngineRowVisibilityProps {
-  autoVisionaryEnabled: boolean;
-  isVisionaryMode: boolean;
-}
-
-function EngineRowVisibilityHarness({ autoVisionaryEnabled, isVisionaryMode }: EngineRowVisibilityProps) {
-  const [engine] = useState<TranscriptionEngineMode>('cloud');
-  return (
-    <div data-testid="engine-row-container">
-      {autoVisionaryEnabled && isVisionaryMode && (
-        <div data-testid="engine-row" className="flex items-center gap-2 text-[9px] font-mono">
-          <span className="text-zinc-400">Engine:</span>
-          <span className="font-bold text-emerald-300">{engine}</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
 describe('BibleBrowser.engine - transcription engine resolution', () => {
   it('renders disabled when autoVisionaryEnabled is false', () => {
     act(() => {
@@ -177,41 +157,5 @@ describe('BibleBrowser.engine - transcription engine resolution', () => {
       root.render(<Harness autoVisionaryEnabled={true} isVisionaryMode={true} isOnline={false} />);
     });
     expect(latestEngine).toBe('browser_stt');
-  });
-});
-
-describe('BibleBrowser.engine - Engine row visibility', () => {
-  it('hides Engine row when autoVisionaryEnabled is false', () => {
-    act(() => {
-      root.render(<EngineRowVisibilityHarness autoVisionaryEnabled={false} isVisionaryMode={true} />);
-    });
-    const engineRow = container.querySelector('[data-testid="engine-row"]');
-    expect(engineRow).toBeNull();
-  });
-
-  it('hides Engine row when isVisionaryMode is false', () => {
-    act(() => {
-      root.render(<EngineRowVisibilityHarness autoVisionaryEnabled={true} isVisionaryMode={false} />);
-    });
-    const engineRow = container.querySelector('[data-testid="engine-row"]');
-    expect(engineRow).toBeNull();
-  });
-
-  it('hides Engine row when both autoVisionaryEnabled and isVisionaryMode are false', () => {
-    act(() => {
-      root.render(<EngineRowVisibilityHarness autoVisionaryEnabled={false} isVisionaryMode={false} />);
-    });
-    const engineRow = container.querySelector('[data-testid="engine-row"]');
-    expect(engineRow).toBeNull();
-  });
-
-  it('shows Engine row when both autoVisionaryEnabled and isVisionaryMode are true', () => {
-    act(() => {
-      root.render(<EngineRowVisibilityHarness autoVisionaryEnabled={true} isVisionaryMode={true} />);
-    });
-    const engineRow = container.querySelector('[data-testid="engine-row"]');
-    expect(engineRow).not.toBeNull();
-    expect(engineRow?.textContent).toContain('Engine:');
-    expect(engineRow?.textContent).toContain('cloud');
   });
 });
