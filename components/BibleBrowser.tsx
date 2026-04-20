@@ -2348,11 +2348,11 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       {results.length > 0 && (
         <div className="shrink-0 border-t border-zinc-900 bg-zinc-950/95 backdrop-blur-md">
           {/* Layout + Size + Style chips */}
-          <div className={`${compact ? 'px-2.5 pt-2 pb-1' : 'px-3 pt-2.5 pb-1'}`}>
+          <div className={`${compact ? 'px-2 pt-1 pb-0.5' : 'px-3 pt-2.5 pb-1'}`}>
             <CollapsiblePanel
               id="bible-slide-style"
               title="Slide Style & Preview"
-              defaultCollapsed={true}
+              defaultCollapsed={false}
               className="rounded-md border border-violet-900/40 bg-gradient-to-br from-violet-950/30 via-zinc-950/60 to-zinc-950/80 p-2 shadow-inner shadow-violet-950/20"
               data-testid="bible-slide-style-panel"
               headerTooltipVariant="ai"
