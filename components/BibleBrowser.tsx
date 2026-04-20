@@ -1929,55 +1929,61 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
             >
               AI SEARCH
             </button>
-            <CollapsiblePanel
-              id="bible-auto-visionary"
-              title="Auto Listening"
-              defaultCollapsed={!autoVisionaryEnabled}
-              className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2"
-              data-testid="bible-auto-visionary-panel"
-              headerTooltipVariant="ai"
-              headerTooltip={
-                <span>
-                  <strong className="text-purple-300">Hands‑free scripture lookup.</strong>
-                  <br />
-                  Lumina listens to the preacher's mic, hears the reference (e.g. "John 3:16") in any of 12 languages, and queues the verses live — no typing.
-                  <br />
-                  Toggle on, pick a language, and keep your hands on the room.
-                </span>
-              }
-              badge={
-                <span
-                  className={`px-1.5 py-0.5 rounded-sm text-[8px] font-bold uppercase tracking-wider border ${autoVisionaryEnabled ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-zinc-900 text-zinc-500 border-zinc-800'}`}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[9px] font-bold tracking-wider text-purple-300 uppercase">Auto Visionary (Mic)</span>
+                <button
+                  onClick={() => setAutoVisionaryEnabled((prev) => !prev)}
+                  className={`px-2 py-1 rounded-sm text-[9px] font-bold border ${autoVisionaryEnabled ? 'bg-emerald-700/40 text-emerald-300 border-emerald-700' : 'bg-zinc-900 text-zinc-300 border-zinc-700'}`}
                 >
-                  {autoVisionaryEnabled ? `Listening · ${localeStatusLanguage}` : 'Off'}
-                </span>
-              }
+                  {autoVisionaryEnabled ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[9px] text-zinc-400 uppercase tracking-wider">Auto Project to Stage/Output</span>
+                <button
+                  onClick={() => setAutoProjectEnabled((prev) => !prev)}
+                  className={`px-2 py-1 rounded-sm text-[9px] font-bold border ${autoProjectEnabled ? 'bg-cyan-700/40 text-cyan-300 border-cyan-700' : 'bg-zinc-900 text-zinc-300 border-zinc-700'}`}
+                >
+                  {autoProjectEnabled ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              {autoVisionaryEnabled && isVisionaryMode && (
+                <div className="flex items-center gap-2 text-[9px] font-mono">
+                  <span className="text-zinc-400">Engine:</span>
+                  <span className={`font-bold ${transcriptionEngine === 'browser_stt' ? 'text-amber-300' : 'text-emerald-300'}`}>
+                    {engineLabel}
+                  </span>
+                </div>
+              )}
+              {engineToast && (
+                <div className="text-[9px] text-amber-200 font-mono border border-amber-700/60 rounded-sm p-1.5 bg-amber-950/25">
+                  {engineToast}
+                </div>
+              )}
+            </div>
+
+            <CollapsiblePanel
+              id="bible-audio-source"
+              title="Audio Source"
+              defaultCollapsed={true}
+              className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2"
+            >
+              <SourcePicker
+                devices={audioDevices}
+                selectedId={audioDeviceId}
+                resolvedDefaultLabel={resolvedDefaultSourceLabel}
+                onSelect={handleSelectAudioSource}
+              />
+            </CollapsiblePanel>
+
+            <CollapsiblePanel
+              id="bible-capture-mode"
+              title="Capture Mode"
+              defaultCollapsed={true}
+              className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2"
             >
               <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[9px] font-bold tracking-wider text-purple-300 uppercase">Auto Visionary (Mic)</span>
-                  <button
-                    onClick={() => setAutoVisionaryEnabled((prev) => !prev)}
-                    className={`px-2 py-1 rounded-sm text-[9px] font-bold border ${autoVisionaryEnabled ? 'bg-emerald-700/40 text-emerald-300 border-emerald-700' : 'bg-zinc-900 text-zinc-300 border-zinc-700'}`}
-                  >
-                    {autoVisionaryEnabled ? 'ON' : 'OFF'}
-                  </button>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider">Auto Project to Stage/Output</span>
-                  <button
-                    onClick={() => setAutoProjectEnabled((prev) => !prev)}
-                    className={`px-2 py-1 rounded-sm text-[9px] font-bold border ${autoProjectEnabled ? 'bg-cyan-700/40 text-cyan-300 border-cyan-700' : 'bg-zinc-900 text-zinc-300 border-zinc-700'}`}
-                  >
-                    {autoProjectEnabled ? 'ON' : 'OFF'}
-                  </button>
-                </div>
-                <SourcePicker
-                  devices={audioDevices}
-                  selectedId={audioDeviceId}
-                  resolvedDefaultLabel={resolvedDefaultSourceLabel}
-                  onSelect={handleSelectAudioSource}
-                />
                 <CaptureModePicker
                   selected={captureMode}
                   suggested={suggestedCaptureMode}
@@ -1988,6 +1994,16 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                   resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
                   captureModeLabel={captureModeLabel}
                 />
+              </div>
+            </CollapsiblePanel>
+
+            <CollapsiblePanel
+              id="bible-speech-dialect"
+              title="Speech Dialect"
+              defaultCollapsed={true}
+              className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2"
+            >
+              <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[9px] text-zinc-400 uppercase tracking-wider">Speech Dialect</span>
                   <select
@@ -2003,67 +2019,57 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                 <div className="text-[9px] text-cyan-300 font-mono">
                   Dialect: {localeStatusLanguage} ({localeModeLabel})
                 </div>
-                {autoVisionaryEnabled && isVisionaryMode && (
-                  <div className="flex items-center gap-2 text-[9px] font-mono">
-                    <span className="text-zinc-400">Engine:</span>
-                    <span className={`font-bold ${transcriptionEngine === 'browser_stt' ? 'text-amber-300' : 'text-emerald-300'}`}>
-                      {engineLabel}
-                    </span>
-                  </div>
-                )}
-                {engineToast && (
-                  <div className="text-[9px] text-amber-200 font-mono border border-amber-700/60 rounded-sm p-1.5 bg-amber-950/25">
-                    {engineToast}
-                  </div>
-                )}
-                <div className="text-[9px] text-zinc-300 font-mono">{autoStatusText}</div>
-                {cloudCooldownUntil > Date.now() && (
-                  <div className="text-[9px] text-amber-300 font-mono">
-                    Cooldown: {Math.max(1, Math.ceil((cloudCooldownUntil - Date.now()) / 1000))}s
-                  </div>
-                )}
-                {inputDiagnostic && (autoVisionaryEnabled || transcriptionEngine === 'cloud') && (
-                  <BibleAutoInputDebug
-                    diagnostic={inputDiagnostic}
-                    selectedSourceLabel={selectedSourceLabel}
-                    resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
-                  />
-                )}
-                {autoReferences.length > 0 && (
-                  <div className="flex flex-col gap-1">
-                    <div className="text-[9px] text-zinc-500 font-mono uppercase tracking-widest">Matches</div>
-                    <div className="flex flex-wrap gap-1">
-                      {autoReferences.map((ref) => (
-                        <button
-                          key={ref}
-                          onClick={() => void handleAutoReferenceClick(ref)}
-                          className="text-[9px] text-cyan-300 font-mono bg-cyan-950/40 border border-cyan-800/50 rounded px-1.5 py-0.5 hover:bg-cyan-900/60 active:bg-cyan-900/80 transition-colors truncate max-w-[140px]"
-                          title={`Load ${ref}`}
-                        >
-                          {ref}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {autoTranscript && (
-                  <div className="text-[9px] text-zinc-400 font-mono border border-zinc-800 rounded-sm p-1.5 max-h-16 overflow-y-auto">
-                    Heard: {autoTranscript}
-                  </div>
-                )}
-                {autoError && autoVisionaryEnabled && (
-                  <div className="flex items-start gap-1.5 bg-rose-950/40 border border-rose-800/50 rounded px-2 py-1">
-                    <span className="text-rose-400 text-[10px] leading-tight shrink-0 mt-px">⚠</span>
-                    <span className="text-[9px] text-rose-300 font-mono leading-tight line-clamp-2">{autoError}</span>
-                    <button
-                      onClick={() => setAutoError(null)}
-                      className="ml-auto text-rose-500 hover:text-rose-300 text-[10px] shrink-0 leading-tight"
-                      title="Dismiss"
-                    >✕</button>
-                  </div>
-                )}
               </div>
             </CollapsiblePanel>
+
+            <div className="space-y-2">
+              <div className="text-[9px] text-zinc-300 font-mono">{autoStatusText}</div>
+              {cloudCooldownUntil > Date.now() && (
+                <div className="text-[9px] text-amber-300 font-mono">
+                  Cooldown: {Math.max(1, Math.ceil((cloudCooldownUntil - Date.now()) / 1000))}s
+                </div>
+              )}
+              {inputDiagnostic && (autoVisionaryEnabled || transcriptionEngine === 'cloud') && (
+                <BibleAutoInputDebug
+                  diagnostic={inputDiagnostic}
+                  selectedSourceLabel={selectedSourceLabel}
+                  resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
+                />
+              )}
+              {autoReferences.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  <div className="text-[9px] text-zinc-500 font-mono uppercase tracking-widest">Matches</div>
+                  <div className="flex flex-wrap gap-1">
+                    {autoReferences.map((ref) => (
+                      <button
+                        key={ref}
+                        onClick={() => void handleAutoReferenceClick(ref)}
+                        className="text-[9px] text-cyan-300 font-mono bg-cyan-950/40 border border-cyan-800/50 rounded px-1.5 py-0.5 hover:bg-cyan-900/60 active:bg-cyan-900/80 transition-colors truncate max-w-[140px]"
+                        title={`Load ${ref}`}
+                      >
+                        {ref}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {autoTranscript && (
+                <div className="text-[9px] text-zinc-400 font-mono border border-zinc-800 rounded-sm p-1.5 max-h-16 overflow-y-auto">
+                  Heard: {autoTranscript}
+                </div>
+              )}
+              {autoError && autoVisionaryEnabled && (
+                <div className="flex items-start gap-1.5 bg-rose-950/40 border border-rose-800/50 rounded px-2 py-1">
+                  <span className="text-rose-400 text-[10px] leading-tight shrink-0 mt-px">⚠</span>
+                  <span className="text-[9px] text-rose-300 font-mono leading-tight line-clamp-2">{autoError}</span>
+                  <button
+                    onClick={() => setAutoError(null)}
+                    className="ml-auto text-rose-500 hover:text-rose-300 text-[10px] shrink-0 leading-tight"
+                    title="Dismiss"
+                  >✕</button>
+                </div>
+              )}
+            </div>
 
           </div>
         ) : (
