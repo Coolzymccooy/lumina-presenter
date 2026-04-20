@@ -2003,12 +2003,14 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                 <div className="text-[9px] text-cyan-300 font-mono">
                   Dialect: {localeStatusLanguage} ({localeModeLabel})
                 </div>
-                <div className="flex items-center gap-2 text-[9px] font-mono">
-                  <span className="text-zinc-400">Engine:</span>
-                  <span className={`font-bold ${transcriptionEngine === 'browser_stt' ? 'text-amber-300' : 'text-emerald-300'}`}>
-                    {engineLabel}
-                  </span>
-                </div>
+                {autoVisionaryEnabled && isVisionaryMode && (
+                  <div className="flex items-center gap-2 text-[9px] font-mono">
+                    <span className="text-zinc-400">Engine:</span>
+                    <span className={`font-bold ${transcriptionEngine === 'browser_stt' ? 'text-amber-300' : 'text-emerald-300'}`}>
+                      {engineLabel}
+                    </span>
+                  </div>
+                )}
                 {engineToast && (
                   <div className="text-[9px] text-amber-200 font-mono border border-amber-700/60 rounded-sm p-1.5 bg-amber-950/25">
                     {engineToast}
