@@ -1,7 +1,7 @@
 {
   "name": "lumina-presenter",
   "private": true,
-  "version": "2.5.0",
+  "version": "2.6.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -80,6 +80,7 @@
       "dist/**/*",
       "electron/**/*",
       "server/**/*",
+      "services/lyricSources/lyricHeuristic.cjs",
       "node_modules/**/*",
       "!node_modules/**/*.d",
       "package.json"

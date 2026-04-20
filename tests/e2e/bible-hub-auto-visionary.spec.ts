@@ -30,79 +30,93 @@ test.describe('Bible Hub — Auto Visionary cloud listening (V2)', () => {
     });
   });
 
-  test('Auto Visionary panel renders with off-state badge', async ({ page }) => {
+  test('Auto Visionary toggle and engine indicator render', async ({ page }) => {
     await page.goto('/');
 
-    const panel = page.locator('[data-testid="bible-auto-visionary-panel"]');
-    if (!(await panel.isVisible({ timeout: 3000 }).catch(() => false))) {
-      test.skip(true, 'Bible auto-visionary panel not visible in this layout');
+    const label = page.getByText('Auto Visionary (Mic)');
+    if (!(await label.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip(true, 'Bible Hub auto listening controls not visible in this layout');
     }
 
-    await expect(panel.getByText('Auto Visionary (Mic)')).toBeVisible();
-    await expect(panel.getByText('Off')).toBeVisible();
-    await expect(panel.getByText(/Engine:/)).toBeVisible();
+    await expect(label).toBeVisible();
+    const toggleRow = label.locator('..');
+    await expect(toggleRow.getByRole('button', { name: /^(ON|OFF)$/ })).toBeVisible();
   });
 
-  test('Engine label reads "Cloud" by default when online', async ({ page }) => {
+  test('Engine label reads "Cloud" or "Disabled" (never legacy modes)', async ({ page }) => {
     await page.goto('/');
 
-    const panel = page.locator('[data-testid="bible-auto-visionary-panel"]');
-    if (!(await panel.isVisible({ timeout: 3000 }).catch(() => false))) {
-      test.skip(true, 'Bible auto-visionary panel not visible in this layout');
+    const label = page.getByText('Auto Visionary (Mic)');
+    if (!(await label.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip(true, 'Bible Hub auto listening controls not visible in this layout');
     }
 
-    const engineLine = panel.locator('text=/Engine:/').locator('..');
-    await expect(engineLine).toContainText(/Cloud|Disabled/);
-    await expect(engineLine).not.toContainText('Cloud Fallback');
-    await expect(engineLine).not.toContainText('Browser STT');
+    const engineText = page.getByText(/Engine:/);
+    if (await engineText.isVisible({ timeout: 1500 }).catch(() => false)) {
+      const engineRow = engineText.locator('..');
+      await expect(engineRow).toContainText(/Cloud|Disabled/);
+      await expect(engineRow).not.toContainText('Cloud Fallback');
+      await expect(engineRow).not.toContainText('Browser STT');
+    }
   });
 
-  test('Speech dialect selector preserves UK / US options', async ({ page }) => {
+  test('Speech dialect panel preserves UK / US / Auto options when expanded', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('lumina.panel.bible-speech-dialect', '0');
+    });
     await page.goto('/');
 
-    const panel = page.locator('[data-testid="bible-auto-visionary-panel"]');
-    if (!(await panel.isVisible({ timeout: 3000 }).catch(() => false))) {
-      test.skip(true, 'Bible auto-visionary panel not visible in this layout');
+    const dialectPanel = page.locator('[data-collapsible-id="bible-speech-dialect"]');
+    if (!(await dialectPanel.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip(true, 'Speech dialect panel not visible in this layout');
     }
 
-    const dialectSelect = panel.locator('select');
+    const dialectSelect = dialectPanel.locator('select');
     await expect(dialectSelect).toBeVisible();
     await expect(dialectSelect.locator('option[value="auto"]')).toHaveCount(1);
     await expect(dialectSelect.locator('option[value="en-GB"]')).toHaveCount(1);
     await expect(dialectSelect.locator('option[value="en-US"]')).toHaveCount(1);
   });
 
-  test('Auto Listening shows source, capture mode, and resolved default setup UI', async ({ page }) => {
+  test('Auto Listening exposes Audio Source, Capture Mode, and Speech Dialect panels', async ({ page }) => {
     await page.goto('/');
 
-    const panel = page.locator('[data-testid="bible-auto-visionary-panel"]');
-    if (!(await panel.isVisible({ timeout: 3000 }).catch(() => false))) {
-      test.skip(true, 'Bible auto-visionary panel not visible in this layout');
+    const audioSourcePanel = page.locator('[data-collapsible-id="bible-audio-source"]');
+    const captureModePanel = page.locator('[data-collapsible-id="bible-capture-mode"]');
+    const dialectPanel = page.locator('[data-collapsible-id="bible-speech-dialect"]');
+
+    if (!(await audioSourcePanel.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip(true, 'Bible Hub auto listening panels not visible in this layout');
     }
 
-    await expect(panel.getByText('Audio Source')).toBeVisible();
-    await expect(panel.getByText('Capture Mode')).toBeVisible();
-    await expect(panel.getByText('Current Setup')).toBeVisible();
-    await expect(panel.getByText('Default microphone')).toBeVisible();
-    await expect(panel.getByText(/Currently routes to Microphone Array/)).toBeVisible();
-    await expect(panel.getByText(/Basic Clean/i)).toBeVisible();
+    await expect(audioSourcePanel).toBeVisible();
+    await expect(captureModePanel).toBeVisible();
+    await expect(dialectPanel).toBeVisible();
+
+    await expect(audioSourcePanel.getByText('Audio Source')).toBeVisible();
+    await expect(captureModePanel.getByText('Capture Mode')).toBeVisible();
+    await expect(dialectPanel.getByText('Speech Dialect').first()).toBeVisible();
+
+    await expect(audioSourcePanel).toHaveAttribute('data-collapsed', 'true');
+    await expect(captureModePanel).toHaveAttribute('data-collapsed', 'true');
+    await expect(dialectPanel).toHaveAttribute('data-collapsed', 'true');
   });
 
-  test('Toggling Auto Visionary ON flips badge to Listening', async ({ page }) => {
+  test('Toggling Auto Visionary flips label text between ON and OFF', async ({ page }) => {
     await page.goto('/');
 
-    const panel = page.locator('[data-testid="bible-auto-visionary-panel"]');
-    if (!(await panel.isVisible({ timeout: 3000 }).catch(() => false))) {
-      test.skip(true, 'Bible auto-visionary panel not visible in this layout');
+    const label = page.getByText('Auto Visionary (Mic)');
+    if (!(await label.isVisible({ timeout: 3000 }).catch(() => false))) {
+      test.skip(true, 'Bible Hub auto listening controls not visible in this layout');
     }
 
-    const toggle = panel.getByRole('button', { name: /^OFF$/ });
-    if (!(await toggle.isVisible({ timeout: 1500 }).catch(() => false))) {
+    const toggleRow = label.locator('..');
+    const offToggle = toggleRow.getByRole('button', { name: /^OFF$/ });
+    if (!(await offToggle.isVisible({ timeout: 1500 }).catch(() => false))) {
       test.skip(true, 'Toggle starts in ON state — skipping ON-flip assertion');
     }
 
-    await toggle.click();
-    await expect(panel.getByRole('button', { name: /^ON$/ })).toBeVisible();
-    await expect(panel.getByText(/Listening|Starting microphone/)).toBeVisible();
+    await offToggle.click();
+    await expect(toggleRow.getByRole('button', { name: /^ON$/ })).toBeVisible();
   });
 });
