@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { GOSPEL_TRACKS, GospelTrack } from '../constants';
 import { MusicIcon, PlayIcon, PauseIcon, SquareIcon, Volume2Icon } from './Icons';
 import type { RecordingLibrary } from '../hooks/useRecordingLibrary';
@@ -172,20 +172,45 @@ const RecordingRow: React.FC<RecordingRowProps> = ({ track, recordingLibrary }) 
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const handlePlay = useCallback(async () => {
     try {
+      setPlaybackError(null);
+
+      // Clean up previous audio element
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+
       const url = await recordingLibrary.getPlaybackUrl(track.id);
       if (url) {
         const audio = new Audio(url);
-        audio.play();
+        audioRef.current = audio;
+        audio.play().catch((error: unknown) => {
+          const message = error instanceof Error ? error.message : 'Playback failed';
+          setPlaybackError(message);
+          setIsPlaying(false);
+        });
         setIsPlaying(true);
         audio.onended = () => setIsPlaying(false);
       }
-    } catch {
-      // Playback failed silently
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to get playback URL';
+      setPlaybackError(message);
     }
   }, [track.id, recordingLibrary]);
+
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   const handleRename = useCallback(async () => {
     await recordingLibrary.renameRecording(track.id, newTitle);
@@ -222,39 +247,46 @@ const RecordingRow: React.FC<RecordingRowProps> = ({ track, recordingLibrary }) 
 
   return (
     <li className="group p-2 rounded-sm border bg-transparent border-transparent hover:bg-zinc-900/50 transition-all flex items-center justify-between">
-      <div className="flex items-center min-w-0 mr-2 flex-1">
-        <button
-          onClick={handlePlay}
-          className="p-1 hover:bg-zinc-800 rounded-sm text-blue-500 transition-colors flex-shrink-0"
-        >
-          {isPlaying ? <PauseIcon className="w-3 h-3" /> : <PlayIcon className="w-3 h-3" />}
-        </button>
-        <div className="flex flex-col min-w-0 ml-2 flex-1">
-          {isRenaming ? (
-            <input
-              autoFocus
-              type="text"
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              onBlur={handleRename}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleRename();
-                if (e.key === 'Escape') setIsRenaming(false);
-              }}
-              className="text-[11px] font-bold bg-zinc-800 text-zinc-300 px-1 rounded-sm border border-zinc-700 truncate"
-            />
-          ) : (
-            <button
-              onClick={() => setIsRenaming(true)}
-              className="text-[11px] font-bold text-zinc-300 text-left hover:text-blue-400 transition-colors truncate"
-            >
-              {track.title}
-            </button>
-          )}
-          <span className="text-[9px] text-zinc-600 font-mono">
-            {formatDuration(track.durationSec)} • {formatFileSize(track.sizeBytes)}
-          </span>
+      <div className="flex items-center min-w-0 mr-2 flex-1 flex-col items-start">
+        <div className="flex items-center min-w-0 w-full">
+          <button
+            onClick={handlePlay}
+            className="p-1 hover:bg-zinc-800 rounded-sm text-blue-500 transition-colors flex-shrink-0"
+          >
+            {isPlaying ? <PauseIcon className="w-3 h-3" /> : <PlayIcon className="w-3 h-3" />}
+          </button>
+          <div className="flex flex-col min-w-0 ml-2 flex-1">
+            {isRenaming ? (
+              <input
+                autoFocus
+                type="text"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onBlur={handleRename}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRename();
+                  if (e.key === 'Escape') setIsRenaming(false);
+                }}
+                className="text-[11px] font-bold bg-zinc-800 text-zinc-300 px-1 rounded-sm border border-zinc-700 truncate"
+              />
+            ) : (
+              <button
+                onClick={() => setIsRenaming(true)}
+                className="text-[11px] font-bold text-zinc-300 text-left hover:text-blue-400 transition-colors truncate"
+              >
+                {track.title}
+              </button>
+            )}
+            <span className="text-[9px] text-zinc-600 font-mono">
+              {formatDuration(track.durationSec)} • {formatFileSize(track.sizeBytes)}
+            </span>
+          </div>
         </div>
+        {playbackError && (
+          <span className="text-xs text-red-400 ml-8 mt-1" role="alert">
+            {playbackError}
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-1 flex-shrink-0">
@@ -276,7 +308,11 @@ const RecordingRow: React.FC<RecordingRowProps> = ({ track, recordingLibrary }) 
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 bg-zinc-800 border border-zinc-700 rounded-sm shadow-lg z-50">
+            <div
+              className="absolute right-0 top-full mt-1 bg-zinc-800 border border-zinc-700 rounded-sm shadow-lg z-50"
+              role="menu"
+              aria-label="Recording actions"
+            >
               {track.syncState === 'local_only' && (
                 <button
                   role="menuitem"
@@ -309,7 +345,6 @@ const RecordingRow: React.FC<RecordingRowProps> = ({ track, recordingLibrary }) 
                   Cancel
                 </button>
                 <button
-                  role="button"
                   name="confirm"
                   onClick={handleDeleteConfirm}
                   className="px-2 py-1 text-[9px] bg-red-900 hover:bg-red-800 rounded-sm transition-colors text-red-100"
