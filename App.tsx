@@ -1236,6 +1236,30 @@ function App() {
     const hasSeen = localStorage.getItem('lumina_onboarding_v2.2.0');
     return !hasSeen;
   });
+
+  const parseJson = <T,>(raw: string | null, fallback: T): T => {
+    if (raw === null) return fallback;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return fallback;
+    }
+  };
+
+  const getSavedState = () => {
+    try {
+      return parseJson(localStorage.getItem(STORAGE_KEY), null as any);
+    } catch (e) {
+      console.warn("State load failed", e);
+      return null;
+    }
+  };
+  const initialSavedStateRef = useRef<any>(null);
+  if (initialSavedStateRef.current === null) {
+    initialSavedStateRef.current = getSavedState();
+  }
+  const initialSavedState = initialSavedStateRef.current;
+
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab | null>(() => {
     const persisted = initialSavedStateRef.current?.activeSidebarTab;
     const valid: SidebarTab[] = ['SCHEDULE', 'HYMNS', 'AUDIO', 'BIBLE', 'AUDIENCE', 'FILES', 'MACROS'];
@@ -1306,29 +1330,6 @@ function App() {
   const showDesktopUpdateBanner = isElectronShell
     && ['available', 'downloading', 'downloaded', 'error'].includes(desktopUpdateStatus.state)
     && dismissedUpdateKey !== currentUpdateKey;
-
-  const parseJson = <T,>(raw: string | null, fallback: T): T => {
-    if (raw === null) return fallback;
-    try {
-      return JSON.parse(raw) as T;
-    } catch {
-      return fallback;
-    }
-  };
-
-  const getSavedState = () => {
-    try {
-      return parseJson(localStorage.getItem(STORAGE_KEY), null as any);
-    } catch (e) {
-      console.warn("State load failed", e);
-      return null;
-    }
-  };
-  const initialSavedStateRef = useRef<any>(null);
-  if (initialSavedStateRef.current === null) {
-    initialSavedStateRef.current = getSavedState();
-  }
-  const initialSavedState = initialSavedStateRef.current;
 
   const [schedule, setSchedule] = useState<ServiceItem[]>(() => {
     const saved = initialSavedState;
