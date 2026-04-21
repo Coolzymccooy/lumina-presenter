@@ -132,12 +132,6 @@ export function StudioMenu({ activeTab, onSelectTab }: StudioMenuProps) {
     buttonRef.current?.focus();
   }, []);
 
-  const handleItemClick = (tab: SidebarTab) => {
-    onSelectTab(tab === activeTab ? null : tab);
-    setIsOpen(false);
-    setFocusIndex(-1);
-  };
-
   useEffect(() => {
     if (!isOpen) return;
     const onDocMouseDown = (e: MouseEvent) => {
@@ -172,6 +166,12 @@ export function StudioMenu({ activeTab, onSelectTab }: StudioMenuProps) {
       itemRefs.current[focusIndex]?.focus();
     }
   }, [isOpen, focusIndex]);
+
+  const handleItemClick = (tab: SidebarTab) => {
+    onSelectTab(tab === activeTab ? null : tab);
+    setIsOpen(false);
+    setFocusIndex(-1);
+  };
 
   const activeLabel = activeTab
     ? MENU_ITEMS.find((m) => m.id === activeTab)?.label ?? null
