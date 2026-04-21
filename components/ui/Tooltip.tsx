@@ -225,26 +225,26 @@ const TooltipContent: React.FC<TooltipContentProps> = ({
         transition: 'opacity 120ms ease, transform 120ms ease',
       }}
       className={`
-        max-w-xs rounded-lg px-3 py-2 shadow-xl
-        text-[12px] leading-snug
+        max-w-[16rem] rounded-md px-2 py-1.5 shadow-xl
+        text-[10.5px] leading-tight
         ${styles.container}
       `}
     >
-      <div className="flex items-start gap-1.5">
+      <div className="flex items-start gap-1">
         {icon && (
-          <span className={`text-[11px] mt-0.5 shrink-0 ${iconColor}`}>{icon}</span>
+          <span className={`text-[9.5px] mt-[1px] shrink-0 ${iconColor}`}>{icon}</span>
         )}
         <span className={`${styles.text} min-w-0`}>{content}</span>
       </div>
       {shortcut && (
-        <div className="mt-1.5 flex items-center gap-1">
+        <div className="mt-1 flex items-center gap-0.5">
           {shortcut.split('+').map((key, i, arr) => (
             <React.Fragment key={i}>
-              <kbd className="inline-block rounded border border-zinc-600 bg-zinc-800 px-1.5 py-0.5 text-[10px] font-mono font-medium text-zinc-300 leading-none">
+              <kbd className="inline-block rounded border border-zinc-600 bg-zinc-800 px-1 py-px text-[9px] font-mono font-medium text-zinc-300 leading-none">
                 {key.trim()}
               </kbd>
               {i < arr.length - 1 && (
-                <span className="text-zinc-600 text-[10px]">+</span>
+                <span className="text-zinc-600 text-[9px]">+</span>
               )}
             </React.Fragment>
           ))}
@@ -331,9 +331,26 @@ export const Tooltip: React.FC<TooltipProps> = ({
     hide();
   }, [interactive, hide]);
 
+  // Merged ref: forwards the node to both Tooltip's internal triggerRef and
+  // whatever ref the caller passed on the child. Without this, cloneElement's
+  // `ref: triggerRef` silently overrides the caller's ref and any code relying
+  // on e.g. `buttonRef.current` (positioning, outside-click checks) breaks.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const childRef = (children as any).ref as
+    | React.Ref<HTMLElement>
+    | undefined;
+  const mergedRef = (node: HTMLElement | null) => {
+    triggerRef.current = node;
+    if (typeof childRef === 'function') {
+      childRef(node);
+    } else if (childRef && typeof childRef === 'object') {
+      (childRef as React.MutableRefObject<HTMLElement | null>).current = node;
+    }
+  };
+
   // Clone child to inject trigger ref and event handlers
   const trigger = cloneElement(children, {
-    ref: triggerRef,
+    ref: mergedRef,
     onMouseEnter: (e: React.MouseEvent) => {
       children.props.onMouseEnter?.(e);
       show();

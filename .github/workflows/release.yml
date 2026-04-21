@@ -33,6 +33,8 @@ jobs:
         run: npm run test:e2e:install
 
       - name: Build web app
+        env:
+          VITE_AI_WEB_LYRICS_FETCH: 'true'
         run: npm run build
 
       - name: Run smoke tests
@@ -57,6 +59,8 @@ jobs:
         run: npm ci
 
       - name: Build Windows artifacts
+        env:
+          VITE_AI_WEB_LYRICS_FETCH: 'true'
         run: npm run dist:win:ci
 
       - name: Publish GitHub release (non-draft)
@@ -98,6 +102,7 @@ jobs:
       - name: Build macOS artifacts (unsigned)
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          VITE_AI_WEB_LYRICS_FETCH: 'true'
         run: |
           echo "Building unsigned universal macOS artifacts (no Apple signing credentials configured)."
           npm run dist:mac:ci

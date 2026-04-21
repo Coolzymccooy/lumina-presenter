@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { searchCatalogHymns } from '../services/hymnCatalog';
+import React, { useCallback, useEffect, useState } from 'react';
+import { getCatalogHymnById } from '../services/hymnCatalog';
 import { generateSlidesFromHymn } from '../services/hymnGenerator';
 import { getSuggestedBackgroundForHymn } from '../services/hymnThemeRouter';
 import { stampItemBackgroundSource } from '../services/backgroundPersistence';
@@ -314,7 +314,6 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
   const [aiSearchError, setAiSearchError] = useState<{ kind: 'unavailable' | 'not-found'; msg: string } | null>(null);
 
   // Search results
-  const [hymnResults, setHymnResults] = useState<Hymn[]>([]);
   const [aiResult, setAiResult] = useState<AIAssistResult | null>(null);
   const [detectedIntent, setDetectedIntent] = useState<AIMode | null>(null);
 
@@ -381,15 +380,20 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
   // Sermon validation (preserve existing feature)
   const [sermonValidation, setSermonValidation] = useState<{ references: string[]; points: string[] } | null>(null);
 
-  const searchDebounceRef = useRef<number | null>(null);
-  const hasResults = hymnResults.length > 0 || aiResult !== null;
+  const catalogHymn = orchestrator.state.kind === 'catalog'
+    ? getCatalogHymnById(orchestrator.state.hymnId)
+    : null;
+  const hasResults =
+    catalogHymn !== null ||
+    aiResult !== null ||
+    orchestrator.state.kind === 'lrclib' ||
+    orchestrator.state.kind === 'web';
 
   // Reset state when modal opens
   useEffect(() => {
     if (!isOpen) return;
     setSearchQuery('');
     setInputText('');
-    setHymnResults([]);
     setAiResult(null);
     setDetectedIntent(null);
     setError(null);
@@ -397,26 +401,16 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
     setSermonValidation(null);
   }, [isOpen]);
 
-  // Debounced local hymn search as user types
+  // Detect query intent (for badge + AI search routing). The actual cascade
+  // (catalog → LRCLIB → Brave) lives in useLyricSearchOrchestrator.
   useEffect(() => {
-    if (searchDebounceRef.current) window.clearTimeout(searchDebounceRef.current);
     if (!searchQuery.trim()) {
-      setHymnResults([]);
       setDetectedIntent(null);
       return;
     }
-    setAiSearchError(null);   // clear stale AI error when user types
-    const intent = detectQueryIntent(searchQuery);
-    setDetectedIntent(intent);
-    if (intent === 'SONG' || mode === 'SONG' || mode === 'SEARCH') {
-      searchDebounceRef.current = window.setTimeout(() => {
-        const results = searchCatalogHymns(searchQuery, { limit: 4 }).map((r) => r.hymn);
-        setHymnResults(results);
-      }, 180);
-    } else {
-      setHymnResults([]);
-    }
-  }, [searchQuery, mode]);
+    setAiSearchError(null);
+    setDetectedIntent(detectQueryIntent(searchQuery));
+  }, [searchQuery]);
 
   const handleAISearch = async () => {
     if (!searchQuery.trim()) return;
@@ -505,7 +499,6 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
     setInputText(text);
     setMode(targetMode);
     setAiResult(null);
-    setHymnResults([]);
     setSearchQuery('');
   };
 
@@ -619,16 +612,14 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
                 </div>
               </div>
 
-              {/* Local hymn results */}
-              {hymnResults.length > 0 && (
+              {/* Local hymn result (from orchestrator catalog tier) */}
+              {isSearchLyrics && catalogHymn && (
                 <div className="space-y-2">
                   <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
                     Found in Local Library
                   </div>
-                  {hymnResults.map((hymn) => (
-                    <HymnResultCard key={hymn.id} hymn={hymn} onGenerate={onGenerate} onClose={onClose} />
-                  ))}
+                  <HymnResultCard hymn={catalogHymn} onGenerate={onGenerate} onClose={onClose} />
                 </div>
               )}
 
@@ -795,13 +786,6 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
                       {isSearching ? '…' : 'Find'}
                     </button>
                   </div>
-                  {hymnResults.length > 0 && (
-                    <div className="space-y-1.5">
-                      {hymnResults.map((hymn) => (
-                        <HymnResultCard key={hymn.id} hymn={hymn} onGenerate={onGenerate} onClose={onClose} />
-                      ))}
-                    </div>
-                  )}
                   {aiResult && (
                     <AIResultCard result={aiResult} onGenerate={onGenerate} onClose={onClose} onInsertText={handleInsertText} />
                   )}
@@ -815,7 +799,7 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
                       <span className="leading-relaxed opacity-80">{aiSearchError.msg}</span>
                     </div>
                   )}
-                  {(hymnResults.length > 0 || aiResult) && (
+                  {aiResult && (
                     <div className="text-[9px] text-zinc-600 text-center">— or paste lyrics manually below —</div>
                   )}
                 </div>

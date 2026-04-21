@@ -82,6 +82,8 @@ export interface SermonRecorderState {
   processingSummary: SermonSummary | null;
   /** Temporary V2 input debug state for selected vs actual capture source */
   inputDiagnostic: AudioInputDiagnostic | null;
+  /** Last recording blob + metadata, set when recording is stopped */
+  lastRecording: LastRecording | null;
 }
 
 export interface SermonRecorderActions {
@@ -93,6 +95,13 @@ export interface SermonRecorderActions {
   clearTranscript: () => void;
   setTranscript: (text: string) => void;
   setInputDiagnostic: (diagnostic: AudioInputDiagnostic | null) => void;
+  clearLastRecording: () => void;
+}
+
+export interface LastRecording {
+  blob: Blob;
+  durationSec: number;
+  mime: string;
 }
 
 const PREFERRED_MIME_TYPES = [
@@ -159,6 +168,7 @@ export const useSermonRecorder = (
   const [processingJob, setProcessingJob] = useState<SermonProcessingJob | null>(null);
   const [processingSummary, setProcessingSummary] = useState<SermonSummary | null>(null);
   const [inputDiagnostic, setInputDiagnostic] = useState<AudioInputDiagnostic | null>(null);
+  const [lastRecording, setLastRecording] = useState<LastRecording | null>(null);
 
   // refs — stable across renders
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -174,6 +184,7 @@ export const useSermonRecorder = (
   const mimeTypeRef = useRef(pickMimeType());
   const liveTranscriptRef = useRef('');
   const phaseRef = useRef<SermonRecorderPhase>('idle');
+  const recordingStartedAtRef = useRef<number | null>(null);
   /** V2 voice chain handle — only populated when ENABLE_RECORDER_V2 is true */
   const voiceChainRef = useRef<VoiceChainNodes | null>(null);
   /** Index into audioChunksRef up to which we've already uploaded — avoids re-sending old audio */
@@ -497,12 +508,14 @@ export const useSermonRecorder = (
     setChunkError(null);
     setProcessingJob(null);
     setProcessingSummary(null);
+    setLastRecording(null);
     phaseRef.current = 'recording';
     setPhase('recording');
     setLiveTranscript('');
     setCloudTranscript('');
     setInterimText('');
     setElapsedSeconds(0);
+    recordingStartedAtRef.current = Date.now();
     audioChunksRef.current = [];
     lastChunkIdxRef.current = 0;
     chunkUploadPausedUntilRef.current = 0;
@@ -713,6 +726,12 @@ export const useSermonRecorder = (
     const mimeType = mimeTypeRef.current;
     const blob = new Blob(chunks, { type: mimeType });
 
+    // Capture lastRecording for the RecordingSavedPill
+    const durationSec = recordingStartedAtRef.current
+      ? Math.round((Date.now() - recordingStartedAtRef.current) / 1000)
+      : 0;
+    setLastRecording({ blob, durationSec, mime: mimeType });
+
     try {
       const result = await transcribeSermonAudio(blob, mimeType, locale, accentHint, { allowDeferred: true });
       if (result.ok) {
@@ -777,6 +796,10 @@ export const useSermonRecorder = (
     liveTranscriptRef.current = text;
   }, []);
 
+  const clearLastRecording = useCallback(() => {
+    setLastRecording(null);
+  }, []);
+
   const transcript = cloudTranscript || liveTranscript;
 
   const state: SermonRecorderState = {
@@ -793,6 +816,7 @@ export const useSermonRecorder = (
     processingJob,
     processingSummary,
     inputDiagnostic,
+    lastRecording,
   };
 
   const actions: SermonRecorderActions = {
@@ -804,6 +828,7 @@ export const useSermonRecorder = (
     clearTranscript,
     setTranscript,
     setInputDiagnostic,
+    clearLastRecording,
   };
 
   return [state, actions];

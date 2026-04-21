@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { BibleIcon, SearchIcon, PlayIcon, SparklesIcon } from './Icons';
 import { ServiceItem, ItemType, MediaType } from '../types';
+import { TranscriptionEngineMode, resolveTranscriptionEngine } from '../utils/transcriptionEngine';
 import { DEFAULT_BACKGROUNDS } from '../constants';
 import { getDefaultBackgroundUrl, getDefaultBackgroundMediaType } from '../services/userBackgroundPreference';
 import { BibleStylePicker } from './BibleStylePicker.tsx';
@@ -96,7 +97,6 @@ interface WindowWithSpeech extends Window {
 }
 
 type VisionarySpeechLocaleMode = 'auto' | 'en-GB' | 'en-US';
-type TranscriptionEngineMode = 'browser_stt' | 'cloud' | 'cloud_fallback' | 'disabled';
 type CloudRecorderState = 'idle' | 'recording' | 'cooldown' | 'uploading' | 'error';
 
 const VERSIONS = [
@@ -275,14 +275,18 @@ const BibleAutoCurrentSetup: React.FC<{
   );
 };
 
+function formatBibleDeviceId(id: string | null | undefined): string {
+  if (!id) return 'default';
+  return id.length > 8 ? `${id.slice(0, 8)}…` : id;
+}
+
 const BibleAutoInputDebug: React.FC<{
   diagnostic: AudioInputDiagnostic;
   selectedSourceLabel: string;
   resolvedDefaultSourceLabel: string | null;
 }> = ({ diagnostic, selectedSourceLabel, resolvedDefaultSourceLabel }) => (
-  <div className="rounded-sm border border-cyan-900/60 bg-cyan-950/20 p-2 space-y-1.5">
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-[9px] text-cyan-300 font-mono uppercase tracking-widest">Input Debug</span>
+  <div className="space-y-1.5">
+    <div className="flex items-center justify-end gap-2">
       <span className="text-[8px] text-cyan-200 font-mono uppercase">{diagnostic.phase} · {diagnostic.status}</span>
     </div>
     <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[9px] text-zinc-300">
@@ -293,7 +297,7 @@ const BibleAutoInputDebug: React.FC<{
       <span>Peak: {diagnostic.rawPeak > 0 ? `${Math.round(20 * Math.log10(diagnostic.rawPeak))} dB` : '-∞ dB'}</span>
       <span>RMS: {diagnostic.rawRms > 0 ? `${Math.round(20 * Math.log10(diagnostic.rawRms))} dB` : '-∞ dB'}</span>
       <span>Sample Rate: {diagnostic.settingsSampleRate ?? 'n/a'}</span>
-      <span>Device ID: {diagnostic.settingsDeviceId || 'default'}</span>
+      <span title={diagnostic.settingsDeviceId || 'default'}>Device ID: {formatBibleDeviceId(diagnostic.settingsDeviceId)}</span>
     </div>
     {selectedSourceLabel === 'Default microphone' && (
       <div className="text-[9px] text-cyan-200/80 leading-relaxed">
@@ -328,6 +332,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const [filteredBooks, setFilteredBooks] = useState<{ name: string; chapters: number }[]>([]);
   const [aiQuery, setAiQuery] = useState('');
   const [isVisionaryMode, setIsVisionaryMode] = useState(false);
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const [results, setResults] = useState<Verse[]>([]);
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -1597,8 +1602,9 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   }, [autoVisionaryEnabled, isVisionaryMode, stopAllVisionaryCapture]);
 
   useEffect(() => {
-    if (!autoEnabledRef.current) return;
-    const nextEngine: TranscriptionEngineMode = isOnline ? 'cloud' : 'browser_stt';
+    const enabled = autoVisionaryEnabled && isVisionaryMode;
+    if (!enabled) return;
+    const nextEngine = resolveTranscriptionEngine({ autoEnabled: enabled, isOnline });
     if (transcriptionEngine === nextEngine) return;
     stopAllVisionaryCapture();
     setCloudCooldownUntil(0);
@@ -1608,7 +1614,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     showEngineToast(nextEngine === 'cloud'
       ? 'Listening with cloud transcription.'
       : 'Offline mode: using browser speech recognition.');
-  }, [isOnline, listenerLocale, showEngineToast, stopAllVisionaryCapture, transcriptionEngine]);
+  }, [autoVisionaryEnabled, isVisionaryMode, isOnline, listenerLocale, showEngineToast, stopAllVisionaryCapture, transcriptionEngine]);
 
   useEffect(() => {
     if (transcriptionEngine !== 'cloud') return;
@@ -1874,7 +1880,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
     ? 'h-9 px-2.5 border-b border-zinc-900 font-bold text-zinc-500 text-[9px] uppercase tracking-[0.22em] flex items-center justify-between bg-zinc-950'
     : 'h-10 px-3 border-b border-zinc-900 font-bold text-zinc-600 text-[10px] uppercase tracking-wider flex items-center justify-between bg-zinc-950';
   const controlsClassName = compact
-    ? 'shrink-0 px-2.5 py-2 space-y-2 border-b border-zinc-900/80 bg-zinc-950/95 overflow-y-auto custom-scrollbar max-h-[60%]'
+    ? 'shrink-0 px-2.5 py-2 space-y-2 border-b border-zinc-900/80 bg-zinc-950/95 overflow-y-auto custom-scrollbar'
     : 'p-3 space-y-2';
   const resultsClassName = compact
     ? 'min-h-0 flex-1 overflow-y-auto p-2 custom-scrollbar'
@@ -1928,139 +1934,167 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
             >
               AI SEARCH
             </button>
-            <CollapsiblePanel
-              id="bible-auto-visionary"
-              title="Auto Listening"
-              defaultCollapsed={!autoVisionaryEnabled}
-              className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-2"
-              data-testid="bible-auto-visionary-panel"
-              headerTooltipVariant="ai"
-              headerTooltip={
-                <span>
-                  <strong className="text-purple-300">Hands‑free scripture lookup.</strong>
-                  <br />
-                  Lumina listens to the preacher's mic, hears the reference (e.g. "John 3:16") in any of 12 languages, and queues the verses live — no typing.
-                  <br />
-                  Toggle on, pick a language, and keep your hands on the room.
-                </span>
-              }
-              badge={
-                <span
-                  className={`px-1.5 py-0.5 rounded-sm text-[8px] font-bold uppercase tracking-wider border ${autoVisionaryEnabled ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-zinc-900 text-zinc-500 border-zinc-800'}`}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[9px] font-bold tracking-wider text-purple-300 uppercase">Auto Visionary (Mic)</span>
+                <button
+                  onClick={() => setAutoVisionaryEnabled((prev) => !prev)}
+                  className={`px-2 py-1 rounded-sm text-[9px] font-bold border ${autoVisionaryEnabled ? 'bg-emerald-700/40 text-emerald-300 border-emerald-700' : 'bg-zinc-900 text-zinc-300 border-zinc-700'}`}
                 >
-                  {autoVisionaryEnabled ? `Listening · ${localeStatusLanguage}` : 'Off'}
-                </span>
-              }
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[9px] font-bold tracking-wider text-purple-300 uppercase">Auto Visionary (Mic)</span>
-                  <button
-                    onClick={() => setAutoVisionaryEnabled((prev) => !prev)}
-                    className={`px-2 py-1 rounded-sm text-[9px] font-bold border ${autoVisionaryEnabled ? 'bg-emerald-700/40 text-emerald-300 border-emerald-700' : 'bg-zinc-900 text-zinc-300 border-zinc-700'}`}
-                  >
-                    {autoVisionaryEnabled ? 'ON' : 'OFF'}
-                  </button>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider">Auto Project to Stage/Output</span>
-                  <button
-                    onClick={() => setAutoProjectEnabled((prev) => !prev)}
-                    className={`px-2 py-1 rounded-sm text-[9px] font-bold border ${autoProjectEnabled ? 'bg-cyan-700/40 text-cyan-300 border-cyan-700' : 'bg-zinc-900 text-zinc-300 border-zinc-700'}`}
-                  >
-                    {autoProjectEnabled ? 'ON' : 'OFF'}
-                  </button>
-                </div>
-                <SourcePicker
-                  devices={audioDevices}
-                  selectedId={audioDeviceId}
-                  resolvedDefaultLabel={resolvedDefaultSourceLabel}
-                  onSelect={handleSelectAudioSource}
-                />
-                <CaptureModePicker
-                  selected={captureMode}
-                  suggested={suggestedCaptureMode}
-                  onSelect={handleSelectCaptureMode}
-                />
-                <BibleAutoCurrentSetup
-                  selectedSourceLabel={selectedSourceLabel}
-                  resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
-                  captureModeLabel={captureModeLabel}
-                />
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider">Speech Dialect</span>
-                  <select
-                    value={speechLocaleMode}
-                    onChange={(e) => onSpeechLocaleModeChange(e.target.value as VisionarySpeechLocaleMode)}
-                    className={`bg-zinc-900 border border-zinc-700 rounded-sm px-2 py-1 text-zinc-200 ${compact ? 'text-[8px]' : 'text-[9px]'}`}
-                  >
-                    <option value="auto">Auto (System Locale)</option>
-                    <option value="en-GB">English (UK) - en-GB</option>
-                    <option value="en-US">English (US) - en-US</option>
-                  </select>
-                </div>
-                <div className="text-[9px] text-cyan-300 font-mono">
-                  Dialect: {localeStatusLanguage} ({localeModeLabel})
-                </div>
+                  {autoVisionaryEnabled ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[9px] text-zinc-400 uppercase tracking-wider">Auto Project to Stage/Output</span>
+                <button
+                  onClick={() => setAutoProjectEnabled((prev) => !prev)}
+                  className={`px-2 py-1 rounded-sm text-[9px] font-bold border ${autoProjectEnabled ? 'bg-cyan-700/40 text-cyan-300 border-cyan-700' : 'bg-zinc-900 text-zinc-300 border-zinc-700'}`}
+                >
+                  {autoProjectEnabled ? 'ON' : 'OFF'}
+                </button>
+              </div>
+              {autoVisionaryEnabled && isVisionaryMode && (
                 <div className="flex items-center gap-2 text-[9px] font-mono">
                   <span className="text-zinc-400">Engine:</span>
                   <span className={`font-bold ${transcriptionEngine === 'browser_stt' ? 'text-amber-300' : 'text-emerald-300'}`}>
                     {engineLabel}
                   </span>
+                  <button
+                    type="button"
+                    data-testid="bible-filters-toggle"
+                    onClick={() => setFiltersCollapsed((prev) => !prev)}
+                    title={filtersCollapsed ? 'Show capture filters' : 'Hide capture filters to free space for scriptures'}
+                    className="ml-auto px-1.5 py-0.5 rounded-sm text-[8px] font-bold uppercase tracking-wider border border-purple-900/60 bg-purple-950/20 text-purple-300 hover:text-white hover:border-purple-500/60 transition-all"
+                  >
+                    {filtersCollapsed ? 'Show Filters' : 'Hide Filters'}
+                  </button>
                 </div>
-                {engineToast && (
-                  <div className="text-[9px] text-amber-200 font-mono border border-amber-700/60 rounded-sm p-1.5 bg-amber-950/25">
-                    {engineToast}
+              )}
+              {engineToast && (
+                <div className="text-[9px] text-amber-200 font-mono border border-amber-700/60 rounded-sm p-1.5 bg-amber-950/25">
+                  {engineToast}
+                </div>
+              )}
+            </div>
+
+            {!filtersCollapsed && (
+              <>
+                <CollapsiblePanel
+                  id="bible-audio-source"
+                  title="Audio Source"
+                  defaultCollapsed={true}
+                  className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
+                >
+                  <SourcePicker
+                    devices={audioDevices}
+                    selectedId={audioDeviceId}
+                    resolvedDefaultLabel={resolvedDefaultSourceLabel}
+                    onSelect={handleSelectAudioSource}
+                  />
+                </CollapsiblePanel>
+
+                <CollapsiblePanel
+                  id="bible-capture-mode"
+                  title="Capture Mode"
+                  defaultCollapsed={true}
+                  className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
+                >
+                  <div className="space-y-2">
+                    <CaptureModePicker
+                      selected={captureMode}
+                      suggested={suggestedCaptureMode}
+                      onSelect={handleSelectCaptureMode}
+                    />
+                    <BibleAutoCurrentSetup
+                      selectedSourceLabel={selectedSourceLabel}
+                      resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
+                      captureModeLabel={captureModeLabel}
+                    />
                   </div>
-                )}
-                <div className="text-[9px] text-zinc-300 font-mono">{autoStatusText}</div>
-                {cloudCooldownUntil > Date.now() && (
-                  <div className="text-[9px] text-amber-300 font-mono">
-                    Cooldown: {Math.max(1, Math.ceil((cloudCooldownUntil - Date.now()) / 1000))}s
+                </CollapsiblePanel>
+
+                <CollapsiblePanel
+                  id="bible-speech-dialect"
+                  title="Speech Dialect"
+                  defaultCollapsed={true}
+                  className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[9px] text-zinc-400 uppercase tracking-wider">Speech Dialect</span>
+                      <select
+                        value={speechLocaleMode}
+                        onChange={(e) => onSpeechLocaleModeChange(e.target.value as VisionarySpeechLocaleMode)}
+                        className={`bg-zinc-900 border border-zinc-700 rounded-sm px-2 py-1 text-zinc-200 ${compact ? 'text-[8px]' : 'text-[9px]'}`}
+                      >
+                        <option value="auto">Auto (System Locale)</option>
+                        <option value="en-GB">English (UK) - en-GB</option>
+                        <option value="en-US">English (US) - en-US</option>
+                      </select>
+                    </div>
+                    <div className="text-[9px] text-cyan-300 font-mono">
+                      Dialect: {localeStatusLanguage} ({localeModeLabel})
+                    </div>
                   </div>
-                )}
-                {inputDiagnostic && (autoVisionaryEnabled || transcriptionEngine === 'cloud') && (
+                </CollapsiblePanel>
+              </>
+            )}
+
+            <div className="space-y-2">
+              <div className="text-[9px] text-zinc-300 font-mono">{autoStatusText}</div>
+              {cloudCooldownUntil > Date.now() && (
+                <div className="text-[9px] text-amber-300 font-mono">
+                  Cooldown: {Math.max(1, Math.ceil((cloudCooldownUntil - Date.now()) / 1000))}s
+                </div>
+              )}
+              {inputDiagnostic && (autoVisionaryEnabled || transcriptionEngine === 'cloud') && (
+                <CollapsiblePanel
+                  id="bible-input-debug"
+                  title="Input Debug"
+                  defaultCollapsed={true}
+                  className="rounded-sm border border-cyan-900/60 bg-cyan-950/20 p-1"
+                >
                   <BibleAutoInputDebug
                     diagnostic={inputDiagnostic}
                     selectedSourceLabel={selectedSourceLabel}
                     resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
                   />
-                )}
-                {autoReferences.length > 0 && (
-                  <div className="flex flex-col gap-1">
-                    <div className="text-[9px] text-zinc-500 font-mono uppercase tracking-widest">Matches</div>
-                    <div className="flex flex-wrap gap-1">
-                      {autoReferences.map((ref) => (
-                        <button
-                          key={ref}
-                          onClick={() => void handleAutoReferenceClick(ref)}
-                          className="text-[9px] text-cyan-300 font-mono bg-cyan-950/40 border border-cyan-800/50 rounded px-1.5 py-0.5 hover:bg-cyan-900/60 active:bg-cyan-900/80 transition-colors truncate max-w-[140px]"
-                          title={`Load ${ref}`}
-                        >
-                          {ref}
-                        </button>
-                      ))}
-                    </div>
+                </CollapsiblePanel>
+              )}
+              {autoReferences.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  <div className="text-[9px] text-zinc-500 font-mono uppercase tracking-widest">Matches</div>
+                  <div className="flex flex-wrap gap-1">
+                    {autoReferences.map((ref) => (
+                      <button
+                        key={ref}
+                        onClick={() => void handleAutoReferenceClick(ref)}
+                        className="text-[9px] text-cyan-300 font-mono bg-cyan-950/40 border border-cyan-800/50 rounded px-1.5 py-0.5 hover:bg-cyan-900/60 active:bg-cyan-900/80 transition-colors truncate max-w-[140px]"
+                        title={`Load ${ref}`}
+                      >
+                        {ref}
+                      </button>
+                    ))}
                   </div>
-                )}
-                {autoTranscript && (
-                  <div className="text-[9px] text-zinc-400 font-mono border border-zinc-800 rounded-sm p-1.5 max-h-16 overflow-y-auto">
-                    Heard: {autoTranscript}
-                  </div>
-                )}
-                {autoError && autoVisionaryEnabled && (
-                  <div className="flex items-start gap-1.5 bg-rose-950/40 border border-rose-800/50 rounded px-2 py-1">
-                    <span className="text-rose-400 text-[10px] leading-tight shrink-0 mt-px">⚠</span>
-                    <span className="text-[9px] text-rose-300 font-mono leading-tight line-clamp-2">{autoError}</span>
-                    <button
-                      onClick={() => setAutoError(null)}
-                      className="ml-auto text-rose-500 hover:text-rose-300 text-[10px] shrink-0 leading-tight"
-                      title="Dismiss"
-                    >✕</button>
-                  </div>
-                )}
-              </div>
-            </CollapsiblePanel>
+                </div>
+              )}
+              {autoTranscript && (
+                <div className="text-[9px] text-zinc-400 font-mono border border-zinc-800 rounded-sm p-1.5 max-h-32 overflow-y-auto leading-relaxed">
+                  Heard: {autoTranscript}
+                </div>
+              )}
+              {autoError && autoVisionaryEnabled && (
+                <div className="flex items-start gap-1.5 bg-rose-950/40 border border-rose-800/50 rounded px-2 py-1">
+                  <span className="text-rose-400 text-[10px] leading-tight shrink-0 mt-px">⚠</span>
+                  <span className="text-[9px] text-rose-300 font-mono leading-tight line-clamp-2">{autoError}</span>
+                  <button
+                    onClick={() => setAutoError(null)}
+                    className="ml-auto text-rose-500 hover:text-rose-300 text-[10px] shrink-0 leading-tight"
+                    title="Dismiss"
+                  >✕</button>
+                </div>
+              )}
+            </div>
 
           </div>
         ) : (
@@ -2339,11 +2373,11 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
       {results.length > 0 && (
         <div className="shrink-0 border-t border-zinc-900 bg-zinc-950/95 backdrop-blur-md">
           {/* Layout + Size + Style chips */}
-          <div className={`${compact ? 'px-2.5 pt-2 pb-1' : 'px-3 pt-2.5 pb-1'}`}>
+          <div className={`${compact ? 'px-2 pt-1 pb-0.5' : 'px-3 pt-2.5 pb-1'}`}>
             <CollapsiblePanel
               id="bible-slide-style"
               title="Slide Style & Preview"
-              defaultCollapsed={true}
+              defaultCollapsed={false}
               className="rounded-md border border-violet-900/40 bg-gradient-to-br from-violet-950/30 via-zinc-950/60 to-zinc-950/80 p-2 shadow-inner shadow-violet-950/20"
               data-testid="bible-slide-style-panel"
               headerTooltipVariant="ai"
@@ -2362,26 +2396,26 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                 </span>
               }
             >
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[8px] text-zinc-400 uppercase tracking-widest font-black w-12 shrink-0">Layout</span>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-[8px] text-zinc-400 uppercase tracking-widest font-black w-10 shrink-0">Layout</span>
                   {([['standard', 'Standard'], ['scripture_ref', 'Scripture + Ref'], ['ticker', 'Ticker']] as const).map(([key, label]) => (
                     <button key={key} onClick={() => {
                       if (bibleLayout === key) return;
                       setBibleLayout(key);
                     }}
-                      className={`px-2.5 py-1.5 rounded-md text-[9px] font-black uppercase tracking-wide transition-all active:scale-95 ${bibleLayout === key ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-900/60 ring-1 ring-blue-300/40' : 'bg-zinc-800/80 text-zinc-400 border border-zinc-800 hover:text-white hover:border-blue-700/50 hover:bg-zinc-800'}`}
+                      className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wide transition-all active:scale-95 ${bibleLayout === key ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-900/60 ring-1 ring-blue-300/40' : 'bg-zinc-800/80 text-zinc-400 border border-zinc-800 hover:text-white hover:border-blue-700/50 hover:bg-zinc-800'}`}
                     >{label}</button>
                   ))}
                 </div>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[8px] text-zinc-400 uppercase tracking-widest font-black w-12 shrink-0">Size</span>
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-[8px] text-zinc-400 uppercase tracking-widest font-black w-10 shrink-0">Size</span>
                   {([['small', 'SM'], ['medium', 'MD'], ['large', 'LG'], ['xlarge', 'XL']] as const).map(([key, label]) => (
                     <button key={key} onClick={() => {
                       if (bibleFontSize === key) return;
                       setBibleFontSize(key);
                     }}
-                      className={`px-2.5 py-1.5 rounded-md text-[9px] font-black tracking-wide transition-all active:scale-95 ${bibleFontSize === key ? 'bg-gradient-to-br from-purple-500 to-fuchsia-700 text-white shadow-lg shadow-purple-900/60 ring-1 ring-purple-300/40' : 'bg-zinc-800/80 text-zinc-400 border border-zinc-800 hover:text-white hover:border-purple-700/50 hover:bg-zinc-800'}`}
+                      className={`px-2 py-1 rounded-md text-[9px] font-black tracking-wide transition-all active:scale-95 ${bibleFontSize === key ? 'bg-gradient-to-br from-purple-500 to-fuchsia-700 text-white shadow-lg shadow-purple-900/60 ring-1 ring-purple-300/40' : 'bg-zinc-800/80 text-zinc-400 border border-zinc-800 hover:text-white hover:border-purple-700/50 hover:bg-zinc-800'}`}
                     >{label}</button>
                   ))}
                 </div>

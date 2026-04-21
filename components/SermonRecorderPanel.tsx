@@ -15,6 +15,7 @@ import {
   type SermonAccentHint,
   type SermonRecorderLocale,
 } from '../hooks/useSermonRecorder';
+import type { RecordingLibrary } from '../hooks/useRecordingLibrary';
 import {
   canSummarize,
   summarizeSermon,
@@ -32,6 +33,8 @@ import {
 import { SourcePicker } from './sermon-recorder/SourcePicker';
 import { CaptureModePicker } from './sermon-recorder/CaptureModePicker';
 import { RecordCheckPanel } from './sermon-recorder/RecordCheckPanel';
+import { CollapsiblePanel } from './ui/CollapsiblePanel';
+import { RecordingSavedPill } from './RecordingSavedPill';
 import type { AudioInputDiagnostic } from '../services/audioCapture/mediaDiagnostics';
 
 export interface SermonRecorderPanelProps {
@@ -39,8 +42,11 @@ export interface SermonRecorderPanelProps {
   onFlashToScreen: (content: { transcript: string; summary?: SermonSummary }) => void;
   onSave?: (transcript: string, summary: SermonSummary) => Promise<void>;
   onAddToSchedule?: (text: string) => void;
+  onOpenAudioMixer?: () => void;
   locale?: SermonRecorderLocale;
   compact?: boolean;
+  recordingLibrary?: RecordingLibrary;
+  signedIn?: boolean;
 }
 
 const BAR_COUNT = 32;
@@ -139,16 +145,18 @@ const labelForRequestVariant: Record<AudioInputDiagnostic['requestVariant'], str
   none: 'none',
 };
 
+function formatDeviceId(id: string | null | undefined): string {
+  if (!id) return 'default';
+  return id.length > 8 ? `${id.slice(0, 8)}…` : id;
+}
+
 const InputDiagnosticPanel: React.FC<{
   diagnostic: AudioInputDiagnostic;
   selectedSourceLabel: string;
   resolvedDefaultSourceLabel: string | null;
 }> = ({ diagnostic, selectedSourceLabel, resolvedDefaultSourceLabel }) => (
-  <div className="rounded-lg border border-cyan-900/60 bg-cyan-950/20 px-3 py-2.5 space-y-2">
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-[9px] font-black uppercase tracking-widest text-cyan-300/80">
-        Input Debug
-      </span>
+  <div className="space-y-2">
+    <div className="flex items-center justify-end gap-2">
       <span className="text-[8px] font-mono text-cyan-200/70 uppercase">
         {diagnostic.phase} · {diagnostic.status}
       </span>
@@ -161,7 +169,7 @@ const InputDiagnosticPanel: React.FC<{
       <span>Peak: {formatLinearDb(diagnostic.rawPeak)}</span>
       <span>RMS: {formatLinearDb(diagnostic.rawRms)}</span>
       <span>Sample Rate: {diagnostic.settingsSampleRate ?? 'n/a'}</span>
-      <span>Device ID: {diagnostic.settingsDeviceId || 'default'}</span>
+      <span title={diagnostic.settingsDeviceId || 'default'}>Device ID: {formatDeviceId(diagnostic.settingsDeviceId)}</span>
     </div>
     {selectedSourceLabel === 'Default microphone' && (
       <p className="text-[9px] leading-relaxed text-cyan-200/70">
@@ -251,8 +259,11 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   onFlashToScreen,
   onSave,
   onAddToSchedule,
+  onOpenAudioMixer,
   locale = 'en-GB',
   compact = false,
+  recordingLibrary,
+  signedIn = false,
 }) => {
   const [accentHint, setAccentHint] = useState<SermonAccentHint>('standard');
   const [audioDeviceId, setAudioDeviceId] = useState<string | undefined>(undefined);
@@ -340,6 +351,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
     processingJob,
     processingSummary,
     inputDiagnostic,
+    lastRecording,
   } = recState;
 
   const sttWarning = (() => {
@@ -361,6 +373,38 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   const [saving, setSaving] = useState(false);
 
   const transcriptScrollRef = useRef<HTMLDivElement>(null);
+
+  // Recording saved pill state — wire up lastRecording to recordingLibrary
+  const [latestSavedId, setLatestSavedId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const hasSavedRef = useRef(false);
+
+  useEffect(() => {
+    if (!lastRecording || !recordingLibrary || hasSavedRef.current) return;
+    hasSavedRef.current = true;
+    setSaveError(null);
+    const defaultTitle = `Sermon — ${new Date().toISOString().slice(0, 10)}`;
+    recordingLibrary
+      .addLocal(lastRecording.blob, {
+        title: defaultTitle,
+        durationSec: lastRecording.durationSec,
+        mime: lastRecording.mime,
+      })
+      .then((id) => setLatestSavedId(id))
+      .catch((err: unknown) => {
+        hasSavedRef.current = false;
+        setSaveError(err instanceof Error ? err.message : 'Failed to save recording');
+      });
+  }, [lastRecording, recordingLibrary]);
+
+  // Reset the guard when lastRecording is cleared (e.g., user records again)
+  useEffect(() => {
+    if (!lastRecording) { hasSavedRef.current = false; setLatestSavedId(null); }
+  }, [lastRecording]);
+
+  const latestSavedTrack = latestSavedId
+    ? recordingLibrary?.tracks.find((t) => t.id === latestSavedId) ?? null
+    : null;
 
   const selectedSourceLabel = useMemo(() => {
     if (!audioDeviceId) return 'Default microphone';
@@ -542,28 +586,51 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
                 <div className="flex-1 space-y-2">
                   {ENABLE_RECORDER_V2 ? (
                     <>
-                      <SourcePicker
-                        devices={audioDevices}
-                        selectedId={audioDeviceId}
-                        resolvedDefaultLabel={resolvedDefaultSourceLabel}
-                        onSelect={handleAudioDeviceSelect}
-                      />
-                      <CaptureModePicker
-                        selected={captureMode}
-                        suggested={suggestedCaptureMode}
-                        onSelect={handleCaptureModeSelect}
-                      />
-                      <CurrentSetupPanel
-                        selectedSourceLabel={selectedSourceLabel}
-                        resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
-                        captureMode={captureMode}
-                      />
-                      <RecordCheckPanel
-                        selectedDeviceId={audioDeviceId}
-                        resolvedDeviceId={resolvedAudioDeviceId}
-                        preset={CAPTURE_MODE_MAP.get(captureMode) ?? CAPTURE_MODE_MAP.get(DEFAULT_CAPTURE_MODE)!}
-                        onDiagnostic={recActions.setInputDiagnostic}
-                      />
+                      <CollapsiblePanel
+                        id="sermon-audio-source"
+                        title="Audio Source"
+                        defaultCollapsed={true}
+                        className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
+                      >
+                        <SourcePicker
+                          devices={audioDevices}
+                          selectedId={audioDeviceId}
+                          resolvedDefaultLabel={resolvedDefaultSourceLabel}
+                          onSelect={handleAudioDeviceSelect}
+                        />
+                      </CollapsiblePanel>
+                      <CollapsiblePanel
+                        id="sermon-capture-mode"
+                        title="Capture Mode"
+                        defaultCollapsed={true}
+                        className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
+                      >
+                        <div className="space-y-2">
+                          <CaptureModePicker
+                            selected={captureMode}
+                            suggested={suggestedCaptureMode}
+                            onSelect={handleCaptureModeSelect}
+                          />
+                          <CurrentSetupPanel
+                            selectedSourceLabel={selectedSourceLabel}
+                            resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
+                            captureMode={captureMode}
+                          />
+                        </div>
+                      </CollapsiblePanel>
+                      <CollapsiblePanel
+                        id="sermon-record-check"
+                        title="Record Check"
+                        defaultCollapsed={true}
+                        className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
+                      >
+                        <RecordCheckPanel
+                          selectedDeviceId={audioDeviceId}
+                          resolvedDeviceId={resolvedAudioDeviceId}
+                          preset={CAPTURE_MODE_MAP.get(captureMode) ?? CAPTURE_MODE_MAP.get(DEFAULT_CAPTURE_MODE)!}
+                          onDiagnostic={recActions.setInputDiagnostic}
+                        />
+                      </CollapsiblePanel>
                     </>
                   ) : (
                     audioDevices.length > 1 && (
@@ -581,18 +648,25 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
                       </select>
                     )
                   )}
-                  <select
-                    value={accentHint}
-                    onChange={(e) => setAccentHint(e.target.value as SermonAccentHint)}
-                    className="w-full rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] px-2 py-1.5 focus:outline-none focus:border-zinc-500"
+                  <CollapsiblePanel
+                    id="sermon-speech-dialect"
+                    title="Speech Dialect"
+                    defaultCollapsed={true}
+                    className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
                   >
-                    <option value="standard">Standard English</option>
-                    <option value="uk">British English</option>
-                    <option value="nigerian">Nigerian English</option>
-                    <option value="ghanaian">Ghanaian English</option>
-                    <option value="southafrican">South African English</option>
-                    <option value="kenyan">Kenyan English</option>
-                  </select>
+                    <select
+                      value={accentHint}
+                      onChange={(e) => setAccentHint(e.target.value as SermonAccentHint)}
+                      className="w-full rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] px-2 py-1.5 focus:outline-none focus:border-zinc-500"
+                    >
+                      <option value="standard">Standard English</option>
+                      <option value="uk">British English</option>
+                      <option value="nigerian">Nigerian English</option>
+                      <option value="ghanaian">Ghanaian English</option>
+                      <option value="southafrican">South African English</option>
+                      <option value="kenyan">Kenyan English</option>
+                    </select>
+                  </CollapsiblePanel>
                   <button
                     data-testid="sermon-recorder-start-btn"
                     onClick={handleStartRecording}
@@ -649,11 +723,18 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
             </div>
 
             {ENABLE_RECORDER_V2 && inputDiagnostic && (
-              <InputDiagnosticPanel
-                diagnostic={inputDiagnostic}
-                selectedSourceLabel={selectedSourceLabel}
-                resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
-              />
+              <CollapsiblePanel
+                id="sermon-input-debug"
+                title="Input Debug"
+                defaultCollapsed={true}
+                className="rounded-sm border border-cyan-900/60 bg-cyan-950/20 p-1"
+              >
+                <InputDiagnosticPanel
+                  diagnostic={inputDiagnostic}
+                  selectedSourceLabel={selectedSourceLabel}
+                  resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
+                />
+              </CollapsiblePanel>
             )}
           </div>
         )}
@@ -662,11 +743,18 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
           <div className="rounded-xl bg-red-950/40 border border-red-800/50 px-3 py-3 space-y-2">
             <p className="text-red-300 text-[11px] font-semibold">{error || 'An error occurred.'}</p>
             {ENABLE_RECORDER_V2 && inputDiagnostic && (
-              <InputDiagnosticPanel
-                diagnostic={inputDiagnostic}
-                selectedSourceLabel={selectedSourceLabel}
-                resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
-              />
+              <CollapsiblePanel
+                id="sermon-input-debug"
+                title="Input Debug"
+                defaultCollapsed={true}
+                className="rounded-sm border border-cyan-900/60 bg-cyan-950/20 p-1"
+              >
+                <InputDiagnosticPanel
+                  diagnostic={inputDiagnostic}
+                  selectedSourceLabel={selectedSourceLabel}
+                  resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
+                />
+              </CollapsiblePanel>
             )}
             <div className="flex gap-2">
               {processingJob?.status === 'failed' && (
@@ -735,6 +823,26 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
 
         {isDone && (
           <div className="space-y-2">
+            {latestSavedTrack && recordingLibrary && (
+              <RecordingSavedPill
+                track={latestSavedTrack}
+                signedIn={signedIn}
+                canSync={signedIn}
+                onSync={() => recordingLibrary.syncToCloud(latestSavedTrack.id)}
+                onDelete={async () => {
+                  await recordingLibrary.deleteRecording(latestSavedTrack.id);
+                  setLatestSavedId(null);
+                  recActions.clearLastRecording();
+                }}
+                onRename={(t) => recordingLibrary.renameRecording(latestSavedTrack.id, t)}
+                onOpenInMixer={() => onOpenAudioMixer?.()}
+              />
+            )}
+
+            {saveError && !latestSavedId && (
+              <div className="text-xs text-red-400 mt-2" role="alert">Could not save recording: {saveError}</div>
+            )}
+
             <div className="flex items-center justify-between">
               <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Transcript</span>
               <div className="flex items-center gap-2">

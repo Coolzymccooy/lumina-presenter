@@ -187,6 +187,9 @@ Yes. The timer shown in presenter controls is the same timer displayed on the St
 - Live session state sync + team playlists sync are available through Firestore.
 - Playlists prepared on one machine appear on another machine signed into the same team/user context.
 
+## 10) Sermon recordings in the Audio Mixer
+Stopping a sermon recording auto-saves it to your local Audio Mixer. When signed in, click **Sync to Cloud** to make it available across Electron and web for the same account. Rename, delete, and re-download from the mixer's **My Recordings** section.
+
 ---
 
 ## Firestore Rules

@@ -9,13 +9,20 @@ export interface VoiceChainNodes {
   dispose(): void;
 }
 
-let workletRegistered = false;
+// Track per-context registration. A module-level boolean would lie across
+// AudioContext lifecycles: after a stop/start cycle (or a failed first start),
+// the old flag persists but the new context has no processor registered,
+// causing `new AudioWorkletNode(...)` to throw "AudioWorklet does not exist".
+const workletReady: WeakSet<BaseAudioContext> = new WeakSet();
 
 async function ensureWorklet(ctx: AudioContext): Promise<boolean> {
-  if (workletRegistered) return true;
+  if (workletReady.has(ctx)) return true;
+  if (!ctx.audioWorklet || typeof ctx.audioWorklet.addModule !== 'function') {
+    return false;
+  }
   try {
     await ctx.audioWorklet.addModule(noiseGateWorkletUrl);
-    workletRegistered = true;
+    workletReady.add(ctx);
     return true;
   } catch {
     return false;
@@ -43,14 +50,20 @@ export async function buildVoiceChain(
   if (preset.gate.enabled) {
     const hasWorklet = await ensureWorklet(ctx);
     if (hasWorklet) {
-      gateNode = new AudioWorkletNode(ctx, 'noise-gate-processor', {
-        processorOptions: {
-          thresholdDb: preset.gate.thresholdDb,
-          ratio: preset.gate.ratio,
-          releaseMs: preset.gate.releaseMs,
-        },
-      });
-      nodes.push(gateNode);
+      try {
+        gateNode = new AudioWorkletNode(ctx, 'noise-gate-processor', {
+          processorOptions: {
+            thresholdDb: preset.gate.thresholdDb,
+            ratio: preset.gate.ratio,
+            releaseMs: preset.gate.releaseMs,
+          },
+        });
+        nodes.push(gateNode);
+      } catch {
+        // Degrade gracefully: drop the noise gate node from the chain.
+        // Cloud transcription / recording still works without it.
+        gateNode = null;
+      }
     }
   }
 

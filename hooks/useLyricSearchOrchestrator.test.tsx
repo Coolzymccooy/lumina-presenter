@@ -42,12 +42,27 @@ afterEach(() => {
 async function flush() { await act(async () => { await new Promise((r) => setTimeout(r, 0)); }); }
 
 describe('useLyricSearchOrchestrator', () => {
-  it('returns catalog hit when tier 1 succeeds', async () => {
-    searchCatalogHymnsMock.mockReturnValue([{ hymn: { id: 'amazing-grace' } }]);
+  it('returns catalog hit when tier 1 strong match succeeds', async () => {
+    searchCatalogHymnsMock.mockReturnValue([
+      { hymn: { id: 'amazing-grace' }, score: 220, matchedFields: ['title'] },
+    ]);
     act(() => root.render(<Harness query="amazing grace" />));
     await flush();
     expect(latest?.state.kind).toBe('catalog');
     expect(searchLrclibMock).not.toHaveBeenCalled();
+  });
+
+  it('cascades past weak catalog hit to LRCLIB then falls back to catalog', async () => {
+    searchCatalogHymnsMock.mockReturnValue([
+      { hymn: { id: 'weak-match' }, score: 130, matchedFields: ['keyword'] },
+    ]);
+    searchLrclibMock.mockResolvedValue(null);
+    searchWebForLyricsMock.mockResolvedValue([]);
+    act(() => root.render(<Harness query="weak query" />));
+    await flush(); await flush(); await flush();
+    expect(searchLrclibMock).toHaveBeenCalled();
+    expect(searchWebForLyricsMock).toHaveBeenCalled();
+    expect(latest?.state.kind).toBe('catalog');
   });
 
   it('falls through to LRCLIB when catalog misses', async () => {
