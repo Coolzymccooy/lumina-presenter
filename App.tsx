@@ -121,8 +121,10 @@ import { PlayIcon, PauseIcon, RewindIcon, ForwardIcon, PlusIcon, MonitorIcon, Sp
 import { AppHeader } from './components/layout/AppHeader';
 import { CollapsiblePanel } from './components/ui/CollapsiblePanel';
 import { Tooltip } from './components/ui/Tooltip';
-import { RightDock } from './components/layout/RightDock';
+import { QuickActionsMenu } from './components/layout/QuickActionsMenu';
+import { StudioMenu } from './components/layout/StudioMenu';
 import { GuideProvider, GuideOverlay, GuidedToursPanel, AutoTriggerOnPresenter, registerAllJourneys, guideStorage } from './components/guide-engine';
+import { useRecordingLibrary } from './hooks/useRecordingLibrary';
 
 // Register all guided journeys at module load time
 registerAllJourneys();
@@ -150,6 +152,7 @@ const getWorkspaceSettingsIntentKey = (workspace: string) => `${SETTINGS_INTENT_
 const getAetherTokenKey = (workspace: string) => `${AETHER_TOKEN_KEY_PREFIX}:${workspace || 'default-workspace'}`;
 
 type SyncGuidanceDismissals = Record<string, number>;
+type SidebarTab = 'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES' | 'MACROS';
 type DisplayRole = 'control' | 'audience' | 'stage' | 'none';
 type DesktopServiceState = {
   controlDisplayId: number | null;
@@ -1153,6 +1156,15 @@ function App() {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [userPlan, setUserPlan] = useState<string | null>(null);
+  const recordingAuth = useMemo(() => ({
+    getIdToken: async () => {
+      return user && typeof user.getIdToken === 'function' ? await user.getIdToken() : null;
+    },
+  }), [user]);
+  const recordingLibrary = useRecordingLibrary({
+    auth: recordingAuth,
+    signedIn: Boolean(user?.uid),
+  });
   // True when running inside the NDI capture window (ndi=1 URL param).
   // In this mode, audience-facing overlays (QR projection) are suppressed.
   const isNdiCapture = useMemo(() => {
@@ -1224,7 +1236,35 @@ function App() {
     const hasSeen = localStorage.getItem('lumina_onboarding_v2.2.0');
     return !hasSeen;
   });
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES' | 'MACROS'>('SCHEDULE');
+
+  const parseJson = <T,>(raw: string | null, fallback: T): T => {
+    if (raw === null) return fallback;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return fallback;
+    }
+  };
+
+  const getSavedState = () => {
+    try {
+      return parseJson(localStorage.getItem(STORAGE_KEY), null as any);
+    } catch (e) {
+      console.warn("State load failed", e);
+      return null;
+    }
+  };
+  const initialSavedStateRef = useRef<any>(null);
+  if (initialSavedStateRef.current === null) {
+    initialSavedStateRef.current = getSavedState();
+  }
+  const initialSavedState = initialSavedStateRef.current;
+
+  const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab | null>(() => {
+    const persisted = initialSavedStateRef.current?.activeSidebarTab;
+    const valid: SidebarTab[] = ['SCHEDULE', 'HYMNS', 'AUDIO', 'BIBLE', 'AUDIENCE', 'FILES', 'MACROS'];
+    return persisted && valid.includes(persisted) ? persisted : null;
+  });
   const [macros, setMacros] = useState<MacroDefinition[]>([]);
   const [macroAuditLog, setMacroAuditLog] = useState<MacroAuditEntry[]>([]);
   const appendMacroAudit = useCallback((entry: MacroAuditEntry) => {
@@ -1291,29 +1331,6 @@ function App() {
     && ['available', 'downloading', 'downloaded', 'error'].includes(desktopUpdateStatus.state)
     && dismissedUpdateKey !== currentUpdateKey;
 
-  const parseJson = <T,>(raw: string | null, fallback: T): T => {
-    if (raw === null) return fallback;
-    try {
-      return JSON.parse(raw) as T;
-    } catch {
-      return fallback;
-    }
-  };
-
-  const getSavedState = () => {
-    try {
-      return parseJson(localStorage.getItem(STORAGE_KEY), null as any);
-    } catch (e) {
-      console.warn("State load failed", e);
-      return null;
-    }
-  };
-  const initialSavedStateRef = useRef<any>(null);
-  if (initialSavedStateRef.current === null) {
-    initialSavedStateRef.current = getSavedState();
-  }
-  const initialSavedState = initialSavedStateRef.current;
-
   const [schedule, setSchedule] = useState<ServiceItem[]>(() => {
     const saved = initialSavedState;
     return saved?.schedule || INITIAL_SCHEDULE;
@@ -1335,12 +1352,7 @@ function App() {
   });
   const [showSermonRecorder, setShowSermonRecorder] = useState(false);
   const [isRightDockOpen, setIsRightDockOpen] = useState(false);
-  const [sidebarPinned, setSidebarPinned] = useState<boolean>(() => {
-    const saved = initialSavedState;
-    return !!saved?.sidebarPinned;
-  });
-  const [isSidebarHovering, setIsSidebarHovering] = useState(false);
-  const [presenterSidebarDrawerOpen, setPresenterSidebarDrawerOpen] = useState(false);
+  const rightDockAnchorRef = useRef<HTMLButtonElement | null>(null);
 
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isSlideEditorOpen, setIsSlideEditorOpen] = useState(false);
@@ -2958,7 +2970,6 @@ function App() {
         schedule,
         selectedItemId,
         viewMode,
-        sidebarPinned,
         activeItemId,
         activeSlideIndex,
         blackout,
@@ -2989,7 +3000,7 @@ function App() {
       }
     }, 180);
     return () => window.clearTimeout(id);
-  }, [schedule, selectedItemId, viewMode, sidebarPinned, activeItemId, activeSlideIndex, blackout, holdScreenMode, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, audienceQrProjection, stageTimerFlash, stageAlert, stageMessageCenter, workspaceSettings, user]);
+  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, holdScreenMode, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, audienceQrProjection, stageTimerFlash, stageAlert, stageMessageCenter, workspaceSettings, user]);
 
   useEffect(() => {
     const safeWorkspaceId = String(workspaceId || '').trim();
@@ -3229,16 +3240,6 @@ function App() {
   const presenterSidebarCompact = isElectronShell && viewMode === 'PRESENTER' && viewportWidth < 1500;
   const presenterShellTight = viewMode === 'PRESENTER' && viewportWidth < 1720;
   const presenterShellVeryTight = viewMode === 'PRESENTER' && viewportWidth < 1540;
-  const sidebarExpanded = presenterSidebarCompact ? false : (sidebarPinned || isSidebarHovering);
-  const presenterSidebarDrawerVisible = presenterSidebarCompact && (sidebarPinned || presenterSidebarDrawerOpen);
-  const sidebarRailWidth = presenterSidebarCompact
-    ? 48
-    : (sidebarExpanded ? (presenterShellTight ? 176 : 208) : 48);
-  const sidebarPanelWidth = viewMode === 'PRESENTER'
-    ? (presenterShellVeryTight ? 320 : presenterShellTight ? 336 : 360)
-    : 360;
-  const sidebarRailWidthClass = 'transition-[width] duration-200 ease-out';
-  const sidebarLabelClass = `${sidebarExpanded ? 'opacity-100' : 'opacity-0'} transition-opacity whitespace-nowrap`;
   const presenterQueueSlides = activeItem?.slides || [];
   const presenterQueueActiveIndex = activeItem && activeItem.slides.length > 0
     ? clamp(activeSlideIndex, 0, activeItem.slides.length - 1)
@@ -3255,6 +3256,10 @@ function App() {
       : (presenterSidebarCompact
           ? (presenterShellVeryTight ? 240 : 264)
           : (presenterInlineQueueTight ? (presenterShellVeryTight ? 232 : 248) : (presenterShellVeryTight ? 288 : presenterShellTight ? 304 : 320)));
+  const sidebarRailWidth = presenterSidebarCompact ? 48 : 224;
+  const sidebarPanelWidth = viewMode === 'PRESENTER'
+    ? (presenterShellVeryTight ? 320 : presenterShellTight ? 336 : 360)
+    : 360;
   const presenterSidebarInlineWidth = viewMode === 'PRESENTER' && !presenterSidebarCompact
     ? sidebarRailWidth + sidebarPanelWidth
     : sidebarRailWidth;
@@ -6977,7 +6982,6 @@ function App() {
   }, [autoCueEnabled, autoCueSeconds, viewMode, activeItemId, nextSlide, activeItem]);
 
   useLayoutEffect(() => {
-    setIsSidebarHovering(false);
     if (typeof window !== 'undefined') {
       window.scrollTo({ left: 0, top: window.scrollY, behavior: 'auto' });
     }
@@ -6988,47 +6992,13 @@ function App() {
         studioShellRef.current.scrollLeft = 0;
       }
     } catch {}
-  }, [viewMode, sidebarPinned, activeSidebarTab, viewportWidth]);
+  }, [viewMode, activeSidebarTab, viewportWidth]);
 
-  useEffect(() => {
-    if (!presenterSidebarCompact) {
-      setIsSidebarHovering(false);
-      return;
-    }
-    setIsSidebarHovering(false);
-    if (sidebarPinned) {
-      setPresenterSidebarDrawerOpen(true);
-    }
-  }, [presenterSidebarCompact, sidebarPinned]);
 
-  useEffect(() => {
-    if (!presenterSidebarDrawerVisible || sidebarPinned) return;
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setPresenterSidebarDrawerOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [presenterSidebarDrawerVisible, sidebarPinned]);
 
-  const handleSidebarPinToggle = () => {
-    if (presenterSidebarCompact) {
-      setSidebarPinned((prev) => {
-        const next = !prev;
-        setPresenterSidebarDrawerOpen(next);
-        return next;
-      });
-      return;
-    }
-    setSidebarPinned((prev) => !prev);
-  };
 
-  const handleSidebarTabSelect = (tab: 'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES' | 'MACROS') => {
+  const handleSidebarTabSelect = (tab: SidebarTab | null) => {
     setActiveSidebarTab(tab);
-    if (presenterSidebarCompact) {
-      setPresenterSidebarDrawerOpen(true);
-    }
   };
 
   // ✅ Launch Output handler (opens window synchronously from user gesture — popup-safe)
@@ -8552,6 +8522,7 @@ function App() {
         onToggleStageDisplay={handleToggleStageDisplay}
         isRightDockOpen={isRightDockOpen}
         onToggleRightDock={() => setIsRightDockOpen(prev => !prev)}
+        rightDockAnchorRef={rightDockAnchorRef}
         remoteControlUrl={remoteControlUrl}
         stageDisplayUrl={stageDisplayUrl}
         onCopyUrl={(url, msg) => void copyShareUrl(url, msg)}
@@ -8589,136 +8560,17 @@ function App() {
           presenterBetaWorkspace
         ) : (
           <>
-        {presenterSidebarDrawerVisible && (
-          <button
-            type="button"
-            aria-label="Close studio sidebar drawer"
-            data-testid="studio-sidebar-drawer-backdrop"
-            className="absolute inset-0 z-10 bg-black/35"
-            onClick={() => {
-              if (!sidebarPinned) {
-                setPresenterSidebarDrawerOpen(false);
-              }
-            }}
-          />
-        )}
         <div className={`relative flex shrink-0 h-full border-r border-zinc-900 z-20 ${presenterSidebarCompact ? 'w-12 min-w-[48px]' : 'min-w-0'}`}>
           {/* Sidebar with Tabs (Hidden on Mobile unless Builder Mode) */}
           <div
-            className={`group flex flex-col h-full bg-zinc-900/50 border-r border-zinc-800 shrink-0 overflow-hidden z-20 ${sidebarRailWidthClass}`}
-            style={{ width: sidebarRailWidth }}
+            className="group flex flex-col h-full bg-zinc-900/50 border-r border-zinc-800 shrink-0 overflow-visible z-20 w-56"
             data-testid="studio-sidebar-rail"
-            onMouseEnter={() => {
-              if (!presenterSidebarCompact) setIsSidebarHovering(true);
-            }}
-            onMouseLeave={() => {
-              if (!presenterSidebarCompact) setIsSidebarHovering(false);
-            }}
           >
             <div className="flex items-center justify-between p-1 border-b border-zinc-800/80">
-              <span className={`px-2 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 ${sidebarLabelClass}`}>Studio</span>
-              <button
-                onClick={handleSidebarPinToggle}
-                className={`h-9 w-9 shrink-0 rounded-sm border transition-colors flex items-center justify-center ${sidebarPinned ? 'border-blue-700 bg-blue-950/40 text-blue-300' : 'border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300'}`}
-                title={sidebarPinned ? 'Unpin navigation' : 'Pin navigation open'}
-                aria-label={sidebarPinned ? 'Unpin navigation' : 'Pin navigation open'}
-                data-testid="studio-sidebar-pin"
-              >
-                <PinIcon className="w-4 h-4" />
-              </button>
+              <span className="px-2 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">Studio</span>
             </div>
             <div className="flex flex-col flex-1 p-1 gap-1">
-              <Tooltip
-                placement="right"
-                variant="info"
-                content={
-                  <span>
-                    <strong className="text-blue-300">Today's run sheet.</strong>
-                    <br />
-                    Build and reorder the live order of service — songs, scriptures, sermons, videos, announcements. The whole flow your team will run on Sunday.
-                  </span>
-                }
-              >
-                <button onClick={() => handleSidebarTabSelect('SCHEDULE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'SCHEDULE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><MonitorIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Schedule</span></button>
-              </Tooltip>
-              <Tooltip
-                placement="right"
-                variant="info"
-                content={
-                  <span>
-                    <strong className="text-blue-300">Your hymn & song library.</strong>
-                    <br />
-                    Search, add, or import worship songs (CCLI, OpenLyrics, custom). Drop any hymn straight onto the Schedule with a click — verses, chorus, and chord sheets travel with it.
-                  </span>
-                }
-              >
-                <button onClick={() => handleSidebarTabSelect('HYMNS')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'HYMNS' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><MusicIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Hymns</span></button>
-              </Tooltip>
-              <Tooltip
-                placement="right"
-                variant="info"
-                content={
-                  <span>
-                    <strong className="text-blue-300">Saved run sheets & templates.</strong>
-                    <br />
-                    Re-open last week's service, load a recurring template (e.g. Communion Sunday), or back up the current schedule for next time. Nothing prepped is ever lost.
-                  </span>
-                }
-              >
-                <button onClick={() => handleSidebarTabSelect('FILES')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'FILES' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><CopyIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Files</span></button>
-              </Tooltip>
-              <Tooltip
-                placement="right"
-                variant="info"
-                content={
-                  <span>
-                    <strong className="text-blue-300">Live sound control.</strong>
-                    <br />
-                    Adjust per-source volume, mute/solo channels, and route audio between mic, video, and music players in real time — without leaving the Presenter.
-                  </span>
-                }
-              >
-                <button onClick={() => handleSidebarTabSelect('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><Volume2Icon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audio Mixer</span></button>
-              </Tooltip>
-              <Tooltip
-                placement="right"
-                variant="ai"
-                content={
-                  <span>
-                    <strong className="text-violet-300">Scripture, instantly.</strong>
-                    <br />
-                    Look up any passage across multiple translations, queue verses to the screen, and turn on <strong className="text-violet-300">Auto Listening</strong> — Lumina hears the preacher say a reference and projects it for you, hands-free.
-                  </span>
-                }
-              >
-                <button onClick={() => handleSidebarTabSelect('BIBLE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'BIBLE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><BibleIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Bible Hub</span></button>
-              </Tooltip>
-              <Tooltip
-                placement="right"
-                variant="info"
-                content={
-                  <span>
-                    <strong className="text-blue-300">Engage the room.</strong>
-                    <br />
-                    Open polls, prayer requests, Q&A, giving prompts, and live audience interactions — pushed to phones in the congregation. Watch responses come in as you preach.
-                  </span>
-                }
-              >
-                <button onClick={() => handleSidebarTabSelect('AUDIENCE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIENCE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><ChatIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audience</span></button>
-              </Tooltip>
-              <Tooltip
-                placement="right"
-                variant="ai"
-                content={
-                  <span>
-                    <strong className="text-violet-300">One-tap automations.</strong>
-                    <br />
-                    Chain actions into a single button — e.g. "Start Service" can lower lights, fade music, switch to Welcome slide, and start the timer. Built once, fired anytime.
-                  </span>
-                }
-              >
-                <button onClick={() => handleSidebarTabSelect('MACROS')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'MACROS' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><SparklesIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Macros</span></button>
-              </Tooltip>
+              <StudioMenu activeTab={activeSidebarTab} onSelectTab={handleSidebarTabSelect} />
             </div>
             <div className="p-1 border-t border-zinc-800">
               <Tooltip
@@ -8728,30 +8580,37 @@ function App() {
                   <span>
                     <strong className="text-blue-300">Profile, themes & preferences.</strong>
                     <br />
-                    Switch user, customise default fonts and slide themes, manage cloud sync, integrations (CCLI, ProPresenter import), and keyboard shortcuts.
+                    Switch user, customise default fonts and slide themes, manage cloud sync, integrations, and keyboard shortcuts.
                   </span>
                 }
               >
-                <button onClick={() => setIsProfileOpen(true)} className="w-full p-2.5 rounded-sm flex items-center gap-3 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"><Settings className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Settings</span></button>
+                <button
+                  onClick={() => setIsProfileOpen(true)}
+                  className="w-full p-2.5 rounded-sm flex items-center gap-3 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+                >
+                  <Settings className="w-5 h-5 shrink-0" />
+                  <span className="text-xs font-bold tracking-tight uppercase">Settings</span>
+                </button>
               </Tooltip>
             </div>
           </div>
 
           {/* SIDEBAR PANEL */}
+          {activeSidebarTab !== null && (
           <div
             data-testid="studio-sidebar-panel"
             className={`flex flex-col bg-zinc-950 shrink-0 min-w-0 border-r border-zinc-900 transition-[transform,opacity] duration-200 ease-out ${presenterSidebarCompact ? 'absolute top-0 bottom-0 shadow-[0_28px_60px_rgba(0,0,0,0.45)]' : ''}`}
-            aria-hidden={presenterSidebarCompact && !presenterSidebarDrawerVisible ? true : undefined}
+            aria-hidden={presenterSidebarCompact ? true : undefined}
             style={{
               width: sidebarPanelWidth,
               ...(presenterSidebarCompact
                 ? {
                     left: sidebarRailWidth,
                     zIndex: 30,
-                    transform: presenterSidebarDrawerVisible ? 'translateX(0)' : 'translateX(calc(-100% - 0.75rem))',
-                    opacity: presenterSidebarDrawerVisible ? 1 : 0,
-                    visibility: presenterSidebarDrawerVisible ? 'visible' : 'hidden',
-                    pointerEvents: presenterSidebarDrawerVisible ? 'auto' : 'none',
+                    transform: 'translateX(calc(-100% - 0.75rem))',
+                    opacity: 0,
+                    visibility: 'hidden',
+                    pointerEvents: 'none',
                   }
                 : {}),
             }}
@@ -8815,7 +8674,7 @@ function App() {
               />
             </div>
           )}
-          {activeSidebarTab === 'AUDIO' && <AudioLibrary currentTrackId={currentTrack?.id ?? null} isPlaying={isAudioPlaying} progress={audioProgress} onPlay={handlePlayTrack} onToggle={() => setIsAudioPlaying(!isAudioPlaying)} onStop={stopAudio} onVolumeChange={setAudioVolume} volume={audioVolume} />}
+          {activeSidebarTab === 'AUDIO' && <AudioLibrary currentTrackId={currentTrack?.id ?? null} isPlaying={isAudioPlaying} progress={audioProgress} onPlay={handlePlayTrack} onToggle={() => setIsAudioPlaying(!isAudioPlaying)} onStop={stopAudio} onVolumeChange={setAudioVolume} volume={audioVolume} recordingLibrary={recordingLibrary} />}
           {activeSidebarTab === 'BIBLE' && (
             <div className="flex-1 overflow-hidden flex flex-col min-h-0">
               <div className="p-3 border-b border-zinc-900 shrink-0"><h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Bible Hub</h3></div>
@@ -8896,10 +8755,11 @@ function App() {
             />
           )}
         </div>
+          )}
       </div>
 
       {viewMode === 'BUILDER' ? (
-      <div className="flex-1 flex flex-col bg-zinc-950 min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col bg-zinc-950 min-w-0 overflow-hidden" data-testid="studio-canvas-root">
         {selectedItem ? (
           <>
             <ItemEditorPanel
@@ -8958,7 +8818,7 @@ function App() {
         onToggleSermonRecorder={() => setShowSermonRecorder(v => !v)}
       />
     ) : (
-            <div className="flex-1 flex flex-col lg:flex-row bg-black min-w-0 overflow-hidden">
+            <div className="flex-1 flex flex-col lg:flex-row bg-black min-w-0 overflow-hidden" data-testid="studio-canvas-root">
             <div className="flex-1 flex flex-col relative min-w-0">
                 <div className={`flex-1 relative flex items-center bg-zinc-950 overflow-hidden border-r border-zinc-900 p-3 ${presenterPreviewAlignClass}`}>
                   <div data-testid="presenter-live-preview" className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group shadow-2xl overflow-hidden rounded-sm">
@@ -9348,15 +9208,18 @@ function App() {
       )}
           </>
         )}
-        <RightDock
+        <QuickActionsMenu
+          anchorRef={rightDockAnchorRef}
           isOpen={isRightDockOpen}
-          machineMode={workspaceSettings.machineMode}
-          onToggleMachineMode={() => setWorkspaceSettings(prev => ({ ...prev, machineMode: !prev.machineMode }))}
+          onClose={() => setIsRightDockOpen(false)}
           onOpenConnect={(panel) => { setConnectPanel(panel); setIsConnectOpen(true); }}
           onOpenAI={() => setIsAIModalOpen(true)}
           hasElectronDisplayControl={hasElectronDisplayControl}
-          onOpenDisplaySetup={handleOpenDisplaySetup}
-          desktopServiceState={desktopServiceState}
+          desktopServiceState={desktopServiceState ?? null}
+          onStartService={handleOpenDisplaySetup ?? (() => {})}
+          onStopService={() => {}}
+          machineMode={workspaceSettings.machineMode}
+          onToggleMachineMode={() => setWorkspaceSettings(prev => ({ ...prev, machineMode: !prev.machineMode }))}
         />
       </div>
 
@@ -10547,6 +10410,9 @@ function App() {
             onClose={() => setShowSermonRecorder(false)}
             onFlashToScreen={handleSermonFlashToScreen}
             onSave={handleSermonSave}
+            recordingLibrary={recordingLibrary}
+            onOpenAudioMixer={() => setActiveSidebarTab('AUDIO')}
+            signedIn={Boolean(user?.uid)}
           />
         </div>
       )}

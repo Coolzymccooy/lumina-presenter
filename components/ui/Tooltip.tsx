@@ -331,9 +331,26 @@ export const Tooltip: React.FC<TooltipProps> = ({
     hide();
   }, [interactive, hide]);
 
+  // Merged ref: forwards the node to both Tooltip's internal triggerRef and
+  // whatever ref the caller passed on the child. Without this, cloneElement's
+  // `ref: triggerRef` silently overrides the caller's ref and any code relying
+  // on e.g. `buttonRef.current` (positioning, outside-click checks) breaks.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const childRef = (children as any).ref as
+    | React.Ref<HTMLElement>
+    | undefined;
+  const mergedRef = (node: HTMLElement | null) => {
+    triggerRef.current = node;
+    if (typeof childRef === 'function') {
+      childRef(node);
+    } else if (childRef && typeof childRef === 'object') {
+      (childRef as React.MutableRefObject<HTMLElement | null>).current = node;
+    }
+  };
+
   // Clone child to inject trigger ref and event handlers
   const trigger = cloneElement(children, {
-    ref: triggerRef,
+    ref: mergedRef,
     onMouseEnter: (e: React.MouseEvent) => {
       children.props.onMouseEnter?.(e);
       show();

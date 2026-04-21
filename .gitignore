@@ -67,6 +67,8 @@ $RECYCLE.BIN/
 *.swp
 *.pid
 *.tsbuildinfo
+.claude/worktrees/
+test_debug.*
 
 # ===========================
 # PYTHON (IF YOU USE SCRIPTS)

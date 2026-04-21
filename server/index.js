@@ -282,6 +282,9 @@ const VIS_MEDIA_DIR = process.env.LUMINA_VIS_MEDIA_DIR
 const WORKSPACE_MEDIA_DIR = process.env.LUMINA_WORKSPACE_MEDIA_DIR
   ? path.resolve(process.env.LUMINA_WORKSPACE_MEDIA_DIR)
   : path.join(DATA_DIR, "workspace-media");
+const RECORDINGS_DIR = process.env.LUMINA_RECORDINGS_DIR
+  ? path.resolve(process.env.LUMINA_RECORDINGS_DIR)
+  : path.join(DATA_DIR, "recordings");
 const SERMON_PROCESSING_AUDIO_DIR = process.env.LUMINA_SERMON_PROCESSING_AUDIO_DIR
   ? path.resolve(process.env.LUMINA_SERMON_PROCESSING_AUDIO_DIR)
   : path.join(DATA_DIR, "sermon-processing");
@@ -420,6 +423,18 @@ CREATE TABLE IF NOT EXISTS sermon_processing_jobs (
   summary_json TEXT
 );
 
+CREATE TABLE IF NOT EXISTS recordings (
+  id TEXT PRIMARY KEY,
+  firebase_uid TEXT NOT NULL,
+  title TEXT NOT NULL,
+  duration_sec REAL NOT NULL,
+  mime TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  sha256 TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_audit_workspace_time ON audit_logs(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_snapshots_workspace_time ON workspace_snapshots(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_audience_workspace_time ON audience_messages(workspace_id, created_at);
@@ -428,6 +443,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_runsheet_workspace_file_unique ON workspac
 CREATE INDEX IF NOT EXISTS idx_runsheet_workspace_updated ON workspace_runsheet_files(workspace_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sermons_workspace_time ON sermon_summaries(workspace_id, saved_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sermon_jobs_status_retry ON sermon_processing_jobs(status, next_retry_at, created_at);
+CREATE INDEX IF NOT EXISTS recordings_uid_idx ON recordings(firebase_uid, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS workspace_ccli_credentials (
   workspace_id TEXT PRIMARY KEY,
@@ -480,6 +496,7 @@ app.use(express.json({ limit: JSON_LIMIT }));
 app.use('/api/lyrics', createLyricsRouter());
 fs.mkdirSync(VIS_MEDIA_DIR, { recursive: true });
 fs.mkdirSync(WORKSPACE_MEDIA_DIR, { recursive: true });
+fs.mkdirSync(RECORDINGS_DIR, { recursive: true });
 fs.mkdirSync(SERMON_PROCESSING_AUDIO_DIR, { recursive: true });
 const audienceMessageStreamClients = new Map();
 
@@ -2853,6 +2870,102 @@ Return a single JSON object with exactly these fields: name (string), descriptio
   } catch (error) {
     return res.status(500).json({ ok: false, error: "AI_MACRO_FAILED", message: String(error?.message || error) });
   }
+});
+
+const recordingUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 100 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['audio/webm', 'audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg'];
+    cb(null, allowed.some(t => file.mimetype.startsWith(t.split(';')[0])));
+  },
+});
+
+app.post('/api/recordings', requireActor, recordingUpload.single('audio'), (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ ok: false, error: 'audio file required' });
+    const meta = JSON.parse(req.body.meta || '{}');
+    const { id, title, durationSec, mime, createdAt } = meta;
+    if (!id || !title) return res.status(400).json({ ok: false, error: 'id + title required' });
+    if (!/^[A-Za-z0-9_-]+$/.test(id)) {
+      return res.status(400).json({ ok: false, error: 'invalid id format' });
+    }
+
+    const uid = req.actor.uid;
+    const ext = (mime || '').includes('mp4') ? 'm4a' : 'webm';
+    const userDir = path.join(RECORDINGS_DIR, uid);
+    fs.mkdirSync(userDir, { recursive: true });
+    const filePath = path.join(userDir, `${id}.${ext}`);
+    const sha256 = createHash('sha256').update(req.file.buffer).digest('hex');
+    fs.writeFileSync(filePath, req.file.buffer);
+
+    db.prepare(`INSERT OR REPLACE INTO recordings
+      (id, firebase_uid, title, duration_sec, mime, size_bytes, sha256, file_path, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+      id, uid, title, Number(durationSec) || 0, mime || 'audio/webm',
+      req.file.size, sha256, filePath, createdAt || new Date().toISOString()
+    );
+
+    res.json({
+      ok: true,
+      id,
+      cloudUrl: `/api/recordings/${id}/audio`,
+      sizeBytes: req.file.size,
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err?.message ?? 'upload failed' });
+  }
+});
+
+app.get('/api/recordings', requireActor, (req, res) => {
+  const rows = db.prepare(
+    `SELECT id, title, duration_sec, mime, size_bytes, created_at
+     FROM recordings WHERE firebase_uid = ? ORDER BY created_at DESC`
+  ).all(req.actor.uid);
+  res.json({
+    ok: true,
+    recordings: rows.map(r => ({
+      id: r.id,
+      kind: 'recording',
+      title: r.title,
+      durationSec: r.duration_sec,
+      mime: r.mime,
+      sizeBytes: r.size_bytes,
+      createdAt: r.created_at,
+      syncState: 'synced',
+      cloudUrl: `/api/recordings/${r.id}/audio`,
+    })),
+  });
+});
+
+app.get('/api/recordings/:id/audio', requireActor, (req, res) => {
+  const row = db.prepare(
+    `SELECT file_path, mime, size_bytes FROM recordings WHERE id = ? AND firebase_uid = ?`
+  ).get(req.params.id, req.actor.uid);
+  if (!row) return res.status(404).json({ ok: false, error: 'not found' });
+  res.setHeader('Content-Type', row.mime);
+  res.setHeader('Content-Length', row.size_bytes);
+  fs.createReadStream(row.file_path).pipe(res);
+});
+
+app.patch('/api/recordings/:id', requireActor, express.json(), (req, res) => {
+  const title = String(req.body?.title || '').trim();
+  if (!title) return res.status(400).json({ ok: false, error: 'title required' });
+  const info = db.prepare(
+    `UPDATE recordings SET title = ? WHERE id = ? AND firebase_uid = ?`
+  ).run(title, req.params.id, req.actor.uid);
+  if (info.changes === 0) return res.status(404).json({ ok: false, error: 'not found' });
+  res.json({ ok: true });
+});
+
+app.delete('/api/recordings/:id', requireActor, (req, res) => {
+  const row = db.prepare(
+    `SELECT file_path FROM recordings WHERE id = ? AND firebase_uid = ?`
+  ).get(req.params.id, req.actor.uid);
+  if (!row) return res.status(404).json({ ok: false, error: 'not found' });
+  db.prepare(`DELETE FROM recordings WHERE id = ? AND firebase_uid = ?`).run(req.params.id, req.actor.uid);
+  try { fs.unlinkSync(row.file_path); } catch { /* already gone */ }
+  res.json({ ok: true });
 });
 
 app.get("/api/workspaces/:workspaceId", requireActor, (req, res) => {

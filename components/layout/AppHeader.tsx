@@ -51,6 +51,7 @@ export interface AppHeaderProps {
   // Right dock
   isRightDockOpen: boolean;
   onToggleRightDock: () => void;
+  rightDockAnchorRef?: React.RefObject<HTMLButtonElement | null>;
 
   // URL copy helpers
   remoteControlUrl: string;
@@ -97,6 +98,7 @@ export function AppHeader({
   onToggleStageDisplay,
   isRightDockOpen,
   onToggleRightDock,
+  rightDockAnchorRef,
   remoteControlUrl,
   stageDisplayUrl,
   onCopyUrl,
@@ -280,6 +282,7 @@ export function AppHeader({
             placement="bottom"
           >
             <button
+              ref={rightDockAnchorRef}
               data-testid="header-right-dock-btn"
               onClick={onToggleRightDock}
               className={`ml-1 p-2.5 rounded-xl text-[10px] font-black tracking-widest transition-all border ${
