@@ -43,7 +43,7 @@ export interface SermonRecorderPanelProps {
   onAddToSchedule?: (text: string) => void;
   locale?: SermonRecorderLocale;
   compact?: boolean;
-  recordingLibrary: RecordingLibrary;
+  recordingLibrary?: RecordingLibrary;
 }
 
 const BAR_COUNT = 32;

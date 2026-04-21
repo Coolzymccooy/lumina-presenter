@@ -13,7 +13,7 @@ interface AudioLibraryProps {
   onStop: () => void;
   onVolumeChange: (volume: number) => void;
   volume: number;
-  recordingLibrary: RecordingLibrary;
+  recordingLibrary?: RecordingLibrary;
 }
 
 export const AudioLibrary: React.FC<AudioLibraryProps> = ({
