@@ -10,6 +10,14 @@ const TABS: Array<{ id: string; label: RegExp }> = [
   { id: 'MACROS', label: /macros/i },
 ];
 
+async function enterStudio(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    (window as unknown as { electron: { isElectron: boolean } }).electron = { isElectron: true };
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('studio-canvas-root')).toBeVisible({ timeout: 30_000 });
+}
+
 async function canvasWidth(page: Page): Promise<number> {
   const handle = await page.getByTestId('studio-canvas-root');
   const box = await handle.boundingBox();
@@ -20,7 +28,7 @@ async function canvasWidth(page: Page): Promise<number> {
 test.describe('Studio menu canvas stability', () => {
   test('opening/closing each tab 5x does not shrink the canvas', async ({ page }) => {
     test.setTimeout(120_000);
-    await page.goto('/');
+    await enterStudio(page);
     await page.waitForSelector('[data-testid="studio-menu-button"]');
 
     const baseline = await canvasWidth(page);
@@ -38,7 +46,7 @@ test.describe('Studio menu canvas stability', () => {
   });
 
   test('QuickActionsMenu does not affect canvas width', async ({ page }) => {
-    await page.goto('/');
+    await enterStudio(page);
     await page.waitForSelector('[data-testid="header-right-dock-btn"]');
     const baseline = await canvasWidth(page);
 
@@ -54,7 +62,7 @@ test.describe('Studio menu canvas stability', () => {
   });
 
   test('rapid open/close leaves no stuck overlay', async ({ page }) => {
-    await page.goto('/');
+    await enterStudio(page);
     await page.waitForSelector('[data-testid="studio-menu-button"]');
 
     for (let i = 0; i < 10; i++) {
