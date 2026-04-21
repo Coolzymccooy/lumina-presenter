@@ -156,6 +156,7 @@ export const RecordingSavedPill: React.FC<RecordingSavedPillProps> = ({
               <button
                 onClick={handleSync}
                 disabled={isSyncing || track.syncState === 'uploading'}
+                aria-label={`Sync recording "${track.title}" to cloud`}
                 className="px-2 py-1 rounded bg-blue-700/50 hover:bg-blue-600/50 text-blue-200 font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSyncing || track.syncState === 'uploading' ? 'Syncing...' : 'Sync'}
@@ -164,6 +165,7 @@ export const RecordingSavedPill: React.FC<RecordingSavedPillProps> = ({
 
             <button
               onClick={handleRenameStart}
+              aria-label={`Rename recording "${track.title}"`}
               className="px-2 py-1 rounded border border-zinc-600 hover:border-zinc-500 text-zinc-400 hover:text-zinc-300 font-bold transition-colors"
             >
               Rename
@@ -171,6 +173,7 @@ export const RecordingSavedPill: React.FC<RecordingSavedPillProps> = ({
 
             <button
               onClick={onOpenInMixer}
+              aria-label={`Open recording "${track.title}" in mixer`}
               className="px-2 py-1 rounded border border-zinc-600 hover:border-zinc-500 text-zinc-400 hover:text-zinc-300 font-bold transition-colors"
             >
               Open in Mixer
@@ -184,12 +187,14 @@ export const RecordingSavedPill: React.FC<RecordingSavedPillProps> = ({
                 <button
                   onClick={handleDelete}
                   disabled={isDeleting}
+                  aria-label={`Confirm deletion of recording "${track.title}"`}
                   className="px-2 py-1 rounded bg-red-700/50 hover:bg-red-600/50 text-red-200 font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isDeleting ? 'Deleting...' : 'Confirm Delete'}
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
+                  aria-label="Cancel delete"
                   className="px-2 py-1 rounded border border-zinc-600 text-zinc-400 hover:text-zinc-300 font-bold transition-colors"
                 >
                   Cancel
@@ -198,6 +203,7 @@ export const RecordingSavedPill: React.FC<RecordingSavedPillProps> = ({
             ) : (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
+                aria-label={`Delete recording "${track.title}"`}
                 className="px-2 py-1 rounded border border-red-700/50 text-red-400 hover:text-red-300 hover:bg-red-950/40 font-bold transition-colors"
               >
                 Delete

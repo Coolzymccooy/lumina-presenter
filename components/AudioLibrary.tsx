@@ -246,7 +246,7 @@ const RecordingRow: React.FC<RecordingRowProps> = ({ track, recordingLibrary }) 
   })();
 
   return (
-    <li className="group p-2 rounded-sm border bg-transparent border-transparent hover:bg-zinc-900/50 transition-all flex items-center justify-between">
+    <li data-testid={`recording-row-${track.id}`} className="group p-2 rounded-sm border bg-transparent border-transparent hover:bg-zinc-900/50 transition-all flex items-center justify-between">
       <div className="flex items-center min-w-0 mr-2 flex-1 flex-col items-start">
         <div className="flex items-center min-w-0 w-full">
           <button

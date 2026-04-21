@@ -49,7 +49,14 @@ export const localStore = {
   async put(track: RecordedTrack, blob: Blob): Promise<void> {
     const buffer = await blob.arrayBuffer();
     const row: StoredRow = { ...track, blob: { buffer, type: blob.type } };
-    await tx('readwrite', (s) => s.put(row));
+    try {
+      await tx('readwrite', (s) => s.put(row));
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'QuotaExceededError') {
+        throw new Error('Not enough storage to save this recording. Free up space and try again.');
+      }
+      throw err;
+    }
   },
 
   async get(id: string): Promise<LocalRecordingRow | undefined> {
