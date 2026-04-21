@@ -100,17 +100,17 @@ This is the primary UX concern. Rules enforced by the new design:
 ### `StudioMenu`
 
 ```ts
-interface StudioMenuProps {
-  activeTab: SidebarTab;
-  onSelectTab: (tab: SidebarTab) => void;
-  // When a tab is active and user clicks STUDIO button, dropdown opens as usual.
-  // When user clicks the active tab, parent should toggle off by setting activeTab === null-equivalent.
-  onClosePanel: () => void;
-  hasOpenPanel: boolean;
-}
-
 type SidebarTab = 'SCHEDULE' | 'HYMNS' | 'FILES' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'MACROS';
+
+interface StudioMenuProps {
+  // `null` means no panel is docked. Clicking the currently-active tab
+  // in the dropdown should cause the parent to call `onSelectTab(null)`.
+  activeTab: SidebarTab | null;
+  onSelectTab: (tab: SidebarTab | null) => void;
+}
 ```
+
+**Notes on existing state:** `activeSidebarTab` in `App.tsx` is currently typed as a non-nullable union with a default of `'SCHEDULE'`. This spec widens it to `SidebarTab | null` so the "no tab docked" state is representable. Hydration of the persisted value remains; if the persisted value is missing or invalid, default to `null` (no panel docked).
 
 ### `QuickActionsMenu`
 
@@ -133,7 +133,7 @@ interface QuickActionsMenuProps {
 
 ### Unit / component tests
 
-- `StudioMenu`: opens on click, closes on outside-click, Escape, item selection; keyboard navigation (arrow + Enter); reports correct `onSelectTab`/`onClosePanel` calls.
+- `StudioMenu`: opens on click, closes on outside-click, Escape, item selection; keyboard navigation (arrow + Enter); selecting an inactive tab calls `onSelectTab(tab)`; selecting the currently active tab calls `onSelectTab(null)`.
 - `QuickActionsMenu`: opens on anchor click, closes on outside-click, Escape; all four actions fire correct callbacks.
 
 ### E2E (Playwright)
