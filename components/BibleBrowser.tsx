@@ -332,6 +332,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
   const [filteredBooks, setFilteredBooks] = useState<{ name: string; chapters: number }[]>([]);
   const [aiQuery, setAiQuery] = useState('');
   const [isVisionaryMode, setIsVisionaryMode] = useState(false);
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
   const [results, setResults] = useState<Verse[]>([]);
   const [loading, setLoading] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -1958,6 +1959,15 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                   <span className={`font-bold ${transcriptionEngine === 'browser_stt' ? 'text-amber-300' : 'text-emerald-300'}`}>
                     {engineLabel}
                   </span>
+                  <button
+                    type="button"
+                    data-testid="bible-filters-toggle"
+                    onClick={() => setFiltersCollapsed((prev) => !prev)}
+                    title={filtersCollapsed ? 'Show capture filters' : 'Hide capture filters to free space for scriptures'}
+                    className="ml-auto px-1.5 py-0.5 rounded-sm text-[8px] font-bold uppercase tracking-wider border border-purple-900/60 bg-purple-950/20 text-purple-300 hover:text-white hover:border-purple-500/60 transition-all"
+                  >
+                    {filtersCollapsed ? 'Show Filters' : 'Hide Filters'}
+                  </button>
                 </div>
               )}
               {engineToast && (
@@ -1967,64 +1977,68 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
               )}
             </div>
 
-            <CollapsiblePanel
-              id="bible-audio-source"
-              title="Audio Source"
-              defaultCollapsed={true}
-              className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
-            >
-              <SourcePicker
-                devices={audioDevices}
-                selectedId={audioDeviceId}
-                resolvedDefaultLabel={resolvedDefaultSourceLabel}
-                onSelect={handleSelectAudioSource}
-              />
-            </CollapsiblePanel>
+            {!filtersCollapsed && (
+              <>
+                <CollapsiblePanel
+                  id="bible-audio-source"
+                  title="Audio Source"
+                  defaultCollapsed={true}
+                  className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
+                >
+                  <SourcePicker
+                    devices={audioDevices}
+                    selectedId={audioDeviceId}
+                    resolvedDefaultLabel={resolvedDefaultSourceLabel}
+                    onSelect={handleSelectAudioSource}
+                  />
+                </CollapsiblePanel>
 
-            <CollapsiblePanel
-              id="bible-capture-mode"
-              title="Capture Mode"
-              defaultCollapsed={true}
-              className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
-            >
-              <div className="space-y-2">
-                <CaptureModePicker
-                  selected={captureMode}
-                  suggested={suggestedCaptureMode}
-                  onSelect={handleSelectCaptureMode}
-                />
-                <BibleAutoCurrentSetup
-                  selectedSourceLabel={selectedSourceLabel}
-                  resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
-                  captureModeLabel={captureModeLabel}
-                />
-              </div>
-            </CollapsiblePanel>
+                <CollapsiblePanel
+                  id="bible-capture-mode"
+                  title="Capture Mode"
+                  defaultCollapsed={true}
+                  className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
+                >
+                  <div className="space-y-2">
+                    <CaptureModePicker
+                      selected={captureMode}
+                      suggested={suggestedCaptureMode}
+                      onSelect={handleSelectCaptureMode}
+                    />
+                    <BibleAutoCurrentSetup
+                      selectedSourceLabel={selectedSourceLabel}
+                      resolvedDefaultSourceLabel={resolvedDefaultSourceLabel}
+                      captureModeLabel={captureModeLabel}
+                    />
+                  </div>
+                </CollapsiblePanel>
 
-            <CollapsiblePanel
-              id="bible-speech-dialect"
-              title="Speech Dialect"
-              defaultCollapsed={true}
-              className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[9px] text-zinc-400 uppercase tracking-wider">Speech Dialect</span>
-                  <select
-                    value={speechLocaleMode}
-                    onChange={(e) => onSpeechLocaleModeChange(e.target.value as VisionarySpeechLocaleMode)}
-                    className={`bg-zinc-900 border border-zinc-700 rounded-sm px-2 py-1 text-zinc-200 ${compact ? 'text-[8px]' : 'text-[9px]'}`}
-                  >
-                    <option value="auto">Auto (System Locale)</option>
-                    <option value="en-GB">English (UK) - en-GB</option>
-                    <option value="en-US">English (US) - en-US</option>
-                  </select>
-                </div>
-                <div className="text-[9px] text-cyan-300 font-mono">
-                  Dialect: {localeStatusLanguage} ({localeModeLabel})
-                </div>
-              </div>
-            </CollapsiblePanel>
+                <CollapsiblePanel
+                  id="bible-speech-dialect"
+                  title="Speech Dialect"
+                  defaultCollapsed={true}
+                  className="rounded-sm border border-purple-900/60 bg-purple-950/20 p-1"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[9px] text-zinc-400 uppercase tracking-wider">Speech Dialect</span>
+                      <select
+                        value={speechLocaleMode}
+                        onChange={(e) => onSpeechLocaleModeChange(e.target.value as VisionarySpeechLocaleMode)}
+                        className={`bg-zinc-900 border border-zinc-700 rounded-sm px-2 py-1 text-zinc-200 ${compact ? 'text-[8px]' : 'text-[9px]'}`}
+                      >
+                        <option value="auto">Auto (System Locale)</option>
+                        <option value="en-GB">English (UK) - en-GB</option>
+                        <option value="en-US">English (US) - en-US</option>
+                      </select>
+                    </div>
+                    <div className="text-[9px] text-cyan-300 font-mono">
+                      Dialect: {localeStatusLanguage} ({localeModeLabel})
+                    </div>
+                  </div>
+                </CollapsiblePanel>
+              </>
+            )}
 
             <div className="space-y-2">
               <div className="text-[9px] text-zinc-300 font-mono">{autoStatusText}</div>
@@ -2065,7 +2079,7 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                 </div>
               )}
               {autoTranscript && (
-                <div className="text-[9px] text-zinc-400 font-mono border border-zinc-800 rounded-sm p-1.5 max-h-16 overflow-y-auto">
+                <div className="text-[9px] text-zinc-400 font-mono border border-zinc-800 rounded-sm p-1.5 max-h-32 overflow-y-auto leading-relaxed">
                   Heard: {autoTranscript}
                 </div>
               )}
@@ -2382,26 +2396,26 @@ export const BibleBrowser: React.FC<BibleBrowserProps> = ({
                 </span>
               }
             >
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[8px] text-zinc-400 uppercase tracking-widest font-black w-12 shrink-0">Layout</span>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-[8px] text-zinc-400 uppercase tracking-widest font-black w-10 shrink-0">Layout</span>
                   {([['standard', 'Standard'], ['scripture_ref', 'Scripture + Ref'], ['ticker', 'Ticker']] as const).map(([key, label]) => (
                     <button key={key} onClick={() => {
                       if (bibleLayout === key) return;
                       setBibleLayout(key);
                     }}
-                      className={`px-2.5 py-1.5 rounded-md text-[9px] font-black uppercase tracking-wide transition-all active:scale-95 ${bibleLayout === key ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-900/60 ring-1 ring-blue-300/40' : 'bg-zinc-800/80 text-zinc-400 border border-zinc-800 hover:text-white hover:border-blue-700/50 hover:bg-zinc-800'}`}
+                      className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wide transition-all active:scale-95 ${bibleLayout === key ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-900/60 ring-1 ring-blue-300/40' : 'bg-zinc-800/80 text-zinc-400 border border-zinc-800 hover:text-white hover:border-blue-700/50 hover:bg-zinc-800'}`}
                     >{label}</button>
                   ))}
                 </div>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[8px] text-zinc-400 uppercase tracking-widest font-black w-12 shrink-0">Size</span>
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-[8px] text-zinc-400 uppercase tracking-widest font-black w-10 shrink-0">Size</span>
                   {([['small', 'SM'], ['medium', 'MD'], ['large', 'LG'], ['xlarge', 'XL']] as const).map(([key, label]) => (
                     <button key={key} onClick={() => {
                       if (bibleFontSize === key) return;
                       setBibleFontSize(key);
                     }}
-                      className={`px-2.5 py-1.5 rounded-md text-[9px] font-black tracking-wide transition-all active:scale-95 ${bibleFontSize === key ? 'bg-gradient-to-br from-purple-500 to-fuchsia-700 text-white shadow-lg shadow-purple-900/60 ring-1 ring-purple-300/40' : 'bg-zinc-800/80 text-zinc-400 border border-zinc-800 hover:text-white hover:border-purple-700/50 hover:bg-zinc-800'}`}
+                      className={`px-2 py-1 rounded-md text-[9px] font-black tracking-wide transition-all active:scale-95 ${bibleFontSize === key ? 'bg-gradient-to-br from-purple-500 to-fuchsia-700 text-white shadow-lg shadow-purple-900/60 ring-1 ring-purple-300/40' : 'bg-zinc-800/80 text-zinc-400 border border-zinc-800 hover:text-white hover:border-purple-700/50 hover:bg-zinc-800'}`}
                     >{label}</button>
                   ))}
                 </div>
