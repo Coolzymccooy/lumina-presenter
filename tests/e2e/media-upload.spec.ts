@@ -3,6 +3,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const STORAGE_KEY = 'lumina_session_v1';
+
+async function openStudioTab(page: Page, tabName: string) {
+  await page.getByTestId('studio-menu-button').click();
+  await page.getByRole('menuitem', { name: new RegExp(tabName, 'i') }).click();
+}
 const ICON_PNG = readFileSync(path.resolve(process.cwd(), 'public/icon.png'));
 const WELCOME_PNG = readFileSync(path.resolve(process.cwd(), 'public/welcome_bg.png'));
 
@@ -234,7 +239,7 @@ test('pinned studio sidebar remains accessible across present and build mode swi
   await seedState(page, state);
   await enterStudio(page, key);
 
-  await page.getByTestId('studio-sidebar-pin').click();
+  await openStudioTab(page, 'Schedule');
   await expect(page.getByText('Schedule')).toBeVisible();
   await expect(page.getByText('Files')).toBeVisible();
   await expect(page.getByText('Audio Mixer')).toBeVisible();
@@ -262,7 +267,7 @@ test('pinned studio sidebar remains accessible across present and build mode swi
   }));
   expect(shellMetrics.scrollLeft).toBe(0);
 
-  const railMetrics = await page.getByTestId('studio-sidebar-rail').evaluate((node) => {
+  const railMetrics = await page.getByTestId('studio-menu-root').evaluate((node) => {
     const rect = node.getBoundingClientRect();
     return { left: rect.left, width: rect.width };
   });
@@ -289,7 +294,7 @@ test('compact electron presenter keeps the sidebar recoverable on narrow widths'
   await seedState(page, state);
   await enterStudio(page, key);
 
-  await page.getByTestId('studio-sidebar-pin').click();
+  await openStudioTab(page, 'Schedule');
   await expect(page.getByText('Schedule')).toBeVisible();
 
   await page.getByRole('button', { name: 'PRESENT' }).click();
@@ -300,14 +305,14 @@ test('compact electron presenter keeps the sidebar recoverable on narrow widths'
   const panel = page.getByTestId('studio-sidebar-panel');
   await expect(panel).toBeVisible();
 
-  const railMetrics = await page.getByTestId('studio-sidebar-rail').evaluate((node) => {
+  const railMetrics = await page.getByTestId('studio-menu-root').evaluate((node) => {
     const rect = node.getBoundingClientRect();
     return { left: rect.left, width: rect.width };
   });
   expect(railMetrics.left).toBeGreaterThanOrEqual(0);
   expect(railMetrics.width).toBeLessThanOrEqual(96);
 
-  await page.getByTestId('studio-sidebar-pin').click();
+  await openStudioTab(page, 'Schedule');
   await expect(panel).toBeHidden();
   await expect(transportNextButton).toBeVisible();
 
@@ -315,7 +320,7 @@ test('compact electron presenter keeps the sidebar recoverable on narrow widths'
   await expect(panel).toBeVisible();
   await expect(page.getByText('Audio Mixer')).toBeVisible();
 
-  await page.getByTestId('studio-sidebar-drawer-backdrop').click();
+  await openStudioTab(page, 'Audio Mixer');
   await expect(panel).toBeHidden();
 
   await page.getByTitle('SCHEDULE').click();
@@ -484,7 +489,7 @@ test('public domain hymn library stays inside the sidebar and inserts into the r
   await seedState(page, state);
   await enterStudio(page, key);
 
-  await page.getByTestId('studio-sidebar-pin').click();
+  await openStudioTab(page, 'Hymns');
   await page.getByTitle('HYMN LIBRARY').click();
   await expect(page.getByTestId('hymn-library')).toBeVisible();
 
@@ -591,7 +596,7 @@ test('speaker timer studio stays open after save, drags freely, and leaves the s
   expect(afterDrag.x).toBeGreaterThan(beforeDrag.x + 40);
   expect(afterDrag.y).toBeGreaterThan(beforeDrag.y + 25);
 
-  await page.getByTestId('studio-sidebar-pin').click();
+  await openStudioTab(page, 'Schedule');
   await expect(page.getByText('Schedule')).toBeVisible();
   await expect(studio).toBeVisible();
 

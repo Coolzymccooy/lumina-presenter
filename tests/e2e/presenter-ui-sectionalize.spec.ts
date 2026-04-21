@@ -63,7 +63,6 @@ const seedPresenterSession = async (
         isPlaying: false,
         outputMuted: false,
         routingMode: 'PROJECTOR',
-        sidebarPinned: false,
         updatedAt: Date.now(),
       },
       onboardingKey: ONBOARDING_KEY,
