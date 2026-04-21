@@ -8758,7 +8758,7 @@ function App() {
       </div>
 
       {viewMode === 'BUILDER' ? (
-      <div className="flex-1 flex flex-col bg-zinc-950 min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col bg-zinc-950 min-w-0 overflow-hidden" data-testid="studio-canvas-root">
         {selectedItem ? (
           <>
             <ItemEditorPanel
@@ -8817,7 +8817,7 @@ function App() {
         onToggleSermonRecorder={() => setShowSermonRecorder(v => !v)}
       />
     ) : (
-            <div className="flex-1 flex flex-col lg:flex-row bg-black min-w-0 overflow-hidden">
+            <div className="flex-1 flex flex-col lg:flex-row bg-black min-w-0 overflow-hidden" data-testid="studio-canvas-root">
             <div className="flex-1 flex flex-col relative min-w-0">
                 <div className={`flex-1 relative flex items-center bg-zinc-950 overflow-hidden border-r border-zinc-900 p-3 ${presenterPreviewAlignClass}`}>
                   <div data-testid="presenter-live-preview" className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group shadow-2xl overflow-hidden rounded-sm">
