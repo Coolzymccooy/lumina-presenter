@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { GOSPEL_TRACKS, GospelTrack } from '../constants';
 import { MusicIcon, PlayIcon, PauseIcon, SquareIcon, Volume2Icon } from './Icons';
+import type { RecordingLibrary } from '../hooks/useRecordingLibrary';
 
 interface AudioLibraryProps {
   currentTrackId: string | null;
@@ -12,6 +13,7 @@ interface AudioLibraryProps {
   onStop: () => void;
   onVolumeChange: (volume: number) => void;
   volume: number;
+  recordingLibrary: RecordingLibrary;
 }
 
 export const AudioLibrary: React.FC<AudioLibraryProps> = ({
@@ -22,7 +24,8 @@ export const AudioLibrary: React.FC<AudioLibraryProps> = ({
   onToggle,
   onStop,
   onVolumeChange,
-  volume
+  volume,
+  recordingLibrary
 }) => {
   return (
     <div className="flex flex-col h-full bg-zinc-950">

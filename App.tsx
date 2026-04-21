@@ -123,6 +123,7 @@ import { CollapsiblePanel } from './components/ui/CollapsiblePanel';
 import { Tooltip } from './components/ui/Tooltip';
 import { RightDock } from './components/layout/RightDock';
 import { GuideProvider, GuideOverlay, GuidedToursPanel, AutoTriggerOnPresenter, registerAllJourneys, guideStorage } from './components/guide-engine';
+import { useRecordingLibrary } from './hooks/useRecordingLibrary';
 
 // Register all guided journeys at module load time
 registerAllJourneys();
@@ -1154,6 +1155,15 @@ function App() {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [userPlan, setUserPlan] = useState<string | null>(null);
+  const recordingAuth = useMemo(() => ({
+    getIdToken: async () => {
+      return user && typeof user.getIdToken === 'function' ? await user.getIdToken() : null;
+    },
+  }), [user]);
+  const recordingLibrary = useRecordingLibrary({
+    auth: recordingAuth,
+    signedIn: Boolean(user?.uid),
+  });
   // True when running inside the NDI capture window (ndi=1 URL param).
   // In this mode, audience-facing overlays (QR projection) are suppressed.
   const isNdiCapture = useMemo(() => {
@@ -8821,7 +8831,7 @@ function App() {
               />
             </div>
           )}
-          {activeSidebarTab === 'AUDIO' && <AudioLibrary currentTrackId={currentTrack?.id ?? null} isPlaying={isAudioPlaying} progress={audioProgress} onPlay={handlePlayTrack} onToggle={() => setIsAudioPlaying(!isAudioPlaying)} onStop={stopAudio} onVolumeChange={setAudioVolume} volume={audioVolume} />}
+          {activeSidebarTab === 'AUDIO' && <AudioLibrary currentTrackId={currentTrack?.id ?? null} isPlaying={isAudioPlaying} progress={audioProgress} onPlay={handlePlayTrack} onToggle={() => setIsAudioPlaying(!isAudioPlaying)} onStop={stopAudio} onVolumeChange={setAudioVolume} volume={audioVolume} recordingLibrary={recordingLibrary} />}
           {activeSidebarTab === 'BIBLE' && (
             <div className="flex-1 overflow-hidden flex flex-col min-h-0">
               <div className="p-3 border-b border-zinc-900 shrink-0"><h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Bible Hub</h3></div>
@@ -10554,6 +10564,7 @@ function App() {
             onClose={() => setShowSermonRecorder(false)}
             onFlashToScreen={handleSermonFlashToScreen}
             onSave={handleSermonSave}
+            recordingLibrary={recordingLibrary}
           />
         </div>
       )}

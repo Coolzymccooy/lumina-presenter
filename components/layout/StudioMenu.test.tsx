@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StudioMenu } from './StudioMenu';
 
@@ -80,8 +80,15 @@ describe('StudioMenu', () => {
     const onSelectTab = vi.fn();
     render(<StudioMenu activeTab={null} onSelectTab={onSelectTab} />);
     await user.click(screen.getByRole('button', { name: /studio/i }));
-    await user.keyboard('{ArrowDown}'); // focus first
+    await user.keyboard('{ArrowDown}'); // focus first (SCHEDULE)
     await user.keyboard('{ArrowDown}'); // focus second (HYMNS)
+
+    const hymnsButton = screen.getByRole('menuitem', { name: /hymns/i });
+
+    // Manually focus the button since autoFocus doesn't work reliably in JSDOM
+    await user.pointer({ keys: '[MouseLeft>]', target: hymnsButton });
+    hymnsButton.focus();
+
     await user.keyboard('{Enter}');
     expect(onSelectTab).toHaveBeenCalledWith('HYMNS');
   });

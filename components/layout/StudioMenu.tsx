@@ -132,11 +132,11 @@ export function StudioMenu({ activeTab, onSelectTab }: StudioMenuProps) {
     buttonRef.current?.focus();
   }, []);
 
-  const handleItemClick = useCallback((tab: SidebarTab) => {
+  const handleItemClick = (tab: SidebarTab) => {
     onSelectTab(tab === activeTab ? null : tab);
     setIsOpen(false);
     setFocusIndex(-1);
-  }, [activeTab, onSelectTab]);
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -157,9 +157,6 @@ export function StudioMenu({ activeTab, onSelectTab }: StudioMenuProps) {
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setFocusIndex((i) => (i <= 0 ? MENU_ITEMS.length - 1 : i - 1));
-      } else if (e.key === 'Enter' && focusIndex >= 0) {
-        e.preventDefault();
-        handleItemClick(MENU_ITEMS[focusIndex].id);
       }
     };
     document.addEventListener('mousedown', onDocMouseDown);
@@ -168,7 +165,7 @@ export function StudioMenu({ activeTab, onSelectTab }: StudioMenuProps) {
       document.removeEventListener('mousedown', onDocMouseDown);
       document.removeEventListener('keydown', onKey);
     };
-  }, [isOpen, close, focusIndex, handleItemClick]);
+  }, [isOpen, close]);
 
   useEffect(() => {
     if (isOpen && focusIndex >= 0) {
@@ -227,6 +224,7 @@ export function StudioMenu({ activeTab, onSelectTab }: StudioMenuProps) {
                   type="button"
                   role="menuitem"
                   aria-current={isActive ? 'true' : undefined}
+                  autoFocus={isOpen && focusIndex === idx}
                   data-testid={`studio-menu-item-${item.id.toLowerCase()}`}
                   onClick={(e) => {
                     e.preventDefault();

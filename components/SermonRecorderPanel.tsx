@@ -15,6 +15,7 @@ import {
   type SermonAccentHint,
   type SermonRecorderLocale,
 } from '../hooks/useSermonRecorder';
+import type { RecordingLibrary } from '../hooks/useRecordingLibrary';
 import {
   canSummarize,
   summarizeSermon,
@@ -42,6 +43,7 @@ export interface SermonRecorderPanelProps {
   onAddToSchedule?: (text: string) => void;
   locale?: SermonRecorderLocale;
   compact?: boolean;
+  recordingLibrary: RecordingLibrary;
 }
 
 const BAR_COUNT = 32;
@@ -256,6 +258,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   onAddToSchedule,
   locale = 'en-GB',
   compact = false,
+  recordingLibrary,
 }) => {
   const [accentHint, setAccentHint] = useState<SermonAccentHint>('standard');
   const [audioDeviceId, setAudioDeviceId] = useState<string | undefined>(undefined);
