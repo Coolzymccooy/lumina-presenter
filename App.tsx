@@ -122,6 +122,7 @@ import { AppHeader } from './components/layout/AppHeader';
 import { CollapsiblePanel } from './components/ui/CollapsiblePanel';
 import { Tooltip } from './components/ui/Tooltip';
 import { RightDock } from './components/layout/RightDock';
+import { StudioMenu } from './components/layout/StudioMenu';
 import { GuideProvider, GuideOverlay, GuidedToursPanel, AutoTriggerOnPresenter, registerAllJourneys, guideStorage } from './components/guide-engine';
 import { useRecordingLibrary } from './hooks/useRecordingLibrary';
 
@@ -8604,136 +8605,17 @@ function App() {
           presenterBetaWorkspace
         ) : (
           <>
-        {presenterSidebarDrawerVisible && (
-          <button
-            type="button"
-            aria-label="Close studio sidebar drawer"
-            data-testid="studio-sidebar-drawer-backdrop"
-            className="absolute inset-0 z-10 bg-black/35"
-            onClick={() => {
-              if (!sidebarPinned) {
-                setPresenterSidebarDrawerOpen(false);
-              }
-            }}
-          />
-        )}
         <div className={`relative flex shrink-0 h-full border-r border-zinc-900 z-20 ${presenterSidebarCompact ? 'w-12 min-w-[48px]' : 'min-w-0'}`}>
           {/* Sidebar with Tabs (Hidden on Mobile unless Builder Mode) */}
           <div
-            className={`group flex flex-col h-full bg-zinc-900/50 border-r border-zinc-800 shrink-0 overflow-hidden z-20 ${sidebarRailWidthClass}`}
-            style={{ width: sidebarRailWidth }}
+            className="group flex flex-col h-full bg-zinc-900/50 border-r border-zinc-800 shrink-0 overflow-visible z-20 w-56"
             data-testid="studio-sidebar-rail"
-            onMouseEnter={() => {
-              if (!presenterSidebarCompact) setIsSidebarHovering(true);
-            }}
-            onMouseLeave={() => {
-              if (!presenterSidebarCompact) setIsSidebarHovering(false);
-            }}
           >
             <div className="flex items-center justify-between p-1 border-b border-zinc-800/80">
-              <span className={`px-2 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600 ${sidebarLabelClass}`}>Studio</span>
-              <button
-                onClick={handleSidebarPinToggle}
-                className={`h-9 w-9 shrink-0 rounded-sm border transition-colors flex items-center justify-center ${sidebarPinned ? 'border-blue-700 bg-blue-950/40 text-blue-300' : 'border-zinc-800 text-zinc-500 hover:border-zinc-700 hover:text-zinc-300'}`}
-                title={sidebarPinned ? 'Unpin navigation' : 'Pin navigation open'}
-                aria-label={sidebarPinned ? 'Unpin navigation' : 'Pin navigation open'}
-                data-testid="studio-sidebar-pin"
-              >
-                <PinIcon className="w-4 h-4" />
-              </button>
+              <span className="px-2 text-[9px] font-black uppercase tracking-[0.2em] text-zinc-600">Studio</span>
             </div>
             <div className="flex flex-col flex-1 p-1 gap-1">
-              <Tooltip
-                placement="right"
-                variant="info"
-                content={
-                  <span>
-                    <strong className="text-blue-300">Today's run sheet.</strong>
-                    <br />
-                    Build and reorder the live order of service — songs, scriptures, sermons, videos, announcements. The whole flow your team will run on Sunday.
-                  </span>
-                }
-              >
-                <button onClick={() => handleSidebarTabSelect('SCHEDULE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'SCHEDULE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><MonitorIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Schedule</span></button>
-              </Tooltip>
-              <Tooltip
-                placement="right"
-                variant="info"
-                content={
-                  <span>
-                    <strong className="text-blue-300">Your hymn & song library.</strong>
-                    <br />
-                    Search, add, or import worship songs (CCLI, OpenLyrics, custom). Drop any hymn straight onto the Schedule with a click — verses, chorus, and chord sheets travel with it.
-                  </span>
-                }
-              >
-                <button onClick={() => handleSidebarTabSelect('HYMNS')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'HYMNS' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><MusicIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Hymns</span></button>
-              </Tooltip>
-              <Tooltip
-                placement="right"
-                variant="info"
-                content={
-                  <span>
-                    <strong className="text-blue-300">Saved run sheets & templates.</strong>
-                    <br />
-                    Re-open last week's service, load a recurring template (e.g. Communion Sunday), or back up the current schedule for next time. Nothing prepped is ever lost.
-                  </span>
-                }
-              >
-                <button onClick={() => handleSidebarTabSelect('FILES')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'FILES' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><CopyIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Files</span></button>
-              </Tooltip>
-              <Tooltip
-                placement="right"
-                variant="info"
-                content={
-                  <span>
-                    <strong className="text-blue-300">Live sound control.</strong>
-                    <br />
-                    Adjust per-source volume, mute/solo channels, and route audio between mic, video, and music players in real time — without leaving the Presenter.
-                  </span>
-                }
-              >
-                <button onClick={() => handleSidebarTabSelect('AUDIO')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIO' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><Volume2Icon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audio Mixer</span></button>
-              </Tooltip>
-              <Tooltip
-                placement="right"
-                variant="ai"
-                content={
-                  <span>
-                    <strong className="text-violet-300">Scripture, instantly.</strong>
-                    <br />
-                    Look up any passage across multiple translations, queue verses to the screen, and turn on <strong className="text-violet-300">Auto Listening</strong> — Lumina hears the preacher say a reference and projects it for you, hands-free.
-                  </span>
-                }
-              >
-                <button onClick={() => handleSidebarTabSelect('BIBLE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'BIBLE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><BibleIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Bible Hub</span></button>
-              </Tooltip>
-              <Tooltip
-                placement="right"
-                variant="info"
-                content={
-                  <span>
-                    <strong className="text-blue-300">Engage the room.</strong>
-                    <br />
-                    Open polls, prayer requests, Q&A, giving prompts, and live audience interactions — pushed to phones in the congregation. Watch responses come in as you preach.
-                  </span>
-                }
-              >
-                <button onClick={() => handleSidebarTabSelect('AUDIENCE')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'AUDIENCE' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><ChatIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Audience</span></button>
-              </Tooltip>
-              <Tooltip
-                placement="right"
-                variant="ai"
-                content={
-                  <span>
-                    <strong className="text-violet-300">One-tap automations.</strong>
-                    <br />
-                    Chain actions into a single button — e.g. "Start Service" can lower lights, fade music, switch to Welcome slide, and start the timer. Built once, fired anytime.
-                  </span>
-                }
-              >
-                <button onClick={() => handleSidebarTabSelect('MACROS')} className={`p-2.5 rounded-sm flex items-center gap-3 transition-colors ${activeSidebarTab === 'MACROS' ? 'bg-blue-600 text-white shadow-lg' : 'text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300'}`}><SparklesIcon className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Macros</span></button>
-              </Tooltip>
+              <StudioMenu activeTab={activeSidebarTab} onSelectTab={handleSidebarTabSelect} />
             </div>
             <div className="p-1 border-t border-zinc-800">
               <Tooltip
@@ -8743,11 +8625,17 @@ function App() {
                   <span>
                     <strong className="text-blue-300">Profile, themes & preferences.</strong>
                     <br />
-                    Switch user, customise default fonts and slide themes, manage cloud sync, integrations (CCLI, ProPresenter import), and keyboard shortcuts.
+                    Switch user, customise default fonts and slide themes, manage cloud sync, integrations, and keyboard shortcuts.
                   </span>
                 }
               >
-                <button onClick={() => setIsProfileOpen(true)} className="w-full p-2.5 rounded-sm flex items-center gap-3 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"><Settings className="w-5 h-5 shrink-0" /><span className={`text-xs font-bold tracking-tight uppercase ${sidebarLabelClass}`}>Settings</span></button>
+                <button
+                  onClick={() => setIsProfileOpen(true)}
+                  className="w-full p-2.5 rounded-sm flex items-center gap-3 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+                >
+                  <Settings className="w-5 h-5 shrink-0" />
+                  <span className="text-xs font-bold tracking-tight uppercase">Settings</span>
+                </button>
               </Tooltip>
             </div>
           </div>
