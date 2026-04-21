@@ -121,7 +121,7 @@ import { PlayIcon, PauseIcon, RewindIcon, ForwardIcon, PlusIcon, MonitorIcon, Sp
 import { AppHeader } from './components/layout/AppHeader';
 import { CollapsiblePanel } from './components/ui/CollapsiblePanel';
 import { Tooltip } from './components/ui/Tooltip';
-import { RightDock } from './components/layout/RightDock';
+import { QuickActionsMenu } from './components/layout/QuickActionsMenu';
 import { StudioMenu } from './components/layout/StudioMenu';
 import { GuideProvider, GuideOverlay, GuidedToursPanel, AutoTriggerOnPresenter, registerAllJourneys, guideStorage } from './components/guide-engine';
 import { useRecordingLibrary } from './hooks/useRecordingLibrary';
@@ -1351,6 +1351,7 @@ function App() {
   });
   const [showSermonRecorder, setShowSermonRecorder] = useState(false);
   const [isRightDockOpen, setIsRightDockOpen] = useState(false);
+  const rightDockAnchorRef = useRef<HTMLButtonElement | null>(null);
   const [sidebarPinned, setSidebarPinned] = useState<boolean>(() => {
     const saved = initialSavedState;
     return !!saved?.sidebarPinned;
@@ -8568,6 +8569,7 @@ function App() {
         onToggleStageDisplay={handleToggleStageDisplay}
         isRightDockOpen={isRightDockOpen}
         onToggleRightDock={() => setIsRightDockOpen(prev => !prev)}
+        rightDockAnchorRef={rightDockAnchorRef}
         remoteControlUrl={remoteControlUrl}
         stageDisplayUrl={stageDisplayUrl}
         onCopyUrl={(url, msg) => void copyShareUrl(url, msg)}
@@ -9253,15 +9255,18 @@ function App() {
       )}
           </>
         )}
-        <RightDock
+        <QuickActionsMenu
+          anchorRef={rightDockAnchorRef}
           isOpen={isRightDockOpen}
-          machineMode={workspaceSettings.machineMode}
-          onToggleMachineMode={() => setWorkspaceSettings(prev => ({ ...prev, machineMode: !prev.machineMode }))}
+          onClose={() => setIsRightDockOpen(false)}
           onOpenConnect={(panel) => { setConnectPanel(panel); setIsConnectOpen(true); }}
           onOpenAI={() => setIsAIModalOpen(true)}
           hasElectronDisplayControl={hasElectronDisplayControl}
-          onOpenDisplaySetup={handleOpenDisplaySetup}
-          desktopServiceState={desktopServiceState}
+          desktopServiceState={desktopServiceState ?? null}
+          onStartService={handleOpenDisplaySetup ?? (() => {})}
+          onStopService={() => {}}
+          machineMode={workspaceSettings.machineMode}
+          onToggleMachineMode={() => setWorkspaceSettings(prev => ({ ...prev, machineMode: !prev.machineMode }))}
         />
       </div>
 
