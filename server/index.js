@@ -2887,6 +2887,9 @@ app.post('/api/recordings', requireActor, recordingUpload.single('audio'), (req,
     const meta = JSON.parse(req.body.meta || '{}');
     const { id, title, durationSec, mime, createdAt } = meta;
     if (!id || !title) return res.status(400).json({ ok: false, error: 'id + title required' });
+    if (!/^[A-Za-z0-9_-]+$/.test(id)) {
+      return res.status(400).json({ ok: false, error: 'invalid id format' });
+    }
 
     const uid = req.actor.uid;
     const ext = (mime || '').includes('mp4') ? 'm4a' : 'webm';
