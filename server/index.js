@@ -282,6 +282,9 @@ const VIS_MEDIA_DIR = process.env.LUMINA_VIS_MEDIA_DIR
 const WORKSPACE_MEDIA_DIR = process.env.LUMINA_WORKSPACE_MEDIA_DIR
   ? path.resolve(process.env.LUMINA_WORKSPACE_MEDIA_DIR)
   : path.join(DATA_DIR, "workspace-media");
+const RECORDINGS_DIR = process.env.LUMINA_RECORDINGS_DIR
+  ? path.resolve(process.env.LUMINA_RECORDINGS_DIR)
+  : path.join(DATA_DIR, "recordings");
 const SERMON_PROCESSING_AUDIO_DIR = process.env.LUMINA_SERMON_PROCESSING_AUDIO_DIR
   ? path.resolve(process.env.LUMINA_SERMON_PROCESSING_AUDIO_DIR)
   : path.join(DATA_DIR, "sermon-processing");
@@ -420,6 +423,18 @@ CREATE TABLE IF NOT EXISTS sermon_processing_jobs (
   summary_json TEXT
 );
 
+CREATE TABLE IF NOT EXISTS recordings (
+  id TEXT PRIMARY KEY,
+  firebase_uid TEXT NOT NULL,
+  title TEXT NOT NULL,
+  duration_sec REAL NOT NULL,
+  mime TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL,
+  sha256 TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_audit_workspace_time ON audit_logs(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_snapshots_workspace_time ON workspace_snapshots(workspace_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_audience_workspace_time ON audience_messages(workspace_id, created_at);
@@ -428,6 +443,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_runsheet_workspace_file_unique ON workspac
 CREATE INDEX IF NOT EXISTS idx_runsheet_workspace_updated ON workspace_runsheet_files(workspace_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sermons_workspace_time ON sermon_summaries(workspace_id, saved_at DESC);
 CREATE INDEX IF NOT EXISTS idx_sermon_jobs_status_retry ON sermon_processing_jobs(status, next_retry_at, created_at);
+CREATE INDEX IF NOT EXISTS recordings_uid_idx ON recordings(firebase_uid, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS workspace_ccli_credentials (
   workspace_id TEXT PRIMARY KEY,
@@ -480,6 +496,7 @@ app.use(express.json({ limit: JSON_LIMIT }));
 app.use('/api/lyrics', createLyricsRouter());
 fs.mkdirSync(VIS_MEDIA_DIR, { recursive: true });
 fs.mkdirSync(WORKSPACE_MEDIA_DIR, { recursive: true });
+fs.mkdirSync(RECORDINGS_DIR, { recursive: true });
 fs.mkdirSync(SERMON_PROCESSING_AUDIO_DIR, { recursive: true });
 const audienceMessageStreamClients = new Map();
 
