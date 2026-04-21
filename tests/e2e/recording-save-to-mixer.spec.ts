@@ -47,9 +47,12 @@ test.describe('Sermon recording → Audio Mixer', () => {
     await expect(page.getByTestId('my-recordings')).toContainText(/sermon/i);
 
     const row = page.locator('[data-testid^="recording-row-"]').first();
+    await expect(row).toBeVisible();
     const menuBtn = row.locator('[data-testid^="recording-menu-"]');
     await menuBtn.click();
-    await page.getByRole('menuitem', { name: /delete/i }).click();
+    const deleteItem = page.getByRole('menuitem', { name: /delete/i });
+    await expect(deleteItem).toBeVisible();
+    await deleteItem.click();
     await page.getByRole('button', { name: /confirm/i }).click();
 
     await expect(page.getByTestId('my-recordings')).toContainText(/recordings from the sermon recorder/i);
