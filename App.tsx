@@ -1224,7 +1224,11 @@ function App() {
     const hasSeen = localStorage.getItem('lumina_onboarding_v2.2.0');
     return !hasSeen;
   });
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES' | 'MACROS'>('SCHEDULE');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES' | 'MACROS' | null>(() => {
+    const persisted = initialSavedStateRef.current?.activeSidebarTab;
+    const valid: ('SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES' | 'MACROS')[] = ['SCHEDULE', 'HYMNS', 'AUDIO', 'BIBLE', 'AUDIENCE', 'FILES', 'MACROS'];
+    return persisted && valid.includes(persisted) ? persisted : null;
+  });
   const [macros, setMacros] = useState<MacroDefinition[]>([]);
   const [macroAuditLog, setMacroAuditLog] = useState<MacroAuditEntry[]>([]);
   const appendMacroAudit = useCallback((entry: MacroAuditEntry) => {
