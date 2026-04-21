@@ -19,10 +19,12 @@ Both patterns reflow the main canvas layout, which is the root cause of the "cho
 
 Replace both patterns with click-anchored dropdowns that:
 
-- Open only on explicit click (no hover).
+- Open only on explicit click (no hover-to-open).
 - Overlay the canvas; never reflow or shrink its column width.
 - Dismiss on outside-click or Escape.
 - Keep every existing tab/action and its behaviour unchanged — only the chrome changes.
+
+**Hover tooltips remain.** Removing hover-to-open is separate from hover-to-show-tooltip. The global `Tooltip` component (used on every sidebar icon today) continues to work on the new `STUDIO` button, each dropdown item, the wand button, and each quick-action item. Only the layout-affecting `onMouseEnter`/`onMouseLeave` handlers on the sidebar **shell** are removed.
 
 ## Non-goals
 
