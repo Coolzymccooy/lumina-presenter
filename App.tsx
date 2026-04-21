@@ -150,6 +150,7 @@ const getWorkspaceSettingsIntentKey = (workspace: string) => `${SETTINGS_INTENT_
 const getAetherTokenKey = (workspace: string) => `${AETHER_TOKEN_KEY_PREFIX}:${workspace || 'default-workspace'}`;
 
 type SyncGuidanceDismissals = Record<string, number>;
+type SidebarTab = 'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES' | 'MACROS';
 type DisplayRole = 'control' | 'audience' | 'stage' | 'none';
 type DesktopServiceState = {
   controlDisplayId: number | null;
@@ -1224,9 +1225,9 @@ function App() {
     const hasSeen = localStorage.getItem('lumina_onboarding_v2.2.0');
     return !hasSeen;
   });
-  const [activeSidebarTab, setActiveSidebarTab] = useState<'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES' | 'MACROS' | null>(() => {
+  const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab | null>(() => {
     const persisted = initialSavedStateRef.current?.activeSidebarTab;
-    const valid: ('SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES' | 'MACROS')[] = ['SCHEDULE', 'HYMNS', 'AUDIO', 'BIBLE', 'AUDIENCE', 'FILES', 'MACROS'];
+    const valid: SidebarTab[] = ['SCHEDULE', 'HYMNS', 'AUDIO', 'BIBLE', 'AUDIENCE', 'FILES', 'MACROS'];
     return persisted && valid.includes(persisted) ? persisted : null;
   });
   const [macros, setMacros] = useState<MacroDefinition[]>([]);
@@ -7028,9 +7029,9 @@ function App() {
     setSidebarPinned((prev) => !prev);
   };
 
-  const handleSidebarTabSelect = (tab: 'SCHEDULE' | 'HYMNS' | 'AUDIO' | 'BIBLE' | 'AUDIENCE' | 'FILES' | 'MACROS') => {
+  const handleSidebarTabSelect = (tab: SidebarTab | null) => {
     setActiveSidebarTab(tab);
-    if (presenterSidebarCompact) {
+    if (tab !== null && presenterSidebarCompact) {
       setPresenterSidebarDrawerOpen(true);
     }
   };
@@ -8742,6 +8743,7 @@ function App() {
           </div>
 
           {/* SIDEBAR PANEL */}
+          {activeSidebarTab !== null && (
           <div
             data-testid="studio-sidebar-panel"
             className={`flex flex-col bg-zinc-950 shrink-0 min-w-0 border-r border-zinc-900 transition-[transform,opacity] duration-200 ease-out ${presenterSidebarCompact ? 'absolute top-0 bottom-0 shadow-[0_28px_60px_rgba(0,0,0,0.45)]' : ''}`}
@@ -8900,6 +8902,7 @@ function App() {
             />
           )}
         </div>
+          )}
       </div>
 
       {viewMode === 'BUILDER' ? (
