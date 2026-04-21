@@ -24,6 +24,15 @@ function newId(): string {
     : `rec-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function friendlyUploadError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : '';
+  if (/network|fetch|offline/i.test(raw)) return 'Network error — check your connection';
+  if (/413|too large|size/i.test(raw)) return 'Recording is too large to upload';
+  if (/401|403|auth|token/i.test(raw)) return 'Sign in again to sync';
+  if (/quota|storage/i.test(raw)) return 'Cloud storage quota exceeded';
+  return 'Upload failed — tap to retry';
+}
+
 export function useRecordingLibrary(opts: UseRecordingLibraryOptions): RecordingLibrary {
   const { auth, signedIn } = opts;
   const [tracks, setTracks] = useState<RecordedTrack[]>([]);
@@ -85,7 +94,7 @@ export function useRecordingLibrary(opts: UseRecordingLibraryOptions): Recording
       const { cloudUrl } = await cloudSync.upload(row, row.blob, auth);
       await localStore.updateMeta(id, { syncState: 'synced', cloudUrl });
     } catch (err) {
-      await localStore.updateMeta(id, { syncState: 'upload_failed', lastError: (err as Error).message });
+      await localStore.updateMeta(id, { syncState: 'upload_failed', lastError: friendlyUploadError(err) });
     } finally {
       await refresh();
     }
@@ -93,9 +102,9 @@ export function useRecordingLibrary(opts: UseRecordingLibraryOptions): Recording
 
   const deleteRecording = useCallback(async (id: string) => {
     const row = await localStore.get(id);
-    const wasSynced = row?.syncState === 'synced' || !row;
+    const mayExistInCloud = !row || row.syncState === 'synced' || row.syncState === 'uploading';
     if (row) await localStore.delete(id);
-    if (wasSynced && signedIn) {
+    if (mayExistInCloud && signedIn) {
       try { await cloudSync.remove(id, auth); } catch { /* ignore; user can retry */ }
     }
     const url = objectUrls.current.get(id);

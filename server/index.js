@@ -2963,7 +2963,7 @@ app.delete('/api/recordings/:id', requireActor, (req, res) => {
     `SELECT file_path FROM recordings WHERE id = ? AND firebase_uid = ?`
   ).get(req.params.id, req.actor.uid);
   if (!row) return res.status(404).json({ ok: false, error: 'not found' });
-  db.prepare(`DELETE FROM recordings WHERE id = ?`).run(req.params.id);
+  db.prepare(`DELETE FROM recordings WHERE id = ? AND firebase_uid = ?`).run(req.params.id, req.actor.uid);
   try { fs.unlinkSync(row.file_path); } catch { /* already gone */ }
   res.json({ ok: true });
 });
