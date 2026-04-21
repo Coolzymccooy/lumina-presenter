@@ -58,6 +58,7 @@
     "electron": "^40.6.1",
     "electron-builder": "^25.1.8",
     "electron-is-dev": "^3.0.1",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.0.2",
     "postcss": "^8.4.49",
     "rcedit": "^5.0.2",
