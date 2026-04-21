@@ -58,6 +58,13 @@ export function useRecordingLibrary(opts: UseRecordingLibraryOptions): Recording
       if (!seen.has(c.id)) merged.push({ ...c, syncState: 'cloud_only' });
     }
     merged.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const liveIds = new Set(merged.map(t => t.id));
+    for (const [id, url] of objectUrls.current) {
+      if (!liveIds.has(id)) {
+        URL.revokeObjectURL(url);
+        objectUrls.current.delete(id);
+      }
+    }
     setTracks(merged);
     setReady(true);
   }, [auth, signedIn]);
