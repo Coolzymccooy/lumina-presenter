@@ -182,7 +182,7 @@ export const RecordingSavedPill: React.FC<RecordingSavedPillProps> = ({
                   Confirm?
                 </span>
                 <button
-                  onClick={() => void handleDelete()}
+                  onClick={handleDelete}
                   disabled={isDeleting}
                   className="px-2 py-1 rounded bg-red-700/50 hover:bg-red-600/50 text-red-200 font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >

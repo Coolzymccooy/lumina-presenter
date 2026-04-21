@@ -376,11 +376,13 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
 
   // Recording saved pill state — wire up lastRecording to recordingLibrary
   const [latestSavedId, setLatestSavedId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const hasSavedRef = useRef(false);
 
   useEffect(() => {
     if (!lastRecording || !recordingLibrary || hasSavedRef.current) return;
     hasSavedRef.current = true;
+    setSaveError(null);
     const defaultTitle = `Sermon — ${new Date().toISOString().slice(0, 10)}`;
     recordingLibrary
       .addLocal(lastRecording.blob, {
@@ -389,7 +391,10 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
         mime: lastRecording.mime,
       })
       .then((id) => setLatestSavedId(id))
-      .catch(() => { hasSavedRef.current = false; });
+      .catch((err: unknown) => {
+        hasSavedRef.current = false;
+        setSaveError(err instanceof Error ? err.message : 'Failed to save recording');
+      });
   }, [lastRecording, recordingLibrary]);
 
   // Reset the guard when lastRecording is cleared (e.g., user records again)
@@ -832,6 +837,10 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
                 onRename={(t) => recordingLibrary.renameRecording(latestSavedTrack.id, t)}
                 onOpenInMixer={() => onOpenAudioMixer?.()}
               />
+            )}
+
+            {saveError && !latestSavedId && (
+              <div className="text-xs text-red-400 mt-2" role="alert">Could not save recording: {saveError}</div>
             )}
 
             <div className="flex items-center justify-between">
