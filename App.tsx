@@ -10565,6 +10565,8 @@ function App() {
             onFlashToScreen={handleSermonFlashToScreen}
             onSave={handleSermonSave}
             recordingLibrary={recordingLibrary}
+            onOpenAudioMixer={() => setActiveSidebarTab('AUDIO')}
+            signedIn={Boolean(user?.uid)}
           />
         </div>
       )}

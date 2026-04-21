@@ -34,6 +34,7 @@ import { SourcePicker } from './sermon-recorder/SourcePicker';
 import { CaptureModePicker } from './sermon-recorder/CaptureModePicker';
 import { RecordCheckPanel } from './sermon-recorder/RecordCheckPanel';
 import { CollapsiblePanel } from './ui/CollapsiblePanel';
+import { RecordingSavedPill } from './RecordingSavedPill';
 import type { AudioInputDiagnostic } from '../services/audioCapture/mediaDiagnostics';
 
 export interface SermonRecorderPanelProps {
@@ -41,9 +42,11 @@ export interface SermonRecorderPanelProps {
   onFlashToScreen: (content: { transcript: string; summary?: SermonSummary }) => void;
   onSave?: (transcript: string, summary: SermonSummary) => Promise<void>;
   onAddToSchedule?: (text: string) => void;
+  onOpenAudioMixer?: () => void;
   locale?: SermonRecorderLocale;
   compact?: boolean;
   recordingLibrary?: RecordingLibrary;
+  signedIn?: boolean;
 }
 
 const BAR_COUNT = 32;
@@ -256,9 +259,11 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   onFlashToScreen,
   onSave,
   onAddToSchedule,
+  onOpenAudioMixer,
   locale = 'en-GB',
   compact = false,
   recordingLibrary,
+  signedIn = false,
 }) => {
   const [accentHint, setAccentHint] = useState<SermonAccentHint>('standard');
   const [audioDeviceId, setAudioDeviceId] = useState<string | undefined>(undefined);
@@ -346,6 +351,7 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
     processingJob,
     processingSummary,
     inputDiagnostic,
+    lastRecording,
   } = recState;
 
   const sttWarning = (() => {
@@ -367,6 +373,33 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
   const [saving, setSaving] = useState(false);
 
   const transcriptScrollRef = useRef<HTMLDivElement>(null);
+
+  // Recording saved pill state — wire up lastRecording to recordingLibrary
+  const [latestSavedId, setLatestSavedId] = useState<string | null>(null);
+  const hasSavedRef = useRef(false);
+
+  useEffect(() => {
+    if (!lastRecording || !recordingLibrary || hasSavedRef.current) return;
+    hasSavedRef.current = true;
+    const defaultTitle = `Sermon — ${new Date().toISOString().slice(0, 10)}`;
+    recordingLibrary
+      .addLocal(lastRecording.blob, {
+        title: defaultTitle,
+        durationSec: lastRecording.durationSec,
+        mime: lastRecording.mime,
+      })
+      .then((id) => setLatestSavedId(id))
+      .catch(() => { hasSavedRef.current = false; });
+  }, [lastRecording, recordingLibrary]);
+
+  // Reset the guard when lastRecording is cleared (e.g., user records again)
+  useEffect(() => {
+    if (!lastRecording) { hasSavedRef.current = false; setLatestSavedId(null); }
+  }, [lastRecording]);
+
+  const latestSavedTrack = latestSavedId
+    ? recordingLibrary?.tracks.find((t) => t.id === latestSavedId) ?? null
+    : null;
 
   const selectedSourceLabel = useMemo(() => {
     if (!audioDeviceId) return 'Default microphone';
@@ -785,6 +818,22 @@ export const SermonRecorderPanel: React.FC<SermonRecorderPanelProps> = ({
 
         {isDone && (
           <div className="space-y-2">
+            {latestSavedTrack && recordingLibrary && (
+              <RecordingSavedPill
+                track={latestSavedTrack}
+                signedIn={signedIn}
+                canSync={signedIn}
+                onSync={() => recordingLibrary.syncToCloud(latestSavedTrack.id)}
+                onDelete={async () => {
+                  await recordingLibrary.deleteRecording(latestSavedTrack.id);
+                  setLatestSavedId(null);
+                  recActions.clearLastRecording();
+                }}
+                onRename={(t) => recordingLibrary.renameRecording(latestSavedTrack.id, t)}
+                onOpenInMixer={() => onOpenAudioMixer?.()}
+              />
+            )}
+
             <div className="flex items-center justify-between">
               <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500">Transcript</span>
               <div className="flex items-center gap-2">
