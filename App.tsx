@@ -1352,12 +1352,6 @@ function App() {
   const [showSermonRecorder, setShowSermonRecorder] = useState(false);
   const [isRightDockOpen, setIsRightDockOpen] = useState(false);
   const rightDockAnchorRef = useRef<HTMLButtonElement | null>(null);
-  const [sidebarPinned, setSidebarPinned] = useState<boolean>(() => {
-    const saved = initialSavedState;
-    return !!saved?.sidebarPinned;
-  });
-  const [isSidebarHovering, setIsSidebarHovering] = useState(false);
-  const [presenterSidebarDrawerOpen, setPresenterSidebarDrawerOpen] = useState(false);
 
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isSlideEditorOpen, setIsSlideEditorOpen] = useState(false);
@@ -2975,7 +2969,6 @@ function App() {
         schedule,
         selectedItemId,
         viewMode,
-        sidebarPinned,
         activeItemId,
         activeSlideIndex,
         blackout,
@@ -3006,7 +2999,7 @@ function App() {
       }
     }, 180);
     return () => window.clearTimeout(id);
-  }, [schedule, selectedItemId, viewMode, sidebarPinned, activeItemId, activeSlideIndex, blackout, holdScreenMode, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, audienceQrProjection, stageTimerFlash, stageAlert, stageMessageCenter, workspaceSettings, user]);
+  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, holdScreenMode, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, audienceQrProjection, stageTimerFlash, stageAlert, stageMessageCenter, workspaceSettings, user]);
 
   useEffect(() => {
     const safeWorkspaceId = String(workspaceId || '').trim();
@@ -3246,16 +3239,6 @@ function App() {
   const presenterSidebarCompact = isElectronShell && viewMode === 'PRESENTER' && viewportWidth < 1500;
   const presenterShellTight = viewMode === 'PRESENTER' && viewportWidth < 1720;
   const presenterShellVeryTight = viewMode === 'PRESENTER' && viewportWidth < 1540;
-  const sidebarExpanded = presenterSidebarCompact ? false : (sidebarPinned || isSidebarHovering);
-  const presenterSidebarDrawerVisible = presenterSidebarCompact && (sidebarPinned || presenterSidebarDrawerOpen);
-  const sidebarRailWidth = presenterSidebarCompact
-    ? 48
-    : (sidebarExpanded ? (presenterShellTight ? 176 : 208) : 48);
-  const sidebarPanelWidth = viewMode === 'PRESENTER'
-    ? (presenterShellVeryTight ? 320 : presenterShellTight ? 336 : 360)
-    : 360;
-  const sidebarRailWidthClass = 'transition-[width] duration-200 ease-out';
-  const sidebarLabelClass = `${sidebarExpanded ? 'opacity-100' : 'opacity-0'} transition-opacity whitespace-nowrap`;
   const presenterQueueSlides = activeItem?.slides || [];
   const presenterQueueActiveIndex = activeItem && activeItem.slides.length > 0
     ? clamp(activeSlideIndex, 0, activeItem.slides.length - 1)
@@ -3272,6 +3255,10 @@ function App() {
       : (presenterSidebarCompact
           ? (presenterShellVeryTight ? 240 : 264)
           : (presenterInlineQueueTight ? (presenterShellVeryTight ? 232 : 248) : (presenterShellVeryTight ? 288 : presenterShellTight ? 304 : 320)));
+  const sidebarRailWidth = presenterSidebarCompact ? 48 : 224;
+  const sidebarPanelWidth = viewMode === 'PRESENTER'
+    ? (presenterShellVeryTight ? 320 : presenterShellTight ? 336 : 360)
+    : 360;
   const presenterSidebarInlineWidth = viewMode === 'PRESENTER' && !presenterSidebarCompact
     ? sidebarRailWidth + sidebarPanelWidth
     : sidebarRailWidth;
@@ -6994,7 +6981,6 @@ function App() {
   }, [autoCueEnabled, autoCueSeconds, viewMode, activeItemId, nextSlide, activeItem]);
 
   useLayoutEffect(() => {
-    setIsSidebarHovering(false);
     if (typeof window !== 'undefined') {
       window.scrollTo({ left: 0, top: window.scrollY, behavior: 'auto' });
     }
@@ -7005,47 +6991,13 @@ function App() {
         studioShellRef.current.scrollLeft = 0;
       }
     } catch {}
-  }, [viewMode, sidebarPinned, activeSidebarTab, viewportWidth]);
+  }, [viewMode, activeSidebarTab, viewportWidth]);
 
-  useEffect(() => {
-    if (!presenterSidebarCompact) {
-      setIsSidebarHovering(false);
-      return;
-    }
-    setIsSidebarHovering(false);
-    if (sidebarPinned) {
-      setPresenterSidebarDrawerOpen(true);
-    }
-  }, [presenterSidebarCompact, sidebarPinned]);
 
-  useEffect(() => {
-    if (!presenterSidebarDrawerVisible || sidebarPinned) return;
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setPresenterSidebarDrawerOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [presenterSidebarDrawerVisible, sidebarPinned]);
 
-  const handleSidebarPinToggle = () => {
-    if (presenterSidebarCompact) {
-      setSidebarPinned((prev) => {
-        const next = !prev;
-        setPresenterSidebarDrawerOpen(next);
-        return next;
-      });
-      return;
-    }
-    setSidebarPinned((prev) => !prev);
-  };
 
   const handleSidebarTabSelect = (tab: SidebarTab | null) => {
     setActiveSidebarTab(tab);
-    if (tab !== null && presenterSidebarCompact) {
-      setPresenterSidebarDrawerOpen(true);
-    }
   };
 
   // ✅ Launch Output handler (opens window synchronously from user gesture — popup-safe)
@@ -8647,17 +8599,17 @@ function App() {
           <div
             data-testid="studio-sidebar-panel"
             className={`flex flex-col bg-zinc-950 shrink-0 min-w-0 border-r border-zinc-900 transition-[transform,opacity] duration-200 ease-out ${presenterSidebarCompact ? 'absolute top-0 bottom-0 shadow-[0_28px_60px_rgba(0,0,0,0.45)]' : ''}`}
-            aria-hidden={presenterSidebarCompact && !presenterSidebarDrawerVisible ? true : undefined}
+            aria-hidden={presenterSidebarCompact ? true : undefined}
             style={{
               width: sidebarPanelWidth,
               ...(presenterSidebarCompact
                 ? {
                     left: sidebarRailWidth,
                     zIndex: 30,
-                    transform: presenterSidebarDrawerVisible ? 'translateX(0)' : 'translateX(calc(-100% - 0.75rem))',
-                    opacity: presenterSidebarDrawerVisible ? 1 : 0,
-                    visibility: presenterSidebarDrawerVisible ? 'visible' : 'hidden',
-                    pointerEvents: presenterSidebarDrawerVisible ? 'auto' : 'none',
+                    transform: 'translateX(calc(-100% - 0.75rem))',
+                    opacity: 0,
+                    visibility: 'hidden',
+                    pointerEvents: 'none',
                   }
                 : {}),
             }}
