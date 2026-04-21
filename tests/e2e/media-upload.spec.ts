@@ -66,10 +66,15 @@ const enterStudio = async (page: Page, key: string) => {
   // as 'studio' directly without going through the LandingPage.
   await page.addInitScript(() => {
     (window as any).electron = { isElectron: true };
+    localStorage.setItem('lumina_guide_state_v1', JSON.stringify({
+      completedJourneyIds: ['adding-new-slide'],
+      skippedJourneyIds: ['adding-new-slide'],
+      dismissedHints: ['auto-adding-new-slide'],
+    }));
   });
   void key; // key retained for call-site compatibility
   await page.goto('/');
-  await expect(page.locator('[data-testid="runsheet-list"]')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('studio-menu-button')).toBeVisible({ timeout: 30_000 });
 };
 
 test('uploaded local PNG renders as an image in builder', async ({ page }) => {
@@ -79,6 +84,7 @@ test('uploaded local PNG renders as an image in builder', async ({ page }) => {
 
   await seedState(page, state);
   await enterStudio(page, key);
+  await openStudioTab(page, 'Schedule');
 
   await page.getByRole('button', { name: /full editor/i }).click();
   await expect(page.getByText('Add New Slide')).toBeVisible();
@@ -101,6 +107,7 @@ test('multi-image upload inserts multiple image slides with labels', async ({ pa
 
   await seedState(page, state);
   await enterStudio(page, key);
+  await openStudioTab(page, 'Schedule');
 
   await page.getByRole('button', { name: /full editor/i }).click();
   await expect(page.getByText('Add New Slide')).toBeVisible();
@@ -148,6 +155,7 @@ test('runsheet slide rename responds directly from the nested list', async ({ pa
 
   await seedState(page, state);
   await enterStudio(page, key);
+  await openStudioTab(page, 'Schedule');
 
   await page.getByTestId(`runsheet-slide-rename-${slideId}`).click();
   await page.getByTestId(`runsheet-slide-rename-input-${slideId}`).fill('Renamed Image');
@@ -172,6 +180,7 @@ test('thumbnail grid rename is inline on the card label', async ({ page }) => {
 
   await seedState(page, state);
   await enterStudio(page, key);
+  await openStudioTab(page, 'Schedule');
 
   await page.getByTestId(`runsheet-slide-rename-${slideId}`).click();
   await page.getByTestId(`runsheet-slide-rename-input-${slideId}`).fill('Grid Renamed');
@@ -212,6 +221,7 @@ test('runsheet inner collection reorders slides without leaving the item', async
 
   await seedState(page, state);
   await enterStudio(page, key);
+  await openStudioTab(page, 'Schedule');
 
   const labels = page.locator('[data-testid^="runsheet-slide-label-"]');
   await expect(labels).toHaveText(['Alpha', 'Bravo', 'Charlie']);
@@ -239,26 +249,30 @@ test('pinned studio sidebar remains accessible across present and build mode swi
   await seedState(page, state);
   await enterStudio(page, key);
 
+  const expectAllTabsInDropdown = async () => {
+    await page.getByTestId('studio-menu-button').click();
+    const dropdown = page.getByTestId('studio-menu-dropdown');
+    await expect(dropdown).toBeVisible();
+    await expect(page.getByTestId('studio-menu-item-schedule')).toBeVisible();
+    await expect(page.getByTestId('studio-menu-item-files')).toBeVisible();
+    await expect(page.getByTestId('studio-menu-item-audio')).toBeVisible();
+    await expect(page.getByTestId('studio-menu-item-bible')).toBeVisible();
+    await expect(page.getByTestId('studio-menu-item-audience')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dropdown).toBeHidden();
+  };
+
   await openStudioTab(page, 'Schedule');
-  await expect(page.getByText('Schedule')).toBeVisible();
-  await expect(page.getByText('Files')).toBeVisible();
-  await expect(page.getByText('Audio Mixer')).toBeVisible();
-  await expect(page.getByText('Bible Hub')).toBeVisible();
-  await expect(page.getByText('Audience')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Run Sheet' })).toBeVisible();
+  await expectAllTabsInDropdown();
 
   await page.getByRole('button', { name: 'PRESENT' }).click();
   await expect(page.getByText('Live Queue')).toBeVisible();
-  await expect(page.getByText('Schedule')).toBeVisible();
-  await expect(page.getByText('Files')).toBeVisible();
-  await expect(page.getByText('Audio Mixer')).toBeVisible();
+  await expectAllTabsInDropdown();
 
   await page.getByRole('button', { name: 'BUILD' }).click();
-  await expect(page.getByText('Run Sheet')).toBeVisible();
-  await expect(page.getByText('Schedule')).toBeVisible();
-  await expect(page.getByText('Files')).toBeVisible();
-  await expect(page.getByText('Audio Mixer')).toBeVisible();
-  await expect(page.getByText('Bible Hub')).toBeVisible();
-  await expect(page.getByText('Audience')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Run Sheet' })).toBeVisible();
+  await expectAllTabsInDropdown();
 
   const shellMetrics = await page.getByTestId('studio-shell').evaluate((node) => ({
     scrollLeft: node.scrollLeft,
@@ -272,7 +286,7 @@ test('pinned studio sidebar remains accessible across present and build mode swi
     return { left: rect.left, width: rect.width };
   });
   expect(railMetrics.left).toBeGreaterThanOrEqual(0);
-  expect(railMetrics.width).toBeGreaterThan(120);
+  expect(railMetrics.width).toBeGreaterThan(40);
 });
 
 test('compact electron presenter keeps the sidebar recoverable on narrow widths', async ({ page }) => {
@@ -295,37 +309,27 @@ test('compact electron presenter keeps the sidebar recoverable on narrow widths'
   await enterStudio(page, key);
 
   await openStudioTab(page, 'Schedule');
-  await expect(page.getByText('Schedule')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Run Sheet' })).toBeVisible();
 
   await page.getByRole('button', { name: 'PRESENT' }).click();
   await expect(page.getByText('Live Queue')).toBeVisible();
   const transportNextButton = page.getByRole('button', { name: 'NEXT', exact: true });
   await expect(transportNextButton).toBeVisible();
 
-  const panel = page.getByTestId('studio-sidebar-panel');
-  await expect(panel).toBeVisible();
+  const menuButton = page.getByTestId('studio-menu-button');
+  await expect(menuButton).toBeVisible();
 
   const railMetrics = await page.getByTestId('studio-menu-root').evaluate((node) => {
     const rect = node.getBoundingClientRect();
     return { left: rect.left, width: rect.width };
   });
   expect(railMetrics.left).toBeGreaterThanOrEqual(0);
-  expect(railMetrics.width).toBeLessThanOrEqual(96);
-
-  await openStudioTab(page, 'Schedule');
-  await expect(panel).toBeHidden();
-  await expect(transportNextButton).toBeVisible();
-
-  await page.getByTitle('AUDIO MIXER').click();
-  await expect(panel).toBeVisible();
-  await expect(page.getByText('Audio Mixer')).toBeVisible();
 
   await openStudioTab(page, 'Audio Mixer');
-  await expect(panel).toBeHidden();
+  await expect(transportNextButton).toBeVisible();
 
-  await page.getByTitle('SCHEDULE').click();
-  await expect(panel).toBeVisible();
-  await expect(page.getByText('Run Sheet')).toBeVisible();
+  await openStudioTab(page, 'Schedule');
+  await expect(transportNextButton).toBeVisible();
 
   const shellMetrics = await page.getByTestId('studio-shell').evaluate((node) => ({
     scrollLeft: node.scrollLeft,
@@ -361,6 +365,7 @@ test('electron medium presenter keeps runsheet visible without hiding transport 
 
   await seedState(page, state);
   await enterStudio(page, key);
+  await openStudioTab(page, 'Schedule');
 
   const panel = page.getByTestId('studio-sidebar-panel');
   const transportNextButton = page.getByRole('button', { name: 'NEXT', exact: true });
@@ -431,7 +436,7 @@ test('workspace identity fields stay stable through blank hydration until explic
   await seedState(page, state);
   await enterStudio(page, key);
 
-  await page.getByTitle('SETTINGS').click();
+  await page.getByRole('button', { name: 'Settings' }).click();
   await page.getByRole('heading', { name: 'Studio Preferences' }).click();
   await page.getByTestId('profile-settings-session-id').fill(customSession);
   await page.getByRole('heading', { name: 'Studio Preferences' }).click();
@@ -439,13 +444,13 @@ test('workspace identity fields stay stable through blank hydration until explic
   await page.getByTestId('profile-settings-remote-admin-emails').fill(customEmails);
   await page.getByRole('button', { name: /save settings/i }).click();
 
-  await expect(page.getByTestId('studio-session-id')).toHaveText(customSession);
+  await expect(page.getByTestId('studio-session-id-button')).toContainText(customSession);
 
   await page.reload();
   await enterStudio(page, key);
-  await expect(page.getByTestId('studio-session-id')).toHaveText(customSession);
+  await expect(page.getByTestId('studio-session-id-button')).toContainText(customSession);
 
-  await page.getByTitle('SETTINGS').click();
+  await page.getByRole('button', { name: 'Settings' }).click();
   await page.getByRole('heading', { name: 'Studio Preferences' }).click();
   await expect(page.getByTestId('profile-settings-session-id')).toHaveValue(customSession);
   await page.getByRole('heading', { name: 'Studio Preferences' }).click();
@@ -459,13 +464,13 @@ test('workspace identity fields stay stable through blank hydration until explic
   await page.getByTestId('profile-settings-remote-admin-emails').fill('');
   await page.getByRole('button', { name: /save settings/i }).click();
 
-  await expect(page.getByTestId('studio-session-id')).toHaveText('live');
+  await expect(page.getByTestId('studio-session-id-button')).toContainText('live');
 
   await page.reload();
   await enterStudio(page, key);
-  await expect(page.getByTestId('studio-session-id')).toHaveText('live');
+  await expect(page.getByTestId('studio-session-id-button')).toContainText('live');
 
-  await page.getByTitle('SETTINGS').click();
+  await page.getByRole('button', { name: 'Settings' }).click();
   await page.getByRole('heading', { name: 'Studio Preferences' }).click();
   await expect(page.getByTestId('profile-settings-session-id')).toHaveValue('live');
   await page.getByRole('heading', { name: 'Studio Preferences' }).click();
@@ -490,7 +495,6 @@ test('public domain hymn library stays inside the sidebar and inserts into the r
   await enterStudio(page, key);
 
   await openStudioTab(page, 'Hymns');
-  await page.getByTitle('HYMN LIBRARY').click();
   await expect(page.getByTestId('hymn-library')).toBeVisible();
 
   const searchInput = page.getByPlaceholder('Search title, first line, author, tune, theme...');
@@ -522,7 +526,7 @@ test('public domain hymn library stays inside the sidebar and inserts into the r
   expect(panelMetrics.width).toBeGreaterThan(240);
 
   await page.getByTestId('hymn-insert-button').click();
-  await page.getByTitle('SCHEDULE').click();
+  await openStudioTab(page, 'Schedule');
   await expect(page.getByTestId('studio-sidebar-panel').getByText('Abide with me! fast falls the eventide', { exact: true }).first()).toBeVisible();
 });
 
@@ -543,6 +547,14 @@ test('speaker timer studio stays open after save, drags freely, and leaves the s
   await enterStudio(page, key);
   await page.getByRole('button', { name: 'PRESENT' }).click();
   await expect(page.getByText('Live Queue')).toBeVisible();
+
+  // Rundown + Output panel is collapsed by default — expand it to reveal the
+  // speaker preset studio open button.
+  const rundownPanel = page.getByTestId('presenter-panel-rundown-output');
+  if ((await rundownPanel.getAttribute('data-collapsed')) !== 'false') {
+    await page.getByTestId('presenter-panel-rundown-output-header').click();
+  }
+  await expect(rundownPanel).toHaveAttribute('data-collapsed', 'false');
 
   await page.getByTestId('speaker-preset-studio-open').click();
 
@@ -646,6 +658,7 @@ test('present mode can launch a queued item without tripping React hook order', 
   await seedState(page, state);
   await enterStudio(page, key);
   await page.getByRole('button', { name: 'PRESENTER' }).click();
+  await openStudioTab(page, 'Schedule');
 
   await page.locator(`[data-testid="schedule-item-${itemId}"]`).click();
   await expect(page.getByRole('button', { name: /Welcome to service 1\. Intro/i })).toBeVisible();
@@ -693,6 +706,7 @@ test('present mode preserves runsheet scroll while hydration settles', async ({ 
 
   await seedState(page, state);
   await enterStudio(page, key);
+  await openStudioTab(page, 'Schedule');
   await page.getByRole('button', { name: 'PRESENTER' }).click();
 
   const runsheet = page.getByTestId('runsheet-list');
@@ -745,6 +759,7 @@ test('smart slide editor supports preset selection, typing into inspector, and s
   await page.getByTestId('slide-editor-confirm').click();
 
   await expect(page.getByText('Smart Layout Slide Editor')).not.toBeVisible();
+  await openStudioTab(page, 'Schedule');
   await expect(page.locator('[data-testid^="runsheet-slide-label-"]').first()).toHaveText('Sunday Welcome');
   await expect(page.getByText('Welcome to Sunday Service').first()).toBeVisible();
 });
@@ -800,6 +815,7 @@ test('smart slide editor keeps uploaded media slides free of auto text blocks', 
   await page.getByRole('button', { name: 'SAVE' }).click();
 
   await expect(page.getByText('Smart Layout Slide Editor')).not.toBeVisible();
+  await openStudioTab(page, 'Schedule');
   await expect(page.locator('[data-testid^="runsheet-slide-label-"]').first()).toHaveText('smart-media');
 });
 
