@@ -16,7 +16,10 @@ import type { Hymn } from '../types/hymns';
 import { SparklesIcon, SearchIcon, MusicIcon } from './Icons';
 import { useLyricSearchOrchestrator } from '../hooks/useLyricSearchOrchestrator';
 import { useLyricClipboardCapture } from '../hooks/useLyricClipboardCapture';
+import { useBatchLyricResolver } from '../hooks/useBatchLyricResolver';
 import { WebSearchResultCard } from './ai-modal/WebSearchResultCard';
+import { BatchLyricResolverPanel } from './ai-modal/BatchLyricResolverPanel';
+import type { BatchSongResolution, WebSearchResult } from '../services/lyricSources/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -320,12 +323,28 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
   // Lyric search orchestrator + clipboard capture
   const isSearchLyrics = mode === 'SEARCH' && detectedIntent === 'SONG';
   const orchestrator = useLyricSearchOrchestrator(isSearchLyrics ? searchQuery.trim() : '');
+  const {
+    resolutions: batchResolutions,
+    isResolving: isBatchResolving,
+    resolveServiceList,
+    setPastedLyrics: setBatchPastedLyrics,
+    clear: clearBatchResolutions,
+  } = useBatchLyricResolver();
   const clipboardCapture = useLyricClipboardCapture();
   const [captureStatus, setCaptureStatus] = useState<'idle' | 'armed' | 'captured'>('idle');
+  const [serviceListInput, setServiceListInput] = useState('');
+  const [armedBatchSongId, setArmedBatchSongId] = useState<string | null>(null);
+  const [generatingBatchSongId, setGeneratingBatchSongId] = useState<string | null>(null);
+  const [webManualLyrics, setWebManualLyrics] = useState('');
 
   useEffect(() => {
-    if (clipboardCapture.captured) setCaptureStatus('captured');
-  }, [clipboardCapture.captured]);
+    if (!clipboardCapture.captured) return;
+    if (armedBatchSongId) {
+      setBatchPastedLyrics(armedBatchSongId, clipboardCapture.captured.text);
+      setArmedBatchSongId(null);
+    }
+    setCaptureStatus('captured');
+  }, [armedBatchSongId, clipboardCapture.captured, setBatchPastedLyrics]);
 
   // Disarm clipboard watcher when modal closes — privacy guardrail per spec.
   const clipboardDisarm = clipboardCapture.disarm;
@@ -336,23 +355,38 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
   }, [isOpen, clipboardDisarm]);
 
   const handleOpenSource = useCallback(async (result: { url: string }) => {
+    setArmedBatchSongId(null);
     const ok = await clipboardCapture.arm(result.url);
-    if (ok) setCaptureStatus('armed');
+    if (ok) {
+      setCaptureStatus('armed');
+      return;
+    }
+    window.open(result.url, '_blank', 'noopener,noreferrer');
   }, [clipboardCapture]);
 
-  const handleGenerateFromCaptured = useCallback(async () => {
-    if (!clipboardCapture.captured) return;
+  const handleOpenBatchSource = useCallback(async (songId: string, result: WebSearchResult) => {
+    setArmedBatchSongId(songId);
+    const ok = await clipboardCapture.arm(result.url);
+    if (ok) {
+      setCaptureStatus('armed');
+      return;
+    }
+    setArmedBatchSongId(null);
+    window.open(result.url, '_blank', 'noopener,noreferrer');
+  }, [clipboardCapture]);
+
+  const generateSongFromLyrics = useCallback(async (lyrics: string, title: string, closeAfter: boolean) => {
     setIsProcessing(true);
     setError(null);
     try {
-      const slideData = await generateSlidesFromText(clipboardCapture.captured.text);
+      const slideData = await generateSlidesFromText(lyrics);
       if (!slideData) throw new Error('AI returned no slide content.');
-      const themeKeyword = await suggestVisualTheme(clipboardCapture.captured.text);
+      const themeKeyword = await suggestVisualTheme(lyrics);
       const bgUrl = `https://picsum.photos/seed/${encodeURIComponent(themeKeyword)}/1920/1080`;
       const slides = slideData.slides;
       onGenerate({
         id: Date.now().toString(),
-        title: slides[0]?.content.substring(0, 24) || 'AI Generated',
+        title: title.trim() || slides[0]?.content.substring(0, 24) || 'AI Generated',
         type: ItemType.SONG,
         theme: {
           backgroundUrl: bgUrl,
@@ -367,15 +401,51 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
           label: s.label || `Slide ${idx + 1}`,
         })),
       });
-      clipboardCapture.clearCaptured();
-      setCaptureStatus('idle');
-      onClose();
+      if (closeAfter) onClose();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to generate slides.');
     } finally {
       setIsProcessing(false);
     }
-  }, [clipboardCapture, onGenerate, onClose]);
+  }, [onGenerate, onClose]);
+
+  const handleGenerateFromCaptured = useCallback(async () => {
+    const lyrics = clipboardCapture.captured?.text || webManualLyrics;
+    if (!lyrics.trim()) return;
+    await generateSongFromLyrics(lyrics, 'AI Generated', true);
+    clipboardCapture.clearCaptured();
+    setWebManualLyrics('');
+    setCaptureStatus('idle');
+  }, [clipboardCapture, generateSongFromLyrics, webManualLyrics]);
+
+  const handleGenerateBatchResolution = useCallback(async (resolution: BatchSongResolution) => {
+    setGeneratingBatchSongId(resolution.song.id);
+    try {
+      if (resolution.status === 'catalog' && resolution.hymnId) {
+        const hymn = getCatalogHymnById(resolution.hymnId);
+        if (!hymn) throw new Error('Local hymn was not found.');
+        const suggestion = getSuggestedBackgroundForHymn(hymn);
+        const result = generateSlidesFromHymn(hymn, {
+          chorusStrategy: hymn.presentationDefaults.defaultChorusStrategy,
+          typographyPresetId: hymn.presentationDefaults.defaultTypographyPresetId,
+          backgroundOverride: suggestion.candidate,
+        });
+        onGenerate(stampItemBackgroundSource(result.item, 'system'));
+        return;
+      }
+      if (resolution.status === 'lrclib' && resolution.lrclibHit?.plainLyrics) {
+        await generateSongFromLyrics(resolution.lrclibHit.plainLyrics, resolution.lrclibHit.trackName, false);
+        return;
+      }
+      if (resolution.pastedLyrics?.trim()) {
+        await generateSongFromLyrics(resolution.pastedLyrics, resolution.song.title, false);
+      }
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to generate slides.');
+    } finally {
+      setGeneratingBatchSongId(null);
+    }
+  }, [generateSongFromLyrics, onGenerate]);
 
   // Sermon validation (preserve existing feature)
   const [sermonValidation, setSermonValidation] = useState<{ references: string[]; points: string[] } | null>(null);
@@ -387,7 +457,9 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
     catalogHymn !== null ||
     aiResult !== null ||
     orchestrator.state.kind === 'lrclib' ||
-    orchestrator.state.kind === 'web';
+    orchestrator.state.kind === 'web' ||
+    serviceListInput.trim().length > 0 ||
+    batchResolutions.length > 0;
 
   // Reset state when modal opens
   useEffect(() => {
@@ -399,10 +471,15 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
     setError(null);
     setAiSearchError(null);
     setSermonValidation(null);
-  }, [isOpen]);
+    setServiceListInput('');
+    setWebManualLyrics('');
+    clearBatchResolutions();
+    setArmedBatchSongId(null);
+    setGeneratingBatchSongId(null);
+  }, [isOpen, clearBatchResolutions]);
 
   // Detect query intent (for badge + AI search routing). The actual cascade
-  // (catalog → LRCLIB → Brave) lives in useLyricSearchOrchestrator.
+  // (catalog → LRCLIB → Tavily → Brave) lives in useLyricSearchOrchestrator.
   useEffect(() => {
     if (!searchQuery.trim()) {
       setDetectedIntent(null);
@@ -411,6 +488,12 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
     setAiSearchError(null);
     setDetectedIntent(detectQueryIntent(searchQuery));
   }, [searchQuery]);
+
+  useEffect(() => {
+    setWebManualLyrics('');
+    clipboardCapture.clearCaptured();
+    setCaptureStatus('idle');
+  }, [searchQuery, clipboardCapture.clearCaptured]);
 
   const handleAISearch = async () => {
     if (!searchQuery.trim()) return;
@@ -612,6 +695,18 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
                 </div>
               </div>
 
+              <BatchLyricResolverPanel
+                serviceList={serviceListInput}
+                resolutions={batchResolutions}
+                isResolving={isBatchResolving}
+                generatingSongId={generatingBatchSongId}
+                onServiceListChange={setServiceListInput}
+                onResolve={() => void resolveServiceList(serviceListInput)}
+                onOpenSource={handleOpenBatchSource}
+                onPastedLyricsChange={setBatchPastedLyrics}
+                onGenerate={(resolution) => void handleGenerateBatchResolution(resolution)}
+              />
+
               {/* Local hymn result (from orchestrator catalog tier) */}
               {isSearchLyrics && catalogHymn && (
                 <div className="space-y-2">
@@ -702,7 +797,9 @@ export const AIModal: React.FC<AIModalProps> = ({ isOpen, onClose, onGenerate })
                 <WebSearchResultCard
                   results={orchestrator.state.results}
                   captureStatus={captureStatus}
+                  manualLyrics={webManualLyrics}
                   onOpenSource={handleOpenSource}
+                  onManualLyricsChange={setWebManualLyrics}
                   onGenerate={handleGenerateFromCaptured}
                 />
               )}

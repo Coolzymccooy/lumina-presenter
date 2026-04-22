@@ -2,8 +2,10 @@
 import { useEffect, useState } from 'react';
 import { searchCatalogHymns } from '../services/hymnCatalog';
 import { searchLrclib } from '../services/lyricSources/lrclibAdapter';
+import { searchTavilyForLyrics } from '../services/lyricSources/tavilyAdapter';
 import { searchWebForLyrics } from '../services/lyricSources/braveAdapter';
 import { isWebLyricsFetchEnabled } from '../services/lyricSources/featureFlag';
+import { isStrongCatalogLyricHit } from '../services/lyricSources/catalogConfidence';
 import type { LyricsSearchState } from '../services/lyricSources/types';
 
 export interface LyricSearchReturn {
@@ -24,20 +26,12 @@ export function useLyricSearchOrchestrator(query: string): LyricSearchReturn {
       const catalogHits = searchCatalogHymns(q);
       if (cancelled) return;
       const top = catalogHits[0];
-      const isStrongCatalogMatch = !!top && (
-        top.score >= 200 ||
-        (top.matchedFields.includes('title') && top.score >= 165)
-      );
-      if (isStrongCatalogMatch) {
+      if (isStrongCatalogLyricHit(q, top)) {
         setState({ kind: 'catalog', hymnId: top.hymn.id });
         return;
       }
 
       if (!isWebLyricsFetchEnabled()) {
-        if (top) {
-          setState({ kind: 'catalog', hymnId: top.hymn.id });
-          return;
-        }
         setState({ kind: 'empty', reason: 'flag-off' });
         return;
       }
@@ -47,15 +41,16 @@ export function useLyricSearchOrchestrator(query: string): LyricSearchReturn {
       if (cancelled) return;
       if (hit) { setState({ kind: 'lrclib', hit }); return; }
 
+      setState({ kind: 'searching', tier: 'tavily' });
+      const tavilyResults = await searchTavilyForLyrics(q);
+      if (cancelled) return;
+      if (tavilyResults.length > 0) { setState({ kind: 'web', results: tavilyResults }); return; }
+
       setState({ kind: 'searching', tier: 'web' });
       const results = await searchWebForLyrics(q);
       if (cancelled) return;
       if (results.length > 0) { setState({ kind: 'web', results }); return; }
 
-      if (top) {
-        setState({ kind: 'catalog', hymnId: top.hymn.id });
-        return;
-      }
       setState({ kind: 'empty', reason: 'no-results' });
     })().catch((err) => {
       if (cancelled) return;
