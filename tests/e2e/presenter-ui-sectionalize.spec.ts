@@ -23,20 +23,25 @@ const seedPresenterSession = async (
       onboardingKey: string;
       panelOverrides: Record<string, '1' | '0'>;
     }) => {
-      // Clear any existing CollapsiblePanel persistence so defaults apply.
-      const keysToRemove: string[] = [];
-      for (let i = 0; i < localStorage.length; i += 1) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith('lumina.panel.')) keysToRemove.push(k);
+      (window as any).electron = { isElectron: true };
+      const firstSeedRun = !sessionStorage.getItem('lumina.presenter-sectionalize.seeded');
+      if (firstSeedRun) {
+        // Clear existing CollapsiblePanel persistence once so defaults apply,
+        // but do not erase preferences during page.reload() assertions.
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i += 1) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('lumina.panel.')) keysToRemove.push(k);
+        }
+        keysToRemove.forEach((k) => localStorage.removeItem(k));
+        Object.entries(payload.panelOverrides).forEach(([panelId, value]) => {
+          localStorage.setItem(`lumina.panel.${panelId}`, value);
+        });
+        sessionStorage.setItem('lumina.presenter-sectionalize.seeded', 'true');
       }
-      keysToRemove.forEach((k) => localStorage.removeItem(k));
 
       localStorage.setItem('lumina_session_v1', JSON.stringify(payload.session));
       localStorage.setItem(payload.onboardingKey, 'true');
-
-      Object.entries(payload.panelOverrides).forEach(([panelId, value]) => {
-        localStorage.setItem(`lumina.panel.${panelId}`, value);
-      });
     },
     {
       session: {

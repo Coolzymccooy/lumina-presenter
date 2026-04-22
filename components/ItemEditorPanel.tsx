@@ -38,7 +38,7 @@ export type QuickBackgroundSelection = {
   sourceUrl: string;
 };
 
-function SmartBgSearch({ onApply }: { onApply: (selection: QuickBackgroundSelection) => Promise<void> | void }) {
+export function SmartBgSearch({ onApply }: { onApply: (selection: QuickBackgroundSelection) => Promise<void> | void }) {
   const [open, setOpen] = useState(false);
   const [showLumina, setShowLumina] = useState(false);
   const [query, setQuery] = useState('');

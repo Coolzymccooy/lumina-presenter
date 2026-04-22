@@ -49,10 +49,10 @@ import { HoldScreen } from './components/presenter/HoldScreen';
 import { LibraryTray } from './components/presenter/LibraryTray';
 import { LivePane } from './components/presenter/LivePane';
 import { PresenterOpsBar } from './components/presenter/PresenterOpsBar';
-import { PresenterShell } from './components/presenter/PresenterShell';
 import { PreviewPane } from './components/presenter/PreviewPane';
 import { SchedulePane } from './components/presenter/SchedulePane';
 import type { HoldScreenMode, PresenterExperience, PresenterFocusArea, PresenterLayoutPrefs, PresenterLibraryTab } from './components/presenter/types';
+import { PresenterDesktopShell } from './components/workspace/PresenterDesktopShell';
 import { logActivity, analyzeSentimentContext } from './services/analytics';
 import { auth, isFirebaseConfigured, subscribeToState, subscribeToTeamPlaylists, updateLiveState, upsertTeamPlaylist } from './services/firebase';
 import { onAuthStateChanged } from "firebase/auth";
@@ -91,7 +91,14 @@ import { dispatchAetherBridgeEvent, type AetherBridgeEvent } from './services/ae
 import { isMotionUrl } from './services/motionEngine';
 import { setUserDefaultBackground, getUserDefaultBackgroundSnapshot, getDefaultBgTheme } from './services/userBackgroundPreference';
 import { MacroPanel } from './components/MacroPanel';
+import { BuilderBackgroundDrawer } from './components/builder/BuilderBackgroundDrawer';
 import { BuilderPreviewPanel } from './components/builder/BuilderPreviewPanel';
+import { BuilderBottomDock } from './components/builder/BuilderBottomDock';
+import { BuilderCanvasRibbon } from './components/builder/BuilderCanvasRibbon';
+import { BuilderCueDrawer } from './components/builder/BuilderCueDrawer';
+import { BuilderRightRail } from './components/builder/BuilderRightRail';
+import { EditableSlideCanvas } from './components/builder/EditableSlideCanvas';
+import { SlideTimelineStrip } from './components/builder/SlideTimelineStrip';
 import { StageWorkspace } from './components/builder/StageWorkspace';
 import { SermonRecorderPanel } from './components/SermonRecorderPanel';
 import type { SermonSummary } from './services/sermonSummaryService';
@@ -117,6 +124,7 @@ import {
 } from './services/bibleItemStability';
 import { isProjectionSafeBackgroundUrl } from './services/mediaUrlStability';
 import type { RunSheetInsertionResult } from './services/runSheetInsertion';
+import { buildStructuredSlide, createTextElement, getRenderableElements } from './components/slide-layout/utils/slideHydration';
 import { PlayIcon, PauseIcon, RewindIcon, ForwardIcon, PlusIcon, MonitorIcon, SparklesIcon, EditIcon, TrashIcon, ArrowLeftIcon, ArrowRightIcon, ArrowUpIcon, ArrowDownIcon, HelpIcon, VolumeXIcon, Volume2Icon, MusicIcon, BibleIcon, Settings, ChatIcon, QrCodeIcon, CopyIcon, CheckIcon, XIcon, PinIcon, MinimizeIcon, MaximizeIcon } from './components/Icons'; // Added ChatIcon, QrCodeIcon, CopyIcon, RewindIcon, ForwardIcon, PauseIcon
 import { AppHeader } from './components/layout/AppHeader';
 import { CollapsiblePanel } from './components/ui/CollapsiblePanel';
@@ -411,8 +419,8 @@ const DEFAULT_PRESENTER_LAYOUT_PREFS: PresenterLayoutPrefs = {
   bottomTrayHeight: 252,
 };
 
-const sanitizePresenterExperience = (_value: unknown): PresenterExperience => (
-  'classic'
+const sanitizePresenterExperience = (value: unknown): PresenterExperience => (
+  value === 'next_gen_beta' ? 'next_gen_beta' : 'classic'
 );
 
 const sanitizeHoldScreenMode = (value: unknown): HoldScreenMode => (
@@ -907,6 +915,52 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
   return safe;
 };
 
+const createDefaultWorkspaceSettings = (): WorkspaceSettings => ({
+  churchName: 'My Church',
+  ccli: '',
+  defaultVersion: 'kjv',
+  visionarySpeechLocaleMode: 'auto',
+  theme: 'dark',
+  presenterExperience: 'classic',
+  remoteAdminEmails: '',
+  sessionId: 'live',
+  stageProfile: 'classic',
+  stageFlowLayout: 'balanced',
+  machineMode: false,
+  stageTimerLayout: DEFAULT_STAGE_TIMER_LAYOUT,
+  stageAlertLayout: DEFAULT_STAGE_ALERT_LAYOUT,
+  connectionTargetRoles: DEFAULT_CONNECTION_TARGET_ROLES,
+  speakerTimerPresets: DEFAULT_SPEAKER_TIMER_PRESETS,
+  timerChimesEnabled: true,
+  aetherBridgeEnabled: false,
+  aetherBridgeAutoSync: true,
+  aetherBridgeUrl: '',
+  aetherRoomId: '',
+  aetherSceneProgram: 'Program',
+  aetherSceneBlackout: 'Blackout',
+  aetherSceneLobby: 'Lobby',
+  slideBrandingEnabled: false,
+  slideBrandingSeriesLabel: '',
+  slideBrandingStyle: 'minimal',
+  slideBrandingOpacity: 0.82,
+  ndiSources: [],
+});
+
+const readInitialWorkspaceSettings = (): WorkspaceSettings => {
+  const defaults = createDefaultWorkspaceSettings();
+  if (typeof window === 'undefined') return defaults;
+  try {
+    const savedSettings = window.localStorage.getItem(SETTINGS_KEY);
+    if (!savedSettings) return defaults;
+    return {
+      ...defaults,
+      ...sanitizeWorkspaceSettings(JSON.parse(savedSettings)),
+    };
+  } catch {
+    return defaults;
+  }
+};
+
 const sanitizeWorkspaceSettingsIntent = (value: unknown): WorkspaceSettingsIntentMetadata => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   const raw = value as Record<string, unknown>;
@@ -1345,6 +1399,11 @@ function App() {
     const savedSchedule = saved?.schedule || INITIAL_SCHEDULE;
     return saved?.selectedItemId || savedSchedule[0]?.id || '';
   });
+  const [runSheetTitle, setRunSheetTitle] = useState<string>(() => {
+    const saved = initialSavedState;
+    const title = typeof saved?.runSheetTitle === 'string' ? saved.runSheetTitle.trim() : '';
+    return title || 'Untitled Run Sheet';
+  });
 
   const [viewMode, setViewMode] = useState<'BUILDER' | 'PRESENTER' | 'STAGE'>(() => {
     const saved = initialSavedState;
@@ -1356,42 +1415,20 @@ function App() {
 
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isSlideEditorOpen, setIsSlideEditorOpen] = useState(false);
+  const [builderSelectedSlideId, setBuilderSelectedSlideId] = useState<string | null>(null);
+  const [builderSelectedElementId, setBuilderSelectedElementId] = useState<string | null>(null);
+  const [builderShowGrid, setBuilderShowGrid] = useState(false);
+  const [builderShowSafeArea, setBuilderShowSafeArea] = useState(true);
+  const [builderZoom, setBuilderZoom] = useState(1);
+  const [builderBackgroundDrawerOpen, setBuilderBackgroundDrawerOpen] = useState(false);
+  const [builderCueDrawerOpen, setBuilderCueDrawerOpen] = useState(false);
   const [showSaveProjectionHint, setShowSaveProjectionHint] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isGuidedToursOpen, setIsGuidedToursOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false); // NEW
   const [ccliConnected, setCcliConnected] = useState(false);
   const [isStagePreviewEditorOpen, setIsStagePreviewEditorOpen] = useState(false);
-  const [workspaceSettings, setWorkspaceSettings] = useState<WorkspaceSettings>({
-    churchName: 'My Church',
-    ccli: '',
-    defaultVersion: 'kjv',
-    visionarySpeechLocaleMode: 'auto',
-    theme: 'dark',
-    presenterExperience: 'classic',
-    remoteAdminEmails: '',
-    sessionId: 'live',
-    stageProfile: 'classic',
-    stageFlowLayout: 'balanced',
-    machineMode: false,
-    stageTimerLayout: DEFAULT_STAGE_TIMER_LAYOUT,
-    stageAlertLayout: DEFAULT_STAGE_ALERT_LAYOUT,
-    connectionTargetRoles: DEFAULT_CONNECTION_TARGET_ROLES,
-    speakerTimerPresets: DEFAULT_SPEAKER_TIMER_PRESETS,
-    timerChimesEnabled: true,
-    aetherBridgeEnabled: false,
-    aetherBridgeAutoSync: true,
-    aetherBridgeUrl: '',
-    aetherRoomId: '',
-    aetherSceneProgram: 'Program',
-    aetherSceneBlackout: 'Blackout',
-    aetherSceneLobby: 'Lobby',
-    slideBrandingEnabled: false,
-    slideBrandingSeriesLabel: '',
-    slideBrandingStyle: 'minimal',
-    slideBrandingOpacity: 0.82,
-    ndiSources: [],
-  });
+  const [workspaceSettings, setWorkspaceSettings] = useState<WorkspaceSettings>(() => readInitialWorkspaceSettings());
   const [presenterLayoutPrefs, setPresenterLayoutPrefs] = useState<PresenterLayoutPrefs>(() => (
     readPresenterLayoutPrefs('default-workspace', !!window.electron?.isElectron)
   ));
@@ -2969,6 +3006,7 @@ function App() {
       const saveData = {
         schedule,
         selectedItemId,
+        runSheetTitle: runSheetTitle.trim() || 'Untitled Run Sheet',
         viewMode,
         activeItemId,
         activeSlideIndex,
@@ -3000,7 +3038,24 @@ function App() {
       }
     }, 180);
     return () => window.clearTimeout(id);
-  }, [schedule, selectedItemId, viewMode, activeItemId, activeSlideIndex, blackout, holdScreenMode, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, audienceQrProjection, stageTimerFlash, stageAlert, stageMessageCenter, workspaceSettings, user]);
+  }, [schedule, selectedItemId, runSheetTitle, viewMode, activeItemId, activeSlideIndex, blackout, holdScreenMode, isPlaying, outputMuted, seekCommand, seekAmount, lowerThirdsEnabled, routingMode, timerMode, timerDurationMin, timerSeconds, currentCueItemId, audienceDisplay, audienceQrProjection, stageTimerFlash, stageAlert, stageMessageCenter, workspaceSettings, user]);
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        const existing = raw ? JSON.parse(raw) as Record<string, unknown> : {};
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          ...existing,
+          runSheetTitle: runSheetTitle.trim() || 'Untitled Run Sheet',
+          updatedAt: Date.now(),
+        }));
+      } catch {
+        // Ignore local title persistence failures; the full session save reports quota errors.
+      }
+    }, 180);
+    return () => window.clearTimeout(id);
+  }, [runSheetTitle]);
 
   useEffect(() => {
     const safeWorkspaceId = String(workspaceId || '').trim();
@@ -3166,6 +3221,50 @@ function App() {
     [schedule, activeItemId],
   );
   const activeSlide = activeItem && activeSlideIndex >= 0 ? activeItem.slides[activeSlideIndex] : null;
+  const builderSelectedSlide = useMemo(() => {
+    if (!selectedItem || selectedItem.slides.length === 0) return null;
+    return selectedItem.slides.find((slide) => slide.id === builderSelectedSlideId) || selectedItem.slides[0] || null;
+  }, [builderSelectedSlideId, selectedItem]);
+  const builderSelectedSlideIndex = selectedItem && builderSelectedSlide
+    ? selectedItem.slides.findIndex((slide) => slide.id === builderSelectedSlide.id)
+    : -1;
+  const builderSelectedElement = useMemo(() => {
+    if (!selectedItem || !builderSelectedSlide || !builderSelectedElementId) return null;
+    return getRenderableElements(builderSelectedSlide, selectedItem).find((element) => element.id === builderSelectedElementId) || null;
+  }, [builderSelectedElementId, builderSelectedSlide, selectedItem]);
+
+  useEffect(() => {
+    if (!selectedItem) {
+      if (builderSelectedSlideId !== null) setBuilderSelectedSlideId(null);
+      if (builderSelectedElementId !== null) setBuilderSelectedElementId(null);
+      return;
+    }
+    const hasSelectedSlide = !!builderSelectedSlideId && selectedItem.slides.some((slide) => slide.id === builderSelectedSlideId);
+    if (!hasSelectedSlide) {
+      setBuilderSelectedSlideId(selectedItem.slides[0]?.id || null);
+      setBuilderSelectedElementId(null);
+    }
+  }, [builderSelectedElementId, builderSelectedSlideId, selectedItem]);
+
+  useEffect(() => {
+    setBuilderSelectedElementId(null);
+  }, [builderSelectedSlide?.id]);
+
+  useEffect(() => {
+    if (viewMode !== 'BUILDER' || !selectedItem || !builderSelectedSlide) return;
+    if (Array.isArray(builderSelectedSlide.elements) && builderSelectedSlide.elements.length > 0) return;
+    const targetItemId = selectedItem.id;
+    const targetSlideId = builderSelectedSlide.id;
+    setSchedule((prev) => prev.map((item) => {
+      if (item.id !== targetItemId) return item;
+      return {
+        ...item,
+        slides: item.slides.map((slide) => (
+          slide.id === targetSlideId ? buildStructuredSlide(slide, item) : slide
+        )),
+      };
+    }));
+  }, [builderSelectedSlide, selectedItem, viewMode]);
 
   // Detect PPTX visual items in the schedule (imported MEDIA, excluding video-url items)
   const hasPptxImportedItems = useMemo(() =>
@@ -4873,7 +4972,7 @@ function App() {
       if (!window.confirm(msg)) return;
     }
 
-    const title = runSheetArchiveTitle.trim() || `Run Sheet ${new Date().toLocaleString()}`;
+    const title = runSheetArchiveTitle.trim() || runSheetTitle.trim() || `Run Sheet ${new Date().toLocaleString()}`;
     const result = await archiveRunSheetPayload(title, {
       items: schedule,
       selectedItemId,
@@ -4891,6 +4990,7 @@ function App() {
       pushHistory();
       setSchedule(fresh);
       setSelectedItemId(fresh[0]?.id || '');
+      setRunSheetTitle('Untitled Run Sheet');
       setActiveItemId(null);
       setActiveSlideIndex(-1);
       setActiveSidebarTab('SCHEDULE');
@@ -4946,7 +5046,9 @@ function App() {
             return;
           }
           if (response.file) {
-            upsertRunSheetFileState(response.file as RunSheetFileRecord);
+            const file = response.file as RunSheetFileRecord;
+            upsertRunSheetFileState(file);
+            if (mode === 'replace') setRunSheetTitle(file.title || 'Untitled Run Sheet');
           }
           setRunSheetFilesError(null);
           return;
@@ -4980,6 +5082,7 @@ function App() {
       lastUsedAt: touchedAt,
     };
     upsertRunSheetFileState(touchedFile);
+    if (mode === 'replace') setRunSheetTitle(localFile.title || 'Untitled Run Sheet');
     setRunSheetFilesError(source === 'local'
       ? 'Reused local archive backup (API unavailable or not signed in).'
       : null);
@@ -5694,6 +5797,120 @@ function App() {
     updateItem({ ...selectedItem, slides: newSlides });
   };
 
+  const makeBuilderSlideId = () => `slide-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+
+  const createBuilderSlide = useCallback((item: ServiceItem, label?: string): Slide => buildStructuredSlide({
+    id: makeBuilderSlideId(),
+    label: label || `Slide ${item.slides.length + 1}`,
+    content: 'Your text here',
+    type: 'custom',
+    layoutType: 'single',
+    elements: [
+      createTextElement({
+        name: 'Body',
+        role: 'body',
+        content: 'Your text here',
+        frame: { x: 0.1, y: 0.18, width: 0.8, height: 0.5, zIndex: 1 },
+        item,
+      }),
+    ],
+    backgroundUrl: '',
+    mediaType: item.theme.mediaType,
+    mediaFit: 'cover',
+    metadata: {},
+  }, item), []);
+
+  const handleBuilderUpdateSlide = useCallback((updater: (slide: Slide) => Slide) => {
+    if (!selectedItem || !builderSelectedSlide) return;
+    const targetItemId = selectedItem.id;
+    const targetSlideId = builderSelectedSlide.id;
+    setSchedule((prev) => prev.map((item) => {
+      if (item.id !== targetItemId) return item;
+      return {
+        ...item,
+        slides: item.slides.map((slide) => (
+          slide.id === targetSlideId ? buildStructuredSlide(updater(slide), item) : slide
+        )),
+      };
+    }));
+  }, [builderSelectedSlide, selectedItem]);
+
+  const handleBuilderAddTextBlock = useCallback(() => {
+    if (!selectedItem || !builderSelectedSlide) return;
+    const textElement = createTextElement({
+      name: 'Text Block',
+      role: 'body',
+      content: 'New text',
+      frame: { x: 0.24, y: 0.32, width: 0.52, height: 0.18, zIndex: 10 },
+      item: selectedItem,
+    });
+    handleBuilderUpdateSlide((currentSlide) => ({
+      ...currentSlide,
+      elements: [
+        ...getRenderableElements(currentSlide, selectedItem),
+        textElement,
+      ],
+      content: currentSlide.content || 'New text',
+    }));
+    setBuilderSelectedElementId(textElement.id);
+  }, [builderSelectedSlide, handleBuilderUpdateSlide, selectedItem]);
+
+  const handleBuilderAddSlide = useCallback(() => {
+    if (!selectedItem) return;
+    const nextSlide = createBuilderSlide(selectedItem);
+    updateItem({ ...selectedItem, slides: [...selectedItem.slides, nextSlide] });
+    setBuilderSelectedSlideId(nextSlide.id);
+    setBuilderSelectedElementId(nextSlide.elements?.[0]?.id || null);
+  }, [createBuilderSlide, selectedItem, updateItem]);
+
+  const handleBuilderDuplicateSlide = useCallback(() => {
+    if (!selectedItem || !builderSelectedSlide) return;
+    const sourceIndex = selectedItem.slides.findIndex((slide) => slide.id === builderSelectedSlide.id);
+    if (sourceIndex < 0) return;
+    const stamp = Date.now().toString(36);
+    const cloned = JSON.parse(JSON.stringify(builderSelectedSlide)) as Slide;
+    const duplicate = buildStructuredSlide({
+      ...cloned,
+      id: makeBuilderSlideId(),
+      label: `${cloned.label || `Slide ${sourceIndex + 1}`} Copy`,
+      elements: getRenderableElements(cloned, selectedItem).map((element, index) => ({
+        ...element,
+        id: `${element.id}-${stamp}-${index}`,
+      })),
+    }, selectedItem);
+    const nextSlides = [...selectedItem.slides];
+    nextSlides.splice(sourceIndex + 1, 0, duplicate);
+    updateItem({ ...selectedItem, slides: nextSlides });
+    setBuilderSelectedSlideId(duplicate.id);
+    setBuilderSelectedElementId(duplicate.elements?.[0]?.id || null);
+  }, [builderSelectedSlide, selectedItem, updateItem]);
+
+  const handleBuilderDeleteSelectedSlide = useCallback(() => {
+    if (!selectedItem || !builderSelectedSlide) return;
+    const sourceIndex = selectedItem.slides.findIndex((slide) => slide.id === builderSelectedSlide.id);
+    const nextSlides = selectedItem.slides.filter((slide) => slide.id !== builderSelectedSlide.id);
+    const nextSelected = nextSlides[Math.min(sourceIndex, nextSlides.length - 1)] || nextSlides[sourceIndex - 1] || null;
+    updateItem({ ...selectedItem, slides: nextSlides });
+    setBuilderSelectedSlideId(nextSelected?.id || null);
+    setBuilderSelectedElementId(null);
+  }, [builderSelectedSlide, selectedItem, updateItem]);
+
+  const handleBuilderGoLive = useCallback(() => {
+    if (!selectedItem || builderSelectedSlideIndex < 0) return;
+    goLive(selectedItem, builderSelectedSlideIndex);
+  }, [builderSelectedSlideIndex, goLive, selectedItem]);
+
+  const handleBuilderSelectAdjacentSlide = useCallback((offset: number) => {
+    if (!selectedItem || builderSelectedSlideIndex < 0) return;
+    const nextIndex = clamp(builderSelectedSlideIndex + offset, 0, selectedItem.slides.length - 1);
+    const nextSlide = selectedItem.slides[nextIndex];
+    if (nextSlide) setBuilderSelectedSlideId(nextSlide.id);
+  }, [builderSelectedSlideIndex, selectedItem]);
+
+  const setBuilderZoomClamped = useCallback((nextZoom: number) => {
+    setBuilderZoom(Math.min(4, Math.max(0.25, Math.round(nextZoom * 100) / 100)));
+  }, []);
+
   const reorderItemSlides = useCallback((itemId: string, sourceId: string, targetId: string, placeAfter = false) => {
     if (!itemId || !sourceId || !targetId || sourceId === targetId) return;
     const targetItem = schedule.find((entry) => entry.id === itemId);
@@ -5912,6 +6129,48 @@ function App() {
       category: selection.category,
     });
   }, [markItemBackgroundAsUserChanged, persistRemoteMotionLibraryAsset, pushHistory, user?.uid]);
+
+  const applyQuickBackgroundToBuilderSlide = useCallback(async (selection: QuickBackgroundSelection) => {
+    if (!selectedItem?.id || !builderSelectedSlide?.id) return;
+    const isMotion = selection.mediaType === 'motion' || isMotionUrl(selection.url);
+    const resolvedMediaType = isMotion ? 'motion' as const : (selection.mediaType === 'image' ? 'image' as const : 'video' as const);
+    const resolvedUrl = isMotion ? selection.url : await persistRemoteMotionLibraryAsset(selection.url, resolvedMediaType as 'image' | 'video');
+    const targetItemId = selectedItem.id;
+    const targetSlideId = builderSelectedSlide.id;
+
+    pushHistory();
+    setSchedule((prev) => prev.map((item) => {
+      if (item.id !== targetItemId) return item;
+      return {
+        ...item,
+        slides: item.slides.map((slide) => (
+          slide.id === targetSlideId
+            ? buildStructuredSlide({
+                ...slide,
+                backgroundUrl: resolvedUrl,
+                mediaType: resolvedMediaType,
+                mediaFit: 'cover',
+                metadata: {
+                  ...(slide.metadata || {}),
+                  backgroundProvider: selection.provider,
+                  backgroundCategory: selection.category,
+                  backgroundTitle: selection.title,
+                  backgroundSourceUrl: selection.sourceUrl || selection.url,
+                },
+              }, item)
+            : slide
+        )),
+      };
+    }));
+    logActivity(user?.uid, 'UPDATE_THEME', {
+      type: 'QUICK_BG_SLIDE',
+      itemId: targetItemId,
+      slideId: targetSlideId,
+      mediaType: resolvedMediaType,
+      provider: selection.provider,
+      category: selection.category,
+    });
+  }, [builderSelectedSlide, persistRemoteMotionLibraryAsset, pushHistory, selectedItem, user?.uid]);
 
   const buildTextSlidesFromPptx = async (file: File) => {
     const parsed = await parsePptxFile(file);
@@ -7358,7 +7617,7 @@ function App() {
   }
 
   const renderScheduleList = () => (
-    <div className="flex-1 overflow-y-auto bg-zinc-950" data-testid="runsheet-list">
+    <div className="h-full min-h-0 overflow-y-auto bg-zinc-950 custom-scrollbar" data-testid="runsheet-list">
       {teamPlaylists.length > 0 && (<div className="px-3 py-2 text-[10px] text-emerald-400 border-b border-zinc-900">Cloud Playlists Synced: {teamPlaylists.length}</div>)}
       {schedule.map((item, idx) => (
         <React.Fragment key={item.id}>
@@ -7528,7 +7787,15 @@ function App() {
                       ? (runSheetSlideDropIndicator.after ? 'border-b-2 border-b-blue-500' : 'border-t-2 border-t-blue-500')
                       : ''
                   }`}
-                  onClick={(e) => { e.stopPropagation(); if (viewMode === 'PRESENTER') goLive(item, sIdx); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedItemId(item.id);
+                    if (viewMode === 'PRESENTER') {
+                      goLive(item, sIdx);
+                    } else if (viewMode === 'BUILDER') {
+                      setBuilderSelectedSlideId(slide.id);
+                    }
+                  }}
                 >
                   <div className="flex justify-between items-center gap-2">
                       {inlineSlideRename?.itemId === item.id && inlineSlideRename.slideId === slide.id && inlineSlideRename.source === 'runsheet' ? (
@@ -8378,8 +8645,8 @@ function App() {
   );
 
   const presenterBetaWorkspace = isPresenterBeta ? (
-    <PresenterShell
-      variant="beta"
+    <PresenterDesktopShell
+      mode="presenter"
       leftPane={renderPresenterBetaSchedulePane()}
       centerPane={renderPresenterBetaPreviewPane()}
       rightPane={renderPresenterBetaLivePane()}
@@ -8402,6 +8669,211 @@ function App() {
       onResizeRight={(delta) => updatePresenterLayoutPref('rightPaneWidth', delta)}
       onResizeBottom={(delta) => updatePresenterLayoutPref('bottomTrayHeight', delta)}
       hideRightPane={legacyMachineMode}
+    />
+  ) : null;
+
+  const builderShellTight = viewportWidth < 1400;
+  const builderShellCompact = viewportWidth < 1580;
+  const builderLeftWidth = builderShellTight ? 288 : builderShellCompact ? 304 : 320;
+  const builderRightWidth = builderShellTight ? 304 : builderShellCompact ? 318 : 330;
+  const builderTimelineHeight = builderShellTight ? 138 : 144;
+  const builderBottomHeight = builderShellTight ? 166 : 172;
+
+  const renderBuilderRunSheetPane = () => {
+    const selectedCue = selectedItem?.timerCue || { enabled: false, durationSec: 300 };
+    const cueMinutes = Math.max(1, Math.round((selectedCue.durationSec || 300) / 60));
+
+    return (
+      <div data-testid="builder-runsheet-pane" className="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)_auto] border-r border-zinc-800 bg-[#101116]">
+        <div className="border-b border-zinc-800 bg-[linear-gradient(180deg,rgba(31,32,38,0.98)_0%,rgba(16,17,22,0.98)_100%)] px-2.5 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-[9px] font-black uppercase tracking-[0.24em] text-zinc-500">Run Sheet</div>
+              <input
+                data-testid="builder-runsheet-title-input"
+                aria-label="Run sheet title"
+                value={runSheetTitle}
+                onChange={(event) => setRunSheetTitle(event.target.value)}
+                onBlur={() => setRunSheetTitle((value) => value.trim() || 'Untitled Run Sheet')}
+                className="mt-1 h-8 w-full rounded-lg border border-zinc-700 bg-[#111218] px-2 text-sm font-black text-zinc-100 outline-none focus:border-cyan-600"
+              />
+              <p className="mt-1 text-[10px] text-zinc-500">Build slides in the same flow Presenter uses.</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <button data-testid="runsheet-template-btn" title="Templates" aria-label="Open template gallery" onClick={() => setIsTemplateOpen(true)} className="px-2 py-1 bg-[#15161b] border border-zinc-700 hover:border-zinc-500 text-zinc-300 rounded-sm text-[9px] font-bold transition-all">TPL</button>
+              <button data-testid="runsheet-lyrics-btn" title="Lyrics" aria-label="Import song lyrics" onClick={() => setIsLyricsImportOpen(true)} className="px-2 py-1 bg-[#15161b] border border-zinc-700 hover:border-zinc-500 text-zinc-300 rounded-sm text-[9px] font-bold transition-all">LYR</button>
+              <button data-testid="runsheet-add-slide-btn" title="Add item" aria-label="Add item" onClick={addEmptyItem} className="p-1.5 bg-zinc-700 hover:bg-zinc-600 text-zinc-100 rounded-sm transition-colors"><PlusIcon className="w-3.5 h-3.5" /></button>
+            </div>
+          </div>
+        </div>
+
+        <div className="min-h-0 overflow-hidden">
+          {renderScheduleList()}
+        </div>
+
+        <div data-testid="builder-runsheet-status-bay" className="min-h-[132px] border-t border-zinc-800 bg-[linear-gradient(180deg,rgba(24,24,27,1)_0%,rgba(12,13,18,1)_100%)] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-800/80 bg-[#111218]/80 p-2">
+            <span className="rounded-md border border-emerald-800/70 bg-emerald-950/40 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-200">Saved</span>
+            <span className={`rounded-md border px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] ${isOutputLive ? 'border-red-800/70 bg-red-950/40 text-red-200' : 'border-zinc-700 bg-[#15161b] text-zinc-300'}`}>
+              Output {isOutputLive ? 'live' : 'off'}
+            </span>
+            <button
+              type="button"
+              disabled={!selectedItem}
+              onClick={() => setBuilderCueDrawerOpen(true)}
+              className={`rounded-md border px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] disabled:cursor-not-allowed disabled:opacity-35 ${selectedCue.enabled ? 'border-amber-700/70 bg-amber-950/40 text-amber-200' : 'border-zinc-700 bg-[#15161b] text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'}`}
+            >
+              {selectedCue.enabled ? `Cue ${cueMinutes}m` : 'Cue off'}
+            </button>
+          </div>
+          <div className="mt-3 min-w-0">
+            <div className="truncate text-sm font-bold text-zinc-100">{selectedItem?.title || 'No item selected'}</div>
+            <div className="mt-0.5 truncate text-[10px] font-mono uppercase tracking-[0.14em] text-zinc-500">
+              {builderSelectedSlide ? `${builderSelectedSlideIndex + 1} of ${selectedItem?.slides.length || 0} - ${builderSelectedSlide.label || `Slide ${builderSelectedSlideIndex + 1}`}` : 'No slide selected'}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderBuilderCenterPane = () => {
+    const openBuilderFullEditor = () => {
+      if (builderSelectedSlide) setEditingSlide(builderSelectedSlide);
+      else setEditingSlide(null);
+      setIsSlideEditorOpen(true);
+    };
+    const centerRows = builderCueDrawerOpen
+      ? `minmax(0, 1fr) 88px ${builderTimelineHeight}px`
+      : builderBackgroundDrawerOpen
+        ? `minmax(0, 1fr) 224px ${builderTimelineHeight}px`
+        : `minmax(0, 1fr) ${builderTimelineHeight}px`;
+
+    return (
+      <div data-testid="builder-center-pane" className="flex h-full min-h-0 flex-col bg-[#0d0e13]">
+        <BuilderCanvasRibbon
+          item={selectedItem}
+          slide={builderSelectedSlide}
+          selectedElementId={builderSelectedElement?.id || null}
+          selectedElementName={builderSelectedElement?.name || null}
+          showGrid={builderShowGrid}
+          showSafeArea={builderShowSafeArea}
+          zoom={builderZoom}
+          onUpdateSlide={handleBuilderUpdateSlide}
+          onAddTextBlock={handleBuilderAddTextBlock}
+          onToggleGrid={() => setBuilderShowGrid((value) => !value)}
+          onToggleSafeArea={() => setBuilderShowSafeArea((value) => !value)}
+          onZoomIn={() => setBuilderZoomClamped(builderZoom + 0.1)}
+          onZoomOut={() => setBuilderZoomClamped(builderZoom - 0.1)}
+          onZoomReset={() => setBuilderZoomClamped(1)}
+          onOpenBackgroundDrawer={() => {
+            setBuilderCueDrawerOpen(false);
+            setBuilderBackgroundDrawerOpen(true);
+          }}
+          onOpenFullEditor={openBuilderFullEditor}
+        />
+        <div
+          data-testid="studio-canvas-root"
+          className="grid min-h-0 flex-1 bg-[#101116]"
+          style={{ gridTemplateRows: centerRows }}
+        >
+          <EditableSlideCanvas
+            item={selectedItem}
+            slide={builderSelectedSlide}
+            selectedElementId={builderSelectedElement?.id || null}
+            showGrid={builderShowGrid}
+            showSafeArea={builderShowSafeArea}
+            zoom={builderZoom}
+            onSelectElement={setBuilderSelectedElementId}
+            onUpdateSlide={handleBuilderUpdateSlide}
+            onAddSlide={handleBuilderAddSlide}
+          />
+          {builderBackgroundDrawerOpen && (
+            <BuilderBackgroundDrawer
+              item={selectedItem}
+              slide={builderSelectedSlide}
+              onClose={() => setBuilderBackgroundDrawerOpen(false)}
+              onApplyToItem={applyQuickBackgroundToItem}
+              onApplyToSlide={applyQuickBackgroundToBuilderSlide}
+              onOpenLibrary={() => setIsMotionLibOpen(true)}
+            />
+          )}
+          {builderCueDrawerOpen && (
+            <BuilderCueDrawer
+              item={selectedItem}
+              speakerPresets={workspaceSettings.speakerTimerPresets}
+              onUpdateItem={updateItem}
+              onClose={() => setBuilderCueDrawerOpen(false)}
+            />
+          )}
+          <SlideTimelineStrip
+            item={selectedItem}
+            selectedSlideId={builderSelectedSlide?.id || null}
+            activeItemId={activeItemId}
+            activeSlideIndex={activeSlideIndex}
+            onSelectSlide={(slideId) => {
+              setBuilderSelectedSlideId(slideId);
+              setBuilderSelectedElementId(null);
+            }}
+            onGoLive={(slideIndex) => selectedItem && goLive(selectedItem, slideIndex)}
+            onAddSlide={handleBuilderAddSlide}
+            onDuplicateSlide={handleBuilderDuplicateSlide}
+            onDeleteSlide={handleBuilderDeleteSelectedSlide}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  const builderDesktopWorkspace = viewMode === 'BUILDER' ? (
+    <PresenterDesktopShell
+      mode="builder"
+      leftPane={renderBuilderRunSheetPane()}
+      centerPane={renderBuilderCenterPane()}
+      rightPane={(
+        <BuilderRightRail
+          selectedItem={selectedItem}
+          selectedSlide={builderSelectedSlide}
+          selectedElementId={builderSelectedElement?.id || null}
+          activeItem={activeItem}
+          activeSlide={activeSlide}
+          activeSlideIndex={activeSlideIndex}
+          schedule={schedule}
+          isStageDisplayLive={isStageDisplayLive}
+          speakerPresets={workspaceSettings.speakerTimerPresets}
+          onUpdateItem={updateItem}
+          onUpdateSlide={handleBuilderUpdateSlide}
+          onSelectItem={(itemId) => setSelectedItemId(itemId)}
+          onGoLive={goLive}
+        />
+      )}
+      bottomPane={(
+        <BuilderBottomDock
+          item={selectedItem}
+          slide={builderSelectedSlide}
+          slideIndex={builderSelectedSlideIndex}
+          slideCount={selectedItem?.slides.length || 0}
+          outputEnabled={isOutputLive}
+          speakerPresets={workspaceSettings.speakerTimerPresets}
+          onAddSlide={handleBuilderAddSlide}
+          onDuplicateSlide={handleBuilderDuplicateSlide}
+          onOpenFullEditor={() => {
+            if (builderSelectedSlide) setEditingSlide(builderSelectedSlide);
+            else setEditingSlide(null);
+            setIsSlideEditorOpen(true);
+          }}
+          onOpenCueDrawer={() => {
+            setBuilderBackgroundDrawerOpen(false);
+            setBuilderCueDrawerOpen(true);
+          }}
+          onGoLive={handleBuilderGoLive}
+          onSelectPrevious={() => handleBuilderSelectAdjacentSlide(-1)}
+          onSelectNext={() => handleBuilderSelectAdjacentSlide(1)}
+        />
+      )}
+      leftWidth={builderLeftWidth}
+      rightWidth={builderRightWidth}
+      bottomHeight={builderBottomHeight}
     />
   ) : null;
 
@@ -8556,7 +9028,9 @@ function App() {
           }
         }}
       >
-        {isPresenterBeta ? (
+        {viewMode === 'BUILDER' ? (
+          builderDesktopWorkspace
+        ) : isPresenterBeta ? (
           presenterBetaWorkspace
         ) : (
           <>
