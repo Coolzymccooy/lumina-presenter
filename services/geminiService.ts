@@ -4,6 +4,7 @@ import type { SermonSummary } from "./sermonSummaryService";
 import { nanoid } from "nanoid";
 import { getServerApiBaseCandidates, getServerApiBaseUrl } from "./serverApi";
 import { getCachedSemanticReference, normalizeBibleReference, setCachedSemanticReference } from "./bibleLookup";
+import { sanitizeLyricsForSlideGeneration } from "./lyricSources/lyricSanitizer";
 
 type AiJson = {
   ok?: boolean;
@@ -125,7 +126,9 @@ const inferSemanticFallbackReference = (query: string): string => {
 };
 
 export const generateSlidesFromText = async (text: string): Promise<GeneratedSlideData | null> => {
-  const response = await postAi("/api/ai/generate-slides", { text }, 30000);
+  const cleaned = sanitizeLyricsForSlideGeneration(text);
+  const payloadText = cleaned || text;
+  const response = await postAi("/api/ai/generate-slides", { text: payloadText }, 30000);
   if (!response) {
     throw new Error(`Could not reach AI backend at ${getServerApiBaseUrl()}.`);
   }

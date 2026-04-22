@@ -1,7 +1,7 @@
 import { getServerApiBaseCandidates } from '../serverApi';
 import type { WebSearchResult } from './types';
 
-const TIMEOUT_MS = 10_000;
+const TIMEOUT_MS = 12_000;
 const MAX_RESULTS = 5;
 const MAX_SNIPPET_WORDS = 40;
 
@@ -11,7 +11,7 @@ function clampSnippet(snippet: string): string {
   return `${words.slice(0, MAX_SNIPPET_WORDS).join(' ')}...`;
 }
 
-export async function searchWebForLyrics(query: string): Promise<WebSearchResult[]> {
+export async function searchTavilyForLyrics(query: string): Promise<WebSearchResult[]> {
   const q = query.trim();
   if (!q) return [];
   const bases = getServerApiBaseCandidates();
@@ -21,7 +21,7 @@ export async function searchWebForLyrics(query: string): Promise<WebSearchResult
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const res = await fetch(`${base.replace(/\/+$/, '')}/api/lyrics/web-search`, {
+      const res = await fetch(`${base.replace(/\/+$/, '')}/api/lyrics/tavily-search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: q }),
@@ -34,12 +34,16 @@ export async function searchWebForLyrics(query: string): Promise<WebSearchResult
       return raw
         .slice(0, MAX_RESULTS)
         .map((r) => ({
-          title: r.title,
-          url: r.url,
-          domain: r.domain,
+          title: String(r.title || '').trim(),
+          url: String(r.url || '').trim(),
+          domain: String(r.domain || '').trim(),
           snippet: clampSnippet(r.snippet || ''),
-          provider: r.provider || 'brave',
-        }));
+          provider: 'tavily',
+          score: typeof r.score === 'number' ? r.score : undefined,
+          detectedTitle: r.detectedTitle,
+          detectedArtist: r.detectedArtist,
+        }))
+        .filter((r) => r.title && r.url);
     } catch {
       clearTimeout(timer);
       return [];

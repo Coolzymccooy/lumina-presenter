@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import express from 'express';
-import { createLyricsRouter } from './lyrics.js';
+import { createLyricsRouter, scoreLrclibMatch } from './lyrics.js';
 
 const originalFetch = globalThis.fetch;
 
@@ -44,6 +44,18 @@ describe('POST /api/lyrics/lrclib', () => {
     expect(res.body.data.hit.trackName).toBe('Way Maker');
   });
 
+  it('rejects weak LRCLIB false positives so later providers can run', async () => {
+    globalThis.fetch = vi.fn(async () => ({
+      ok: true, status: 200,
+      headers: { get: () => 'application/json' },
+      json: async () => ([{ id: 9, trackName: 'Joy', artistName: 'Tree63', plainLyrics: 'Joy lyrics...' }]),
+    }));
+    const app = makeApp({ AI_WEB_LYRICS_FETCH: 'true' });
+    const res = await callJson(app, '/api/lyrics/lrclib', { query: 'Joy overflow' });
+    expect(res.status).toBe(200);
+    expect(res.body.data.hit).toBeNull();
+  });
+
   it('returns 400 when query missing', async () => {
     const app = makeApp({ AI_WEB_LYRICS_FETCH: 'true' });
     const res = await callJson(app, '/api/lyrics/lrclib', {});
@@ -64,6 +76,29 @@ describe('POST /api/lyrics/lrclib', () => {
     expect(res.status).toBe(502);
     expect(res.body.error).toBe('LRCLIB_FETCH_FAILED');
     expect(res.body.message).toBeUndefined();
+  });
+});
+
+describe('scoreLrclibMatch', () => {
+  it('scores exact title matches highly', () => {
+    expect(scoreLrclibMatch('Jehovah Reigns', {
+      trackName: 'Jehovah Reigns',
+      artistName: 'Solomon Lange',
+      plainLyrics: 'lyrics',
+    })).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it('rejects artist-only and one-token false positives', () => {
+    expect(scoreLrclibMatch('casting crowns', {
+      trackName: 'What If His People Prayed',
+      artistName: 'Casting Crowns',
+      plainLyrics: 'lyrics',
+    })).toBe(0);
+    expect(scoreLrclibMatch('Joy overflow', {
+      trackName: 'Joy',
+      artistName: 'Tree63',
+      plainLyrics: 'lyrics',
+    })).toBe(0);
   });
 });
 
@@ -114,5 +149,67 @@ describe('POST /api/lyrics/web-search', () => {
     const res = await callJson(app, '/api/lyrics/web-search', { query: 'Olowogbogboro' });
     expect(res.status).toBe(200);
     expect(res.body.data.results[0].domain).toBe('naijalyrics.example');
+    expect(res.body.data.results[0].provider).toBe('brave');
+  });
+});
+
+describe('POST /api/lyrics/tavily-search', () => {
+  it('returns 503 when Tavily API key missing', async () => {
+    const app = makeApp({ AI_WEB_LYRICS_FETCH: 'true' });
+    const res = await callJson(app, '/api/lyrics/tavily-search', { query: 'any' });
+    expect(res.status).toBe(503);
+    expect(res.body.error).toBe('TAVILY_API_KEY_MISSING');
+  });
+
+  it('returns 503 when flag off', async () => {
+    const app = makeApp({ AI_WEB_LYRICS_FETCH: 'false', TAVILY_API_KEY: 'x' });
+    const res = await callJson(app, '/api/lyrics/tavily-search', { query: 'any' });
+    expect(res.status).toBe(503);
+    expect(res.body.error).toBe('FEATURE_DISABLED');
+  });
+
+  it('maps Tavily results without leaking raw_content', async () => {
+    globalThis.fetch = vi.fn(async (_url, init) => {
+      const body = JSON.parse(String(init.body));
+      expect(body.include_raw_content).toBeUndefined();
+      expect(body.safe_search).toBeUndefined();
+      expect(body.include_favicon).toBeUndefined();
+      return {
+        ok: true, status: 200,
+        headers: { get: () => 'application/json' },
+        json: async () => ({
+          results: [
+            {
+              title: 'Joy Overflow - Joe Praize Lyrics',
+              url: 'https://africangospellyrics.example/joy-overflow',
+              content: 'Joy overflow source summary',
+              raw_content: 'full page lyrics must not leak',
+              score: 0.9,
+            },
+          ],
+        }),
+      };
+    });
+    const app = makeApp({ AI_WEB_LYRICS_FETCH: 'true', TAVILY_API_KEY: 'test-key' });
+    const res = await callJson(app, '/api/lyrics/tavily-search', { query: 'Joy overflow' });
+    expect(res.status).toBe(200);
+    expect(res.body.data.results[0]).toMatchObject({
+      title: 'Joy Overflow - Joe Praize Lyrics',
+      domain: 'africangospellyrics.example',
+      provider: 'tavily',
+      score: 0.9,
+      detectedTitle: 'Joy Overflow',
+      detectedArtist: 'Joe Praize',
+    });
+    expect(JSON.stringify(res.body)).not.toContain('full page lyrics must not leak');
+  });
+
+  it('does not leak raw error message on upstream failure', async () => {
+    globalThis.fetch = vi.fn(async () => { throw new Error('ECONNREFUSED secret-host:443'); });
+    const app = makeApp({ AI_WEB_LYRICS_FETCH: 'true', TAVILY_API_KEY: 'x' });
+    const res = await callJson(app, '/api/lyrics/tavily-search', { query: 'any' });
+    expect(res.status).toBe(502);
+    expect(res.body.error).toBe('TAVILY_FETCH_FAILED');
+    expect(res.body.message).toBeUndefined();
   });
 });

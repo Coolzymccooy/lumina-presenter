@@ -1357,6 +1357,7 @@ function App() {
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
   const [isSlideEditorOpen, setIsSlideEditorOpen] = useState(false);
   const [showSaveProjectionHint, setShowSaveProjectionHint] = useState(false);
+  const [aiGenerationSuccess, setAiGenerationSuccess] = useState<{ title: string; slideCount: number } | null>(null);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isGuidedToursOpen, setIsGuidedToursOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false); // NEW
@@ -5822,7 +5823,14 @@ function App() {
     const sentiment = analyzeSentimentContext(item.title + ' ' + (item.slides[0]?.content || ''));
     logActivity(user?.uid, 'AI_GENERATION', { sentiment, slideCount: normalizedItem.slides.length, type: normalizedItem.type });
     addItem(normalizedItem);
+    setAiGenerationSuccess({ title: normalizedItem.title, slideCount: normalizedItem.slides.length });
   };
+
+  useEffect(() => {
+    if (!aiGenerationSuccess) return;
+    const timer = window.setTimeout(() => setAiGenerationSuccess(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [aiGenerationSuccess]);
 
   const resolveImportedDeckTitle = (fallbackTitle: string) => {
     const customTitle = importTitle.trim();
@@ -8447,6 +8455,42 @@ function App() {
             <button
               type="button"
               onClick={() => setShowSaveProjectionHint(false)}
+              aria-label="Dismiss"
+              className="shrink-0 -mr-1 -mt-1 p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
+            >
+              <XIcon className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+      {aiGenerationSuccess && (
+        <div className="fixed bottom-6 right-6 z-[60] max-w-sm rounded-lg border border-emerald-500/40 bg-zinc-900/95 shadow-2xl backdrop-blur-md p-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <div className="flex items-start gap-3">
+            <div className="shrink-0 mt-0.5 h-8 w-8 rounded-full bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-zinc-100">
+                "{aiGenerationSuccess.title}" generated
+              </p>
+              <p className="mt-1 text-xs text-zinc-300 leading-relaxed">
+                {aiGenerationSuccess.slideCount} slide{aiGenerationSuccess.slideCount === 1 ? '' : 's'} added. Open the <span className="font-semibold text-emerald-300">Run Sheet</span> to review and launch.
+              </p>
+              <div className="mt-3 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => setAiGenerationSuccess(null)}
+                  className="text-[11px] font-semibold text-zinc-100 bg-emerald-600 hover:bg-emerald-500 transition-colors px-3 py-1.5 rounded"
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAiGenerationSuccess(null)}
               aria-label="Dismiss"
               className="shrink-0 -mr-1 -mt-1 p-1 text-zinc-500 hover:text-zinc-200 transition-colors"
             >

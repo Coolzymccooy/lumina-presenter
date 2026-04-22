@@ -2070,9 +2070,22 @@ app.post("/api/ai/generate-slides", async (req, res) => {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Break the following text into presentation slides for a church service.
-Identify sections like "Verse", "Chorus", "Bridge", or "Point".
-Keep slide content concise (max 4-6 lines).
+      contents: `You are preparing worship presentation slides. Break the text below into slides that mirror how lyric websites display stanzas, so the congregation can follow along line by line.
+
+FORMATTING RULES (critical):
+- PRESERVE line breaks: every lyric line (short poetic phrase) must be on its own line, separated by a literal \\n inside the JSON "content" string.
+- Do NOT merge two lyric lines into one line. Never join phrases with a comma or space when the source had them on separate lines.
+- Target 2-4 lyric lines per slide (one stanza or couplet per slide). Split longer stanzas into two slides rather than cramming.
+- Keep each line short (roughly 3-10 words). Do not reflow or paraphrase.
+- Strip producer ad-libs (e.g. parenthetical "(oh-oh)", "(whoa)", name credits) and any site boilerplate.
+
+LABEL RULES:
+- If a section marker is present (Verse 1, Pre-Chorus, Chorus, Bridge, Tag, Outro, Point 1), use that exact name as "label".
+- If the same section appears twice, label them "Chorus", "Chorus (Repeat)" etc.
+- For sermon/teaching text use "Point 1", "Point 2", or "Scripture" as appropriate.
+
+OUTPUT:
+Return JSON matching the schema. "content" must use \\n between lyric lines and \\n\\n only between distinct stanzas within the same slide (prefer splitting into separate slides instead).
 
 Text to process:
 ${text}`,
