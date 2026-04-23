@@ -9084,16 +9084,26 @@ function App() {
                 className={`w-full bg-zinc-950 border-l border-zinc-900 flex flex-col h-72 lg:h-auto border-t lg:border-t-0 shrink-0 min-w-0 ${legacyMachineMode ? 'hidden' : (isElectronShell ? 'flex' : 'hidden md:flex')}`}
                 style={legacyMachineMode ? undefined : { width: presenterQueueWidth }}
               >
-                <div className="sticky top-0 z-20 h-10 px-3 border-b border-zinc-900 font-bold text-zinc-500 text-[10px] uppercase tracking-wider flex justify-between items-center bg-zinc-950">
-                  <span>Live Queue</span>
-                  <div className="flex items-center gap-2">
-                    {activeItem && <span className="text-zinc-600">{presenterQueueSlides.length} slides</span>}
-                    {activeItem && <span className="text-red-500 animate-pulse">* LIVE</span>}
+                <div className="sticky top-0 z-20 h-11 px-3 border-b border-red-900/40 flex justify-between items-center bg-gradient-to-b from-red-950/30 via-zinc-950 to-zinc-950 shadow-[inset_0_-1px_0_rgba(239,68,68,0.25)]">
+                  <span className="flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.22em] text-red-200 drop-shadow-[0_1px_0_rgba(0,0,0,0.6)]">
+                    <span className="relative inline-flex h-2 w-2">
+                      <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-70 animate-ping" />
+                      <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)]" />
+                    </span>
+                    Live Queue
+                  </span>
+                  <div className="flex items-center gap-2 text-[10px] font-bold">
+                    {activeItem && <span className="text-zinc-400">{presenterQueueSlides.length} slides</span>}
+                    {activeItem && <span className="text-red-400 animate-pulse tracking-widest">* LIVE</span>}
                   </div>
                 </div>
                 {enabledTimerCues.length > 0 && (
                   <div className="px-2 py-2 border-b border-zinc-900 bg-zinc-950/60">
-                    <div className="text-[9px] uppercase tracking-widest text-zinc-500 font-bold mb-1">Rundown Cues</div>
+                    <div className="mb-1 flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-zinc-300 font-black">
+                      <span className="inline-flex h-1.5 w-1.5 rounded-full bg-zinc-200 shadow-[0_0_6px_rgba(244,244,245,0.7)]" />
+                      <span>Rundown Cues</span>
+                      <span className="ml-1 h-px flex-1 bg-gradient-to-r from-zinc-400/40 via-zinc-500/15 to-transparent" />
+                    </div>
                     <div className="flex gap-1 overflow-x-auto pb-1 custom-scrollbar">
                       {enabledTimerCues.map((cue, idx) => (
                         <button
@@ -9111,7 +9121,14 @@ function App() {
                   {activeItem && activeSlide ? (
                     <>
                       <div className="sticky top-0 z-10 bg-zinc-950 pb-3">
-                        <div className="mb-2 text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Live Now</div>
+                        <div className="mb-2 flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-red-300 font-black">
+                          <span className="relative inline-flex h-1.5 w-1.5">
+                            <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
+                            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+                          </span>
+                          <span>Live Now</span>
+                          <span className="ml-1 h-px flex-1 bg-gradient-to-r from-red-600/60 via-red-700/20 to-transparent" />
+                        </div>
                         <button
                           ref={activeSlideRef}
                           onClick={() => { setActiveSlideIndex(presenterQueueActiveIndex); setBlackout(false); setIsPlaying(true); }}
@@ -9129,7 +9146,11 @@ function App() {
                         </button>
                         <div className="mt-3 space-y-2">
                           <div className="flex items-center justify-between gap-2">
-                            <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Stage Preview</div>
+                            <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-purple-200 font-black">
+                              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.9)]" />
+                              <span>Stage Preview</span>
+                              <span className="ml-1 h-px w-8 bg-gradient-to-r from-purple-500/70 via-purple-500/20 to-transparent" />
+                            </div>
                             <button
                               onClick={() => setIsStagePreviewEditorOpen(true)}
                               className="inline-flex items-center gap-1 rounded border border-purple-700/40 bg-purple-950/25 px-2 py-1 text-[8px] font-black uppercase tracking-[0.18em] text-purple-200 transition-colors hover:border-purple-500/60 hover:bg-purple-950/40"
@@ -9192,7 +9213,11 @@ function App() {
                       </div>
                       {presenterQueueUpNext.length > 0 && (
                         <div className="space-y-2">
-                          <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">Up Next</div>
+                          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-amber-200 font-black">
+                            <span className="inline-flex h-1.5 w-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.85)]" />
+                            <span>Up Next</span>
+                            <span className="ml-1 h-px flex-1 bg-gradient-to-r from-amber-500/60 via-amber-500/15 to-transparent" />
+                          </div>
                           <div className="space-y-2">
                             {presenterQueueUpNext.map(({ slide, idx }) => (
                               <button
@@ -9214,7 +9239,11 @@ function App() {
                         </div>
                       )}
                       <div className="space-y-2">
-                        <div className="text-[9px] uppercase tracking-[0.2em] text-zinc-500 font-bold">More In Queue</div>
+                        <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-cyan-200 font-black">
+                          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.85)]" />
+                          <span>More In Queue</span>
+                          <span className="ml-1 h-px flex-1 bg-gradient-to-r from-cyan-500/60 via-cyan-500/15 to-transparent" />
+                        </div>
                         <div className={`space-y-2 pr-1 custom-scrollbar ${presenterQueueCompact ? 'max-h-[40vh] overflow-y-auto' : ''}`}>
                           {presenterQueueRemaining.map(({ slide, idx }) => (
                             <button
