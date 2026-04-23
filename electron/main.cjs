@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const ndiSender = require('./ndiSender.cjs');
 const { NDI_RESOLUTION_PRESETS, resolveNdiResolution } = require('./ndiResolution.cjs');
+const { buildCaptureScript: buildNdiAudioCaptureScript } = require('./ndiAudioCapture.cjs');
 const { registerLyricClipboardIpc } = require('./ipc/lyricClipboard.cjs');
 const DIST_INDEX_PATH = path.join(__dirname, '../dist/index.html');
 const DEV_SERVER_URL = process.env.ELECTRON_RENDERER_URL || 'http://localhost:5173';
@@ -50,10 +51,12 @@ const NDI_SCENES = [
 const ndiSources = {};
 let ndiActive = false;
 let ndiBroadcastMode = false;
+let ndiAudioEnabled = false;
 let ndiResolution = '1080p';
 let ndiSessionWidth = NDI_DEFAULT_WIDTH;
 let ndiSessionHeight = NDI_DEFAULT_HEIGHT;
-let ndiStatus = { active: false, broadcastMode: false, resolution: '1080p', width: NDI_DEFAULT_WIDTH, height: NDI_DEFAULT_HEIGHT, sources: [] };
+let ndiAudioDroppedFrames = 0;
+let ndiStatus = { active: false, broadcastMode: false, resolution: '1080p', width: NDI_DEFAULT_WIDTH, height: NDI_DEFAULT_HEIGHT, audioEnabled: false, sources: [] };
 let ndiDropLogTimer = null;
 const NDI_TARGET_FPS = 30;
 // ─────────────────────────────────────────────────────────────────────────────
@@ -336,6 +339,7 @@ function emitNdiState() {
     resolution: ndiResolution,
     width: ndiSessionWidth,
     height: ndiSessionHeight,
+    audioEnabled: ndiAudioEnabled,
     sources,
   };
   if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
@@ -404,6 +408,16 @@ async function startNdiScene(scene, payload) {
 
   if (captureWindow.isDestroyed()) {
     return { ok: false, error: `Capture window for "${scene.sourceName}" closed before start.` };
+  }
+
+  // Inject the audio-capture tap only for the program scene (fillKey:false).
+  // Graphics feeds stay silent — audio belongs on a single program source.
+  if (!scene.fillKey && payload?.audioEnabled) {
+    try {
+      await captureWindow.webContents.executeJavaScript(buildNdiAudioCaptureScript(), true);
+    } catch (err) {
+      console.warn(`[NDI:${scene.sourceName}] audio-capture injection failed:`, err?.message || err);
+    }
   }
 
   const sender = ndiSender.createSender(scene.sourceName);
@@ -750,6 +764,10 @@ function installMachineIpcHandlers() {
     // Broadcast Mode: off = program only (single NDI source, for streaming).
     // on = all three sources including transparent fill+key for switchers.
     ndiBroadcastMode = !!payload?.broadcastMode;
+    // Audio embedding is program-only (fill+key graphics stay silent — audio
+    // belongs on a single program feed to avoid phasing in a switcher sum).
+    ndiAudioEnabled = !!payload?.audioEnabled;
+    ndiAudioDroppedFrames = 0;
     const activeScenes = ndiBroadcastMode ? NDI_SCENES : NDI_SCENES.filter((s) => !s.fillKey);
 
     // Resolve session resolution from the payload preset (falls back to env
@@ -775,6 +793,7 @@ function installMachineIpcHandlers() {
       if (firstFailure) {
         await teardownAllNdiSources();
         ndiBroadcastMode = false;
+        ndiAudioEnabled = false;
         ndiResolution = '1080p';
         ndiSessionWidth = NDI_DEFAULT_WIDTH;
         ndiSessionHeight = NDI_DEFAULT_HEIGHT;
@@ -801,6 +820,7 @@ function installMachineIpcHandlers() {
       await teardownAllNdiSources();
       ndiActive = false;
       ndiBroadcastMode = false;
+      ndiAudioEnabled = false;
       ndiResolution = '1080p';
       ndiSessionWidth = NDI_DEFAULT_WIDTH;
       ndiSessionHeight = NDI_DEFAULT_HEIGHT;
@@ -812,9 +832,11 @@ function installMachineIpcHandlers() {
   ipcMain.handle('ndi:stop', async () => {
     ndiActive = false;
     ndiBroadcastMode = false;
+    ndiAudioEnabled = false;
     ndiResolution = '1080p';
     ndiSessionWidth = NDI_DEFAULT_WIDTH;
     ndiSessionHeight = NDI_DEFAULT_HEIGHT;
+    ndiAudioDroppedFrames = 0;
     if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
     await teardownAllNdiSources();
     emitNdiState();
@@ -822,6 +844,28 @@ function installMachineIpcHandlers() {
   });
 
   ipcMain.handle('ndi:get-status', () => ndiStatus);
+
+  // Audio frames arrive every ~20ms from the Lumina-Program capture window's
+  // audio worklet. Route them to the program sender only. Use `ipcMain.on`
+  // (fire-and-forget) — `.handle` with awaited replies would flood the event
+  // loop.
+  ipcMain.on('ndi:audio-frame', (_event, payload) => {
+    if (!ndiActive || !ndiAudioEnabled) return;
+    const entry = ndiSources['program'];
+    if (!entry || !entry.active || !entry.sender) return;
+    const pcm = payload?.pcm;
+    const sampleRate = Number(payload?.sampleRate);
+    const channels = Number(payload?.channels);
+    const samples = Number(payload?.samples);
+    if (!pcm || !(pcm instanceof ArrayBuffer)) return;
+    const buffer = Buffer.from(pcm);
+    entry.sender.sendAudioFrame(buffer, sampleRate, channels, samples).catch((err) => {
+      ndiAudioDroppedFrames++;
+      if (ndiAudioDroppedFrames <= 3) {
+        console.error('[NDI] audio send error:', err?.message || String(err));
+      }
+    });
+  });
   // ──────────────────────────────────────────────────────────────────────────
 
   ipcMain.handle('machine:start-service', async (_event, payload) => {

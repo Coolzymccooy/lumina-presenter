@@ -24,6 +24,7 @@ interface NdiStatus {
   resolution: '720p' | '1080p' | '4k';
   width: number;
   height: number;
+  audioEnabled: boolean;
   sources: NdiSourceStatus[];
 }
 
@@ -117,10 +118,12 @@ interface Window {
         sessionId?: string;
         broadcastMode?: boolean;
         resolution?: '720p' | '1080p' | '4k';
+        audioEnabled?: boolean;
       }) => Promise<{ ok: boolean; error?: string; state?: NdiStatus }>;
       stop?: () => Promise<{ ok: boolean }>;
       getStatus?: () => Promise<NdiStatus>;
       onState?: (callback: (state: NdiStatus) => void) => (() => void);
+      sendAudioFrame?: (payload: { pcm: ArrayBuffer; sampleRate: number; channels: number; samples: number }) => void;
     };
     updates?: {
       getStatus?: () => Promise<{

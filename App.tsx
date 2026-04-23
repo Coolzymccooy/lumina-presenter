@@ -309,6 +309,7 @@ type WorkspaceSettings = {
   ndiSources: NdiSourceConfig[];
   ndiBroadcastMode: boolean;
   ndiResolution: '720p' | '1080p' | '4k';
+  ndiAudioEnabled: boolean;
 };
 
 type NdiSourceConfig = {
@@ -922,6 +923,7 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
   if (raw.ndiResolution === '720p' || raw.ndiResolution === '1080p' || raw.ndiResolution === '4k') {
     safe.ndiResolution = raw.ndiResolution;
   }
+  if (typeof raw.ndiAudioEnabled === 'boolean') safe.ndiAudioEnabled = raw.ndiAudioEnabled;
   return safe;
 };
 
@@ -956,6 +958,7 @@ const createDefaultWorkspaceSettings = (): WorkspaceSettings => ({
   ndiSources: [],
   ndiBroadcastMode: false,
   ndiResolution: '1080p',
+  ndiAudioEnabled: false,
 });
 
 const readInitialWorkspaceSettings = (): WorkspaceSettings => {
@@ -1624,7 +1627,7 @@ function App() {
   const presenterMediaUploadInputRef = useRef<HTMLInputElement | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
   const [isStageDisplayLive, setIsStageDisplayLive] = useState(false);
-  const [ndiState, setNdiState] = useState<NdiStatus>({ active: false, broadcastMode: false, resolution: '1080p', width: 1920, height: 1080, sources: [] });
+  const [ndiState, setNdiState] = useState<NdiStatus>({ active: false, broadcastMode: false, resolution: '1080p', width: 1920, height: 1080, audioEnabled: false, sources: [] });
   const [ndiMenuOpen, setNdiMenuOpen] = useState(false);
   const ndiMenuRef = useRef<HTMLDivElement | null>(null);
   const [ndiError, setNdiError] = useState<string | null>(null);
@@ -9677,6 +9680,7 @@ function App() {
                                       sessionId: liveSessionId,
                                       broadcastMode: workspaceSettings.ndiBroadcastMode,
                                       resolution: workspaceSettings.ndiResolution,
+                                      audioEnabled: workspaceSettings.ndiAudioEnabled,
                                     });
                                     if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to start.');
                                   }
@@ -9723,6 +9727,7 @@ function App() {
                                           sessionId: liveSessionId,
                                           broadcastMode: next,
                                           resolution: workspaceSettings.ndiResolution,
+                                          audioEnabled: workspaceSettings.ndiAudioEnabled,
                                         });
                                         if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to restart.');
                                       }
@@ -9755,6 +9760,7 @@ function App() {
                                           sessionId: liveSessionId,
                                           broadcastMode: workspaceSettings.ndiBroadcastMode,
                                           resolution: next,
+                                          audioEnabled: workspaceSettings.ndiAudioEnabled,
                                         });
                                         if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to restart.');
                                       }
@@ -9766,6 +9772,36 @@ function App() {
                                     <option value="4k">4K (3840×2160)</option>
                                   </select>
                                 </div>
+                                <label className="flex items-start gap-2 p-2 rounded-lg border border-zinc-700 bg-black/40 text-zinc-300 text-[10px] cursor-pointer hover:border-violet-700/60">
+                                  <input
+                                    type="checkbox"
+                                    checked={workspaceSettings.ndiAudioEnabled}
+                                    onChange={async (e) => {
+                                      const next = e.target.checked;
+                                      handleWorkspaceSettingsSave({ ndiAudioEnabled: next });
+                                      if (ndiState.active) {
+                                        setNdiError(null);
+                                        await window.electron?.ndi?.stop?.();
+                                        const result = await window.electron?.ndi?.start?.({
+                                          workspaceId,
+                                          sessionId: liveSessionId,
+                                          broadcastMode: workspaceSettings.ndiBroadcastMode,
+                                          resolution: workspaceSettings.ndiResolution,
+                                          audioEnabled: next,
+                                        });
+                                        if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to restart.');
+                                      }
+                                    }}
+                                    className="accent-violet-500 mt-0.5"
+                                  />
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="font-bold uppercase tracking-wider text-[9px]">Embed audio on Lumina-Program</span>
+                                    <span className="text-[9px] leading-relaxed text-zinc-500">Routes audience-output audio onto the Program NDI feed. Lyrics and LowerThirds stay video-only. Note: YouTube iframes cannot be tapped.</span>
+                                    {ndiState.active && (
+                                      <span className="text-[9px] leading-relaxed text-violet-400/80 italic">Toggling while live will briefly restart NDI.</span>
+                                    )}
+                                  </div>
+                                </label>
                                 <div className="text-[9px] font-black uppercase tracking-widest text-zinc-500 pb-1 border-b border-zinc-800">NDI Sources</div>
                                 {(ndiState.sources.length ? ndiState.sources : (workspaceSettings.ndiBroadcastMode ? [
                                   { id: 'program', sourceName: 'Lumina-Program', fillKey: false, active: false },

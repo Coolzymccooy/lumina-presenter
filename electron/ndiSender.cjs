@@ -112,6 +112,35 @@ class NdiSenderInstance {
     });
   }
 
+  /**
+   * Send one interleaved Float32 audio frame (NDI embedded audio).
+   * `pcmBuffer` holds interleaved L/R samples, so its length is samples * channels.
+   * @param {Buffer} pcmBuffer
+   * @param {number} sampleRate e.g. 48000
+   * @param {number} channels typically 2 (stereo)
+   * @param {number} samples samples per channel in this frame
+   */
+  async sendAudioFrame(pcmBuffer, sampleRate, channels, samples) {
+    if (!this._active || !this._sender) return;
+    if (!pcmBuffer || !Buffer.isBuffer(pcmBuffer)) return;
+    if (!Number.isFinite(sampleRate) || sampleRate <= 0) return;
+    if (!Number.isFinite(channels) || channels <= 0) return;
+    if (!Number.isFinite(samples) || samples <= 0) return;
+
+    // Float32Interleaved = 1 in grandiose's AudioFormat enum. stride per channel
+    // is the byte-size of one channel's contiguous samples, but for interleaved
+    // format NDI wants the stride of one full sample's worth of bytes = channels * 4.
+    await this._sender.audio({
+      audioFormat: 1,
+      referenceLevel: 0,
+      sampleRate,
+      channels,
+      samples,
+      channelStrideInBytes: channels * 4,
+      data: pcmBuffer,
+    });
+  }
+
   /** Destroy the sender cleanly. Safe to call multiple times. */
   async stop() {
     this._active = false;
