@@ -9698,17 +9698,33 @@ function App() {
                               <div
                                 className="absolute right-0 bottom-full mb-2 z-50 w-72 rounded-lg border border-zinc-700 bg-zinc-950/95 backdrop-blur-md shadow-xl p-3 space-y-2"
                               >
-                                <label className={`flex items-start gap-2 p-2 rounded-lg border text-[10px] ${ndiState.active ? 'border-zinc-800 bg-black/40 text-zinc-500 cursor-not-allowed' : 'border-zinc-700 bg-black/40 text-zinc-300 cursor-pointer hover:border-violet-700/60'}`}>
+                                <label className="flex items-start gap-2 p-2 rounded-lg border border-zinc-700 bg-black/40 text-zinc-300 text-[10px] cursor-pointer hover:border-violet-700/60">
                                   <input
                                     type="checkbox"
                                     checked={workspaceSettings.ndiBroadcastMode}
-                                    disabled={ndiState.active}
-                                    onChange={(e) => handleWorkspaceSettingsSave({ ndiBroadcastMode: e.target.checked })}
+                                    onChange={async (e) => {
+                                      const next = e.target.checked;
+                                      handleWorkspaceSettingsSave({ ndiBroadcastMode: next });
+                                      // Mid-flight toggle: cycle NDI so the new mode takes effect immediately.
+                                      if (ndiState.active) {
+                                        setNdiError(null);
+                                        await window.electron?.ndi?.stop?.();
+                                        const result = await window.electron?.ndi?.start?.({
+                                          workspaceId,
+                                          sessionId: liveSessionId,
+                                          broadcastMode: next,
+                                        });
+                                        if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to restart.');
+                                      }
+                                    }}
                                     className="accent-violet-500 mt-0.5"
                                   />
                                   <div className="flex flex-col gap-0.5">
                                     <span className="font-bold uppercase tracking-wider text-[9px]">Broadcast Mode (fill + key)</span>
                                     <span className="text-[9px] leading-relaxed text-zinc-500">Adds transparent Lumina-Lyrics and Lumina-LowerThirds sources for vMix / OBS / hardware switchers. Leave off for direct streaming.</span>
+                                    {ndiState.active && (
+                                      <span className="text-[9px] leading-relaxed text-violet-400/80 italic">Toggling while live will briefly restart NDI.</span>
+                                    )}
                                   </div>
                                 </label>
                                 <div className="text-[9px] font-black uppercase tracking-widest text-zinc-500 pb-1 border-b border-zinc-800">NDI Sources</div>
