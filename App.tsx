@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { INITIAL_SCHEDULE, MOCK_SONGS, DEFAULT_BACKGROUNDS, VIDEO_BACKGROUNDS, GOSPEL_TRACKS, GospelTrack } from './constants';
 import {
   ServiceItem,
@@ -1630,6 +1631,7 @@ function App() {
   const [ndiState, setNdiState] = useState<NdiStatus>({ active: false, broadcastMode: false, resolution: '1080p', width: 1920, height: 1080, audioEnabled: false, sources: [] });
   const [ndiMenuOpen, setNdiMenuOpen] = useState(false);
   const ndiMenuRef = useRef<HTMLDivElement | null>(null);
+  const ndiDropdownRef = useRef<HTMLDivElement | null>(null);
   const [ndiError, setNdiError] = useState<string | null>(null);
   const [ndiWarning, setNdiWarning] = useState<string | null>(null);
   const [lowerThirdsEnabled, setLowerThirdsEnabled] = useState(false);
@@ -4301,7 +4303,10 @@ function App() {
   useEffect(() => {
     if (!ndiMenuOpen) return;
     const handleClick = (event: MouseEvent) => {
-      if (ndiMenuRef.current && !ndiMenuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const insideAnchor = !!(ndiMenuRef.current && ndiMenuRef.current.contains(target));
+      const insideDropdown = !!(ndiDropdownRef.current && ndiDropdownRef.current.contains(target));
+      if (!insideAnchor && !insideDropdown) {
         setNdiMenuOpen(false);
       }
     };
@@ -9726,9 +9731,20 @@ function App() {
                                 {ndiMenuOpen ? '\u25b2' : '\u25bc'}
                               </button>
                             </div>
-                            {ndiMenuOpen && (
+                            {ndiMenuOpen && (() => {
+                              // Portal to <body> so the dropdown escapes the transport's stacking
+                              // context — otherwise the RUN SHEET column renders over its left half.
+                              const anchor = ndiMenuRef.current?.getBoundingClientRect();
+                              if (!anchor) return null;
+                              const DROPDOWN_W = 288; // w-72
+                              const MARGIN = 8;
+                              const top = Math.max(8, anchor.top - MARGIN);
+                              const right = Math.max(8, window.innerWidth - anchor.right);
+                              return createPortal(
                               <div
-                                className="absolute right-0 bottom-full mb-2 z-50 w-72 rounded-lg border border-zinc-700 bg-zinc-950/95 backdrop-blur-md shadow-xl p-3 space-y-2"
+                                ref={ndiDropdownRef}
+                                style={{ position: 'fixed', right: `${right}px`, bottom: `${window.innerHeight - top}px`, width: `${DROPDOWN_W}px`, zIndex: 9999 }}
+                                className="rounded-lg border border-zinc-700 bg-zinc-950/95 backdrop-blur-md shadow-xl p-3 space-y-2"
                               >
                                 <label className="flex items-start gap-2 p-2 rounded-lg border border-zinc-700 bg-black/40 text-zinc-300 text-[10px] cursor-pointer hover:border-violet-700/60">
                                   <input
@@ -9842,8 +9858,10 @@ function App() {
                                     </span>
                                   </div>
                                 ))}
-                              </div>
-                            )}
+                              </div>,
+                              document.body
+                              );
+                            })()}
                           </div>
                         )}
                         {ndiWarning && (
