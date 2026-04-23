@@ -1618,6 +1618,7 @@ function App() {
   const [isStageDisplayLive, setIsStageDisplayLive] = useState(false);
   const [ndiState, setNdiState] = useState<NdiStatus>({ active: false, sources: [] });
   const [ndiMenuOpen, setNdiMenuOpen] = useState(false);
+  const ndiMenuRef = useRef<HTMLDivElement | null>(null);
   const [ndiError, setNdiError] = useState<string | null>(null);
   const [lowerThirdsEnabled, setLowerThirdsEnabled] = useState(false);
   const [routingMode, setRoutingMode] = useState<'PROJECTOR' | 'STREAM' | 'LOBBY'>('PROJECTOR');
@@ -4262,6 +4263,25 @@ function App() {
     }).catch(() => {});
     return () => off?.();
   }, [isElectronShell]);
+
+  // Close NDI menu on outside click or Escape.
+  useEffect(() => {
+    if (!ndiMenuOpen) return;
+    const handleClick = (event: MouseEvent) => {
+      if (ndiMenuRef.current && !ndiMenuRef.current.contains(event.target as Node)) {
+        setNdiMenuOpen(false);
+      }
+    };
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setNdiMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [ndiMenuOpen]);
 
   useEffect(() => {
     if (!hasElectronDisplayControl) return;
@@ -9633,7 +9653,7 @@ function App() {
                         <button onClick={() => void copyShareUrl(cleanFeedUrl, 'Clean feed URL copied!')} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-violet-300 hover:border-violet-600 transition-all uppercase tracking-wider" title="No branding or audience overlays — use for recording or streaming">Copy Clean Feed</button>
                         <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy Stage URL</button>
                         {isElectronShell && hasElectronDisplayControl && (
-                          <div className="relative">
+                          <div className="relative" ref={ndiMenuRef}>
                             <div className="flex">
                               <button
                                 onClick={async () => {
@@ -9664,8 +9684,7 @@ function App() {
                             </div>
                             {ndiMenuOpen && (
                               <div
-                                className="absolute right-0 top-10 z-50 w-72 rounded-lg border border-zinc-700 bg-zinc-950/95 backdrop-blur-md shadow-xl p-3 space-y-2"
-                                onMouseLeave={() => setNdiMenuOpen(false)}
+                                className="absolute right-0 bottom-full mb-2 z-50 w-72 rounded-lg border border-zinc-700 bg-zinc-950/95 backdrop-blur-md shadow-xl p-3 space-y-2"
                               >
                                 <div className="text-[9px] font-black uppercase tracking-widest text-zinc-500 pb-1 border-b border-zinc-800">NDI Sources</div>
                                 {(ndiState.sources.length ? ndiState.sources : [
