@@ -44,6 +44,8 @@ interface SlideRendererProps {
   projectedAudienceQr?: AudienceQrProjectionState;
   /** Church branding strips shown on left/right edges. Only pass on full-size (non-thumbnail) renders. */
   branding?: SlideBrandingConfig;
+  /** NDI fill+key scenes: suppress floor/media/contrast layers so output is a transparent canvas with text only. */
+  hideBackground?: boolean;
 }
 
 function safeString(v: unknown) {
@@ -210,6 +212,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   audienceOverlay,
   projectedAudienceQr,
   branding,
+  hideBackground = false,
 }) => {
   const youtubeIframeRef = useRef<HTMLIFrameElement>(null);
   const lastStableBackgroundRef = useRef<RetainedBackgroundAsset | null>(null);
@@ -976,6 +979,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       projectedAudienceQr={projectedAudienceQr}
       branding={branding}
       alphaOverlayUrl={slide.alphaOverlayUrl}
+      hideBackground={hideBackground}
     />
   );
 };
@@ -1007,12 +1011,13 @@ interface ScaledCanvasProps {
   branding?: SlideBrandingConfig;
   alphaOverlayUrl?: string;
   isThumbnail?: boolean;
+  hideBackground?: boolean;
 }
 
 const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
   fitContainer, slide, item, contentText, hasReadableText, hasStructuredElements, structuredElements, hasTextOverlay, textPx, textLayerStyle, useReadingPanel,
   lowerThirds, showSlideLabel, renderMedia, renderFloor, mediaType, hasBackground, mediaError, isLoading,
-  audienceOverlay, projectedAudienceQr, branding, alphaOverlayUrl, isThumbnail = false,
+  audienceOverlay, projectedAudienceQr, branding, alphaOverlayUrl, isThumbnail = false, hideBackground = false,
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [canvasFrame, setCanvasFrame] = useState<CanvasFrame>(EMPTY_CANVAS_FRAME);
@@ -1113,25 +1118,27 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
         }}
       >
         {/* Floor layer — always-on last-stable background; prevents black flash during load/error */}
-        {renderFloor && (
+        {!hideBackground && renderFloor && (
           <div style={{ position: "absolute", inset: 0 }}>{renderFloor()}</div>
         )}
 
         {/* Media layer — live background rendered on top of floor */}
-        <div style={{ position: "absolute", inset: 0 }}>{renderMedia()}</div>
+        {!hideBackground && (
+          <div style={{ position: "absolute", inset: 0 }}>{renderMedia()}</div>
+        )}
 
         {/* Alpha-channel video overlay — z-20 (above background, below text) */}
-        {alphaOverlayUrl && (
+        {!hideBackground && alphaOverlayUrl && (
           <AlphaOverlay src={alphaOverlayUrl} isThumbnail={isThumbnail} />
         )}
 
         {/* Slide-level logo — above background, below text */}
-        {slide.logoUrl ? (
+        {!hideBackground && slide.logoUrl ? (
           <LogoOverlay logoUrl={slide.logoUrl} position={slide.logoPosition} sizePercent={slide.logoSize} />
         ) : null}
 
         {/* Soft overlay — z-30 */}
-        {hasTextOverlay && hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
+        {!hideBackground && hasTextOverlay && hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
           <div style={{ position: "absolute", inset: 0, background: TEXT_CONTRAST_BACKGROUND_OVERLAY }} />
         )}
 

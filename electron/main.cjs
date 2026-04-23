@@ -29,12 +29,19 @@ let stageWindowRef = null;
 let displayTestTimers = new Map();
 let displayTestWindows = new Map();
 
-// ─── NDI outbound sender state ────────────────────────────────────────────────
+// ─── NDI outbound sender state (Phase 2: multi-source) ──────────────────────
+// Fixed scene list — all three are broadcast simultaneously when NDI is active.
+// Downstream switchers bind to these source names; do not rename casually.
+const NDI_SCENES = [
+  { id: 'program',     sourceName: 'Lumina-Program',     fillKey: false, route: 'output' },
+  { id: 'lyrics',      sourceName: 'Lumina-Lyrics',      fillKey: true,  route: 'lyrics-ndi' },
+  { id: 'lowerThirds', sourceName: 'Lumina-LowerThirds', fillKey: true,  route: 'lower-thirds-ndi' },
+];
+/** @type {Record<string, { window: any, sender: any, active: boolean, lastError?: string, droppedFrames: number }>} */
+const ndiSources = {};
 let ndiActive = false;
-let ndiStatus = { active: false, sourceName: '' };
-let ndiDroppedFrames = 0;
+let ndiStatus = { active: false, sources: [] };
 let ndiDropLogTimer = null;
-let ndiWindowRef = null;  // dedicated offscreen capture window — separate from projector
 const NDI_TARGET_FPS = 30;
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -297,9 +304,141 @@ function emitMachineServiceState() {
 }
 
 function emitNdiState() {
-  ndiStatus = { active: ndiActive, sourceName: ndiSender.getSourceName() };
+  const sources = NDI_SCENES.map((scene) => {
+    const entry = ndiSources[scene.id];
+    return {
+      id: scene.id,
+      sourceName: scene.sourceName,
+      fillKey: scene.fillKey,
+      active: !!entry?.active,
+      lastError: entry?.lastError,
+    };
+  });
+  ndiStatus = { active: ndiActive, sources };
   if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
   mainWindowRef.webContents.send('ndi:state', ndiStatus);
+}
+
+/** Tear down every NDI capture window + sender. Safe to call repeatedly. */
+async function teardownAllNdiSources() {
+  const ids = Object.keys(ndiSources);
+  await Promise.all(ids.map(async (id) => {
+    const entry = ndiSources[id];
+    if (!entry) return;
+    try {
+      if (entry.window && !entry.window.isDestroyed()) entry.window.destroy();
+    } catch (_) { /* ignore */ }
+    try {
+      if (entry.sender) await entry.sender.stop();
+    } catch (_) { /* ignore */ }
+    delete ndiSources[id];
+  }));
+}
+
+/**
+ * Spawn one NDI scene: offscreen window + sender + paint pump.
+ * On success, populates ndiSources[scene.id]. On failure, returns { ok:false, error }.
+ */
+async function startNdiScene(scene, payload) {
+  const transparent = !!scene.fillKey;
+  const captureWindow = new BrowserWindow({
+    width: 1920,
+    height: 1080,
+    show: false,
+    transparent,
+    backgroundColor: transparent ? '#00000000' : undefined,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false,
+      offscreen: true,
+      backgroundThrottling: false,
+    },
+  });
+
+  await loadRendererRoute(captureWindow, scene.route, {
+    session: payload?.sessionId || 'live',
+    workspace: payload?.workspaceId || 'default-workspace',
+    ndi: '1',
+    fillKey: scene.fillKey ? '1' : undefined,
+  });
+
+  await new Promise((resolve) => {
+    captureWindow.webContents.once('did-finish-load', () => setTimeout(resolve, 2500));
+    setTimeout(resolve, 6000);
+  });
+
+  if (captureWindow.isDestroyed()) {
+    return { ok: false, error: `Capture window for "${scene.sourceName}" closed before start.` };
+  }
+
+  const sender = ndiSender.createSender(scene.sourceName);
+  const result = await sender.start(1920, 1080);
+  if (!result.ok) {
+    try { if (!captureWindow.isDestroyed()) captureWindow.destroy(); } catch (_) { /* ignore */ }
+    return result;
+  }
+
+  const entry = {
+    window: captureWindow,
+    sender,
+    active: true,
+    droppedFrames: 0,
+    lastError: undefined,
+  };
+  ndiSources[scene.id] = entry;
+
+  captureWindow.once('closed', () => {
+    if (!entry.active) return;
+    entry.active = false;
+    entry.window = null;
+    sender.stop().catch(() => {});
+    delete ndiSources[scene.id];
+    emitNdiState();
+  });
+
+  captureWindow.webContents.setFrameRate(NDI_TARGET_FPS);
+  let sending = false;
+  let pendingFrame = null;
+  const flush = async (initialFrame) => {
+    sending = true;
+    let frame = initialFrame;
+    while (entry.active && frame) {
+      try {
+        await sender.sendFrame(frame.buffer, frame.width, frame.height);
+      } catch (err) {
+        entry.droppedFrames++;
+        if (entry.droppedFrames <= 3) {
+          console.error(`[NDI] send error (${scene.sourceName}):`, err?.message || String(err));
+        }
+      }
+      frame = pendingFrame;
+      pendingFrame = null;
+    }
+    sending = false;
+  };
+
+  captureWindow.webContents.on('paint', async (_paintEvent, _dirty, image) => {
+    if (!entry.active) return;
+    const { width, height } = image.getSize();
+    if (width === 0 || height === 0) return;
+    const buffer = image.toBitmap();
+    if (process.platform === 'darwin') {
+      for (let i = 0; i < buffer.length; i += 4) {
+        const r = buffer[i]; buffer[i] = buffer[i + 2]; buffer[i + 2] = r;
+      }
+    }
+    const frame = { buffer, width, height };
+    if (sending) {
+      pendingFrame = frame;
+      return;
+    }
+    pendingFrame = null;
+    void flush(frame);
+  });
+
+  return { ok: true };
 }
 
 
@@ -568,123 +707,49 @@ function installMachineIpcHandlers() {
     const state = await createManagedRoleWindow(role, displayId || 0, payload);
     return { ok: true, state };
   });
-  // ── NDI outbound send ──────────────────────────────────────────────────────
+  // ── NDI outbound send (Phase 2: multi-source) ─────────────────────────────
   ipcMain.handle('ndi:start', async (_event, payload) => {
+    if (ndiActive) return { ok: true, state: ndiStatus };
+
+    // Fresh start — clear any leftover entries from a previous failed attempt.
+    await teardownAllNdiSources();
+
     try {
-      // Destroy any previous NDI capture window.
-      if (ndiWindowRef && !ndiWindowRef.isDestroyed()) {
-        ndiWindowRef.destroy();
-        ndiWindowRef = null;
-      }
-
-      // Always create a dedicated offscreen window for NDI capture.
-      // This is completely separate from the projector window so the user
-      // can have PROJECTION ON at the same time. Offscreen rendering delivers
-      // frames via the 'paint' event — no GPU framebuffer needed.
-      ndiWindowRef = new BrowserWindow({
-        width: 1920,
-        height: 1080,
-        show: false,
-        webPreferences: {
-          preload: path.join(__dirname, 'preload.js'),
-          nodeIntegration: false,
-          contextIsolation: true,
-          sandbox: false,
-          offscreen: true,
-          backgroundThrottling: false,
-        },
-      });
-
-      await loadRendererRoute(ndiWindowRef, 'output', {
-        session: payload?.sessionId || 'live',
-        workspace: payload?.workspaceId || 'default-workspace',
-        ndi: '1',
-      });
-
-      // Wait for the page to load and receive live state before starting capture.
-      await new Promise((resolve) => {
-        ndiWindowRef.webContents.once('did-finish-load', () => setTimeout(resolve, 2500));
-        // Fallback: resolve after 6s if did-finish-load never fires.
-        setTimeout(resolve, 6000);
-      });
-
-      if (!ndiWindowRef || ndiWindowRef.isDestroyed()) {
-        return { ok: false, error: 'NDI capture window closed before capture started.' };
-      }
-
-      const result = await ndiSender.startNdiSend(
-        payload?.sourceName || 'Lumina Presenter',
-        1920,
-        1080,
+      // Spawn all scenes in parallel. Any failure → roll everything back.
+      const results = await Promise.all(
+        NDI_SCENES.map((scene) => startNdiScene(scene, payload).catch((err) => ({
+          ok: false,
+          error: err?.message || String(err),
+          sceneId: scene.id,
+        })))
       );
-      if (!result.ok) return result;
+
+      const firstFailure = results.find((r) => !r.ok);
+      if (firstFailure) {
+        await teardownAllNdiSources();
+        return { ok: false, error: firstFailure.error || 'Unknown NDI start failure.' };
+      }
 
       ndiActive = true;
 
-      // Stop NDI cleanly if the capture window is closed.
-      ndiWindowRef.once('closed', () => {
-        if (!ndiActive) return;
-        ndiActive = false;
-        ndiWindowRef = null;
-        if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
-        ndiSender.stopNdiSend().catch(() => {});
-        emitNdiState();
-      });
-
-      // Subscribe to paint events — the correct capture API for offscreen windows.
-      // capturePage() reads from the GPU framebuffer which doesn't exist for offscreen
-      // windows; paint events deliver rendered frames directly from the software renderer.
-      ndiWindowRef.webContents.setFrameRate(NDI_TARGET_FPS);
-      let ndiSending = false;
-      let pendingFrame = null;
-      const flushNdiFrame = async (initialFrame) => {
-        ndiSending = true;
-        let frame = initialFrame;
-        while (ndiActive && frame) {
-          try {
-            await ndiSender.sendFrame(frame.buffer, frame.width, frame.height);
-          } catch (err) {
-            ndiDroppedFrames++;
-            if (ndiDroppedFrames <= 3) console.error('[NDI] send error:', err?.message || String(err));
-          }
-          frame = pendingFrame;
-          pendingFrame = null;
-        }
-        ndiSending = false;
-      };
-      ndiWindowRef.webContents.on('paint', async (_paintEvent, _dirty, image) => {
-        if (!ndiActive) return;
-        const { width, height } = image.getSize();
-        if (width === 0 || height === 0) { return; }
-        // toBitmap() returns BGRA on Windows/Linux; RGBA on macOS.
-        const buffer = image.toBitmap();
-        if (process.platform === 'darwin') {
-          for (let i = 0; i < buffer.length; i += 4) {
-            const r = buffer[i]; buffer[i] = buffer[i + 2]; buffer[i + 2] = r;
-          }
-        }
-        const frame = { buffer, width, height };
-        if (ndiSending) {
-          pendingFrame = frame;
-          return;
-        }
-        pendingFrame = null;
-        void flushNdiFrame(frame);
-      });
-
-      // Log dropped frames every 10 seconds (non-blocking).
       if (!ndiDropLogTimer) {
         ndiDropLogTimer = setInterval(() => {
-          if (ndiDroppedFrames > 0) {
-            console.warn(`[NDI] Dropped ${ndiDroppedFrames} frames in last 10s`);
-            ndiDroppedFrames = 0;
+          for (const id of Object.keys(ndiSources)) {
+            const entry = ndiSources[id];
+            if (entry && entry.droppedFrames > 0) {
+              console.warn(`[NDI] "${id}" dropped ${entry.droppedFrames} frames in last 10s`);
+              entry.droppedFrames = 0;
+            }
           }
         }, 10000);
       }
 
       emitNdiState();
-      return { ok: true };
+      return { ok: true, state: ndiStatus };
     } catch (err) {
+      await teardownAllNdiSources();
+      ndiActive = false;
+      emitNdiState();
       return { ok: false, error: err?.message || String(err) };
     }
   });
@@ -692,12 +757,7 @@ function installMachineIpcHandlers() {
   ipcMain.handle('ndi:stop', async () => {
     ndiActive = false;
     if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
-    ndiDroppedFrames = 0;
-    if (ndiWindowRef && !ndiWindowRef.isDestroyed()) {
-      ndiWindowRef.destroy();
-      ndiWindowRef = null;
-    }
-    await ndiSender.stopNdiSend();
+    await teardownAllNdiSources();
     emitNdiState();
     return { ok: true };
   });
