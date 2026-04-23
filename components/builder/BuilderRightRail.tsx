@@ -81,7 +81,7 @@ export const BuilderRightRail: React.FC<BuilderRightRailProps> = ({
 }) => {
   const [activeTab, setActiveTab] = React.useState<BuilderRailTab>('live');
   const activeScheduleIndex = activeItem ? schedule.findIndex((item) => item.id === activeItem.id) : -1;
-  const moreInQueue = activeScheduleIndex >= 0 ? schedule.slice(activeScheduleIndex + 1, activeScheduleIndex + 6) : schedule.slice(0, 5);
+  const moreInQueue = activeScheduleIndex >= 0 ? schedule.slice(activeScheduleIndex + 1) : schedule;
   const selectedSlideIndex = selectedItem && selectedSlide
     ? selectedItem.slides.findIndex((slide) => slide.id === selectedSlide.id)
     : -1;
@@ -116,9 +116,10 @@ export const BuilderRightRail: React.FC<BuilderRightRailProps> = ({
           Stage {isStageDisplayLive ? 'online' : 'standby'}
         </div>
       </div>
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 custom-scrollbar">
-        {activeTab === 'live' && (
-          <>
+      {activeTab === 'live' ? (
+        <div className="flex min-h-0 flex-1 flex-col">
+          {/* Pinned region: Live Now + Stage Preview never scroll out of view */}
+          <div className="shrink-0 space-y-3 p-3 pb-2">
             <RailCard
               title="Live Now"
               action={activeSlide ? <span className="rounded bg-red-600 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-white">Live</span> : null}
@@ -152,9 +153,13 @@ export const BuilderRightRail: React.FC<BuilderRightRailProps> = ({
                 </div>
               </div>
             </RailCard>
+          </div>
 
-            <RailCard title="More In Queue">
-              <div className="space-y-2">
+          {/* Scroll region: More In Queue. Its own overflow so it can absorb a long queue
+              without pushing the pinned previews off-screen. */}
+          <div className="flex min-h-0 flex-1 flex-col px-3 pb-3">
+            <RailCard title="More In Queue" className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
                 {moreInQueue.map((item, index) => (
                   <button
                     key={item.id}
@@ -180,31 +185,33 @@ export const BuilderRightRail: React.FC<BuilderRightRailProps> = ({
                 )}
               </div>
             </RailCard>
-          </>
-        )}
+          </div>
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 custom-scrollbar">
+          {activeTab === 'design' && (
+            <RailCard
+              title="Inspector"
+              action={selectedElementId ? <span className="rounded bg-cyan-950 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-cyan-200">Layer</span> : null}
+              className="bg-zinc-950"
+            >
+              <BuilderInspectorAccordion
+                item={selectedItem}
+                slide={selectedSlide}
+                selectedElementId={selectedElementId}
+                onUpdateItem={onUpdateItem}
+                onUpdateSlide={onUpdateSlide}
+              />
+            </RailCard>
+          )}
 
-        {activeTab === 'design' && (
-          <RailCard
-            title="Inspector"
-            action={selectedElementId ? <span className="rounded bg-cyan-950 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-cyan-200">Layer</span> : null}
-            className="bg-zinc-950"
-          >
-            <BuilderInspectorAccordion
-              item={selectedItem}
-              slide={selectedSlide}
-              selectedElementId={selectedElementId}
-              onUpdateItem={onUpdateItem}
-              onUpdateSlide={onUpdateSlide}
-            />
-          </RailCard>
-        )}
-
-        {activeTab === 'cue' && (
-          <RailCard title="Cue Setup" className="bg-zinc-950">
-            <BuilderCuePanel item={selectedItem} speakerPresets={speakerPresets} onUpdateItem={onUpdateItem} />
-          </RailCard>
-        )}
-      </div>
+          {activeTab === 'cue' && (
+            <RailCard title="Cue Setup" className="bg-zinc-950">
+              <BuilderCuePanel item={selectedItem} speakerPresets={speakerPresets} onUpdateItem={onUpdateItem} />
+            </RailCard>
+          )}
+        </div>
+      )}
     </aside>
   );
 };

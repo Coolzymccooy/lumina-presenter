@@ -95,6 +95,8 @@ import { BuilderBackgroundDrawer } from './components/builder/BuilderBackgroundD
 import { BuilderPreviewPanel } from './components/builder/BuilderPreviewPanel';
 import { BuilderBottomDock } from './components/builder/BuilderBottomDock';
 import { BuilderCanvasRibbon } from './components/builder/BuilderCanvasRibbon';
+import { BuilderCanvasActionPill } from './components/builder/BuilderCanvasActionPill';
+import { BuilderNotesAffordance } from './components/builder/BuilderNotesAffordance';
 import { BuilderCueDrawer } from './components/builder/BuilderCueDrawer';
 import { BuilderRightRail } from './components/builder/BuilderRightRail';
 import { EditableSlideCanvas } from './components/builder/EditableSlideCanvas';
@@ -1404,6 +1406,7 @@ function App() {
     const title = typeof saved?.runSheetTitle === 'string' ? saved.runSheetTitle.trim() : '';
     return title || 'Untitled Run Sheet';
   });
+  const [runSheetFilter, setRunSheetFilter] = useState<string>('');
 
   const [viewMode, setViewMode] = useState<'BUILDER' | 'PRESENTER' | 'STAGE'>(() => {
     const saved = initialSavedState;
@@ -3249,6 +3252,25 @@ function App() {
   useEffect(() => {
     setBuilderSelectedElementId(null);
   }, [builderSelectedSlide?.id]);
+
+  // Auto-disable safe-area guides when an image background is applied so the
+  // user sees the slide without line-margin rails. The user can re-enable it
+  // via the ribbon toggle — we only force OFF on a new image arrival, not on
+  // every render.
+  const lastBuilderBackgroundRef = useRef<string>('');
+  useEffect(() => {
+    if (!builderSelectedSlide) {
+      lastBuilderBackgroundRef.current = '';
+      return;
+    }
+    const bgUrl = builderSelectedSlide.backgroundUrl || selectedItem?.theme?.backgroundUrl || '';
+    const mediaType = builderSelectedSlide.mediaType || selectedItem?.theme?.mediaType || 'image';
+    if (bgUrl === lastBuilderBackgroundRef.current) return;
+    lastBuilderBackgroundRef.current = bgUrl;
+    if (bgUrl && mediaType === 'image') {
+      setBuilderShowSafeArea(false);
+    }
+  }, [builderSelectedSlide?.id, builderSelectedSlide?.backgroundUrl, builderSelectedSlide?.mediaType, selectedItem?.theme?.backgroundUrl, selectedItem?.theme?.mediaType]);
 
   useEffect(() => {
     if (viewMode !== 'BUILDER' || !selectedItem || !builderSelectedSlide) return;
@@ -7616,10 +7638,24 @@ function App() {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} onClose={isElectronShell ? undefined : () => setViewState('landing')} />;
   }
 
-  const renderScheduleList = () => (
+  const renderScheduleList = () => {
+    const filterQuery = runSheetFilter.trim().toLowerCase();
+    const visibleSchedule = filterQuery
+      ? schedule.filter((item) => {
+          const title = (item.title || '').toLowerCase();
+          const type = (item.type || '').toLowerCase();
+          return title.includes(filterQuery) || type.includes(filterQuery);
+        })
+      : schedule;
+    return (
     <div className="h-full min-h-0 overflow-y-auto bg-zinc-950 custom-scrollbar" data-testid="runsheet-list">
       {teamPlaylists.length > 0 && (<div className="px-3 py-2 text-[10px] text-emerald-400 border-b border-zinc-900">Cloud Playlists Synced: {teamPlaylists.length}</div>)}
-      {schedule.map((item, idx) => (
+      {filterQuery && visibleSchedule.length === 0 && (
+        <div className="px-3 py-6 text-center text-[11px] text-zinc-500" data-testid="runsheet-filter-empty">
+          No items match &ldquo;{runSheetFilter.trim()}&rdquo;
+        </div>
+      )}
+      {visibleSchedule.map((item, idx) => (
         <React.Fragment key={item.id}>
           <div
             data-testid={`schedule-item-${item.id}`}
@@ -7921,7 +7957,8 @@ function App() {
         </React.Fragment>
       ))}
     </div>
-  );
+    );
+  };
 
   const renderRundownList = renderScheduleList;
 
@@ -8676,7 +8713,7 @@ function App() {
   const builderShellCompact = viewportWidth < 1580;
   const builderLeftWidth = builderShellTight ? 288 : builderShellCompact ? 304 : 320;
   const builderRightWidth = builderShellTight ? 304 : builderShellCompact ? 318 : 330;
-  const builderTimelineHeight = builderShellTight ? 138 : 144;
+  const builderTimelineHeight = builderShellTight ? 156 : 164;
   const builderBottomHeight = builderShellTight ? 166 : 172;
 
   const renderBuilderRunSheetPane = () => {
@@ -8697,6 +8734,32 @@ function App() {
                 onBlur={() => setRunSheetTitle((value) => value.trim() || 'Untitled Run Sheet')}
                 className="mt-1 h-8 w-full rounded-lg border border-zinc-700 bg-[#111218] px-2 text-sm font-black text-zinc-100 outline-none focus:border-cyan-600"
               />
+              <div className="relative mt-1.5">
+                <input
+                  type="search"
+                  data-testid="builder-runsheet-filter-input"
+                  aria-label="Filter run sheet items"
+                  placeholder="Filter items... (e.g. praise)"
+                  value={runSheetFilter}
+                  onChange={(event) => setRunSheetFilter(event.target.value)}
+                  className="h-7 w-full rounded-md border border-zinc-800 bg-[#0c0d12] pl-6 pr-6 text-[11px] text-zinc-200 placeholder-zinc-600 outline-none focus:border-cyan-700"
+                />
+                <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none absolute left-1.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-3.5-3.5" strokeLinecap="round" />
+                </svg>
+                {runSheetFilter && (
+                  <button
+                    type="button"
+                    data-testid="builder-runsheet-filter-clear"
+                    aria-label="Clear filter"
+                    onClick={() => setRunSheetFilter('')}
+                    className="absolute right-1 top-1/2 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-zinc-500 hover:text-zinc-200"
+                  >
+                    <span aria-hidden="true">×</span>
+                  </button>
+                )}
+              </div>
               <p className="mt-1 text-[10px] text-zinc-500">Build slides in the same flow Presenter uses.</p>
             </div>
             <div className="flex shrink-0 items-center gap-1">
@@ -8711,7 +8774,7 @@ function App() {
           {renderScheduleList()}
         </div>
 
-        <div data-testid="builder-runsheet-status-bay" className="min-h-[132px] border-t border-zinc-800 bg-[linear-gradient(180deg,rgba(24,24,27,1)_0%,rgba(12,13,18,1)_100%)] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+        <div data-testid="builder-runsheet-status-bay" className="min-h-[184px] border-t border-zinc-800 bg-[linear-gradient(180deg,rgba(24,24,27,1)_0%,rgba(12,13,18,1)_100%)] px-3 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-800/80 bg-[#111218]/80 p-2">
             <span className="rounded-md border border-emerald-800/70 bg-emerald-950/40 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-200">Saved</span>
             <span className={`rounded-md border px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] ${isOutputLive ? 'border-red-800/70 bg-red-950/40 text-red-200' : 'border-zinc-700 bg-[#15161b] text-zinc-300'}`}>
@@ -8721,9 +8784,10 @@ function App() {
               type="button"
               disabled={!selectedItem}
               onClick={() => setBuilderCueDrawerOpen(true)}
-              className={`rounded-md border px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] disabled:cursor-not-allowed disabled:opacity-35 ${selectedCue.enabled ? 'border-amber-700/70 bg-amber-950/40 text-amber-200' : 'border-zinc-700 bg-[#15161b] text-zinc-300 hover:border-zinc-500 hover:text-zinc-100'}`}
+              title={selectedCue.enabled ? 'Adjust or disable the speaker cue timer' : 'Enable a speaker cue timer for this item'}
+              className={`rounded-md border px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[0.16em] disabled:cursor-not-allowed disabled:opacity-35 ${selectedCue.enabled ? 'border-amber-700/70 bg-amber-950/40 text-amber-200' : 'border-cyan-700/60 bg-cyan-950/30 text-cyan-200 hover:border-cyan-500 hover:text-cyan-100'}`}
             >
-              {selectedCue.enabled ? `Cue ${cueMinutes}m` : 'Cue off'}
+              {selectedCue.enabled ? `Cue ${cueMinutes}m` : '+ Enable Cue'}
             </button>
           </div>
           <div className="mt-3 min-w-0">
@@ -8731,6 +8795,16 @@ function App() {
             <div className="mt-0.5 truncate text-[10px] font-mono uppercase tracking-[0.14em] text-zinc-500">
               {builderSelectedSlide ? `${builderSelectedSlideIndex + 1} of ${selectedItem?.slides.length || 0} - ${builderSelectedSlide.label || `Slide ${builderSelectedSlideIndex + 1}`}` : 'No slide selected'}
             </div>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[9px] font-mono uppercase tracking-[0.12em] text-zinc-500">
+            <span className="rounded border border-zinc-700 bg-[#15161b] px-1.5 py-0.5 text-zinc-300">Space</span>
+            <span>Project</span>
+            <span className="text-zinc-700">•</span>
+            <span className="rounded border border-zinc-700 bg-[#15161b] px-1.5 py-0.5 text-zinc-300">N</span>
+            <span>Next</span>
+            <span className="text-zinc-700">•</span>
+            <span className="rounded border border-zinc-700 bg-[#15161b] px-1.5 py-0.5 text-zinc-300">⌘E</span>
+            <span>Edit</span>
           </div>
         </div>
       </div>
@@ -8743,11 +8817,8 @@ function App() {
       else setEditingSlide(null);
       setIsSlideEditorOpen(true);
     };
-    const centerRows = builderCueDrawerOpen
-      ? `minmax(0, 1fr) 88px ${builderTimelineHeight}px`
-      : builderBackgroundDrawerOpen
-        ? `minmax(0, 1fr) 224px ${builderTimelineHeight}px`
-        : `minmax(0, 1fr) ${builderTimelineHeight}px`;
+    const centerRows = `minmax(0, 1fr) ${builderTimelineHeight}px`;
+    const drawerOpen = builderBackgroundDrawerOpen || builderCueDrawerOpen;
 
     return (
       <div data-testid="builder-center-pane" className="flex h-full min-h-0 flex-col bg-[#0d0e13]">
@@ -8760,6 +8831,11 @@ function App() {
           showSafeArea={builderShowSafeArea}
           zoom={builderZoom}
           onUpdateSlide={handleBuilderUpdateSlide}
+          onRenameItem={(itemId, title) => {
+            const target = schedule.find((entry) => entry.id === itemId);
+            if (!target) return;
+            updateItem({ ...target, title });
+          }}
           onAddTextBlock={handleBuilderAddTextBlock}
           onToggleGrid={() => setBuilderShowGrid((value) => !value)}
           onToggleSafeArea={() => setBuilderShowSafeArea((value) => !value)}
@@ -8774,47 +8850,74 @@ function App() {
         />
         <div
           data-testid="studio-canvas-root"
-          className="grid min-h-0 flex-1 bg-[#101116]"
-          style={{ gridTemplateRows: centerRows }}
+          className="grid min-h-0 min-w-0 flex-1 overflow-hidden bg-[#101116]"
+          style={{ gridTemplateRows: centerRows, gridTemplateColumns: 'minmax(0, 1fr)' }}
         >
-          <EditableSlideCanvas
-            item={selectedItem}
-            slide={builderSelectedSlide}
-            selectedElementId={builderSelectedElement?.id || null}
-            showGrid={builderShowGrid}
-            showSafeArea={builderShowSafeArea}
-            zoom={builderZoom}
-            onSelectElement={setBuilderSelectedElementId}
-            onUpdateSlide={handleBuilderUpdateSlide}
-            onAddSlide={handleBuilderAddSlide}
-          />
-          {builderBackgroundDrawerOpen && (
-            <BuilderBackgroundDrawer
+          <div className="relative min-h-0 min-w-0 overflow-hidden">
+            <EditableSlideCanvas
               item={selectedItem}
               slide={builderSelectedSlide}
-              onClose={() => setBuilderBackgroundDrawerOpen(false)}
-              onApplyToItem={applyQuickBackgroundToItem}
-              onApplyToSlide={applyQuickBackgroundToBuilderSlide}
-              onOpenLibrary={() => setIsMotionLibOpen(true)}
+              selectedElementId={builderSelectedElement?.id || null}
+              showGrid={builderShowGrid}
+              showSafeArea={builderShowSafeArea}
+              zoom={builderZoom}
+              onSelectElement={setBuilderSelectedElementId}
+              onUpdateSlide={handleBuilderUpdateSlide}
+              onAddSlide={handleBuilderAddSlide}
             />
-          )}
-          {builderCueDrawerOpen && (
-            <BuilderCueDrawer
-              item={selectedItem}
-              speakerPresets={workspaceSettings.speakerTimerPresets}
-              onUpdateItem={updateItem}
-              onClose={() => setBuilderCueDrawerOpen(false)}
+            {!drawerOpen && (
+              <BuilderCanvasActionPill
+                canAddSlide={Boolean(selectedItem)}
+                canDuplicate={Boolean(builderSelectedSlide)}
+                canEditLayout={Boolean(selectedItem)}
+                canGoLive={Boolean(selectedItem && builderSelectedSlide)}
+                outputLive={isOutputLive}
+                onAddSlide={handleBuilderAddSlide}
+                onDuplicateSlide={handleBuilderDuplicateSlide}
+                onOpenFullEditor={openBuilderFullEditor}
+                onGoLive={handleBuilderGoLive}
+              />
+            )}
+            <BuilderNotesAffordance
+              slide={builderSelectedSlide}
+              onUpdateSlide={handleBuilderUpdateSlide}
             />
-          )}
+            {builderBackgroundDrawerOpen && (
+              <div className="absolute inset-x-0 bottom-0 z-30 h-[260px] shadow-[0_-18px_40px_rgba(0,0,0,0.55)]">
+                <BuilderBackgroundDrawer
+                  item={selectedItem}
+                  slide={builderSelectedSlide}
+                  onClose={() => setBuilderBackgroundDrawerOpen(false)}
+                  onApplyToItem={applyQuickBackgroundToItem}
+                  onApplyToSlide={applyQuickBackgroundToBuilderSlide}
+                  onOpenLibrary={() => setIsMotionLibOpen(true)}
+                />
+              </div>
+            )}
+            {builderCueDrawerOpen && (
+              <div className="absolute inset-x-0 bottom-0 z-30 h-[104px] shadow-[0_-18px_40px_rgba(0,0,0,0.55)]">
+                <BuilderCueDrawer
+                  item={selectedItem}
+                  speakerPresets={workspaceSettings.speakerTimerPresets}
+                  onUpdateItem={updateItem}
+                  onClose={() => setBuilderCueDrawerOpen(false)}
+                />
+              </div>
+            )}
+          </div>
           <SlideTimelineStrip
             item={selectedItem}
             selectedSlideId={builderSelectedSlide?.id || null}
             activeItemId={activeItemId}
             activeSlideIndex={activeSlideIndex}
+            canGoPrev={Boolean(builderSelectedSlide) && builderSelectedSlideIndex > 0}
+            canGoNext={Boolean(builderSelectedSlide) && builderSelectedSlideIndex >= 0 && builderSelectedSlideIndex < (selectedItem?.slides.length || 0) - 1}
             onSelectSlide={(slideId) => {
               setBuilderSelectedSlideId(slideId);
               setBuilderSelectedElementId(null);
             }}
+            onSelectPrevious={() => handleBuilderSelectAdjacentSlide(-1)}
+            onSelectNext={() => handleBuilderSelectAdjacentSlide(1)}
             onGoLive={(slideIndex) => selectedItem && goLive(selectedItem, slideIndex)}
             onAddSlide={handleBuilderAddSlide}
             onDuplicateSlide={handleBuilderDuplicateSlide}
@@ -8855,20 +8958,10 @@ function App() {
           slideCount={selectedItem?.slides.length || 0}
           outputEnabled={isOutputLive}
           speakerPresets={workspaceSettings.speakerTimerPresets}
-          onAddSlide={handleBuilderAddSlide}
-          onDuplicateSlide={handleBuilderDuplicateSlide}
-          onOpenFullEditor={() => {
-            if (builderSelectedSlide) setEditingSlide(builderSelectedSlide);
-            else setEditingSlide(null);
-            setIsSlideEditorOpen(true);
-          }}
           onOpenCueDrawer={() => {
             setBuilderBackgroundDrawerOpen(false);
             setBuilderCueDrawerOpen(true);
           }}
-          onGoLive={handleBuilderGoLive}
-          onSelectPrevious={() => handleBuilderSelectAdjacentSlide(-1)}
-          onSelectNext={() => handleBuilderSelectAdjacentSlide(1)}
         />
       )}
       leftWidth={builderLeftWidth}

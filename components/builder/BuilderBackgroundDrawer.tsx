@@ -18,13 +18,20 @@ interface BuilderBackgroundDrawerProps {
   onOpenLibrary: () => void;
 }
 
-const QUICK_PRESETS = [
-  { label: 'Worship', query: 'worship background' },
-  { label: 'Prayer', query: 'prayer light background' },
-  { label: 'Sermon', query: 'sermon clean background' },
-  { label: 'Celebration', query: 'celebration worship background' },
-  { label: 'Nature', query: 'nature sky background' },
-  { label: 'Abstract', query: 'abstract light background' },
+interface QuickPreset {
+  label: string;
+  query: string;
+  dot: string;
+  hover: string;
+}
+
+const QUICK_PRESETS: QuickPreset[] = [
+  { label: 'Worship', query: 'worship background', dot: 'bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.75)]', hover: 'hover:border-cyan-600/70 hover:text-cyan-100' },
+  { label: 'Prayer', query: 'prayer light background', dot: 'bg-violet-400 shadow-[0_0_8px_rgba(167,139,250,0.75)]', hover: 'hover:border-violet-600/70 hover:text-violet-100' },
+  { label: 'Sermon', query: 'sermon clean background', dot: 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.75)]', hover: 'hover:border-amber-600/70 hover:text-amber-100' },
+  { label: 'Celebration', query: 'celebration worship background', dot: 'bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.75)]', hover: 'hover:border-rose-600/70 hover:text-rose-100' },
+  { label: 'Nature', query: 'nature sky background', dot: 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.75)]', hover: 'hover:border-emerald-600/70 hover:text-emerald-100' },
+  { label: 'Abstract', query: 'abstract light background', dot: 'bg-fuchsia-400 shadow-[0_0_8px_rgba(232,121,249,0.75)]', hover: 'hover:border-fuchsia-600/70 hover:text-fuchsia-100' },
 ];
 
 const imageSelection = (url: string, title: string, category = 'Quick'): QuickBackgroundSelection => ({
@@ -150,10 +157,17 @@ export const BuilderBackgroundDrawer: React.FC<BuilderBackgroundDrawerProps> = (
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3 custom-scrollbar">
         {tab === 'quick' && (
-          <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
-            <div className="rounded-lg border border-zinc-800 bg-black/35 p-3">
-              <div className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-500">Fast Search</div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="grid gap-3 lg:grid-cols-[232px_minmax(0,1fr)]">
+            <div className="flex flex-col rounded-xl border border-zinc-800 bg-[linear-gradient(180deg,rgba(12,13,18,0.92)_0%,rgba(6,7,11,1)_100%)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_12px_24px_rgba(0,0,0,0.35)]">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)]" />
+                  <span className="text-[9px] font-black uppercase tracking-[0.24em] text-zinc-300">Fast Search</span>
+                </div>
+                <span className="inline-flex h-4 items-center rounded bg-zinc-900 px-1.5 text-[8px] font-black uppercase tracking-[0.2em] text-zinc-500">Presets</span>
+              </div>
+              <div className="mt-2.5 h-px bg-[linear-gradient(90deg,transparent_0%,rgba(82,82,91,0.45)_20%,rgba(82,82,91,0.45)_80%,transparent_100%)]" />
+              <div className="mt-3 grid grid-cols-2 gap-1.5">
                 {QUICK_PRESETS.map((preset) => (
                   <button
                     key={preset.label}
@@ -163,17 +177,20 @@ export const BuilderBackgroundDrawer: React.FC<BuilderBackgroundDrawerProps> = (
                       setTab('pexels');
                       void runSearch(preset.query);
                     }}
-                    className="h-7 rounded-lg border border-zinc-800 bg-zinc-900 px-2 text-[9px] font-black uppercase tracking-[0.12em] text-zinc-400 hover:border-cyan-700 hover:text-cyan-200"
+                    className={`group flex h-9 items-center gap-1.5 rounded-lg border border-zinc-800 bg-[#0f1015] px-2 text-left text-[9px] font-black uppercase tracking-[0.14em] text-zinc-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition-colors ${preset.hover}`}
                   >
-                    {preset.label}
+                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${preset.dot}`} />
+                    <span className="truncate">{preset.label}</span>
                   </button>
                 ))}
               </div>
+              <div className="mt-3 h-px bg-[linear-gradient(90deg,transparent_0%,rgba(82,82,91,0.45)_20%,rgba(82,82,91,0.45)_80%,transparent_100%)]" />
               <button
                 type="button"
                 onClick={onOpenLibrary}
-                className="mt-3 h-8 w-full rounded-lg border border-blue-800/70 bg-blue-950/35 px-3 text-[9px] font-black uppercase tracking-[0.14em] text-blue-200 hover:border-blue-500"
+                className="mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-blue-700/70 bg-[linear-gradient(180deg,rgba(30,58,138,0.55)_0%,rgba(15,23,42,0.85)_100%)] text-[9px] font-black uppercase tracking-[0.18em] text-blue-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_6px_18px_rgba(29,78,216,0.25)] hover:border-blue-400 hover:text-white"
               >
+                <span className="inline-flex h-1.5 w-1.5 rounded-full bg-blue-300 shadow-[0_0_8px_rgba(147,197,253,0.85)]" />
                 Motion Library
               </button>
             </div>

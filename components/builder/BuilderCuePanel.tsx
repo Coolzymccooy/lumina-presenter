@@ -144,30 +144,30 @@ export const BuilderCuePanel: React.FC<BuilderCuePanelProps> = ({
         </label>
 
         <div className="rounded-lg border border-zinc-600/80 bg-[#15161b] px-2 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-          <div className="mb-1 text-[8px] font-black uppercase tracking-[0.18em] text-zinc-300">Cue Thresholds</div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <div className="mb-1 text-[8px] font-black uppercase tracking-[0.14em] text-amber-400">Amber %</div>
+          <div className="mb-1 text-center text-[8px] font-black uppercase tracking-[0.18em] text-zinc-300">Cue Thresholds</div>
+          <div className="grid grid-cols-2 items-end gap-1.5">
+            <label className="flex min-w-0 flex-col gap-1">
+              <span className="text-center text-[8px] font-black uppercase tracking-[0.14em] text-amber-400">Amber %</span>
               <input
                 type="number"
                 min={1}
                 max={99}
                 value={amber}
                 onChange={(event) => updateTimerCue({ amberPercent: clampNumber(Number(event.target.value), 1, 99, amber) })}
-                className="h-7 w-full rounded-lg border border-amber-800/70 bg-[#090a0f] px-2 text-xs text-amber-100 outline-none focus:border-amber-500"
+                className="h-7 w-full rounded-lg border border-amber-800/70 bg-[#090a0f] px-1 text-center text-xs tabular-nums text-amber-100 outline-none focus:border-amber-500"
               />
-            </div>
-            <div>
-              <div className="mb-1 text-[8px] font-black uppercase tracking-[0.14em] text-red-300">Red %</div>
+            </label>
+            <label className="flex min-w-0 flex-col gap-1">
+              <span className="text-center text-[8px] font-black uppercase tracking-[0.14em] text-red-300">Red %</span>
               <input
                 type="number"
                 min={1}
                 max={99}
                 value={red}
                 onChange={(event) => updateTimerCue({ redPercent: clampNumber(Number(event.target.value), 1, 99, red) })}
-                className="h-7 w-full rounded-lg border border-red-800/70 bg-[#090a0f] px-2 text-xs text-red-100 outline-none focus:border-red-500"
+                className="h-7 w-full rounded-lg border border-red-800/70 bg-[#090a0f] px-1 text-center text-xs tabular-nums text-red-100 outline-none focus:border-red-500"
               />
-            </div>
+            </label>
           </div>
         </div>
       </div>
