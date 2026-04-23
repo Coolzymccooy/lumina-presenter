@@ -2568,16 +2568,19 @@ function App() {
         } else {
           setUserPlan(null);
         }
-        // Auto-enter workspace if authenticated, but stay in audience if scanning
+        // Auto-enter workspace if authenticated, but preserve any explicit
+        // deep-link route (audience, output, stage, remote, or the NDI scenes)
+        // so auth resolution doesn't yank a browser session back to landing.
+        const preservedRoutes = new Set(['audience', 'output', 'stage', 'remote', 'lyrics-ndi', 'lower-thirds-ndi']);
         if (u) {
-          setViewState(prev => prev === 'audience' ? 'audience' : 'studio');
+          setViewState(prev => preservedRoutes.has(prev) ? prev : 'studio');
         } else {
           // Skip landing page in Electron
           // @ts-ignore
           if (window.electron?.isElectron) {
-            setViewState(prev => prev === 'audience' ? 'audience' : 'studio');
+            setViewState(prev => preservedRoutes.has(prev) ? prev : 'studio');
           } else {
-            setViewState(prev => prev === 'audience' ? 'audience' : 'landing');
+            setViewState(prev => preservedRoutes.has(prev) ? prev : 'landing');
           }
         }
       });
