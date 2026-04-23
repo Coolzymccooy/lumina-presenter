@@ -40,6 +40,8 @@ import { ConnectModal } from './components/ConnectModal'; // NEW
 import { DisplaySetupModal, type DesktopDisplayCard } from './components/DisplaySetupModal';
 import { OutputRoute } from './components/OutputRoute';
 import { StageRoute } from './components/StageRoute';
+import { LyricsNdiRoute } from './components/LyricsNdiRoute';
+import { LowerThirdsNdiRoute } from './components/LowerThirdsNdiRoute';
 import { HymnLibrary } from './components/HymnLibrary';
 import { StageDisplay } from './components/StageDisplay';
 import { RemoteControl } from './components/RemoteControl';
@@ -1251,8 +1253,10 @@ function App() {
       hasManagedStageRoute: !!(sessionId || workspaceId),
     };
   }, []);
-  const [viewState, setViewState] = useState<'landing' | 'studio' | 'audience' | 'output' | 'stage' | 'remote'>(() => {
+  const [viewState, setViewState] = useState<'landing' | 'studio' | 'audience' | 'output' | 'stage' | 'remote' | 'lyrics-ndi' | 'lower-thirds-ndi'>(() => {
     const hash = window.location.hash;
+    if (hash.startsWith('#/lyrics-ndi')) return 'lyrics-ndi';
+    if (hash.startsWith('#/lower-thirds-ndi')) return 'lower-thirds-ndi';
     if (hash.startsWith('#/audience')) return 'audience';
     if (hash.startsWith('#/output')) return 'output';
     if (hash.startsWith('#/stage')) return 'stage';
@@ -1612,7 +1616,8 @@ function App() {
   const presenterMediaUploadInputRef = useRef<HTMLInputElement | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
   const [isStageDisplayLive, setIsStageDisplayLive] = useState(false);
-  const [ndiActive, setNdiActive] = useState(false);
+  const [ndiState, setNdiState] = useState<NdiStatus>({ active: false, sources: [] });
+  const [ndiMenuOpen, setNdiMenuOpen] = useState(false);
   const [ndiError, setNdiError] = useState<string | null>(null);
   const [lowerThirdsEnabled, setLowerThirdsEnabled] = useState(false);
   const [routingMode, setRoutingMode] = useState<'PROJECTOR' | 'STREAM' | 'LOBBY'>('PROJECTOR');
@@ -2198,7 +2203,11 @@ function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const h = window.location.hash;
-      if (h.startsWith('#/audience')) {
+      if (h.startsWith('#/lyrics-ndi')) {
+        setViewState('lyrics-ndi');
+      } else if (h.startsWith('#/lower-thirds-ndi')) {
+        setViewState('lower-thirds-ndi');
+      } else if (h.startsWith('#/audience')) {
         setViewState('audience');
       } else if (h.startsWith('#/output')) {
         setViewState('output');
@@ -4245,9 +4254,12 @@ function App() {
   // Subscribe to NDI sender state pushed from main process.
   useEffect(() => {
     if (!isElectronShell) return;
-    const off = window.electron?.ndi?.onState?.((state: { active: boolean; sourceName: string }) => {
-      setNdiActive(state.active);
+    const off = window.electron?.ndi?.onState?.((state) => {
+      setNdiState(state);
     });
+    window.electron?.ndi?.getStatus?.().then((status) => {
+      if (status) setNdiState(status);
+    }).catch(() => {});
     return () => off?.();
   }, [isElectronShell]);
 
@@ -7527,6 +7539,8 @@ function App() {
   const shouldBypassAppAuthGate = (
     (viewState === 'output' && managedRouteParams.hasManagedOutputRoute)
     || (viewState === 'stage' && managedRouteParams.hasManagedStageRoute)
+    || viewState === 'lyrics-ndi'
+    || viewState === 'lower-thirds-ndi'
   );
 
   if (authLoading && !shouldBypassAppAuthGate) return <div className="h-screen w-screen bg-black flex items-center justify-center text-zinc-500 font-mono text-xs animate-pulse">LOADING NEURAL HUB...</div>;
@@ -7623,6 +7637,16 @@ function App() {
   // ROUTING: REMOTE CONTROL
   if (viewState === 'remote') {
     return <RemoteControl />;
+  }
+
+  // ROUTING: NDI LYRICS SCENE (transparent fill+key output for vMix/TriCaster/ATEM)
+  if (viewState === 'lyrics-ndi') {
+    return <LyricsNdiRoute />;
+  }
+
+  // ROUTING: NDI LOWER-THIRDS SCENE (transparent fill+key output)
+  if (viewState === 'lower-thirds-ndi') {
+    return <LowerThirdsNdiRoute />;
   }
 
   // ROUTING: LOGIN (If not authenticated, force login for studio — both browser and Electron)
@@ -9609,25 +9633,62 @@ function App() {
                         <button onClick={() => void copyShareUrl(cleanFeedUrl, 'Clean feed URL copied!')} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-violet-300 hover:border-violet-600 transition-all uppercase tracking-wider" title="No branding or audience overlays — use for recording or streaming">Copy Clean Feed</button>
                         <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy Stage URL</button>
                         {isElectronShell && hasElectronDisplayControl && (
-                          <button
-                            onClick={async () => {
-                              setNdiError(null);
-                              if (ndiActive) {
-                                await window.electron?.ndi?.stop?.();
-                              } else {
-                                const result = await window.electron?.ndi?.start?.({
-                                  sourceName: `Lumina \u2013 ${workspaceSettings.churchName || 'Presenter'}`,
-                                  workspaceId,
-                                  sessionId: liveSessionId,
-                                });
-                                if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to start.');
-                              }
-                            }}
-                            title={ndiActive ? 'Stop NDI broadcast' : 'Broadcast slide output as an NDI source on the local network'}
-                            className={`h-9 px-3 rounded-lg border font-black text-[9px] tracking-wider uppercase transition-all ${ndiActive ? 'border-violet-500/70 bg-violet-950/50 text-violet-300 animate-pulse' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-violet-300 hover:border-violet-600'}`}
-                          >
-                            {ndiActive ? '● NDI LIVE' : 'Send NDI'}
-                          </button>
+                          <div className="relative">
+                            <div className="flex">
+                              <button
+                                onClick={async () => {
+                                  setNdiError(null);
+                                  if (ndiState.active) {
+                                    await window.electron?.ndi?.stop?.();
+                                  } else {
+                                    const result = await window.electron?.ndi?.start?.({
+                                      workspaceId,
+                                      sessionId: liveSessionId,
+                                    });
+                                    if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to start.');
+                                  }
+                                }}
+                                title={ndiState.active ? 'Stop NDI broadcast' : 'Broadcast 3 NDI sources (Program / Lyrics / LowerThirds) on the local network'}
+                                className={`h-9 px-3 rounded-l-lg border font-black text-[9px] tracking-wider uppercase transition-all ${ndiState.active ? 'border-violet-500/70 bg-violet-950/50 text-violet-300 animate-pulse' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-violet-300 hover:border-violet-600'}`}
+                              >
+                                {ndiState.active ? `\u25cf NDI LIVE (${ndiState.sources.filter((s) => s.active).length}/${ndiState.sources.length || 3})` : 'Send NDI'}
+                              </button>
+                              <button
+                                onClick={() => setNdiMenuOpen((v) => !v)}
+                                title="Show per-source NDI status"
+                                className={`h-9 px-2 rounded-r-lg border border-l-0 font-black text-[10px] tracking-wider uppercase transition-all ${ndiState.active ? 'border-violet-500/70 bg-violet-950/50 text-violet-300' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-violet-300 hover:border-violet-600'}`}
+                                aria-label="NDI sources"
+                              >
+                                {ndiMenuOpen ? '\u25b2' : '\u25bc'}
+                              </button>
+                            </div>
+                            {ndiMenuOpen && (
+                              <div
+                                className="absolute right-0 top-10 z-50 w-72 rounded-lg border border-zinc-700 bg-zinc-950/95 backdrop-blur-md shadow-xl p-3 space-y-2"
+                                onMouseLeave={() => setNdiMenuOpen(false)}
+                              >
+                                <div className="text-[9px] font-black uppercase tracking-widest text-zinc-500 pb-1 border-b border-zinc-800">NDI Sources</div>
+                                {(ndiState.sources.length ? ndiState.sources : [
+                                  { id: 'program', sourceName: 'Lumina-Program', fillKey: false, active: false },
+                                  { id: 'lyrics', sourceName: 'Lumina-Lyrics', fillKey: true, active: false },
+                                  { id: 'lowerThirds', sourceName: 'Lumina-LowerThirds', fillKey: true, active: false },
+                                ]).map((source) => (
+                                  <div key={source.id} className="flex items-center justify-between gap-2 text-[10px]">
+                                    <div className="flex flex-col min-w-0">
+                                      <span className="font-bold text-zinc-200 truncate">{source.sourceName}</span>
+                                      <span className="text-[8px] uppercase tracking-wider text-zinc-500">{source.fillKey ? 'Fill + Key' : 'Fill'}</span>
+                                      {source.lastError && (
+                                        <span className="text-[8px] text-rose-400 truncate" title={source.lastError}>{source.lastError}</span>
+                                      )}
+                                    </div>
+                                    <span className={`px-2 py-0.5 rounded font-black text-[8px] uppercase tracking-wider ${source.active ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-700/60' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'}`}>
+                                      {source.active ? 'LIVE' : 'OFF'}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         )}
                         {ndiError && (
                           <span

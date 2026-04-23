@@ -10,6 +10,19 @@ interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
 
+interface NdiSourceStatus {
+  id: string;
+  sourceName: string;
+  fillKey: boolean;
+  active: boolean;
+  lastError?: string | null;
+}
+
+interface NdiStatus {
+  active: boolean;
+  sources: NdiSourceStatus[];
+}
+
 interface Window {
   electron?: {
     isElectron?: boolean;
@@ -96,13 +109,12 @@ interface Window {
     };
     ndi?: {
       start?: (payload: {
-        sourceName?: string;
         workspaceId?: string;
         sessionId?: string;
-      }) => Promise<{ ok: boolean; error?: string }>;
+      }) => Promise<{ ok: boolean; error?: string; state?: NdiStatus }>;
       stop?: () => Promise<{ ok: boolean }>;
-      getStatus?: () => Promise<{ active: boolean; sourceName: string }>;
-      onState?: (callback: (state: { active: boolean; sourceName: string }) => void) => (() => void);
+      getStatus?: () => Promise<NdiStatus>;
+      onState?: (callback: (state: NdiStatus) => void) => (() => void);
     };
     updates?: {
       getStatus?: () => Promise<{
