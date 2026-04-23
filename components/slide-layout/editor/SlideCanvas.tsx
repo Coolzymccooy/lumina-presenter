@@ -17,6 +17,7 @@ interface SlideCanvasProps {
   showGrid: boolean;
   showSafeArea: boolean;
   zoom?: number;
+  chromeVariant?: 'default' | 'builder';
   onSelectElement: (elementId: string | null) => void;
   onUpdateSlide: (updater: (slide: Slide) => Slide) => void;
 }
@@ -33,10 +34,12 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
   showGrid,
   showSafeArea,
   zoom = 1,
+  chromeVariant = 'default',
   onSelectElement,
   onUpdateSlide,
 }) => {
   const safeZoom = clampZoom(zoom);
+  const builderChrome = chromeVariant === 'builder';
   const dragRef = React.useRef<{ type: 'move' | 'resize'; elementId: string; handle?: ResizeHandle; originX: number; originY: number } | null>(null);
   const viewportRef = React.useRef<HTMLDivElement | null>(null);
   const hostRef = React.useRef<HTMLDivElement | null>(null);
@@ -94,8 +97,11 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
 
   const stageWidth = React.useMemo(() => {
     if (viewportSize.width <= 0 || viewportSize.height <= 0) return 0;
-    return Math.min(viewportSize.width, (viewportSize.height * 16) / 9);
-  }, [viewportSize.height, viewportSize.width]);
+    const chromeInset = builderChrome ? 34 : 0;
+    const availableWidth = Math.max(0, viewportSize.width - chromeInset);
+    const availableHeight = Math.max(0, viewportSize.height - chromeInset);
+    return Math.min(availableWidth, (availableHeight * 16) / 9);
+  }, [builderChrome, viewportSize.height, viewportSize.width]);
 
   const stageHeight = React.useMemo(() => {
     if (stageWidth <= 0) return 0;
@@ -119,12 +125,22 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        margin: 'auto',
+        boxSizing: 'border-box',
       }
     : undefined;
 
   const viewportClassName = safeZoom > 1
-    ? 'flex h-full min-h-0 w-full items-center justify-center overflow-auto'
-    : 'flex h-full min-h-0 w-full items-center justify-center overflow-hidden';
+    ? `flex h-full min-h-0 w-full items-center justify-center overflow-auto ${builderChrome ? 'rounded-md bg-[#15161b]' : ''}`
+    : `flex h-full min-h-0 w-full items-center justify-center overflow-hidden ${builderChrome ? 'rounded-md bg-[#15161b]' : ''}`;
+
+  const emptyStageClassName = builderChrome
+    ? 'rounded-[18px] border border-zinc-700/80 bg-[#090a0f] shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_0_0_10px_rgba(39,39,42,0.92),0_0_0_11px_rgba(113,113,122,0.24),0_24px_64px_rgba(0,0,0,0.45)]'
+    : 'rounded-lg border border-zinc-800 bg-black';
+
+  const stageClassName = builderChrome
+    ? 'relative overflow-hidden rounded-[18px] border border-zinc-700/80 bg-[#090a0f] shadow-[0_0_0_1px_rgba(255,255,255,0.05),0_0_0_10px_rgba(39,39,42,0.92),0_0_0_11px_rgba(113,113,122,0.24),0_24px_64px_rgba(0,0,0,0.45)]'
+    : 'relative overflow-hidden rounded-xl border border-zinc-800 bg-black shadow-[0_10px_30px_rgba(0,0,0,0.28)]';
 
   const commitPointerMove = React.useCallback((event: PointerEvent) => {
     const active = dragRef.current;
@@ -179,7 +195,7 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
     return (
       <div ref={viewportRef} className={viewportClassName}>
         <div style={scaledWrapperStyle}>
-          <div style={stageStyle} className={`rounded-lg border border-zinc-800 bg-black ${stageStyle ? '' : 'aspect-video w-full'}`} />
+          <div style={stageStyle} className={`${emptyStageClassName} ${stageStyle ? '' : 'aspect-video w-full'}`} />
         </div>
       </div>
     );
@@ -188,7 +204,10 @@ export const SlideCanvas: React.FC<SlideCanvasProps> = ({
   return (
     <div ref={viewportRef} className={viewportClassName}>
       <div style={scaledWrapperStyle}>
-      <div ref={hostRef} style={stageStyle} className={`relative overflow-hidden rounded-xl border border-zinc-800 bg-black shadow-[0_10px_30px_rgba(0,0,0,0.28)] ${stageStyle ? '' : 'aspect-video w-full'}`}>
+      <div ref={hostRef} style={stageStyle} className={`${stageClassName} ${stageStyle ? '' : 'aspect-video w-full'}`}>
+        {builderChrome && (
+          <div className="pointer-events-none absolute -inset-px z-[1] rounded-[18px] border border-white/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),inset_0_0_0_1px_rgba(113,113,122,0.16)]" />
+        )}
         <BackgroundRenderer backgroundUrl={backgroundUrl} mediaType={backgroundMediaType} mediaFit={slide.mediaFit || 'cover'} />
         {showTextContrastOverlay && (
           <div className="absolute inset-0" style={{ background: TEXT_CONTRAST_BACKGROUND_OVERLAY }} />

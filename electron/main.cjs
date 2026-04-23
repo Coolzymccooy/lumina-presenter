@@ -767,7 +767,7 @@ async function promptForDownloadedUpdate(info) {
       detail: detailParts.join(' '),
     });
     if (result.response === 0) {
-      autoUpdaterRef.quitAndInstall(false, true);
+      autoUpdaterRef.quitAndInstall(true, true);
     }
   } catch (error) {
     console.warn('Failed to show update prompt:', error?.message || error);
@@ -793,7 +793,7 @@ function installUpdaterIpcHandlers() {
   });
   ipcMain.handle('app-update:install-now', async () => {
     if (!autoUpdaterRef) return false;
-    autoUpdaterRef.quitAndInstall(false, true);
+    autoUpdaterRef.quitAndInstall(true, true);
     return true;
   });
   ipcMain.handle('app-update:open-releases', async () => {

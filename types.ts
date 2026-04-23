@@ -267,7 +267,7 @@ export interface Schedule {
   items: ServiceItem[];
 }
 
-export type ViewMode = 'BUILDER' | 'PRESENTER';
+export type ViewMode = 'BUILDER' | 'PRESENTER' | 'STAGE';
 
 // Gemini related types
 export interface GeneratedSlideData {
