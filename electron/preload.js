@@ -34,6 +34,12 @@ contextBridge.exposeInMainWorld('electron', {
     // Fire-and-forget — audio frames fire every 20ms so ipcRenderer.send
     // beats .invoke() (no reply promise, no backlog on the main process).
     sendAudioFrame: (payload) => ipcRenderer.send('ndi:audio-frame', payload),
+    sendAudioWarning: (payload) => ipcRenderer.send('ndi:audio-warning', payload),
+    onAudioWarning: (callback) => {
+      const listener = (_event, payload) => callback(payload);
+      ipcRenderer.on('ndi:audio-warning', listener);
+      return () => ipcRenderer.removeListener('ndi:audio-warning', listener);
+    },
   },
   updates: {
     getStatus: () => ipcRenderer.invoke('app-update:get-status'),

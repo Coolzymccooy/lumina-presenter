@@ -149,6 +149,57 @@ function buildCaptureScript() {
     var mo = new MutationObserver(function () { scanAndAttach(ctx, mixer); });
     mo.observe(document.documentElement || document.body, { childList: true, subtree: true });
 
+    // Mute sync — mirror the app's outputMuted state (in localStorage, shared
+    // origin) onto the mixer gain. Zeroing gain is stronger than element.muted,
+    // which only silences local playback and still leaks via MediaElementSource.
+    var currentMuted = false;
+    function syncMute() {
+      try {
+        var raw = localStorage.getItem('lumina_session_v1');
+        if (!raw) return;
+        var parsed = JSON.parse(raw);
+        var nextMuted = !!(parsed && parsed.outputMuted);
+        if (nextMuted !== currentMuted) {
+          currentMuted = nextMuted;
+          mixer.gain.setTargetAtTime(nextMuted ? 0 : 1, ctx.currentTime, 0.01);
+          safeLog('mute sync: ' + (nextMuted ? 'silenced' : 'live'));
+        }
+      } catch (_) { /* corrupt localStorage — leave gain as-is */ }
+    }
+    syncMute();
+    setInterval(syncMute, 400);
+
+    // Iframe warning — YouTube/Vimeo/SoundCloud embeds can't be tapped via
+    // MediaElementAudioSourceNode (cross-origin). Detect them and warn once
+    // per session so the operator knows their audio is not on NDI.
+    var IFRAME_MEDIA_HOSTS = [
+      'youtube.com', 'youtu.be', 'youtube-nocookie.com',
+      'vimeo.com', 'player.vimeo.com',
+      'soundcloud.com', 'w.soundcloud.com',
+    ];
+    var warnedForIframes = false;
+    function checkIframes() {
+      if (warnedForIframes) return;
+      var frames = document.querySelectorAll('iframe');
+      for (var i = 0; i < frames.length; i++) {
+        var src = (frames[i].src || '').toLowerCase();
+        if (!src) continue;
+        for (var h = 0; h < IFRAME_MEDIA_HOSTS.length; h++) {
+          if (src.indexOf(IFRAME_MEDIA_HOSTS[h]) !== -1) {
+            warnedForIframes = true;
+            safeLog('cross-origin iframe detected: ' + src.slice(0, 120));
+            try {
+              var sendWarning = window.electron && window.electron.ndi && window.electron.ndi.sendAudioWarning;
+              if (typeof sendWarning === 'function') sendWarning({ code: 'iframe-media', src: src });
+            } catch (_) {}
+            return;
+          }
+        }
+      }
+    }
+    checkIframes();
+    setInterval(checkIframes, 1500);
+
     safeLog('audio tap active @ ' + ctx.sampleRate + 'Hz stereo');
   }
 

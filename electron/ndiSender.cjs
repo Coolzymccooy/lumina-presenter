@@ -56,9 +56,13 @@ class NdiSenderInstance {
    * Start the underlying grandiose sender.
    * @param {number} width
    * @param {number} height
+   * @param {{ clockAudio?: boolean }} [options] When `clockAudio` is true the
+   *   sender clocks audio frames from the stream (keeps A/V sync when audio
+   *   is embedded). Default false — graphics-only senders have nothing to
+   *   clock against and clockAudio:true would stall the video pump.
    * @returns {Promise<{ ok: boolean, error?: string }>}
    */
-  async start(width, height) {
+  async start(width, height, options) {
     const load = loadGrandiose();
     if (!load.ok) return load;
 
@@ -70,9 +74,10 @@ class NdiSenderInstance {
       this._sender = await grandiose.send({
         name: this._sourceName,
         clockVideo: true,
+        clockAudio: !!options?.clockAudio,
       });
       this._active = true;
-      console.log(`[NDI] Sender started: "${this._sourceName}" ${width}x${height}`);
+      console.log(`[NDI] Sender started: "${this._sourceName}" ${width}x${height}${options?.clockAudio ? ' (audio-clocked)' : ''}`);
       return { ok: true };
     } catch (err) {
       this._sender = null;

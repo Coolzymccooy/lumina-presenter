@@ -421,7 +421,10 @@ async function startNdiScene(scene, payload) {
   }
 
   const sender = ndiSender.createSender(scene.sourceName);
-  const result = await sender.start(sceneWidth, sceneHeight);
+  // Program sender clocks audio when embedding is on so A/V stays in sync;
+  // graphics feeds never clock audio (no audio track to clock against).
+  const senderOptions = !scene.fillKey && payload?.audioEnabled ? { clockAudio: true } : undefined;
+  const result = await sender.start(sceneWidth, sceneHeight, senderOptions);
   if (!result.ok) {
     try { if (!captureWindow.isDestroyed()) captureWindow.destroy(); } catch (_) { /* ignore */ }
     return result;
@@ -865,6 +868,20 @@ function installMachineIpcHandlers() {
         console.error('[NDI] audio send error:', err?.message || String(err));
       }
     });
+  });
+
+  // Warnings from the capture window (e.g. cross-origin iframe detected)
+  // relay to the main renderer so the operator sees a toast explaining why
+  // some audio isn't reaching the NDI feed.
+  ipcMain.on('ndi:audio-warning', (_event, payload) => {
+    if (!payload || typeof payload !== 'object') return;
+    const code = String(payload.code || '').slice(0, 64);
+    const src = String(payload.src || '').slice(0, 200);
+    if (!code) return;
+    console.warn(`[NDI] audio warning: ${code}${src ? ' src=' + src : ''}`);
+    if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+      mainWindowRef.webContents.send('ndi:audio-warning', { code, src });
+    }
   });
   // ──────────────────────────────────────────────────────────────────────────
 

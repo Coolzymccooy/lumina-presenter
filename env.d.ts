@@ -124,6 +124,8 @@ interface Window {
       getStatus?: () => Promise<NdiStatus>;
       onState?: (callback: (state: NdiStatus) => void) => (() => void);
       sendAudioFrame?: (payload: { pcm: ArrayBuffer; sampleRate: number; channels: number; samples: number }) => void;
+      sendAudioWarning?: (payload: { code: string; src?: string }) => void;
+      onAudioWarning?: (callback: (payload: { code: string; src?: string }) => void) => (() => void);
     };
     updates?: {
       getStatus?: () => Promise<{

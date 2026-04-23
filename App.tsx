@@ -1631,6 +1631,7 @@ function App() {
   const [ndiMenuOpen, setNdiMenuOpen] = useState(false);
   const ndiMenuRef = useRef<HTMLDivElement | null>(null);
   const [ndiError, setNdiError] = useState<string | null>(null);
+  const [ndiWarning, setNdiWarning] = useState<string | null>(null);
   const [lowerThirdsEnabled, setLowerThirdsEnabled] = useState(false);
   const [routingMode, setRoutingMode] = useState<'PROJECTOR' | 'STREAM' | 'LOBBY'>('PROJECTOR');
   const [teamPlaylists, setTeamPlaylists] = useState<CloudPlaylistRecord[]>([]);
@@ -4277,6 +4278,24 @@ function App() {
     }).catch(() => {});
     return () => off?.();
   }, [isElectronShell]);
+
+  // Subscribe to NDI audio warnings (e.g. cross-origin iframe detected) and
+  // surface them as a one-shot amber pill so the operator knows a media
+  // source is silently excluded from the NDI feed.
+  useEffect(() => {
+    if (!isElectronShell) return;
+    const off = window.electron?.ndi?.onAudioWarning?.((payload) => {
+      if (payload?.code === 'iframe-media') {
+        setNdiWarning('NDI audio cannot include YouTube / Vimeo / SoundCloud embeds. Download videos for embed, or route audio separately.');
+      }
+    });
+    return () => off?.();
+  }, [isElectronShell]);
+
+  // Reset the warning pill whenever NDI stops so it doesn't linger.
+  useEffect(() => {
+    if (!ndiState.active) setNdiWarning(null);
+  }, [ndiState.active]);
 
   // Close NDI menu on outside click or Escape.
   useEffect(() => {
@@ -9826,6 +9845,15 @@ function App() {
                               </div>
                             )}
                           </div>
+                        )}
+                        {ndiWarning && (
+                          <span
+                            className="h-9 flex items-center px-3 rounded-lg border border-amber-700/60 bg-amber-950/30 text-[9px] font-bold text-amber-300 cursor-pointer max-w-[32ch]"
+                            title={ndiWarning + ' — click to dismiss'}
+                            onClick={() => setNdiWarning(null)}
+                          >
+                            <span className="truncate">⚠ {ndiWarning}</span>
+                          </span>
                         )}
                         {ndiError && (
                           <span
