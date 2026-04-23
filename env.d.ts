@@ -20,6 +20,7 @@ interface NdiSourceStatus {
 
 interface NdiStatus {
   active: boolean;
+  broadcastMode: boolean;
   sources: NdiSourceStatus[];
 }
 
@@ -111,6 +112,7 @@ interface Window {
       start?: (payload: {
         workspaceId?: string;
         sessionId?: string;
+        broadcastMode?: boolean;
       }) => Promise<{ ok: boolean; error?: string; state?: NdiStatus }>;
       stop?: () => Promise<{ ok: boolean }>;
       getStatus?: () => Promise<NdiStatus>;

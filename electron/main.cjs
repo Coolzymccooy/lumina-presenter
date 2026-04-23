@@ -45,7 +45,8 @@ const NDI_SCENES = [
 /** @type {Record<string, { window: any, sender: any, active: boolean, lastError?: string, droppedFrames: number }>} */
 const ndiSources = {};
 let ndiActive = false;
-let ndiStatus = { active: false, sources: [] };
+let ndiBroadcastMode = false;
+let ndiStatus = { active: false, broadcastMode: false, sources: [] };
 let ndiDropLogTimer = null;
 const NDI_TARGET_FPS = 30;
 // ─────────────────────────────────────────────────────────────────────────────
@@ -309,7 +310,10 @@ function emitMachineServiceState() {
 }
 
 function emitNdiState() {
-  const sources = NDI_SCENES.map((scene) => {
+  // In non-broadcast mode, hide fill+key sources from the renderer's status —
+  // they're intentionally not started, so listing them as OFF would mislead.
+  const visibleScenes = ndiBroadcastMode ? NDI_SCENES : NDI_SCENES.filter((s) => !s.fillKey);
+  const sources = visibleScenes.map((scene) => {
     const entry = ndiSources[scene.id];
     return {
       id: scene.id,
@@ -319,7 +323,7 @@ function emitNdiState() {
       lastError: entry?.lastError,
     };
   });
-  ndiStatus = { active: ndiActive, sources };
+  ndiStatus = { active: ndiActive, broadcastMode: ndiBroadcastMode, sources };
   if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
   mainWindowRef.webContents.send('ndi:state', ndiStatus);
 }
@@ -330,6 +334,9 @@ async function teardownAllNdiSources() {
   await Promise.all(ids.map(async (id) => {
     const entry = ndiSources[id];
     if (!entry) return;
+    // Clear active flag first so the capture window's `closed` handler skips
+    // re-invoking sender.stop() — otherwise each teardown logs twice.
+    entry.active = false;
     try {
       if (entry.window && !entry.window.isDestroyed()) entry.window.destroy();
     } catch (_) { /* ignore */ }
@@ -723,10 +730,15 @@ function installMachineIpcHandlers() {
     // Fresh start — clear any leftover entries from a previous failed attempt.
     await teardownAllNdiSources();
 
+    // Broadcast Mode: off = program only (single NDI source, for streaming).
+    // on = all three sources including transparent fill+key for switchers.
+    ndiBroadcastMode = !!payload?.broadcastMode;
+    const activeScenes = ndiBroadcastMode ? NDI_SCENES : NDI_SCENES.filter((s) => !s.fillKey);
+
     try {
       // Spawn all scenes in parallel. Any failure → roll everything back.
       const results = await Promise.all(
-        NDI_SCENES.map((scene) => startNdiScene(scene, payload).catch((err) => ({
+        activeScenes.map((scene) => startNdiScene(scene, payload).catch((err) => ({
           ok: false,
           error: err?.message || String(err),
           sceneId: scene.id,
@@ -736,6 +748,7 @@ function installMachineIpcHandlers() {
       const firstFailure = results.find((r) => !r.ok);
       if (firstFailure) {
         await teardownAllNdiSources();
+        ndiBroadcastMode = false;
         return { ok: false, error: firstFailure.error || 'Unknown NDI start failure.' };
       }
 
@@ -758,6 +771,7 @@ function installMachineIpcHandlers() {
     } catch (err) {
       await teardownAllNdiSources();
       ndiActive = false;
+      ndiBroadcastMode = false;
       emitNdiState();
       return { ok: false, error: err?.message || String(err) };
     }
@@ -765,6 +779,7 @@ function installMachineIpcHandlers() {
 
   ipcMain.handle('ndi:stop', async () => {
     ndiActive = false;
+    ndiBroadcastMode = false;
     if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
     await teardownAllNdiSources();
     emitNdiState();

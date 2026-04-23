@@ -307,6 +307,7 @@ type WorkspaceSettings = {
   slideBrandingStyle: 'minimal' | 'bold' | 'frosted';
   slideBrandingOpacity: number;
   ndiSources: NdiSourceConfig[];
+  ndiBroadcastMode: boolean;
 };
 
 type NdiSourceConfig = {
@@ -916,6 +917,7 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
       .slice(0, 32)
       .map((s) => ({ id: s.id.trim().slice(0, 64), name: s.name.trim().slice(0, 120), sceneId: s.sceneId.trim().slice(0, 120) }));
   }
+  if (typeof raw.ndiBroadcastMode === 'boolean') safe.ndiBroadcastMode = raw.ndiBroadcastMode;
   return safe;
 };
 
@@ -948,6 +950,7 @@ const createDefaultWorkspaceSettings = (): WorkspaceSettings => ({
   slideBrandingStyle: 'minimal',
   slideBrandingOpacity: 0.82,
   ndiSources: [],
+  ndiBroadcastMode: false,
 });
 
 const readInitialWorkspaceSettings = (): WorkspaceSettings => {
@@ -1616,7 +1619,7 @@ function App() {
   const presenterMediaUploadInputRef = useRef<HTMLInputElement | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
   const [isStageDisplayLive, setIsStageDisplayLive] = useState(false);
-  const [ndiState, setNdiState] = useState<NdiStatus>({ active: false, sources: [] });
+  const [ndiState, setNdiState] = useState<NdiStatus>({ active: false, broadcastMode: false, sources: [] });
   const [ndiMenuOpen, setNdiMenuOpen] = useState(false);
   const ndiMenuRef = useRef<HTMLDivElement | null>(null);
   const [ndiError, setNdiError] = useState<string | null>(null);
@@ -9664,14 +9667,23 @@ function App() {
                                     const result = await window.electron?.ndi?.start?.({
                                       workspaceId,
                                       sessionId: liveSessionId,
+                                      broadcastMode: workspaceSettings.ndiBroadcastMode,
                                     });
                                     if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to start.');
                                   }
                                 }}
-                                title={ndiState.active ? 'Stop NDI broadcast' : 'Broadcast 3 NDI sources (Program / Lyrics / LowerThirds) on the local network'}
+                                title={ndiState.active
+                                  ? 'Stop NDI broadcast'
+                                  : workspaceSettings.ndiBroadcastMode
+                                    ? 'Broadcast 3 NDI sources (Program / Lyrics / LowerThirds) on the local network'
+                                    : 'Broadcast Lumina-Program on the local network (enable Broadcast Mode for fill+key sources)'}
                                 className={`h-9 px-3 rounded-l-lg border font-black text-[9px] tracking-wider uppercase transition-all ${ndiState.active ? 'border-violet-500/70 bg-violet-950/50 text-violet-300 animate-pulse' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-violet-300 hover:border-violet-600'}`}
                               >
-                                {ndiState.active ? `\u25cf NDI LIVE (${ndiState.sources.filter((s) => s.active).length}/${ndiState.sources.length || 3})` : 'Send NDI'}
+                                {ndiState.active
+                                  ? ndiState.broadcastMode
+                                    ? `\u25cf NDI BROADCAST (${ndiState.sources.filter((s) => s.active).length}/${ndiState.sources.length || 3})`
+                                    : `\u25cf NDI LIVE`
+                                  : 'Send NDI'}
                               </button>
                               <button
                                 onClick={() => setNdiMenuOpen((v) => !v)}
@@ -9686,12 +9698,27 @@ function App() {
                               <div
                                 className="absolute right-0 bottom-full mb-2 z-50 w-72 rounded-lg border border-zinc-700 bg-zinc-950/95 backdrop-blur-md shadow-xl p-3 space-y-2"
                               >
+                                <label className={`flex items-start gap-2 p-2 rounded-lg border text-[10px] ${ndiState.active ? 'border-zinc-800 bg-black/40 text-zinc-500 cursor-not-allowed' : 'border-zinc-700 bg-black/40 text-zinc-300 cursor-pointer hover:border-violet-700/60'}`}>
+                                  <input
+                                    type="checkbox"
+                                    checked={workspaceSettings.ndiBroadcastMode}
+                                    disabled={ndiState.active}
+                                    onChange={(e) => handleWorkspaceSettingsSave({ ndiBroadcastMode: e.target.checked })}
+                                    className="accent-violet-500 mt-0.5"
+                                  />
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="font-bold uppercase tracking-wider text-[9px]">Broadcast Mode (fill + key)</span>
+                                    <span className="text-[9px] leading-relaxed text-zinc-500">Adds transparent Lumina-Lyrics and Lumina-LowerThirds sources for vMix / OBS / hardware switchers. Leave off for direct streaming.</span>
+                                  </div>
+                                </label>
                                 <div className="text-[9px] font-black uppercase tracking-widest text-zinc-500 pb-1 border-b border-zinc-800">NDI Sources</div>
-                                {(ndiState.sources.length ? ndiState.sources : [
+                                {(ndiState.sources.length ? ndiState.sources : (workspaceSettings.ndiBroadcastMode ? [
                                   { id: 'program', sourceName: 'Lumina-Program', fillKey: false, active: false },
                                   { id: 'lyrics', sourceName: 'Lumina-Lyrics', fillKey: true, active: false },
                                   { id: 'lowerThirds', sourceName: 'Lumina-LowerThirds', fillKey: true, active: false },
-                                ]).map((source) => (
+                                ] : [
+                                  { id: 'program', sourceName: 'Lumina-Program', fillKey: false, active: false },
+                                ])).map((source) => (
                                   <div key={source.id} className="flex items-center justify-between gap-2 text-[10px]">
                                     <div className="flex flex-col min-w-0">
                                       <span className="font-bold text-zinc-200 truncate">{source.sourceName}</span>
