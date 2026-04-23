@@ -308,6 +308,7 @@ type WorkspaceSettings = {
   slideBrandingOpacity: number;
   ndiSources: NdiSourceConfig[];
   ndiBroadcastMode: boolean;
+  ndiResolution: '720p' | '1080p' | '4k';
 };
 
 type NdiSourceConfig = {
@@ -918,6 +919,9 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
       .map((s) => ({ id: s.id.trim().slice(0, 64), name: s.name.trim().slice(0, 120), sceneId: s.sceneId.trim().slice(0, 120) }));
   }
   if (typeof raw.ndiBroadcastMode === 'boolean') safe.ndiBroadcastMode = raw.ndiBroadcastMode;
+  if (raw.ndiResolution === '720p' || raw.ndiResolution === '1080p' || raw.ndiResolution === '4k') {
+    safe.ndiResolution = raw.ndiResolution;
+  }
   return safe;
 };
 
@@ -951,6 +955,7 @@ const createDefaultWorkspaceSettings = (): WorkspaceSettings => ({
   slideBrandingOpacity: 0.82,
   ndiSources: [],
   ndiBroadcastMode: false,
+  ndiResolution: '1080p',
 });
 
 const readInitialWorkspaceSettings = (): WorkspaceSettings => {
@@ -1619,7 +1624,7 @@ function App() {
   const presenterMediaUploadInputRef = useRef<HTMLInputElement | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
   const [isStageDisplayLive, setIsStageDisplayLive] = useState(false);
-  const [ndiState, setNdiState] = useState<NdiStatus>({ active: false, broadcastMode: false, sources: [] });
+  const [ndiState, setNdiState] = useState<NdiStatus>({ active: false, broadcastMode: false, resolution: '1080p', width: 1920, height: 1080, sources: [] });
   const [ndiMenuOpen, setNdiMenuOpen] = useState(false);
   const ndiMenuRef = useRef<HTMLDivElement | null>(null);
   const [ndiError, setNdiError] = useState<string | null>(null);
@@ -9671,6 +9676,7 @@ function App() {
                                       workspaceId,
                                       sessionId: liveSessionId,
                                       broadcastMode: workspaceSettings.ndiBroadcastMode,
+                                      resolution: workspaceSettings.ndiResolution,
                                     });
                                     if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to start.');
                                   }
@@ -9716,6 +9722,7 @@ function App() {
                                           workspaceId,
                                           sessionId: liveSessionId,
                                           broadcastMode: next,
+                                          resolution: workspaceSettings.ndiResolution,
                                         });
                                         if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to restart.');
                                       }
@@ -9730,6 +9737,35 @@ function App() {
                                     )}
                                   </div>
                                 </label>
+                                <div className="flex items-center gap-2 p-2 rounded-lg border border-zinc-700 bg-black/40 text-zinc-300 text-[10px]">
+                                  <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                                    <span className="font-bold uppercase tracking-wider text-[9px]">Resolution</span>
+                                    <span className="text-[9px] leading-relaxed text-zinc-500 truncate">Output dimensions for all NDI scenes.</span>
+                                  </div>
+                                  <select
+                                    value={workspaceSettings.ndiResolution}
+                                    onChange={async (e) => {
+                                      const next = e.target.value as '720p' | '1080p' | '4k';
+                                      handleWorkspaceSettingsSave({ ndiResolution: next });
+                                      if (ndiState.active) {
+                                        setNdiError(null);
+                                        await window.electron?.ndi?.stop?.();
+                                        const result = await window.electron?.ndi?.start?.({
+                                          workspaceId,
+                                          sessionId: liveSessionId,
+                                          broadcastMode: workspaceSettings.ndiBroadcastMode,
+                                          resolution: next,
+                                        });
+                                        if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to restart.');
+                                      }
+                                    }}
+                                    className="h-7 px-2 rounded border border-zinc-700 bg-zinc-900 text-[10px] font-bold text-zinc-200 focus:outline-none focus:border-violet-600"
+                                  >
+                                    <option value="720p">720p (1280×720)</option>
+                                    <option value="1080p">1080p (1920×1080)</option>
+                                    <option value="4k">4K (3840×2160)</option>
+                                  </select>
+                                </div>
                                 <div className="text-[9px] font-black uppercase tracking-widest text-zinc-500 pb-1 border-b border-zinc-800">NDI Sources</div>
                                 {(ndiState.sources.length ? ndiState.sources : (workspaceSettings.ndiBroadcastMode ? [
                                   { id: 'program', sourceName: 'Lumina-Program', fillKey: false, active: false },

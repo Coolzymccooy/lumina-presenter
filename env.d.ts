@@ -21,6 +21,9 @@ interface NdiSourceStatus {
 interface NdiStatus {
   active: boolean;
   broadcastMode: boolean;
+  resolution: '720p' | '1080p' | '4k';
+  width: number;
+  height: number;
   sources: NdiSourceStatus[];
 }
 
@@ -113,6 +116,7 @@ interface Window {
         workspaceId?: string;
         sessionId?: string;
         broadcastMode?: boolean;
+        resolution?: '720p' | '1080p' | '4k';
       }) => Promise<{ ok: boolean; error?: string; state?: NdiStatus }>;
       stop?: () => Promise<{ ok: boolean }>;
       getStatus?: () => Promise<NdiStatus>;

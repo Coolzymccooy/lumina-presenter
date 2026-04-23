@@ -2,6 +2,7 @@ const { app, BrowserWindow, screen, session, Menu, shell, ipcMain, clipboard, di
 const path = require('path');
 const fs = require('fs');
 const ndiSender = require('./ndiSender.cjs');
+const { NDI_RESOLUTION_PRESETS, resolveNdiResolution } = require('./ndiResolution.cjs');
 const { registerLyricClipboardIpc } = require('./ipc/lyricClipboard.cjs');
 const DIST_INDEX_PATH = path.join(__dirname, '../dist/index.html');
 const DEV_SERVER_URL = process.env.ELECTRON_RENDERER_URL || 'http://localhost:5173';
@@ -32,9 +33,12 @@ let displayTestWindows = new Map();
 // ─── NDI outbound sender state (Phase 2: multi-source) ──────────────────────
 // Fixed scene list — all three are broadcast simultaneously when NDI is active.
 // Downstream switchers bind to these source names; do not rename casually.
-// `width`/`height` are optional per-scene overrides; when omitted the defaults
-// from NDI_DEFAULT_WIDTH/HEIGHT apply. Override via env (LUMINA_NDI_WIDTH /
-// LUMINA_NDI_HEIGHT) or per scene for 720p / 4K broadcast.
+//
+// Resolution precedence (highest first):
+//   1. Per-scene `width`/`height` on NDI_SCENES (power-user scene tuning)
+//   2. Payload `resolution` from renderer (workspace setting: 720p/1080p/4k)
+//   3. Env vars LUMINA_NDI_WIDTH / LUMINA_NDI_HEIGHT (host override)
+//   4. Hardcoded 1920x1080 fallback
 const NDI_DEFAULT_WIDTH = Number.parseInt(process.env.LUMINA_NDI_WIDTH || '', 10) || 1920;
 const NDI_DEFAULT_HEIGHT = Number.parseInt(process.env.LUMINA_NDI_HEIGHT || '', 10) || 1080;
 const NDI_SCENES = [
@@ -46,7 +50,10 @@ const NDI_SCENES = [
 const ndiSources = {};
 let ndiActive = false;
 let ndiBroadcastMode = false;
-let ndiStatus = { active: false, broadcastMode: false, sources: [] };
+let ndiResolution = '1080p';
+let ndiSessionWidth = NDI_DEFAULT_WIDTH;
+let ndiSessionHeight = NDI_DEFAULT_HEIGHT;
+let ndiStatus = { active: false, broadcastMode: false, resolution: '1080p', width: NDI_DEFAULT_WIDTH, height: NDI_DEFAULT_HEIGHT, sources: [] };
 let ndiDropLogTimer = null;
 const NDI_TARGET_FPS = 30;
 // ─────────────────────────────────────────────────────────────────────────────
@@ -323,7 +330,14 @@ function emitNdiState() {
       lastError: entry?.lastError,
     };
   });
-  ndiStatus = { active: ndiActive, broadcastMode: ndiBroadcastMode, sources };
+  ndiStatus = {
+    active: ndiActive,
+    broadcastMode: ndiBroadcastMode,
+    resolution: ndiResolution,
+    width: ndiSessionWidth,
+    height: ndiSessionHeight,
+    sources,
+  };
   if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
   mainWindowRef.webContents.send('ndi:state', ndiStatus);
 }
@@ -353,8 +367,11 @@ async function teardownAllNdiSources() {
  */
 async function startNdiScene(scene, payload) {
   const transparent = !!scene.fillKey;
-  const sceneWidth = Number.isFinite(scene.width) && scene.width > 0 ? scene.width : NDI_DEFAULT_WIDTH;
-  const sceneHeight = Number.isFinite(scene.height) && scene.height > 0 ? scene.height : NDI_DEFAULT_HEIGHT;
+  // Per-scene override beats the session-wide resolution, which beats the env fallback.
+  const sessionWidth = Number.isFinite(payload?.sessionWidth) && payload.sessionWidth > 0 ? payload.sessionWidth : NDI_DEFAULT_WIDTH;
+  const sessionHeight = Number.isFinite(payload?.sessionHeight) && payload.sessionHeight > 0 ? payload.sessionHeight : NDI_DEFAULT_HEIGHT;
+  const sceneWidth = Number.isFinite(scene.width) && scene.width > 0 ? scene.width : sessionWidth;
+  const sceneHeight = Number.isFinite(scene.height) && scene.height > 0 ? scene.height : sessionHeight;
   const captureWindow = new BrowserWindow({
     width: sceneWidth,
     height: sceneHeight,
@@ -735,10 +752,19 @@ function installMachineIpcHandlers() {
     ndiBroadcastMode = !!payload?.broadcastMode;
     const activeScenes = ndiBroadcastMode ? NDI_SCENES : NDI_SCENES.filter((s) => !s.fillKey);
 
+    // Resolve session resolution from the payload preset (falls back to env
+    // var defaults when the renderer doesn't specify — keeps CLI/test paths
+    // working without changes).
+    const resolved = resolveNdiResolution(payload?.resolution, NDI_DEFAULT_WIDTH, NDI_DEFAULT_HEIGHT);
+    ndiResolution = resolved.key;
+    ndiSessionWidth = resolved.width;
+    ndiSessionHeight = resolved.height;
+    const scenePayload = { ...payload, sessionWidth: ndiSessionWidth, sessionHeight: ndiSessionHeight };
+
     try {
       // Spawn all scenes in parallel. Any failure → roll everything back.
       const results = await Promise.all(
-        activeScenes.map((scene) => startNdiScene(scene, payload).catch((err) => ({
+        activeScenes.map((scene) => startNdiScene(scene, scenePayload).catch((err) => ({
           ok: false,
           error: err?.message || String(err),
           sceneId: scene.id,
@@ -749,6 +775,9 @@ function installMachineIpcHandlers() {
       if (firstFailure) {
         await teardownAllNdiSources();
         ndiBroadcastMode = false;
+        ndiResolution = '1080p';
+        ndiSessionWidth = NDI_DEFAULT_WIDTH;
+        ndiSessionHeight = NDI_DEFAULT_HEIGHT;
         return { ok: false, error: firstFailure.error || 'Unknown NDI start failure.' };
       }
 
@@ -772,6 +801,9 @@ function installMachineIpcHandlers() {
       await teardownAllNdiSources();
       ndiActive = false;
       ndiBroadcastMode = false;
+      ndiResolution = '1080p';
+      ndiSessionWidth = NDI_DEFAULT_WIDTH;
+      ndiSessionHeight = NDI_DEFAULT_HEIGHT;
       emitNdiState();
       return { ok: false, error: err?.message || String(err) };
     }
@@ -780,6 +812,9 @@ function installMachineIpcHandlers() {
   ipcMain.handle('ndi:stop', async () => {
     ndiActive = false;
     ndiBroadcastMode = false;
+    ndiResolution = '1080p';
+    ndiSessionWidth = NDI_DEFAULT_WIDTH;
+    ndiSessionHeight = NDI_DEFAULT_HEIGHT;
     if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
     await teardownAllNdiSources();
     emitNdiState();
