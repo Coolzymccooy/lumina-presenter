@@ -32,6 +32,11 @@ let displayTestWindows = new Map();
 // ─── NDI outbound sender state (Phase 2: multi-source) ──────────────────────
 // Fixed scene list — all three are broadcast simultaneously when NDI is active.
 // Downstream switchers bind to these source names; do not rename casually.
+// `width`/`height` are optional per-scene overrides; when omitted the defaults
+// from NDI_DEFAULT_WIDTH/HEIGHT apply. Override via env (LUMINA_NDI_WIDTH /
+// LUMINA_NDI_HEIGHT) or per scene for 720p / 4K broadcast.
+const NDI_DEFAULT_WIDTH = Number.parseInt(process.env.LUMINA_NDI_WIDTH || '', 10) || 1920;
+const NDI_DEFAULT_HEIGHT = Number.parseInt(process.env.LUMINA_NDI_HEIGHT || '', 10) || 1080;
 const NDI_SCENES = [
   { id: 'program',     sourceName: 'Lumina-Program',     fillKey: false, route: 'output' },
   { id: 'lyrics',      sourceName: 'Lumina-Lyrics',      fillKey: true,  route: 'lyrics-ndi' },
@@ -341,10 +346,14 @@ async function teardownAllNdiSources() {
  */
 async function startNdiScene(scene, payload) {
   const transparent = !!scene.fillKey;
+  const sceneWidth = Number.isFinite(scene.width) && scene.width > 0 ? scene.width : NDI_DEFAULT_WIDTH;
+  const sceneHeight = Number.isFinite(scene.height) && scene.height > 0 ? scene.height : NDI_DEFAULT_HEIGHT;
   const captureWindow = new BrowserWindow({
-    width: 1920,
-    height: 1080,
+    width: sceneWidth,
+    height: sceneHeight,
     show: false,
+    frame: false,
+    useContentSize: true,
     transparent,
     backgroundColor: transparent ? '#00000000' : undefined,
     webPreferences: {
@@ -374,7 +383,7 @@ async function startNdiScene(scene, payload) {
   }
 
   const sender = ndiSender.createSender(scene.sourceName);
-  const result = await sender.start(1920, 1080);
+  const result = await sender.start(sceneWidth, sceneHeight);
   if (!result.ok) {
     try { if (!captureWindow.isDestroyed()) captureWindow.destroy(); } catch (_) { /* ignore */ }
     return result;

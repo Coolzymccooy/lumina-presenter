@@ -7,7 +7,7 @@ import { getDefaultBackgroundUrl, getDefaultBackgroundMediaType } from "../servi
 import { MotionCanvas } from "./MotionCanvas";
 import { ElementRenderer } from "./slide-layout/render/ElementRenderer";
 import { PROGRAM_MEDIA_PRESENTATION_FILTER, MOTION_CANVAS_PRESENTATION_FILTER, shouldShowScriptureReferenceLabel, shouldUseScriptureReadingPanel, TEXT_CONTRAST_BACKGROUND_OVERLAY } from "./slide-layout/render/backgroundTone";
-import { getRenderableElements } from "./slide-layout/utils/slideHydration";
+import { getRenderableElements, summarizeElementsToLegacyContent } from "./slide-layout/utils/slideHydration";
 import { SlideBrandingOverlay, type SlideBrandingConfig } from "./SlideBrandingOverlay";
 import { VideoBackground } from "./video/VideoBackground";
 import { AlphaOverlay } from "./video/AlphaOverlay";
@@ -1028,6 +1028,17 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
     ? <span dangerouslySetInnerHTML={{ __html: contentText }} />
     : contentText;
 
+  // Lower-thirds text source: fall back to summarizing structured elements when legacy content is empty.
+  const lowerThirdsContentText = contentText.trim().length > 0
+    ? contentText
+    : hasStructuredElements
+      ? summarizeElementsToLegacyContent(structuredElements)
+      : "";
+  const lowerThirdsIsHtml = /<[a-zA-Z][^>]*>/.test(lowerThirdsContentText);
+  const lowerThirdsRenderText = lowerThirdsIsHtml
+    ? <span dangerouslySetInnerHTML={{ __html: lowerThirdsContentText }} />
+    : lowerThirdsContentText;
+
   useEffect(() => {
     const el = wrapperRef.current;
     if (!el) return;
@@ -1153,7 +1164,46 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
             ...textLayerStyle,
           }}
         >
-          {hasStructuredElements ? (
+          {lowerThirds ? (
+            /* ── Lower-thirds overlay: bottom strip that short-circuits structured + legacy text paths ── */
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                padding: `0 ${CANVAS_W * 0.04}px ${CANVAS_H * 0.07}px`,
+                textAlign: "center",
+              }}
+            >
+              <div style={{ width: "100%", maxWidth: "92%", textAlign: "center" }}>
+                <div
+                  style={{
+                    display: "inline-block",
+                    maxWidth: "100%",
+                    padding: `${labelPadH * 2}px ${labelPadV * 4}px`,
+                    borderRadius: 20,
+                    background: "rgba(0,0,0,0.60)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    backdropFilter: "blur(8px)",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: Math.round(textPx * 0.58),
+                      lineHeight: 1.3,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {lowerThirdsRenderText}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : hasStructuredElements ? (
             <ElementRenderer elements={structuredElements} layoutMode="absolute" />
           ) : slide.layoutType === 'ticker' ? (
             /* ── Ticker layout: centered text + scrolling ticker band at bottom ── */
