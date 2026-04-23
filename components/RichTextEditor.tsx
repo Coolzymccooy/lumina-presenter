@@ -375,6 +375,28 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         onKeyUp={updateFormatState}
         onMouseUp={updateFormatState}
         onSelect={updateFormatState}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' && !event.shiftKey && !event.metaKey && !event.ctrlKey) {
+            // Force single <br> instead of browser's default <div>/<p> wrap,
+            // which otherwise renders as visible double-spacing.
+            event.preventDefault();
+            document.execCommand('insertLineBreak');
+          }
+        }}
+        onPaste={(event) => {
+          const clipboard = event.clipboardData;
+          if (!clipboard) return;
+          event.preventDefault();
+          const raw = clipboard.getData('text/plain');
+          if (!raw) return;
+          const escaped = raw
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/\r\n?/g, '\n');
+          const html = escaped.split('\n').join('<br>');
+          document.execCommand('insertHTML', false, html);
+        }}
         data-placeholder={placeholder}
         spellCheck={false}
         className={`bg-zinc-900 border border-zinc-700 rounded-sm text-sm text-zinc-100 p-3 focus:outline-none focus:border-blue-500 transition-colors whitespace-pre-wrap break-words overflow-y-auto custom-scrollbar leading-relaxed rte-area ${contentClassName}`}

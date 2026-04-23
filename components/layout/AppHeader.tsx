@@ -78,6 +78,21 @@ const MODE_BUTTONS: { label: string; mode: ViewMode }[] = [
   { label: 'STAGE', mode: 'STAGE' },
 ];
 
+const getModeButtonClass = (mode: ViewMode, activeMode: ViewMode) => {
+  const base = 'px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all border';
+  const inactive = 'border-transparent text-zinc-600 hover:text-zinc-300 hover:bg-zinc-900/70';
+
+  if (mode !== activeMode) {
+    return `${base} ${inactive}`;
+  }
+
+  if (mode === 'BUILDER') {
+    return `${base} border-zinc-500/70 bg-[linear-gradient(180deg,rgba(113,113,122,0.86)_0%,rgba(63,63,70,0.96)_42%,rgba(24,24,27,1)_100%)] text-zinc-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.24),inset_0_-1px_0_rgba(0,0,0,0.9),0_0_18px_rgba(161,161,170,0.2)]`;
+  }
+
+  return `${base} border-zinc-700 bg-zinc-800 text-white shadow-inner`;
+};
+
 export function AppHeader({
   isElectronShell,
   viewMode,
@@ -142,11 +157,7 @@ export function AppHeader({
                 key={mode}
                 data-testid={`header-mode-${mode.toLowerCase()}`}
                 onClick={() => onViewModeChange(mode)}
-                className={`px-4 py-1.5 rounded-lg text-[10px] font-black tracking-widest transition-all ${
-                  viewMode === mode
-                    ? 'bg-zinc-800 text-white shadow-inner'
-                    : 'text-zinc-600 hover:text-zinc-400'
-                }`}
+                className={getModeButtonClass(mode, viewMode)}
               >
                 {label}
               </button>

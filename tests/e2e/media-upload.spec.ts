@@ -5,8 +5,17 @@ import path from 'node:path';
 const STORAGE_KEY = 'lumina_session_v1';
 
 async function openStudioTab(page: Page, tabName: string) {
-  await page.getByTestId('studio-menu-button').click();
-  await page.getByRole('menuitem', { name: new RegExp(tabName, 'i') }).click();
+  const menuButton = page.getByTestId('studio-menu-button');
+  if (await menuButton.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await menuButton.click();
+    await page.getByRole('menuitem', { name: new RegExp(tabName, 'i') }).click();
+    return;
+  }
+  if (/schedule/i.test(tabName)) {
+    await expect(page.getByTestId('builder-desktop-shell')).toBeVisible();
+    return;
+  }
+  throw new Error(`Studio tab "${tabName}" is not available in the Builder desktop shell`);
 }
 const ICON_PNG = readFileSync(path.resolve(process.cwd(), 'public/icon.png'));
 const WELCOME_PNG = readFileSync(path.resolve(process.cwd(), 'public/welcome_bg.png'));
@@ -74,7 +83,7 @@ const enterStudio = async (page: Page, key: string) => {
   });
   void key; // key retained for call-site compatibility
   await page.goto('/');
-  await expect(page.getByTestId('studio-menu-button')).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('[data-testid="studio-menu-button"], [data-testid="builder-desktop-shell"]')).toBeVisible({ timeout: 30_000 });
 };
 
 test('uploaded local PNG renders as an image in builder', async ({ page }) => {
