@@ -18,6 +18,12 @@ interface NdiSourceStatus {
   lastError?: string | null;
 }
 
+interface NdiAudioStats {
+  framesSent: number;
+  framesPerSecond: number;
+  droppedFrames: number;
+}
+
 interface NdiStatus {
   active: boolean;
   broadcastMode: boolean;
@@ -25,6 +31,7 @@ interface NdiStatus {
   width: number;
   height: number;
   audioEnabled: boolean;
+  audio: NdiAudioStats | null;
   sources: NdiSourceStatus[];
 }
 

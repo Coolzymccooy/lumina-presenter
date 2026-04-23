@@ -1628,7 +1628,7 @@ function App() {
   const presenterMediaUploadInputRef = useRef<HTMLInputElement | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
   const [isStageDisplayLive, setIsStageDisplayLive] = useState(false);
-  const [ndiState, setNdiState] = useState<NdiStatus>({ active: false, broadcastMode: false, resolution: '1080p', width: 1920, height: 1080, audioEnabled: false, sources: [] });
+  const [ndiState, setNdiState] = useState<NdiStatus>({ active: false, broadcastMode: false, resolution: '1080p', width: 1920, height: 1080, audioEnabled: false, audio: null, sources: [] });
   const [ndiMenuOpen, setNdiMenuOpen] = useState(false);
   const ndiMenuRef = useRef<HTMLDivElement | null>(null);
   const ndiDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -9575,6 +9575,14 @@ function App() {
                           title="Toggle lower thirds overlay"
                           className={`h-9 px-3 rounded-lg font-black text-[9px] tracking-wider border transition-all uppercase ${lowerThirdsEnabled ? 'bg-blue-950/60 text-blue-300 border-blue-700/50' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300 hover:border-zinc-700'}`}
                         >Lower Thirds</button>
+                        <button
+                          onClick={() => setOutputMuted((prev) => !prev)}
+                          title={outputMuted ? 'Audience output muted — click to unmute' : 'Mute audience output (also silences NDI audio)'}
+                          className={`h-9 px-3 rounded-lg font-black text-[9px] tracking-wider border transition-all uppercase flex items-center gap-1.5 ${outputMuted ? 'bg-rose-950/60 text-rose-300 border-rose-700/50' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300 hover:border-zinc-700'}`}
+                        >
+                          {outputMuted ? <VolumeXIcon className="w-3.5 h-3.5" /> : <Volume2Icon className="w-3.5 h-3.5" />}
+                          {outputMuted ? 'Muted' : 'Mute'}
+                        </button>
                         <label className="flex h-9 items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 cursor-pointer hover:border-zinc-700 transition-colors">
                           <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-black shrink-0">Route</span>
                           <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} style={{ colorScheme: 'dark' }} className="bg-zinc-900 text-zinc-200 text-[10px] font-bold outline-none cursor-pointer">
@@ -9837,6 +9845,21 @@ function App() {
                                     )}
                                   </div>
                                 </label>
+                                {ndiState.active && ndiState.audioEnabled && (
+                                  <div className="flex items-center justify-between gap-2 p-2 rounded-lg border border-zinc-800 bg-black/30 text-[10px]">
+                                    <div className="flex items-center gap-1.5">
+                                      <span
+                                        className={`inline-block w-1.5 h-1.5 rounded-full ${(ndiState.audio?.framesPerSecond ?? 0) > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`}
+                                      />
+                                      <span className="font-bold uppercase tracking-wider text-[9px] text-zinc-300">Audio</span>
+                                    </div>
+                                    <span className="font-mono text-[9px] text-zinc-400">
+                                      {(ndiState.audio?.framesPerSecond ?? 0) > 0
+                                        ? `${ndiState.audio?.framesPerSecond} fps${(ndiState.audio?.droppedFrames ?? 0) > 0 ? ` · ${ndiState.audio?.droppedFrames} drop` : ''}`
+                                        : 'silent'}
+                                    </span>
+                                  </div>
+                                )}
                                 <div className="text-[9px] font-black uppercase tracking-widest text-zinc-500 pb-1 border-b border-zinc-800">NDI Sources</div>
                                 {(ndiState.sources.length ? ndiState.sources : (workspaceSettings.ndiBroadcastMode ? [
                                   { id: 'program', sourceName: 'Lumina-Program', fillKey: false, active: false },

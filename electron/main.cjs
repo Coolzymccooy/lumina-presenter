@@ -56,7 +56,12 @@ let ndiResolution = '1080p';
 let ndiSessionWidth = NDI_DEFAULT_WIDTH;
 let ndiSessionHeight = NDI_DEFAULT_HEIGHT;
 let ndiAudioDroppedFrames = 0;
-let ndiStatus = { active: false, broadcastMode: false, resolution: '1080p', width: NDI_DEFAULT_WIDTH, height: NDI_DEFAULT_HEIGHT, audioEnabled: false, sources: [] };
+let ndiAudioFramesSent = 0;            // total successful sendAudioFrame calls this session
+let ndiAudioFramesLastSample = 0;       // frames sent at the last telemetry tick
+let ndiAudioFramesPerSecond = 0;        // derived rate for renderer display
+let ndiAudioStatsTimer = null;
+const NDI_AUDIO_STATS_INTERVAL_MS = 2000;
+let ndiStatus = { active: false, broadcastMode: false, resolution: '1080p', width: NDI_DEFAULT_WIDTH, height: NDI_DEFAULT_HEIGHT, audioEnabled: false, audio: null, sources: [] };
 let ndiDropLogTimer = null;
 const NDI_TARGET_FPS = 30;
 // ─────────────────────────────────────────────────────────────────────────────
@@ -340,6 +345,13 @@ function emitNdiState() {
     width: ndiSessionWidth,
     height: ndiSessionHeight,
     audioEnabled: ndiAudioEnabled,
+    // Null when audio is disabled; otherwise rolling stats so the renderer
+    // can show a "flowing / silent" indicator.
+    audio: ndiAudioEnabled ? {
+      framesSent: ndiAudioFramesSent,
+      framesPerSecond: ndiAudioFramesPerSecond,
+      droppedFrames: ndiAudioDroppedFrames,
+    } : null,
     sources,
   };
   if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
@@ -771,6 +783,9 @@ function installMachineIpcHandlers() {
     // belongs on a single program feed to avoid phasing in a switcher sum).
     ndiAudioEnabled = !!payload?.audioEnabled;
     ndiAudioDroppedFrames = 0;
+    ndiAudioFramesSent = 0;
+    ndiAudioFramesLastSample = 0;
+    ndiAudioFramesPerSecond = 0;
     const activeScenes = ndiBroadcastMode ? NDI_SCENES : NDI_SCENES.filter((s) => !s.fillKey);
 
     // Resolve session resolution from the payload preset (falls back to env
@@ -817,6 +832,17 @@ function installMachineIpcHandlers() {
         }, 10000);
       }
 
+      // Audio telemetry — every 2s compute frames/sec and push state so the
+      // renderer can show a live "flowing" indicator. Cheap: just math + emit.
+      if (ndiAudioEnabled && !ndiAudioStatsTimer) {
+        ndiAudioStatsTimer = setInterval(() => {
+          const delta = ndiAudioFramesSent - ndiAudioFramesLastSample;
+          ndiAudioFramesPerSecond = Math.round((delta / NDI_AUDIO_STATS_INTERVAL_MS) * 1000);
+          ndiAudioFramesLastSample = ndiAudioFramesSent;
+          emitNdiState();
+        }, NDI_AUDIO_STATS_INTERVAL_MS);
+      }
+
       emitNdiState();
       return { ok: true, state: ndiStatus };
     } catch (err) {
@@ -827,6 +853,7 @@ function installMachineIpcHandlers() {
       ndiResolution = '1080p';
       ndiSessionWidth = NDI_DEFAULT_WIDTH;
       ndiSessionHeight = NDI_DEFAULT_HEIGHT;
+      if (ndiAudioStatsTimer) { clearInterval(ndiAudioStatsTimer); ndiAudioStatsTimer = null; }
       emitNdiState();
       return { ok: false, error: err?.message || String(err) };
     }
@@ -840,7 +867,11 @@ function installMachineIpcHandlers() {
     ndiSessionWidth = NDI_DEFAULT_WIDTH;
     ndiSessionHeight = NDI_DEFAULT_HEIGHT;
     ndiAudioDroppedFrames = 0;
+    ndiAudioFramesSent = 0;
+    ndiAudioFramesLastSample = 0;
+    ndiAudioFramesPerSecond = 0;
     if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
+    if (ndiAudioStatsTimer) { clearInterval(ndiAudioStatsTimer); ndiAudioStatsTimer = null; }
     await teardownAllNdiSources();
     emitNdiState();
     return { ok: true };
@@ -862,7 +893,9 @@ function installMachineIpcHandlers() {
     const samples = Number(payload?.samples);
     if (!pcm || !(pcm instanceof ArrayBuffer)) return;
     const buffer = Buffer.from(pcm);
-    entry.sender.sendAudioFrame(buffer, sampleRate, channels, samples).catch((err) => {
+    entry.sender.sendAudioFrame(buffer, sampleRate, channels, samples).then(() => {
+      ndiAudioFramesSent++;
+    }).catch((err) => {
       ndiAudioDroppedFrames++;
       if (ndiAudioDroppedFrames <= 3) {
         console.error('[NDI] audio send error:', err?.message || String(err));
