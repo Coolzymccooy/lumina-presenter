@@ -66,7 +66,8 @@ type ToolsCommand =
   | { type: 'ndi.toggle-active' }
   | { type: 'ndi.toggle-broadcast' }
   | { type: 'ndi.toggle-audio' }
-  | { type: 'ndi.set-resolution'; value: ToolsNdiResolution };
+  | { type: 'ndi.set-resolution'; value: ToolsNdiResolution }
+  | { type: 'ndi.open-info' };
 
 interface Window {
   electron?: {

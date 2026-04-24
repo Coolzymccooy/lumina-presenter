@@ -72,6 +72,11 @@ function buildNdiMenu(ndiMenuState, send) {
         checked: audioEnabled,
         click: () => send({ type: 'ndi.toggle-audio' }),
       },
+      { type: 'separator' },
+      {
+        label: 'NDI Info…',
+        click: () => send({ type: 'ndi.open-info' }),
+      },
     ],
   };
 }

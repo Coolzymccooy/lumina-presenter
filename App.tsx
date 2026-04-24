@@ -140,6 +140,7 @@ import { GuideProvider, GuideOverlay, GuidedToursPanel, AutoTriggerOnPresenter, 
 import { useRecordingLibrary } from './hooks/useRecordingLibrary';
 import { useToolsMenuNdi } from './hooks/useToolsMenuNdi';
 import { NdiStatusBadge } from './components/NdiStatusBadge';
+import { NdiInfoModal } from './components/NdiInfoModal';
 
 // Register all guided journeys at module load time
 registerAllJourneys();
@@ -1637,6 +1638,7 @@ function App() {
   const [ndiError, setNdiError] = useState<string | null>(null);
   const [ndiWarning, setNdiWarning] = useState<string | null>(null);
   const [ndiAudioConstraintCode, setNdiAudioConstraintCode] = useState<string | null>(null);
+  const [ndiInfoModalOpen, setNdiInfoModalOpen] = useState(false);
   const [lowerThirdsEnabled, setLowerThirdsEnabled] = useState(false);
   const [routingMode, setRoutingMode] = useState<'PROJECTOR' | 'STREAM' | 'LOBBY'>('PROJECTOR');
   const [teamPlaylists, setTeamPlaylists] = useState<CloudPlaylistRecord[]>([]);
@@ -4354,6 +4356,10 @@ function App() {
       const next = cmd.value;
       handleWorkspaceSettingsSave({ ndiResolution: next });
       await cycleNdi({ resolution: next });
+      return;
+    }
+    if (cmd.type === 'ndi.open-info') {
+      setNdiInfoModalOpen(true);
     }
   }, [
     isElectronShell,
@@ -9803,11 +9809,18 @@ function App() {
                         <button onClick={() => void copyShareUrl(cleanFeedUrl, 'Clean feed URL copied!')} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-violet-300 hover:border-violet-600 transition-all uppercase tracking-wider" title="No branding or audience overlays — use for recording or streaming">Copy Clean Feed</button>
                         <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy Stage URL</button>
                         {isElectronShell && hasElectronDisplayControl && (
-                          <NdiStatusBadge
-                            ndiState={ndiState}
-                            audioEnabled={!!workspaceSettings.ndiAudioEnabled}
-                            audioWarningCode={ndiAudioConstraintCode}
-                          />
+                          <button
+                            type="button"
+                            onClick={() => setNdiInfoModalOpen(true)}
+                            title="Open NDI settings & info"
+                            className="p-0 border-0 bg-transparent cursor-pointer"
+                          >
+                            <NdiStatusBadge
+                              ndiState={ndiState}
+                              audioEnabled={!!workspaceSettings.ndiAudioEnabled}
+                              audioWarningCode={ndiAudioConstraintCode}
+                            />
+                          </button>
                         )}
                         {isElectronShell && hasElectronDisplayControl && (
                           <div className="relative" ref={ndiMenuRef}>
@@ -11221,6 +11234,17 @@ function App() {
 
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <GuidedToursPanel isOpen={isGuidedToursOpen} onClose={() => setIsGuidedToursOpen(false)} />
+      <NdiInfoModal
+        open={ndiInfoModalOpen}
+        onClose={() => setNdiInfoModalOpen(false)}
+        ndiState={ndiState}
+        menuState={toolsNdiMenuState}
+        audioWarningCode={ndiAudioConstraintCode}
+        onToggleActive={() => { void handleToolsNdiCommand({ type: 'ndi.toggle-active' }); }}
+        onToggleBroadcast={() => { void handleToolsNdiCommand({ type: 'ndi.toggle-broadcast' }); }}
+        onToggleAudio={() => { void handleToolsNdiCommand({ type: 'ndi.toggle-audio' }); }}
+        onSetResolution={(value) => { void handleToolsNdiCommand({ type: 'ndi.set-resolution', value }); }}
+      />
       <ConnectModal
         isOpen={isConnectOpen}
         onClose={() => setIsConnectOpen(false)}

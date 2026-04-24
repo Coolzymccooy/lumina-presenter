@@ -170,4 +170,13 @@ describe('buildNdiMenu', () => {
     const checked = res.submenu.find((i) => i.checked);
     expect(checked.label).toMatch(/1080p/);
   });
+
+  it('emits ndi.open-info when NDI Info… is clicked', () => {
+    const send = vi.fn();
+    const menu = buildNdiMenu(DEFAULT_NDI_MENU_STATE, send);
+    const info = menu.submenu.find((i) => i.label === 'NDI Info…');
+    expect(info).toBeDefined();
+    info.click();
+    expect(send).toHaveBeenCalledWith({ type: 'ndi.open-info' });
+  });
 });
