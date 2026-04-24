@@ -35,6 +35,24 @@ interface NdiStatus {
   sources: NdiSourceStatus[];
 }
 
+type ToolsAspect = 'off' | '4:3' | '16:9' | '1:1';
+type ToolsTestPattern = 'off' | 'smpte' | 'pluge' | 'black' | 'white' | 'gradient' | 'checkerboard';
+
+interface ToolsSettings {
+  overlays: {
+    safeAreas: boolean;
+    centerCross: boolean;
+  };
+  aspect: ToolsAspect;
+  testPattern: ToolsTestPattern;
+}
+
+type ToolsSettingsPatch = {
+  overlays?: Partial<ToolsSettings['overlays']>;
+  aspect?: ToolsAspect;
+  testPattern?: ToolsTestPattern;
+};
+
 interface Window {
   electron?: {
     isElectron?: boolean;
@@ -133,6 +151,11 @@ interface Window {
       sendAudioFrame?: (payload: { pcm: ArrayBuffer; sampleRate: number; channels: number; samples: number }) => void;
       sendAudioWarning?: (payload: { code: string; src?: string }) => void;
       onAudioWarning?: (callback: (payload: { code: string; src?: string }) => void) => (() => void);
+    };
+    tools?: {
+      getSettings?: () => Promise<ToolsSettings>;
+      setSettings?: (patch: ToolsSettingsPatch) => Promise<ToolsSettings>;
+      onState?: (callback: (settings: ToolsSettings) => void) => (() => void);
     };
     updates?: {
       getStatus?: () => Promise<{

@@ -5,6 +5,8 @@ const ndiSender = require('./ndiSender.cjs');
 const { describePayloadType, extractConsoleMessageText, normalizeAudioPcmPayload } = require('./ndiIpcUtils.cjs');
 const { NDI_RESOLUTION_PRESETS, resolveNdiResolution } = require('./ndiResolution.cjs');
 const { registerLyricClipboardIpc } = require('./ipc/lyricClipboard.cjs');
+const { createToolsSettingsStore } = require('./toolsSettingsStore.cjs');
+const { buildToolsMenu } = require('./toolsMenu.cjs');
 const DIST_INDEX_PATH = path.join(__dirname, '../dist/index.html');
 const DEV_SERVER_URL = process.env.ELECTRON_RENDERER_URL || 'http://localhost:5173';
 const SHOULD_OPEN_DEVTOOLS = process.env.LUMINA_OPEN_DEVTOOLS === '1';
@@ -69,6 +71,9 @@ const NDI_TARGET_FPS = 30;
 const ndiCaptureLabels = new Map();
 let ndiProgramAudioSourceId = null;
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** @type {ReturnType<typeof createToolsSettingsStore> | null} */
+let toolsStore = null;
 
 let machineServiceState = {
   controlDisplayId: null,
@@ -1205,9 +1210,60 @@ function createWindow() {
   });
 }
 
+function applyToolCommand(cmd) {
+  if (!toolsStore || !cmd || typeof cmd !== 'object') {
+    return toolsStore ? toolsStore.load() : null;
+  }
+  const current = toolsStore.load();
+  if (cmd.type === 'overlay.toggle' && (cmd.name === 'safeAreas' || cmd.name === 'centerCross')) {
+    return toolsStore.save({
+      overlays: { [cmd.name]: !current.overlays[cmd.name] },
+    });
+  }
+  if (cmd.type === 'aspect.set') {
+    return toolsStore.save({ aspect: cmd.value });
+  }
+  if (cmd.type === 'testpattern.set') {
+    return toolsStore.save({ testPattern: cmd.value });
+  }
+  return current;
+}
+
+function broadcastToolsState(nextSettings) {
+  try {
+    if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+      mainWindowRef.webContents.send('tools:state', nextSettings);
+    }
+  } catch {
+    /* renderer may be mid-reload; next poll will reconcile */
+  }
+}
+
+function installToolsIpcHandlers() {
+  toolsStore = createToolsSettingsStore({
+    filePath: path.join(app.getPath('userData'), 'tools-settings.json'),
+  });
+  ipcMain.handle('tools:get-settings', () => toolsStore.load());
+  ipcMain.handle('tools:set-settings', (_event, patch) => {
+    const next = toolsStore.save(patch);
+    installApplicationMenu();
+    return next;
+  });
+}
+
 function installApplicationMenu() {
   const isMac = process.platform === 'darwin';
   const isProd = app.isPackaged;
+  const toolsMenuItem = toolsStore
+    ? buildToolsMenu({
+        settings: toolsStore.load(),
+        send: (cmd) => {
+          const next = applyToolCommand(cmd);
+          if (next) broadcastToolsState(next);
+          installApplicationMenu();
+        },
+      })
+    : null;
   const template = [
     ...(isMac
       ? [
@@ -1263,6 +1319,7 @@ function installApplicationMenu() {
         ...(isMac ? [{ type: 'separator' }, { role: 'front' }] : []),
       ],
     },
+    ...(toolsMenuItem ? [toolsMenuItem] : []),
     {
       label: 'Help',
       submenu: [
@@ -1425,6 +1482,7 @@ app.whenReady().then(async () => {
       await systemPreferences.askForMediaAccess('microphone');
     }
   }
+  installToolsIpcHandlers();
   installApplicationMenu();
   installMediaPermissionHandlers();
   installClipboardHandlers();
