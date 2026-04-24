@@ -424,12 +424,24 @@ async function startNdiScene(scene, payload) {
 
   // Inject the audio-capture tap only for the program scene (fillKey:false).
   // Graphics feeds stay silent — audio belongs on a single program source.
+  // Re-inject on every dom-ready so Vite HMR reloads and route changes don't
+  // silently drop the tap. The script itself is idempotent (guarded by
+  // window.__luminaNdiAudioTap).
   if (!scene.fillKey && payload?.audioEnabled) {
-    try {
-      await captureWindow.webContents.executeJavaScript(buildNdiAudioCaptureScript(), true);
-    } catch (err) {
-      console.warn(`[NDI:${scene.sourceName}] audio-capture injection failed:`, err?.message || err);
-    }
+    const injectCaptureScript = async () => {
+      try {
+        await captureWindow.webContents.executeJavaScript(buildNdiAudioCaptureScript(), true);
+      } catch (err) {
+        console.warn(`[NDI:${scene.sourceName}] audio-capture injection failed:`, err?.message || err);
+      }
+    };
+    await injectCaptureScript();
+    captureWindow.webContents.on('dom-ready', () => {
+      // Reset the guard so the re-injected script re-builds the AudioContext
+      // graph after a reload (the prior graph is gone with the old document).
+      captureWindow.webContents.executeJavaScript('window.__luminaNdiAudioTap = false;').catch(() => {});
+      void injectCaptureScript();
+    });
   }
 
   const sender = ndiSender.createSender(scene.sourceName);
@@ -775,6 +787,12 @@ function installMachineIpcHandlers() {
 
     // Fresh start — clear any leftover entries from a previous failed attempt.
     await teardownAllNdiSources();
+    // Small settling pause so the NDI runtime fully releases the previous
+    // sender names before we recreate them with identical names. Without this,
+    // rapid stop→start cycles (e.g. toggling Broadcast Mode / Resolution
+    // mid-flight) hit "Failed to create NDI sender" on line 137 of
+    // grandiose_send.cc because the old name is still registered.
+    await new Promise((resolve) => setTimeout(resolve, 250));
 
     // Broadcast Mode: off = program only (single NDI source, for streaming).
     // on = all three sources including transparent fill+key for switchers.

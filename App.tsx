@@ -9576,8 +9576,17 @@ function App() {
                           className={`h-9 px-3 rounded-lg font-black text-[9px] tracking-wider border transition-all uppercase ${lowerThirdsEnabled ? 'bg-blue-950/60 text-blue-300 border-blue-700/50' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300 hover:border-zinc-700'}`}
                         >Lower Thirds</button>
                         <button
-                          onClick={() => setOutputMuted((prev) => !prev)}
-                          title={outputMuted ? 'Audience output muted — click to unmute' : 'Mute audience output (also silences NDI audio)'}
+                          onClick={() => {
+                            // Program mute silences every audio path the operator
+                            // thinks of as "the sound": audience display, NDI feed,
+                            // and the controller's own preview pane. Each is a
+                            // separate state internally but a single gesture here
+                            // is what broadcast operators expect.
+                            const next = !outputMuted;
+                            setOutputMuted(next);
+                            setIsPreviewMuted(next);
+                          }}
+                          title={outputMuted ? 'Program muted — click to unmute' : 'Mute program (audience display + NDI + controller preview)'}
                           className={`h-9 px-3 rounded-lg font-black text-[9px] tracking-wider border transition-all uppercase flex items-center gap-1.5 ${outputMuted ? 'bg-rose-950/60 text-rose-300 border-rose-700/50' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300 hover:border-zinc-700'}`}
                         >
                           {outputMuted ? <VolumeXIcon className="w-3.5 h-3.5" /> : <Volume2Icon className="w-3.5 h-3.5" />}
@@ -9849,14 +9858,16 @@ function App() {
                                   <div className="flex items-center justify-between gap-2 p-2 rounded-lg border border-zinc-800 bg-black/30 text-[10px]">
                                     <div className="flex items-center gap-1.5">
                                       <span
-                                        className={`inline-block w-1.5 h-1.5 rounded-full ${(ndiState.audio?.framesPerSecond ?? 0) > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`}
+                                        className={`inline-block w-1.5 h-1.5 rounded-full ${(ndiState.audio?.framesPerSecond ?? 0) > 0 ? 'bg-emerald-400 animate-pulse' : ndiWarning ? 'bg-amber-500' : 'bg-zinc-600'}`}
                                       />
                                       <span className="font-bold uppercase tracking-wider text-[9px] text-zinc-300">Audio</span>
                                     </div>
-                                    <span className="font-mono text-[9px] text-zinc-400">
+                                    <span className={`font-mono text-[9px] ${(ndiState.audio?.framesPerSecond ?? 0) > 0 ? 'text-zinc-400' : ndiWarning ? 'text-amber-400' : 'text-zinc-500'}`}>
                                       {(ndiState.audio?.framesPerSecond ?? 0) > 0
                                         ? `${ndiState.audio?.framesPerSecond} fps${(ndiState.audio?.droppedFrames ?? 0) > 0 ? ` · ${ndiState.audio?.droppedFrames} drop` : ''}`
-                                        : 'silent'}
+                                        : ndiWarning
+                                          ? 'silent (iframe)'
+                                          : 'silent'}
                                     </span>
                                   </div>
                                 )}
