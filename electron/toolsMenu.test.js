@@ -1,6 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
-import { buildToolsMenu } from './toolsMenu.cjs';
+import { buildToolsMenu, buildNdiMenu, NDI_RESOLUTION_VALUES } from './toolsMenu.cjs';
 import { DEFAULT_TOOLS_SETTINGS, ASPECT_VALUES, TEST_PATTERN_VALUES } from './toolsSettingsStore.cjs';
+
+const DEFAULT_NDI_MENU_STATE = {
+  active: false,
+  broadcastMode: false,
+  audioEnabled: false,
+  resolution: '1080p',
+};
 
 function section(menu, label) {
   return menu.submenu.find((i) => i.label === label);
@@ -80,5 +87,87 @@ describe('buildToolsMenu', () => {
     const menu = buildToolsMenu({ settings: DEFAULT_TOOLS_SETTINGS, send: vi.fn() });
     const diag = section(menu, 'Diagnostics');
     expect(diag.submenu[0]).toMatchObject({ label: 'About Build', enabled: false });
+  });
+
+  it('omits the NDI submenu when ndiMenuState is undefined', () => {
+    const menu = buildToolsMenu({ settings: DEFAULT_TOOLS_SETTINGS, send: vi.fn() });
+    expect(section(menu, 'NDI')).toBeUndefined();
+  });
+
+  it('includes the NDI submenu when ndiMenuState is provided', () => {
+    const menu = buildToolsMenu({
+      settings: DEFAULT_TOOLS_SETTINGS,
+      send: vi.fn(),
+      ndiMenuState: DEFAULT_NDI_MENU_STATE,
+    });
+    expect(section(menu, 'NDI')).toBeDefined();
+  });
+});
+
+describe('buildNdiMenu', () => {
+  it('returns null when state is undefined', () => {
+    expect(buildNdiMenu(undefined, vi.fn())).toBeNull();
+  });
+
+  it('NDI Output checkbox reflects active state', () => {
+    const off = buildNdiMenu({ ...DEFAULT_NDI_MENU_STATE, active: false }, vi.fn());
+    const on = buildNdiMenu({ ...DEFAULT_NDI_MENU_STATE, active: true }, vi.fn());
+    expect(off.submenu[0].checked).toBe(false);
+    expect(off.submenu[0].label).toMatch(/Off/);
+    expect(on.submenu[0].checked).toBe(true);
+    expect(on.submenu[0].label).toMatch(/Live/);
+  });
+
+  it('emits ndi.toggle-active when NDI Output is clicked', () => {
+    const send = vi.fn();
+    const menu = buildNdiMenu(DEFAULT_NDI_MENU_STATE, send);
+    menu.submenu[0].click();
+    expect(send).toHaveBeenCalledWith({ type: 'ndi.toggle-active' });
+  });
+
+  it('broadcast + audio checkboxes reflect state', () => {
+    const menu = buildNdiMenu({
+      ...DEFAULT_NDI_MENU_STATE,
+      broadcastMode: true,
+      audioEnabled: true,
+    }, vi.fn());
+    const broadcast = menu.submenu.find((i) => i.label?.startsWith('Broadcast'));
+    const audio = menu.submenu.find((i) => i.label === 'Embed Program Audio');
+    expect(broadcast?.checked).toBe(true);
+    expect(audio?.checked).toBe(true);
+  });
+
+  it('emits ndi.toggle-broadcast and ndi.toggle-audio on click', () => {
+    const send = vi.fn();
+    const menu = buildNdiMenu(DEFAULT_NDI_MENU_STATE, send);
+    menu.submenu.find((i) => i.label?.startsWith('Broadcast'))?.click();
+    menu.submenu.find((i) => i.label === 'Embed Program Audio')?.click();
+    expect(send).toHaveBeenNthCalledWith(1, { type: 'ndi.toggle-broadcast' });
+    expect(send).toHaveBeenNthCalledWith(2, { type: 'ndi.toggle-audio' });
+  });
+
+  it('resolution submenu is radio with exactly one selected', () => {
+    const menu = buildNdiMenu({ ...DEFAULT_NDI_MENU_STATE, resolution: '4k' }, vi.fn());
+    const res = menu.submenu.find((i) => i.label === 'Resolution');
+    expect(res.submenu).toHaveLength(NDI_RESOLUTION_VALUES.length);
+    expect(res.submenu.every((i) => i.type === 'radio')).toBe(true);
+    const checked = res.submenu.filter((i) => i.checked);
+    expect(checked).toHaveLength(1);
+    expect(checked[0].label).toMatch(/4K/);
+  });
+
+  it('emits ndi.set-resolution on radio click', () => {
+    const send = vi.fn();
+    const menu = buildNdiMenu(DEFAULT_NDI_MENU_STATE, send);
+    const res = menu.submenu.find((i) => i.label === 'Resolution');
+    res.submenu.find((i) => i.label?.includes('720p'))?.click();
+    expect(send).toHaveBeenCalledWith({ type: 'ndi.set-resolution', value: '720p' });
+  });
+
+  it('coerces unknown resolution to 1080p', () => {
+    const menu = buildNdiMenu({ ...DEFAULT_NDI_MENU_STATE, resolution: '8k' }, vi.fn());
+    const res = menu.submenu.find((i) => i.label === 'Resolution');
+    const checked = res.submenu.find((i) => i.checked);
+    expect(checked.label).toMatch(/1080p/);
   });
 });

@@ -94,5 +94,11 @@ contextBridge.exposeInMainWorld('electron', {
       ipcRenderer.on('tools:state', listener);
       return () => ipcRenderer.removeListener('tools:state', listener);
     },
+    setNdiMenuState: (payload) => ipcRenderer.send('tools:set-ndi-menu-state', payload),
+    onCommand: (callback) => {
+      const listener = (_event, cmd) => callback(cmd);
+      ipcRenderer.on('tools:command', listener);
+      return () => ipcRenderer.removeListener('tools:command', listener);
+    },
   },
 });

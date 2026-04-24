@@ -75,6 +75,16 @@ let ndiProgramAudioSourceId = null;
 /** @type {ReturnType<typeof createToolsSettingsStore> | null} */
 let toolsStore = null;
 
+// Cached view of the renderer's workspace-synced NDI state, kept here so the
+// application menu can build its NDI submenu with correct check/radio state
+// without duplicating the workspace persistence path (which lives server-side).
+// The renderer pushes updates via `tools:set-ndi-menu-state` whenever its
+// own workspace settings change or when the NDI runtime state (active,
+// sources) changes. Menu clicks dispatch `tools:command` messages of shape
+// { type: 'ndi.*' } which the renderer handles in useToolsMenu.
+/** @type {{ active: boolean, broadcastMode: boolean, audioEnabled: boolean, resolution: '720p'|'1080p'|'4k' } | null} */
+let ndiMenuStateCache = null;
+
 let machineServiceState = {
   controlDisplayId: null,
   audienceDisplayId: null,
@@ -1211,6 +1221,11 @@ function createWindow() {
 }
 
 function applyToolCommand(cmd) {
+  // NDI commands are forwarded to the renderer rather than mutating any
+  // main-process store — workspace NDI settings live server-side.
+  if (cmd && typeof cmd === 'object' && typeof cmd.type === 'string' && cmd.type.startsWith('ndi.')) {
+    return null;
+  }
   if (!toolsStore || !cmd || typeof cmd !== 'object') {
     return toolsStore ? toolsStore.load() : null;
   }
@@ -1227,6 +1242,27 @@ function applyToolCommand(cmd) {
     return toolsStore.save({ testPattern: cmd.value });
   }
   return current;
+}
+
+function sanitizeNdiMenuState(input) {
+  if (!input || typeof input !== 'object') return null;
+  const resolution = ['720p', '1080p', '4k'].includes(input.resolution) ? input.resolution : '1080p';
+  return {
+    active: input.active === true,
+    broadcastMode: input.broadcastMode === true,
+    audioEnabled: input.audioEnabled === true,
+    resolution,
+  };
+}
+
+function sendToolCommandToRenderer(cmd) {
+  try {
+    if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+      mainWindowRef.webContents.send('tools:command', cmd);
+    }
+  } catch {
+    /* renderer may be mid-reload; renderer will re-sync on next state push */
+  }
 }
 
 function broadcastToolsState(nextSettings) {
@@ -1249,6 +1285,13 @@ function installToolsIpcHandlers() {
     installApplicationMenu();
     return next;
   });
+  ipcMain.on('tools:set-ndi-menu-state', (_event, payload) => {
+    const next = sanitizeNdiMenuState(payload);
+    if (!next) return;
+    const changed = JSON.stringify(next) !== JSON.stringify(ndiMenuStateCache);
+    ndiMenuStateCache = next;
+    if (changed) installApplicationMenu();
+  });
 }
 
 function installApplicationMenu() {
@@ -1257,7 +1300,13 @@ function installApplicationMenu() {
   const toolsMenuItem = toolsStore
     ? buildToolsMenu({
         settings: toolsStore.load(),
+        ndiMenuState: ndiMenuStateCache,
         send: (cmd) => {
+          const isNdi = cmd && typeof cmd.type === 'string' && cmd.type.startsWith('ndi.');
+          if (isNdi) {
+            sendToolCommandToRenderer(cmd);
+            return;
+          }
           const next = applyToolCommand(cmd);
           if (next) broadcastToolsState(next);
           installApplicationMenu();

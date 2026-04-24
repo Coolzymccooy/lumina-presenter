@@ -53,6 +53,21 @@ type ToolsSettingsPatch = {
   testPattern?: ToolsTestPattern;
 };
 
+type ToolsNdiResolution = '720p' | '1080p' | '4k';
+
+interface ToolsNdiMenuState {
+  active: boolean;
+  broadcastMode: boolean;
+  audioEnabled: boolean;
+  resolution: ToolsNdiResolution;
+}
+
+type ToolsCommand =
+  | { type: 'ndi.toggle-active' }
+  | { type: 'ndi.toggle-broadcast' }
+  | { type: 'ndi.toggle-audio' }
+  | { type: 'ndi.set-resolution'; value: ToolsNdiResolution };
+
 interface Window {
   electron?: {
     isElectron?: boolean;
@@ -156,6 +171,8 @@ interface Window {
       getSettings?: () => Promise<ToolsSettings>;
       setSettings?: (patch: ToolsSettingsPatch) => Promise<ToolsSettings>;
       onState?: (callback: (settings: ToolsSettings) => void) => (() => void);
+      setNdiMenuState?: (payload: ToolsNdiMenuState) => void;
+      onCommand?: (callback: (cmd: ToolsCommand) => void) => (() => void);
     };
     updates?: {
       getStatus?: () => Promise<{

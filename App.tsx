@@ -138,6 +138,7 @@ import { QuickActionsMenu } from './components/layout/QuickActionsMenu';
 import { StudioMenu } from './components/layout/StudioMenu';
 import { GuideProvider, GuideOverlay, GuidedToursPanel, AutoTriggerOnPresenter, registerAllJourneys, guideStorage } from './components/guide-engine';
 import { useRecordingLibrary } from './hooks/useRecordingLibrary';
+import { useToolsMenuNdi } from './hooks/useToolsMenuNdi';
 
 // Register all guided journeys at module load time
 registerAllJourneys();
@@ -4281,6 +4282,91 @@ function App() {
     }).catch(() => {});
     return () => off?.();
   }, [isElectronShell]);
+
+  // ─── Tools → NDI submenu bridge ───────────────────────────────────────────
+  // Push a compact view of (workspace NDI settings + runtime NDI state) to
+  // main.cjs whenever it changes. Receive commands back when the operator
+  // clicks an NDI menu item and dispatch the same restart-on-mid-flight
+  // behavior the legacy dropdown uses.
+  const toolsNdiMenuState: ToolsNdiMenuState | null = useMemo(() => {
+    if (!isElectronShell) return null;
+    return {
+      active: !!ndiState.active,
+      broadcastMode: !!workspaceSettings.ndiBroadcastMode,
+      audioEnabled: !!workspaceSettings.ndiAudioEnabled,
+      resolution: (workspaceSettings.ndiResolution === '720p' || workspaceSettings.ndiResolution === '4k')
+        ? workspaceSettings.ndiResolution
+        : '1080p',
+    };
+  }, [
+    isElectronShell,
+    ndiState.active,
+    workspaceSettings.ndiBroadcastMode,
+    workspaceSettings.ndiAudioEnabled,
+    workspaceSettings.ndiResolution,
+  ]);
+
+  const handleToolsNdiCommand = useCallback(async (cmd: ToolsCommand) => {
+    if (!isElectronShell) return;
+    const cycleNdi = async (next: { broadcastMode?: boolean; resolution?: '720p' | '1080p' | '4k'; audioEnabled?: boolean }) => {
+      if (!ndiState.active) return;
+      setNdiError(null);
+      await window.electron?.ndi?.stop?.();
+      const result = await window.electron?.ndi?.start?.({
+        workspaceId,
+        sessionId: liveSessionId,
+        broadcastMode: next.broadcastMode ?? workspaceSettings.ndiBroadcastMode,
+        resolution: next.resolution ?? workspaceSettings.ndiResolution,
+        audioEnabled: next.audioEnabled ?? workspaceSettings.ndiAudioEnabled,
+      });
+      if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to restart.');
+    };
+    if (cmd.type === 'ndi.toggle-active') {
+      if (ndiState.active) {
+        await window.electron?.ndi?.stop?.();
+        return;
+      }
+      setNdiError(null);
+      const result = await window.electron?.ndi?.start?.({
+        workspaceId,
+        sessionId: liveSessionId,
+        broadcastMode: workspaceSettings.ndiBroadcastMode,
+        resolution: workspaceSettings.ndiResolution,
+        audioEnabled: workspaceSettings.ndiAudioEnabled,
+      });
+      if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to start.');
+      return;
+    }
+    if (cmd.type === 'ndi.toggle-broadcast') {
+      const next = !workspaceSettings.ndiBroadcastMode;
+      handleWorkspaceSettingsSave({ ndiBroadcastMode: next });
+      await cycleNdi({ broadcastMode: next });
+      return;
+    }
+    if (cmd.type === 'ndi.toggle-audio') {
+      const next = !workspaceSettings.ndiAudioEnabled;
+      handleWorkspaceSettingsSave({ ndiAudioEnabled: next });
+      await cycleNdi({ audioEnabled: next });
+      return;
+    }
+    if (cmd.type === 'ndi.set-resolution') {
+      const next = cmd.value;
+      handleWorkspaceSettingsSave({ ndiResolution: next });
+      await cycleNdi({ resolution: next });
+    }
+  }, [
+    isElectronShell,
+    ndiState.active,
+    workspaceId,
+    liveSessionId,
+    workspaceSettings.ndiBroadcastMode,
+    workspaceSettings.ndiResolution,
+    workspaceSettings.ndiAudioEnabled,
+    handleWorkspaceSettingsSave,
+    setNdiError,
+  ]);
+
+  useToolsMenuNdi(toolsNdiMenuState, handleToolsNdiCommand);
 
   // Subscribe to NDI audio warnings (e.g. cross-origin iframe detected) and
   // surface them as a one-shot amber pill so the operator knows a media
