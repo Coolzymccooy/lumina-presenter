@@ -2,8 +2,8 @@ const { app, BrowserWindow, screen, session, Menu, shell, ipcMain, clipboard, di
 const path = require('path');
 const fs = require('fs');
 const ndiSender = require('./ndiSender.cjs');
+const { describePayloadType, extractConsoleMessageText, normalizeAudioPcmPayload } = require('./ndiIpcUtils.cjs');
 const { NDI_RESOLUTION_PRESETS, resolveNdiResolution } = require('./ndiResolution.cjs');
-const { buildCaptureScript: buildNdiAudioCaptureScript } = require('./ndiAudioCapture.cjs');
 const { registerLyricClipboardIpc } = require('./ipc/lyricClipboard.cjs');
 const DIST_INDEX_PATH = path.join(__dirname, '../dist/index.html');
 const DEV_SERVER_URL = process.env.ELECTRON_RENDERER_URL || 'http://localhost:5173';
@@ -59,11 +59,15 @@ let ndiAudioDroppedFrames = 0;
 let ndiAudioFramesSent = 0;            // total successful sendAudioFrame calls this session
 let ndiAudioFramesLastSample = 0;       // frames sent at the last telemetry tick
 let ndiAudioFramesPerSecond = 0;        // derived rate for renderer display
+let ndiAudioFirstFrameLogged = false;
+let ndiAudioInvalidPayloadLogged = false;
 let ndiAudioStatsTimer = null;
 const NDI_AUDIO_STATS_INTERVAL_MS = 2000;
 let ndiStatus = { active: false, broadcastMode: false, resolution: '1080p', width: NDI_DEFAULT_WIDTH, height: NDI_DEFAULT_HEIGHT, audioEnabled: false, audio: null, sources: [] };
 let ndiDropLogTimer = null;
 const NDI_TARGET_FPS = 30;
+const ndiCaptureLabels = new Map();
+let ndiProgramAudioSourceId = null;
 // ─────────────────────────────────────────────────────────────────────────────
 
 let machineServiceState = {
@@ -371,6 +375,10 @@ async function teardownAllNdiSources() {
       if (entry.window && !entry.window.isDestroyed()) entry.window.destroy();
     } catch (_) { /* ignore */ }
     try {
+      if (entry.window?.webContents?.id) ndiCaptureLabels.delete(entry.window.webContents.id);
+    } catch (_) { /* ignore */ }
+    if (id === 'program') ndiProgramAudioSourceId = null;
+    try {
       if (entry.sender) await entry.sender.stop();
     } catch (_) { /* ignore */ }
     delete ndiSources[id];
@@ -383,6 +391,7 @@ async function teardownAllNdiSources() {
  */
 async function startNdiScene(scene, payload) {
   const transparent = !!scene.fillKey;
+  const shouldInstallAudioTap = !scene.fillKey && !!payload?.audioEnabled;
   // Per-scene override beats the session-wide resolution, which beats the env fallback.
   const sessionWidth = Number.isFinite(payload?.sessionWidth) && payload.sessionWidth > 0 ? payload.sessionWidth : NDI_DEFAULT_WIDTH;
   const sessionHeight = Number.isFinite(payload?.sessionHeight) && payload.sessionHeight > 0 ? payload.sessionHeight : NDI_DEFAULT_HEIGHT;
@@ -397,14 +406,48 @@ async function startNdiScene(scene, payload) {
     transparent,
     backgroundColor: transparent ? '#00000000' : undefined,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,
       offscreen: true,
       backgroundThrottling: false,
+      additionalArguments: shouldInstallAudioTap ? ['--lumina-ndi-capture=1'] : [],
     },
   });
+  const captureWebContentsId = captureWindow.webContents.id;
+  ndiCaptureLabels.set(captureWebContentsId, scene.sourceName);
+  if (scene.id === 'program' && shouldInstallAudioTap) {
+    ndiProgramAudioSourceId = captureWebContentsId;
+  }
+
+  captureWindow.webContents.on('console-message', (details) => {
+    const text = extractConsoleMessageText(details);
+    if (text.indexOf('[OUTPUT') !== -1) {
+      console.log(`[NDI:${scene.sourceName}] ${text}`);
+    }
+    if (text.indexOf('[NDI-AUDIO] cross-origin iframe detected:') !== -1) {
+      const src = text.split('detected:').pop()?.trim() || '';
+      if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+        mainWindowRef.webContents.send('ndi:audio-warning', { code: 'iframe-media', src });
+        console.log('[NDI] iframe warning forwarded to renderer (via console side-channel)');
+      }
+    }
+  });
+  captureWindow.webContents.on('preload-error', (_event, preloadPath, error) => {
+    console.error(`[NDI:${scene.sourceName}] preload-error path=${preloadPath}: ${error?.message || String(error)}`);
+  });
+  if (!scene.fillKey) {
+    captureWindow.webContents.on('audio-state-changed', (details) => {
+      console.log(`[NDI:${scene.sourceName}] audio-state audible=${!!details?.audible}`);
+    });
+    captureWindow.webContents.on('media-started-playing', () => {
+      console.log(`[NDI:${scene.sourceName}] media-started-playing`);
+    });
+    captureWindow.webContents.on('media-paused', () => {
+      console.log(`[NDI:${scene.sourceName}] media-paused`);
+    });
+  }
 
   await loadRendererRoute(captureWindow, scene.route, {
     session: payload?.sessionId || 'live',
@@ -419,29 +462,9 @@ async function startNdiScene(scene, payload) {
   });
 
   if (captureWindow.isDestroyed()) {
+    ndiCaptureLabels.delete(captureWebContentsId);
+    if (scene.id === 'program' && ndiProgramAudioSourceId === captureWebContentsId) ndiProgramAudioSourceId = null;
     return { ok: false, error: `Capture window for "${scene.sourceName}" closed before start.` };
-  }
-
-  // Inject the audio-capture tap only for the program scene (fillKey:false).
-  // Graphics feeds stay silent — audio belongs on a single program source.
-  // Re-inject on every dom-ready so Vite HMR reloads and route changes don't
-  // silently drop the tap. The script itself is idempotent (guarded by
-  // window.__luminaNdiAudioTap).
-  if (!scene.fillKey && payload?.audioEnabled) {
-    const injectCaptureScript = async () => {
-      try {
-        await captureWindow.webContents.executeJavaScript(buildNdiAudioCaptureScript(), true);
-      } catch (err) {
-        console.warn(`[NDI:${scene.sourceName}] audio-capture injection failed:`, err?.message || err);
-      }
-    };
-    await injectCaptureScript();
-    captureWindow.webContents.on('dom-ready', () => {
-      // Reset the guard so the re-injected script re-builds the AudioContext
-      // graph after a reload (the prior graph is gone with the old document).
-      captureWindow.webContents.executeJavaScript('window.__luminaNdiAudioTap = false;').catch(() => {});
-      void injectCaptureScript();
-    });
   }
 
   const sender = ndiSender.createSender(scene.sourceName);
@@ -450,6 +473,8 @@ async function startNdiScene(scene, payload) {
   const senderOptions = !scene.fillKey && payload?.audioEnabled ? { clockAudio: true } : undefined;
   const result = await sender.start(sceneWidth, sceneHeight, senderOptions);
   if (!result.ok) {
+    ndiCaptureLabels.delete(captureWebContentsId);
+    if (scene.id === 'program' && ndiProgramAudioSourceId === captureWebContentsId) ndiProgramAudioSourceId = null;
     try { if (!captureWindow.isDestroyed()) captureWindow.destroy(); } catch (_) { /* ignore */ }
     return result;
   }
@@ -466,6 +491,8 @@ async function startNdiScene(scene, payload) {
   captureWindow.once('closed', () => {
     if (!entry.active) return;
     entry.active = false;
+    ndiCaptureLabels.delete(captureWebContentsId);
+    if (scene.id === 'program' && ndiProgramAudioSourceId === captureWebContentsId) ndiProgramAudioSourceId = null;
     entry.window = null;
     sender.stop().catch(() => {});
     delete ndiSources[scene.id];
@@ -591,7 +618,7 @@ async function createManagedRoleWindow(kind, displayId, payload = {}) {
       skipTaskbar: true,
       resizable: isWindowed,
       webPreferences: {
-        preload: path.join(__dirname, 'preload.js'),
+        preload: path.join(__dirname, 'preload.cjs'),
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: !isWindowed,        // offscreen + sandbox conflicts in some Electron builds
@@ -804,6 +831,9 @@ function installMachineIpcHandlers() {
     ndiAudioFramesSent = 0;
     ndiAudioFramesLastSample = 0;
     ndiAudioFramesPerSecond = 0;
+    ndiAudioFirstFrameLogged = false;
+    ndiAudioInvalidPayloadLogged = false;
+    ndiProgramAudioSourceId = null;
     const activeScenes = ndiBroadcastMode ? NDI_SCENES : NDI_SCENES.filter((s) => !s.fillKey);
 
     // Resolve session resolution from the payload preset (falls back to env
@@ -888,6 +918,9 @@ function installMachineIpcHandlers() {
     ndiAudioFramesSent = 0;
     ndiAudioFramesLastSample = 0;
     ndiAudioFramesPerSecond = 0;
+    ndiAudioFirstFrameLogged = false;
+    ndiAudioInvalidPayloadLogged = false;
+    ndiProgramAudioSourceId = null;
     if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
     if (ndiAudioStatsTimer) { clearInterval(ndiAudioStatsTimer); ndiAudioStatsTimer = null; }
     await teardownAllNdiSources();
@@ -901,17 +934,27 @@ function installMachineIpcHandlers() {
   // audio worklet. Route them to the program sender only. Use `ipcMain.on`
   // (fire-and-forget) — `.handle` with awaited replies would flood the event
   // loop.
-  ipcMain.on('ndi:audio-frame', (_event, payload) => {
+  ipcMain.on('ndi:audio-frame', (event, payload) => {
     if (!ndiActive || !ndiAudioEnabled) return;
+    if (ndiProgramAudioSourceId !== null && event.sender.id !== ndiProgramAudioSourceId) return;
     const entry = ndiSources['program'];
     if (!entry || !entry.active || !entry.sender) return;
-    const pcm = payload?.pcm;
+    const pcm = normalizeAudioPcmPayload(payload?.pcm);
     const sampleRate = Number(payload?.sampleRate);
     const channels = Number(payload?.channels);
     const samples = Number(payload?.samples);
-    if (!pcm || !(pcm instanceof ArrayBuffer)) return;
-    const buffer = Buffer.from(pcm);
-    entry.sender.sendAudioFrame(buffer, sampleRate, channels, samples).then(() => {
+    if (!pcm) {
+      if (!ndiAudioInvalidPayloadLogged) {
+        ndiAudioInvalidPayloadLogged = true;
+        console.warn(`[NDI] audio frame dropped — invalid PCM payload (pcmType=${describePayloadType(payload?.pcm)})`);
+      }
+      return;
+    }
+    if (!ndiAudioFirstFrameLogged) {
+      ndiAudioFirstFrameLogged = true;
+      console.log(`[NDI] first audio frame received from capture window (sr=${sampleRate} ch=${channels} samples=${samples} bytes=${pcm.byteLength})`);
+    }
+    entry.sender.sendAudioFrame(pcm, sampleRate, channels, samples).then(() => {
       ndiAudioFramesSent++;
     }).catch((err) => {
       ndiAudioDroppedFrames++;
@@ -921,18 +964,29 @@ function installMachineIpcHandlers() {
     });
   });
 
-  // Warnings from the capture window (e.g. cross-origin iframe detected)
-  // relay to the main renderer so the operator sees a toast explaining why
-  // some audio isn't reaching the NDI feed.
+  // Audio capability notices from the capture window relay to the main
+  // renderer so the operator sees why some media is video-only on NDI.
   ipcMain.on('ndi:audio-warning', (_event, payload) => {
     if (!payload || typeof payload !== 'object') return;
     const code = String(payload.code || '').slice(0, 64);
     const src = String(payload.src || '').slice(0, 200);
     if (!code) return;
-    console.warn(`[NDI] audio warning: ${code}${src ? ' src=' + src : ''}`);
-    if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+    if (code === 'capturable-media') {
+      console.log(`[NDI] audio source capturable${src ? ' src=' + src : ''}`);
+    } else {
+      console.warn(`[NDI] audio warning: ${code}${src ? ' src=' + src : ''}`);
+    }
+    const mainAlive = !!(mainWindowRef && !mainWindowRef.isDestroyed());
+    console.log(`[NDI] forwarding audio warning to renderer (mainAlive=${mainAlive})`);
+    if (mainAlive) {
       mainWindowRef.webContents.send('ndi:audio-warning', { code, src });
     }
+  });
+  ipcMain.on('ndi:audio-debug', (event, payload) => {
+    const sourceName = ndiCaptureLabels.get(event.sender.id) || `wc:${event.sender.id}`;
+    const message = String(payload?.message || '').slice(0, 400);
+    if (!message) return;
+    console.log(`[NDI:${sourceName}] [NDI-AUDIO] ${message}`);
   });
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -1043,7 +1097,7 @@ function createWindow() {
     width: Math.min(1440, width),
     height: Math.min(900, height),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
@@ -1335,7 +1389,7 @@ async function checkForUpdatesSafely(isManual = false) {
 function verifyCriticalFiles() {
   if (!app.isPackaged) return true;
   const required = [
-    path.join(__dirname, 'preload.js'),
+    path.join(__dirname, 'preload.cjs'),
     DIST_INDEX_PATH,
   ];
   for (const p of required) {

@@ -4,6 +4,11 @@ import { createSender } from './ndiSender.cjs';
 // These tests exercise the input-guard paths on NdiSenderInstance. They never
 // call start() so the underlying grandiose native addon is never loaded, which
 // keeps the suite runnable in the vitest jsdom environment.
+const FOURCC_FLTP =
+  'F'.charCodeAt(0) |
+  ('L'.charCodeAt(0) << 8) |
+  ('T'.charCodeAt(0) << 16) |
+  ('p'.charCodeAt(0) << 24);
 
 describe('NdiSenderInstance.sendAudioFrame (input guards)', () => {
   it('silently no-ops when the instance has not been started', async () => {
@@ -46,8 +51,16 @@ describe('NdiSenderInstance.sendAudioFrame (input guards)', () => {
     expect(frame.sampleRate).toBe(48000);
     expect(frame.channels).toBe(2);
     expect(frame.samples).toBe(2);
-    expect(frame.audioFormat).toBe(1); // Float32Interleaved
-    expect(frame.channelStrideInBytes).toBe(8); // channels * 4
-    expect(frame.data).toBe(buf);
+    expect(frame.noChannels).toBe(2);
+    expect(frame.noSamples).toBe(2);
+    expect(frame.audioFormat).toBe(0); // Float32Separate
+    expect(frame.channelStrideInBytes).toBe(8); // samples * 4 per planar channel
+    expect(frame.channelStrideBytes).toBe(8); // native addon spelling
+    expect(frame.fourCC).toBe(FOURCC_FLTP);
+    expect(frame.data).not.toBe(buf);
+    expect(frame.data.readFloatLE(0)).toBeCloseTo(0.1);
+    expect(frame.data.readFloatLE(4)).toBeCloseTo(0.2);
+    expect(frame.data.readFloatLE(8)).toBeCloseTo(-0.1);
+    expect(frame.data.readFloatLE(12)).toBeCloseTo(-0.2);
   });
 });

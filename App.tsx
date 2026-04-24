@@ -1634,6 +1634,7 @@ function App() {
   const ndiDropdownRef = useRef<HTMLDivElement | null>(null);
   const [ndiError, setNdiError] = useState<string | null>(null);
   const [ndiWarning, setNdiWarning] = useState<string | null>(null);
+  const [ndiAudioConstraintCode, setNdiAudioConstraintCode] = useState<string | null>(null);
   const [lowerThirdsEnabled, setLowerThirdsEnabled] = useState(false);
   const [routingMode, setRoutingMode] = useState<'PROJECTOR' | 'STREAM' | 'LOBBY'>('PROJECTOR');
   const [teamPlaylists, setTeamPlaylists] = useState<CloudPlaylistRecord[]>([]);
@@ -4288,7 +4289,11 @@ function App() {
     if (!isElectronShell) return;
     const off = window.electron?.ndi?.onAudioWarning?.((payload) => {
       if (payload?.code === 'iframe-media') {
-        setNdiWarning('NDI audio cannot include YouTube / Vimeo / SoundCloud embeds. Download videos for embed, or route audio separately.');
+        setNdiAudioConstraintCode('iframe-media');
+        setNdiWarning('NDI audio is unavailable for YouTube / Vimeo / SoundCloud embeds. Program video still broadcasts. Download an MP4 for embedded audio, or route mixer audio separately.');
+      } else if (payload?.code === 'capturable-media') {
+        setNdiAudioConstraintCode(null);
+        setNdiWarning(null);
       }
     });
     return () => off?.();
@@ -4296,8 +4301,11 @@ function App() {
 
   // Reset the warning pill whenever NDI stops so it doesn't linger.
   useEffect(() => {
-    if (!ndiState.active) setNdiWarning(null);
-  }, [ndiState.active]);
+    if (!ndiState.active || !ndiState.audioEnabled) {
+      setNdiWarning(null);
+      setNdiAudioConstraintCode(null);
+    }
+  }, [ndiState.active, ndiState.audioEnabled]);
 
   // Close NDI menu on outside click or Escape.
   useEffect(() => {
@@ -9797,7 +9805,7 @@ function App() {
                                 <div className="flex items-center gap-2 p-2 rounded-lg border border-zinc-700 bg-black/40 text-zinc-300 text-[10px]">
                                   <div className="flex flex-col gap-0.5 flex-1 min-w-0">
                                     <span className="font-bold uppercase tracking-wider text-[9px]">Resolution</span>
-                                    <span className="text-[9px] leading-relaxed text-zinc-500 truncate">Output dimensions for all NDI scenes.</span>
+                                    <span className="text-[9px] leading-relaxed text-zinc-500">Output dimensions for all NDI scenes. 1080p is the safe default; 4K needs a strong machine and gigabit network.</span>
                                   </div>
                                   <select
                                     value={workspaceSettings.ndiResolution}
@@ -9848,7 +9856,8 @@ function App() {
                                   />
                                   <div className="flex flex-col gap-0.5">
                                     <span className="font-bold uppercase tracking-wider text-[9px]">Embed audio on Lumina-Program</span>
-                                    <span className="text-[9px] leading-relaxed text-zinc-500">Routes audience-output audio onto the Program NDI feed. Lyrics and LowerThirds stay video-only. Note: YouTube iframes cannot be tapped.</span>
+                                    <span className="text-[9px] leading-relaxed text-zinc-500">Routes Program audio from local video/media elements onto the Lumina-Program NDI feed. Lyrics and LowerThirds stay video-only. YouTube, Vimeo, and SoundCloud embeds remain video-only because browser iframes cannot be tapped.</span>
+                                    <span className="text-[9px] leading-relaxed text-zinc-500">Best for local MP4 playback on Program. For sermon or worship mix, route audio separately from your mixer into the streaming PC or switcher.</span>
                                     {ndiState.active && (
                                       <span className="text-[9px] leading-relaxed text-violet-400/80 italic">Toggling while live will briefly restart NDI.</span>
                                     )}
@@ -9858,16 +9867,16 @@ function App() {
                                   <div className="flex items-center justify-between gap-2 p-2 rounded-lg border border-zinc-800 bg-black/30 text-[10px]">
                                     <div className="flex items-center gap-1.5">
                                       <span
-                                        className={`inline-block w-1.5 h-1.5 rounded-full ${(ndiState.audio?.framesPerSecond ?? 0) > 0 ? 'bg-emerald-400 animate-pulse' : ndiWarning ? 'bg-amber-500' : 'bg-zinc-600'}`}
+                                        className={`inline-block w-1.5 h-1.5 rounded-full ${ndiAudioConstraintCode === 'iframe-media' ? 'bg-amber-500' : (ndiState.audio?.framesPerSecond ?? 0) > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`}
                                       />
                                       <span className="font-bold uppercase tracking-wider text-[9px] text-zinc-300">Audio</span>
                                     </div>
-                                    <span className={`font-mono text-[9px] ${(ndiState.audio?.framesPerSecond ?? 0) > 0 ? 'text-zinc-400' : ndiWarning ? 'text-amber-400' : 'text-zinc-500'}`}>
-                                      {(ndiState.audio?.framesPerSecond ?? 0) > 0
+                                    <span className={`font-mono text-[9px] ${ndiAudioConstraintCode === 'iframe-media' ? 'text-amber-400' : (ndiState.audio?.framesPerSecond ?? 0) > 0 ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                                      {ndiAudioConstraintCode === 'iframe-media'
+                                        ? 'video-only (iframe)'
+                                        : (ndiState.audio?.framesPerSecond ?? 0) > 0
                                         ? `${ndiState.audio?.framesPerSecond} fps${(ndiState.audio?.droppedFrames ?? 0) > 0 ? ` · ${ndiState.audio?.droppedFrames} drop` : ''}`
-                                        : ndiWarning
-                                          ? 'silent (iframe)'
-                                          : 'silent'}
+                                        : 'silent'}
                                     </span>
                                   </div>
                                 )}

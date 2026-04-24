@@ -13,6 +13,31 @@
 
 let grandiose = null;
 let ndiAvailable = false;
+const AUDIO_FORMAT_FLOAT_32_SEPARATE = 0;
+const NDI_AUDIO_FOURCC_FLTP =
+  'F'.charCodeAt(0) |
+  ('L'.charCodeAt(0) << 8) |
+  ('T'.charCodeAt(0) << 16) |
+  ('p'.charCodeAt(0) << 24);
+
+function interleavedFloat32ToPlanarBuffer(pcmBuffer, channels, samples) {
+  const expectedBytes = channels * samples * 4;
+  if (pcmBuffer.length < expectedBytes) return null;
+
+  const channelStrideBytes = samples * 4;
+  const planarBuffer = Buffer.allocUnsafe(expectedBytes);
+
+  for (let channel = 0; channel < channels; channel++) {
+    const channelBaseOffset = channel * channelStrideBytes;
+    for (let sample = 0; sample < samples; sample++) {
+      const srcOffset = ((sample * channels) + channel) * 4;
+      const dstOffset = channelBaseOffset + (sample * 4);
+      planarBuffer.writeFloatLE(pcmBuffer.readFloatLE(srcOffset), dstOffset);
+    }
+  }
+
+  return { channelStrideBytes, planarBuffer };
+}
 
 /**
  * Attempt to load grandiose once (module-global; shared by all instances).
@@ -120,6 +145,8 @@ class NdiSenderInstance {
   /**
    * Send one interleaved Float32 audio frame (NDI embedded audio).
    * `pcmBuffer` holds interleaved L/R samples, so its length is samples * channels.
+   * The installed grandiose addon expects planar FLTp audio on send, so the
+   * sender repacks the renderer's interleaved PCM before handing it off.
    * @param {Buffer} pcmBuffer
    * @param {number} sampleRate e.g. 48000
    * @param {number} channels typically 2 (stereo)
@@ -132,17 +159,26 @@ class NdiSenderInstance {
     if (!Number.isFinite(channels) || channels <= 0) return;
     if (!Number.isFinite(samples) || samples <= 0) return;
 
-    // Float32Interleaved = 1 in grandiose's AudioFormat enum. stride per channel
-    // is the byte-size of one channel's contiguous samples, but for interleaved
-    // format NDI wants the stride of one full sample's worth of bytes = channels * 4.
+    // The published typings model sender.audio() after the receive-side audio
+    // frame, but the native addon actually requires planar FLTp samples plus
+    // `noChannels` / `noSamples` / `channelStrideBytes` / `fourCC` on send.
+    const planar = interleavedFloat32ToPlanarBuffer(pcmBuffer, channels, samples);
+    if (!planar) return;
+
+    const audioFormat = grandiose?.AUDIO_FORMAT_FLOAT_32_SEPARATE ?? AUDIO_FORMAT_FLOAT_32_SEPARATE;
+    const fourCC = grandiose?.FOURCC_FLTp ?? NDI_AUDIO_FOURCC_FLTP;
     await this._sender.audio({
-      audioFormat: 1,
+      audioFormat,
       referenceLevel: 0,
       sampleRate,
       channels,
       samples,
-      channelStrideInBytes: channels * 4,
-      data: pcmBuffer,
+      noChannels: channels,
+      noSamples: samples,
+      channelStrideInBytes: planar.channelStrideBytes,
+      channelStrideBytes: planar.channelStrideBytes,
+      fourCC,
+      data: planar.planarBuffer,
     });
   }
 
