@@ -8561,7 +8561,7 @@ function App() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className={`truncate text-[13px] font-bold ${live ? 'text-red-300' : 'text-zinc-100'}`}>{item.title}</div>
+                  <div className={`truncate text-[13px] font-bold ${live ? 'text-red-300' : 'text-zinc-300'}`}>{item.title}</div>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[9px] uppercase tracking-[0.14em] text-zinc-500">
                     <span>{item.type}</span>
                     <span>{slideCount} slide{slideCount === 1 ? '' : 's'}</span>
