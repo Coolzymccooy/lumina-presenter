@@ -799,7 +799,11 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
         loop: "1",
         playlist: youtubeId,
         enablejsapi: "1",
-        mute: isThumbnail || isMuted ? "1" : "0",
+        // Pin mute=1 in the URL so runtime mute toggles don't mutate the
+        // iframe src (which would reload the iframe and cause a black flicker
+        // across the Audience / NDI output mid-service). The postMessage
+        // useEffect below drives actual mute/unmute at runtime.
+        mute: "1",
       });
       if (origin) params.set("origin", origin);
       const src = `https://www.youtube-nocookie.com/embed/${youtubeId}?${params.toString()}`;
