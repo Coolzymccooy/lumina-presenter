@@ -9690,7 +9690,54 @@ function App() {
                         <span className="rounded-full border border-cyan-800/50 bg-cyan-950/30 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300">Cue Engine</span>
                       }
                     >
-                      <div className={`grid gap-1.5 ${presenterMainWorkspaceWidth < 760 ? 'grid-cols-1' : 'grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,1fr)]'}`}>
+                      {presenterCueEngineStacked ? (
+                        <div className="grid gap-1.5">
+                          <div className="flex min-w-0 flex-wrap items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1.5">
+                            <select value={timerMode} onChange={(e) => {
+                              const mode = e.target.value as 'COUNTDOWN' | 'ELAPSED';
+                              setTimerMode(mode);
+                              setTimerRunning(false);
+                              setCueZeroHold(false);
+                              setTimerSeconds(mode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0);
+                            }} style={{ colorScheme: 'dark' }} className="h-7 shrink-0 cursor-pointer rounded border border-zinc-700 bg-zinc-900 px-1.5 text-[9px] font-bold text-zinc-200 outline-none">
+                              <option value="COUNTDOWN">Countdown</option>
+                              <option value="ELAPSED">Elapsed</option>
+                            </select>
+                            {timerMode === 'COUNTDOWN' && (
+                              <input type="number" min={1} max={180} value={timerDurationMin} onChange={(e) => applyManualCountdownMinutes(Number(e.target.value))} className="h-7 w-12 shrink-0 rounded border border-zinc-700 bg-zinc-900 px-1 py-0.5 text-[9px] text-zinc-200 text-center" />
+                            )}
+                            <div className={`shrink-0 text-[12px] font-mono font-black tabular-nums ${isTimerOvertime ? 'text-red-400 animate-pulse' : 'text-cyan-300'}`}>{formatTimer(timerSeconds)}</div>
+                            <button onClick={() => { setCueZeroHold(false); setTimerRunning((p) => !p); }} className="h-7 shrink-0 rounded bg-zinc-800 px-2.5 text-[9px] font-bold text-zinc-200 transition-colors hover:bg-zinc-700">{timerRunning ? 'Pause' : 'Start'}</button>
+                            <button onClick={() => { setTimerRunning(false); setCueZeroHold(false); setTimerSeconds(timerMode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0); }} className="h-7 shrink-0 rounded bg-zinc-800 px-2.5 text-[9px] font-bold text-zinc-200 transition-colors hover:bg-zinc-700">Reset</button>
+                            <button
+                              onClick={() => {
+                                const next = !workspaceSettings.timerChimesEnabled;
+                                setWorkspaceSettings((prev) => ({ ...prev, timerChimesEnabled: next }));
+                                timerChimeService.muted = !next;
+                              }}
+                              title={workspaceSettings.timerChimesEnabled ? 'Mute timer chimes' : 'Unmute timer chimes'}
+                              className={`h-7 shrink-0 rounded px-2.5 text-[9px] font-bold transition-colors ${workspaceSettings.timerChimesEnabled ? 'border border-emerald-700/40 bg-emerald-900/50 text-emerald-300' : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700'}`}
+                            >{workspaceSettings.timerChimesEnabled ? 'Chime' : 'Muted'}</button>
+                          </div>
+                          <div className="grid min-w-0 gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1.5 md:grid-cols-[auto_auto_auto_minmax(0,1fr)] md:items-center">
+                            <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-zinc-500">Cue</span>
+                            <input type="number" min={2} max={120} value={autoCueSeconds}
+                              onChange={(e) => { const v = Math.max(2, Math.min(120, Number(e.target.value) || 2)); setAutoCueSeconds(v); setAutoCueRemaining(v); }}
+                              className="h-7 w-12 shrink-0 rounded border border-zinc-700 bg-zinc-900 px-1 py-0.5 text-[9px] text-zinc-200 text-center"
+                            />
+                            <button onClick={() => setAutoCueEnabled((p) => !p)}
+                              className={`h-7 shrink-0 rounded px-2.5 text-[9px] font-bold transition-colors ${autoCueEnabled ? 'border border-cyan-700/40 bg-cyan-900/50 text-cyan-200' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'}`}
+                            >{autoCueEnabled ? `On ${autoCueRemaining}s` : 'Off'}</button>
+                            <div className="min-w-0 border-t border-zinc-800/80 pt-1.5 md:border-l md:border-t-0 md:border-zinc-800/80 md:pl-2.5 md:pt-0">
+                              <div className="text-[8px] font-black uppercase tracking-widest text-zinc-600">Current Cue</div>
+                              <div className="truncate text-[10px] font-bold leading-tight text-zinc-200">
+                                {currentCue ? `${currentCueIndex + 1}/${enabledTimerCues.length} ${currentCue.itemTitle}` : '—'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className={`grid gap-1.5 ${presenterMainWorkspaceWidth < 760 ? 'grid-cols-1' : 'grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,1fr)]'}`}>
                         <div className="flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 rounded-lg px-2 h-9 min-w-0">
                           <select value={timerMode} onChange={(e) => {
                             const mode = e.target.value as 'COUNTDOWN' | 'ELAPSED';
@@ -9731,10 +9778,11 @@ function App() {
                         <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 h-9 flex flex-col justify-center min-w-0">
                           <div className="text-[8px] uppercase tracking-widest text-zinc-600 font-black">Current Cue</div>
                           <div className="text-[10px] text-zinc-200 truncate font-bold leading-tight">
-                            {currentCue ? `${currentCueIndex + 1}/${enabledTimerCues.length} ${currentCue.itemTitle}` : '?'}
+                            {currentCue ? `${currentCueIndex + 1}/${enabledTimerCues.length} ${currentCue.itemTitle}` : '—'}
                           </div>
                         </div>
                       </div>
+                      )}
                     </CollapsiblePanel>
 
                     {/* Card 3: RUNDOWN + OUTPUT ? always full width */}
