@@ -139,6 +139,7 @@ import { StudioMenu } from './components/layout/StudioMenu';
 import { GuideProvider, GuideOverlay, GuidedToursPanel, AutoTriggerOnPresenter, registerAllJourneys, guideStorage } from './components/guide-engine';
 import { useRecordingLibrary } from './hooks/useRecordingLibrary';
 import { useToolsMenuNdi } from './hooks/useToolsMenuNdi';
+import { NdiStatusBadge } from './components/NdiStatusBadge';
 
 // Register all guided journeys at module load time
 registerAllJourneys();
@@ -9801,6 +9802,13 @@ function App() {
                         <button onClick={() => void copyShareUrl(obsOutputUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy OBS URL</button>
                         <button onClick={() => void copyShareUrl(cleanFeedUrl, 'Clean feed URL copied!')} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-violet-300 hover:border-violet-600 transition-all uppercase tracking-wider" title="No branding or audience overlays — use for recording or streaming">Copy Clean Feed</button>
                         <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy Stage URL</button>
+                        {isElectronShell && hasElectronDisplayControl && (
+                          <NdiStatusBadge
+                            ndiState={ndiState}
+                            audioEnabled={!!workspaceSettings.ndiAudioEnabled}
+                            audioWarningCode={ndiAudioConstraintCode}
+                          />
+                        )}
                         {isElectronShell && hasElectronDisplayControl && (
                           <div className="relative" ref={ndiMenuRef}>
                             <div className="flex">
