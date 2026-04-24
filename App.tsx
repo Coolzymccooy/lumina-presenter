@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { INITIAL_SCHEDULE, MOCK_SONGS, DEFAULT_BACKGROUNDS, VIDEO_BACKGROUNDS, GOSPEL_TRACKS, GospelTrack } from './constants';
 import {
   ServiceItem,
@@ -1632,9 +1631,6 @@ function App() {
   const [isOutputLive, setIsOutputLive] = useState(false);
   const [isStageDisplayLive, setIsStageDisplayLive] = useState(false);
   const [ndiState, setNdiState] = useState<NdiStatus>({ active: false, broadcastMode: false, resolution: '1080p', width: 1920, height: 1080, audioEnabled: false, audio: null, sources: [] });
-  const [ndiMenuOpen, setNdiMenuOpen] = useState(false);
-  const ndiMenuRef = useRef<HTMLDivElement | null>(null);
-  const ndiDropdownRef = useRef<HTMLDivElement | null>(null);
   const [ndiError, setNdiError] = useState<string | null>(null);
   const [ndiWarning, setNdiWarning] = useState<string | null>(null);
   const [ndiAudioConstraintCode, setNdiAudioConstraintCode] = useState<string | null>(null);
@@ -4399,28 +4395,6 @@ function App() {
       setNdiAudioConstraintCode(null);
     }
   }, [ndiState.active, ndiState.audioEnabled]);
-
-  // Close NDI menu on outside click or Escape.
-  useEffect(() => {
-    if (!ndiMenuOpen) return;
-    const handleClick = (event: MouseEvent) => {
-      const target = event.target as Node;
-      const insideAnchor = !!(ndiMenuRef.current && ndiMenuRef.current.contains(target));
-      const insideDropdown = !!(ndiDropdownRef.current && ndiDropdownRef.current.contains(target));
-      if (!insideAnchor && !insideDropdown) {
-        setNdiMenuOpen(false);
-      }
-    };
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setNdiMenuOpen(false);
-    };
-    document.addEventListener('mousedown', handleClick);
-    document.addEventListener('keydown', handleKey);
-    return () => {
-      document.removeEventListener('mousedown', handleClick);
-      document.removeEventListener('keydown', handleKey);
-    };
-  }, [ndiMenuOpen]);
 
   useEffect(() => {
     if (!hasElectronDisplayControl) return;
@@ -9821,198 +9795,6 @@ function App() {
                               audioWarningCode={ndiAudioConstraintCode}
                             />
                           </button>
-                        )}
-                        {isElectronShell && hasElectronDisplayControl && (
-                          <div className="relative" ref={ndiMenuRef}>
-                            <div className="flex">
-                              <button
-                                onClick={async () => {
-                                  setNdiError(null);
-                                  if (ndiState.active) {
-                                    await window.electron?.ndi?.stop?.();
-                                  } else {
-                                    const result = await window.electron?.ndi?.start?.({
-                                      workspaceId,
-                                      sessionId: liveSessionId,
-                                      broadcastMode: workspaceSettings.ndiBroadcastMode,
-                                      resolution: workspaceSettings.ndiResolution,
-                                      audioEnabled: workspaceSettings.ndiAudioEnabled,
-                                    });
-                                    if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to start.');
-                                  }
-                                }}
-                                title={ndiState.active
-                                  ? 'Stop NDI broadcast'
-                                  : workspaceSettings.ndiBroadcastMode
-                                    ? 'Broadcast 3 NDI sources (Program / Lyrics / LowerThirds) on the local network'
-                                    : 'Broadcast Lumina-Program on the local network (enable Broadcast Mode for fill+key sources)'}
-                                className={`h-9 px-3 rounded-l-lg border font-black text-[9px] tracking-wider uppercase transition-all ${ndiState.active ? 'border-violet-500/70 bg-violet-950/50 text-violet-300 animate-pulse' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-violet-300 hover:border-violet-600'}`}
-                              >
-                                {ndiState.active
-                                  ? ndiState.broadcastMode
-                                    ? `\u25cf NDI BROADCAST (${ndiState.sources.filter((s) => s.active).length}/${ndiState.sources.length || 3})`
-                                    : `\u25cf NDI LIVE`
-                                  : 'Send NDI'}
-                              </button>
-                              <button
-                                onClick={() => setNdiMenuOpen((v) => !v)}
-                                title="Show per-source NDI status"
-                                className={`h-9 px-2 rounded-r-lg border border-l-0 font-black text-[10px] tracking-wider uppercase transition-all ${ndiState.active ? 'border-violet-500/70 bg-violet-950/50 text-violet-300' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-violet-300 hover:border-violet-600'}`}
-                                aria-label="NDI sources"
-                              >
-                                {ndiMenuOpen ? '\u25b2' : '\u25bc'}
-                              </button>
-                            </div>
-                            {ndiMenuOpen && (() => {
-                              // Portal to <body> so the dropdown escapes the transport's stacking
-                              // context — otherwise the RUN SHEET column renders over its left half.
-                              const anchor = ndiMenuRef.current?.getBoundingClientRect();
-                              if (!anchor) return null;
-                              const DROPDOWN_W = 288; // w-72
-                              const MARGIN = 8;
-                              const top = Math.max(8, anchor.top - MARGIN);
-                              const right = Math.max(8, window.innerWidth - anchor.right);
-                              return createPortal(
-                              <div
-                                ref={ndiDropdownRef}
-                                style={{ position: 'fixed', right: `${right}px`, bottom: `${window.innerHeight - top}px`, width: `${DROPDOWN_W}px`, zIndex: 9999 }}
-                                className="rounded-lg border border-zinc-700 bg-zinc-950/95 backdrop-blur-md shadow-xl p-3 space-y-2"
-                              >
-                                <label className="flex items-start gap-2 p-2 rounded-lg border border-zinc-700 bg-black/40 text-zinc-300 text-[10px] cursor-pointer hover:border-violet-700/60">
-                                  <input
-                                    type="checkbox"
-                                    checked={workspaceSettings.ndiBroadcastMode}
-                                    onChange={async (e) => {
-                                      const next = e.target.checked;
-                                      handleWorkspaceSettingsSave({ ndiBroadcastMode: next });
-                                      // Mid-flight toggle: cycle NDI so the new mode takes effect immediately.
-                                      if (ndiState.active) {
-                                        setNdiError(null);
-                                        await window.electron?.ndi?.stop?.();
-                                        const result = await window.electron?.ndi?.start?.({
-                                          workspaceId,
-                                          sessionId: liveSessionId,
-                                          broadcastMode: next,
-                                          resolution: workspaceSettings.ndiResolution,
-                                          audioEnabled: workspaceSettings.ndiAudioEnabled,
-                                        });
-                                        if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to restart.');
-                                      }
-                                    }}
-                                    className="accent-violet-500 mt-0.5"
-                                  />
-                                  <div className="flex flex-col gap-0.5">
-                                    <span className="font-bold uppercase tracking-wider text-[9px]">Broadcast Mode (fill + key)</span>
-                                    <span className="text-[9px] leading-relaxed text-zinc-500">Adds transparent Lumina-Lyrics and Lumina-LowerThirds sources for vMix / OBS / hardware switchers. Leave off for direct streaming.</span>
-                                    {ndiState.active && (
-                                      <span className="text-[9px] leading-relaxed text-violet-400/80 italic">Toggling while live will briefly restart NDI.</span>
-                                    )}
-                                  </div>
-                                </label>
-                                <div className="flex items-center gap-2 p-2 rounded-lg border border-zinc-700 bg-black/40 text-zinc-300 text-[10px]">
-                                  <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                                    <span className="font-bold uppercase tracking-wider text-[9px]">Resolution</span>
-                                    <span className="text-[9px] leading-relaxed text-zinc-500">Output dimensions for all NDI scenes. 1080p is the safe default; 4K needs a strong machine and gigabit network.</span>
-                                  </div>
-                                  <select
-                                    value={workspaceSettings.ndiResolution}
-                                    onChange={async (e) => {
-                                      const next = e.target.value as '720p' | '1080p' | '4k';
-                                      handleWorkspaceSettingsSave({ ndiResolution: next });
-                                      if (ndiState.active) {
-                                        setNdiError(null);
-                                        await window.electron?.ndi?.stop?.();
-                                        const result = await window.electron?.ndi?.start?.({
-                                          workspaceId,
-                                          sessionId: liveSessionId,
-                                          broadcastMode: workspaceSettings.ndiBroadcastMode,
-                                          resolution: next,
-                                          audioEnabled: workspaceSettings.ndiAudioEnabled,
-                                        });
-                                        if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to restart.');
-                                      }
-                                    }}
-                                    className="h-7 px-2 rounded border border-zinc-700 bg-zinc-900 text-[10px] font-bold text-zinc-200 focus:outline-none focus:border-violet-600"
-                                  >
-                                    <option value="720p">720p (1280×720)</option>
-                                    <option value="1080p">1080p (1920×1080)</option>
-                                    <option value="4k">4K (3840×2160)</option>
-                                  </select>
-                                </div>
-                                <label className="flex items-start gap-2 p-2 rounded-lg border border-zinc-700 bg-black/40 text-zinc-300 text-[10px] cursor-pointer hover:border-violet-700/60">
-                                  <input
-                                    type="checkbox"
-                                    checked={workspaceSettings.ndiAudioEnabled}
-                                    onChange={async (e) => {
-                                      const next = e.target.checked;
-                                      handleWorkspaceSettingsSave({ ndiAudioEnabled: next });
-                                      if (ndiState.active) {
-                                        setNdiError(null);
-                                        await window.electron?.ndi?.stop?.();
-                                        const result = await window.electron?.ndi?.start?.({
-                                          workspaceId,
-                                          sessionId: liveSessionId,
-                                          broadcastMode: workspaceSettings.ndiBroadcastMode,
-                                          resolution: workspaceSettings.ndiResolution,
-                                          audioEnabled: next,
-                                        });
-                                        if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to restart.');
-                                      }
-                                    }}
-                                    className="accent-violet-500 mt-0.5"
-                                  />
-                                  <div className="flex flex-col gap-0.5">
-                                    <span className="font-bold uppercase tracking-wider text-[9px]">Embed audio on Lumina-Program</span>
-                                    <span className="text-[9px] leading-relaxed text-zinc-500">Routes Program audio from local video/media elements onto the Lumina-Program NDI feed. Lyrics and LowerThirds stay video-only. YouTube, Vimeo, and SoundCloud embeds remain video-only because browser iframes cannot be tapped.</span>
-                                    <span className="text-[9px] leading-relaxed text-zinc-500">Best for local MP4 playback on Program. For sermon or worship mix, route audio separately from your mixer into the streaming PC or switcher.</span>
-                                    {ndiState.active && (
-                                      <span className="text-[9px] leading-relaxed text-violet-400/80 italic">Toggling while live will briefly restart NDI.</span>
-                                    )}
-                                  </div>
-                                </label>
-                                {ndiState.active && ndiState.audioEnabled && (
-                                  <div className="flex items-center justify-between gap-2 p-2 rounded-lg border border-zinc-800 bg-black/30 text-[10px]">
-                                    <div className="flex items-center gap-1.5">
-                                      <span
-                                        className={`inline-block w-1.5 h-1.5 rounded-full ${ndiAudioConstraintCode === 'iframe-media' ? 'bg-amber-500' : (ndiState.audio?.framesPerSecond ?? 0) > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`}
-                                      />
-                                      <span className="font-bold uppercase tracking-wider text-[9px] text-zinc-300">Audio</span>
-                                    </div>
-                                    <span className={`font-mono text-[9px] ${ndiAudioConstraintCode === 'iframe-media' ? 'text-amber-400' : (ndiState.audio?.framesPerSecond ?? 0) > 0 ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                                      {ndiAudioConstraintCode === 'iframe-media'
-                                        ? 'video-only (iframe)'
-                                        : (ndiState.audio?.framesPerSecond ?? 0) > 0
-                                        ? `${ndiState.audio?.framesPerSecond} fps${(ndiState.audio?.droppedFrames ?? 0) > 0 ? ` · ${ndiState.audio?.droppedFrames} drop` : ''}`
-                                        : 'silent'}
-                                    </span>
-                                  </div>
-                                )}
-                                <div className="text-[9px] font-black uppercase tracking-widest text-zinc-500 pb-1 border-b border-zinc-800">NDI Sources</div>
-                                {(ndiState.sources.length ? ndiState.sources : (workspaceSettings.ndiBroadcastMode ? [
-                                  { id: 'program', sourceName: 'Lumina-Program', fillKey: false, active: false },
-                                  { id: 'lyrics', sourceName: 'Lumina-Lyrics', fillKey: true, active: false },
-                                  { id: 'lowerThirds', sourceName: 'Lumina-LowerThirds', fillKey: true, active: false },
-                                ] : [
-                                  { id: 'program', sourceName: 'Lumina-Program', fillKey: false, active: false },
-                                ])).map((source) => (
-                                  <div key={source.id} className="flex items-center justify-between gap-2 text-[10px]">
-                                    <div className="flex flex-col min-w-0">
-                                      <span className="font-bold text-zinc-200 truncate">{source.sourceName}</span>
-                                      <span className="text-[8px] uppercase tracking-wider text-zinc-500">{source.fillKey ? 'Fill + Key' : 'Fill'}</span>
-                                      {source.lastError && (
-                                        <span className="text-[8px] text-rose-400 truncate" title={source.lastError}>{source.lastError}</span>
-                                      )}
-                                    </div>
-                                    <span className={`px-2 py-0.5 rounded font-black text-[8px] uppercase tracking-wider ${source.active ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-700/60' : 'bg-zinc-900 text-zinc-500 border border-zinc-800'}`}>
-                                      {source.active ? 'LIVE' : 'OFF'}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>,
-                              document.body
-                              );
-                            })()}
-                          </div>
                         )}
                         {ndiWarning && (
                           <span

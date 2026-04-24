@@ -54,9 +54,15 @@ function audio() {
 }
 
 describe('NdiStatusBadge', () => {
-  it('renders nothing when NDI is inactive', () => {
+  it('renders a compact NDI OFF pill when NDI is inactive', () => {
     render(<NdiStatusBadge ndiState={baseState({ active: false })} audioEnabled />);
-    expect(badge()).toBeNull();
+    const el = badge();
+    expect(el).not.toBeNull();
+    expect(el?.getAttribute('data-active')).toBe('false');
+    expect(el?.textContent).toMatch(/off/i);
+    // No per-source rows in OFF state
+    expect(source('program')).toBeNull();
+    expect(audio()).toBeNull();
   });
 
   it('shows all three sources in broadcast mode', () => {

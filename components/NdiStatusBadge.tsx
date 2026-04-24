@@ -14,17 +14,31 @@ interface SourceDescriptor {
   full: string;
 }
 
-// Broadcast-grade NDI status badge. Replaces the command surface previously
-// living in the NDI dropdown (which now lives in Tools → NDI). Always-visible
-// when NDI is live so the operator can read per-source tally + audio state
-// without a click — mirrors the vMix / Blackmagic pattern of persistent
-// status in the operator chrome.
+// Broadcast-grade NDI status badge. Replaces the full command surface
+// previously living in the in-transport NDI dropdown (which is now entirely
+// in Tools → NDI + the NDI Info modal). Always visible so the operator can:
+//   - Read per-source tally + audio state at a glance when live
+//   - See NDI OFF state when inactive (and still click to open settings)
+// Mirrors the vMix / Blackmagic pattern of persistent status in operator chrome.
 export const NdiStatusBadge = React.memo(function NdiStatusBadge({
   ndiState,
   audioEnabled,
   audioWarningCode,
 }: NdiStatusBadgeProps) {
-  if (!ndiState?.active) return null;
+  if (!ndiState?.active) {
+    return (
+      <div
+        data-testid="ndi-status-badge"
+        data-active="false"
+        className="flex items-center h-9 gap-2 px-2.5 rounded-lg border border-zinc-800 bg-zinc-950/60 text-[10px] font-bold tracking-wider"
+        title="NDI is off. Click to open NDI settings, or use Tools → NDI."
+      >
+        <span className="inline-block w-1.5 h-1.5 rounded-full bg-zinc-700" />
+        <span className="uppercase text-zinc-500 text-[9px] tracking-[0.2em]">NDI</span>
+        <span className="uppercase text-zinc-500 text-[9px] tracking-[0.2em]">Off</span>
+      </div>
+    );
+  }
 
   const sources = resolveSources(ndiState);
   const audioFps = ndiState.audio?.framesPerSecond ?? 0;
