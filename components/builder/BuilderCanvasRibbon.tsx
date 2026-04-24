@@ -145,8 +145,8 @@ export const BuilderCanvasRibbon: React.FC<BuilderCanvasRibbonProps> = ({
     data-testid="builder-canvas-ribbon"
     className="relative shrink-0 border-b border-zinc-800 bg-[linear-gradient(180deg,rgba(31,32,38,0.98)_0%,rgba(17,18,24,0.98)_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
   >
-    <div className="grid min-h-[50px] grid-cols-[minmax(160px,240px)_1fr_auto] items-start gap-3">
-      <div className="min-w-0">
+    <div className="grid min-h-[50px] grid-cols-1 items-start gap-3 xl:grid-cols-[minmax(160px,240px)_minmax(0,1fr)_auto]">
+      <div className="order-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-[9px] font-black uppercase tracking-[0.24em] text-zinc-500">Canvas</span>
           <span className="rounded border border-cyan-800 bg-cyan-950/40 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.16em] text-cyan-200">
@@ -160,7 +160,7 @@ export const BuilderCanvasRibbon: React.FC<BuilderCanvasRibbonProps> = ({
         </div>
       </div>
 
-      <div className="min-w-0 self-center">
+      <div className="order-3 min-w-0 self-center xl:order-2">
         <div className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-500">
           Tip
         </div>
@@ -169,7 +169,7 @@ export const BuilderCanvasRibbon: React.FC<BuilderCanvasRibbonProps> = ({
         </div>
       </div>
 
-      <div className="flex max-w-[430px] flex-wrap justify-end gap-1.5">
+      <div className="order-2 flex flex-wrap gap-1.5 xl:order-3 xl:max-w-[430px] xl:justify-end">
         <RibbonButton onClick={onAddTextBlock} disabled={!slide}>
           <PlusIcon className="h-3.5 w-3.5" />
           Text
@@ -196,3 +196,4 @@ export const BuilderCanvasRibbon: React.FC<BuilderCanvasRibbonProps> = ({
     </div>
   </div>
 );
+

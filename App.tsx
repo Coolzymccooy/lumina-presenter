@@ -1301,7 +1301,7 @@ function App() {
   const [desktopServiceState, setDesktopServiceState] = useState<DesktopServiceState>(DEFAULT_DESKTOP_SERVICE_STATE);
   const [desktopDisplayStatusText, setDesktopDisplayStatusText] = useState('');
 
-  // ✅ Projector popout window handle (opened in click handler to avoid popup blockers)
+  // ? Projector popout window handle (opened in click handler to avoid popup blockers)
   const [outputWin, setOutputWin] = useState<Window | null>(null);
   const [timerPopoutWin, setTimerPopoutWin] = useState<Window | null>(null);
   const timerBroadcastRef = useRef<BroadcastChannel | null>(null);
@@ -1683,7 +1683,7 @@ function App() {
   const [audienceQrProjection, setAudienceQrProjection] = useState<AudienceQrProjectionState>(() => {
     const saved = initialSavedState;
     const state = sanitizeAudienceQrProjectionState(saved?.audienceQrProjection);
-    // Always start hidden — QR must be explicitly shown each session.
+    // Always start hidden � QR must be explicitly shown each session.
     // The URL is preserved so the user doesn't need to re-enter it.
     return { ...state, visible: false };
   });
@@ -2004,7 +2004,7 @@ function App() {
     }
   }, [workspaceId]);
 
-  // ── CCLI credentials — load at startup ──────────────────────────────────────
+  // -- CCLI credentials � load at startup --------------------------------------
   // The actual client_secret lives only on the server. The renderer only learns
   // whether the workspace is connected. We pass a getIdToken closure so the
   // server can verify the user with firebase-admin.
@@ -2022,7 +2022,7 @@ function App() {
     });
   }, [workspaceId, user?.uid, user?.email]);
 
-  // ── Server-side session validation — startup + periodic re-check ────────────
+  // -- Server-side session validation � startup + periodic re-check ------------
   // Validates the user's session against the server. Honours the free plan
   // (free users are valid). If the server marks the account as revoked, or the
   // server is permanently unreachable on a hard reject, the client logs out.
@@ -2044,7 +2044,7 @@ function App() {
         const resp = await fetch('/api/session/validate', { headers });
         if (cancelled) return;
         if (resp.status === 403) {
-          // Hard revocation — force logout
+          // Hard revocation � force logout
           handleLogout();
           return;
         }
@@ -2054,9 +2054,9 @@ function App() {
             setUserPlan(data.plan);
           }
         }
-        // Soft failures (network down, 5xx) are tolerated — the user keeps working
+        // Soft failures (network down, 5xx) are tolerated � the user keeps working
       } catch {
-        // Network down — fail open. Free plan users still have a working app.
+        // Network down � fail open. Free plan users still have a working app.
       }
     };
     void validate();
@@ -2067,7 +2067,7 @@ function App() {
     };
   }, [user?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Macro subscription ──────────────────────────────────────────────────────
+  // -- Macro subscription ------------------------------------------------------
   useEffect(() => {
     if (!workspaceId) return undefined;
     seedStarterMacrosIfEmpty(workspaceId, STARTER_MACROS).catch(() => {});
@@ -2116,7 +2116,7 @@ function App() {
     return typeof saved?.isPlaying === 'boolean' ? saved.isPlaying : true;
   });
 
-  // ── Macro execution context ─────────────────────────────────────────────────
+  // -- Macro execution context -------------------------------------------------
   const macroCtx: MacroExecutionContext = useMemo(() => ({
     workspaceId,
     sessionId: liveSessionId,
@@ -2150,7 +2150,7 @@ function App() {
     stopTimer: () => setTimerRunning(false),
   }), [workspaceId, liveSessionId, schedule, selectedItemId, activeItemId, activeSlideIndex, workspaceSettings.aetherBridgeUrl, aetherBridgeToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Macro slide_enter trigger ───────────────────────────────────────────────
+  // -- Macro slide_enter trigger -----------------------------------------------
   const macroCtxRef = useRef(macroCtx);
   macroCtxRef.current = macroCtx;
   const macrosRef = useRef(macros);
@@ -2170,7 +2170,7 @@ function App() {
     });
   }, [activeItemId, activeSlideIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Macro webhook trigger polling ────────────────────────────────────────────
+  // -- Macro webhook trigger polling --------------------------------------------
   const lastWebhookPollTsRef = useRef<number>(Date.now());
   useEffect(() => {
     if (!workspaceId) return;
@@ -2203,7 +2203,7 @@ function App() {
     return () => window.clearInterval(interval);
   }, [workspaceId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Macro service_mode_change trigger ────────────────────────────────────────
+  // -- Macro service_mode_change trigger ----------------------------------------
   useEffect(() => {
     const serviceMode = isPlaying ? 'live' : 'paused';
     const triggered = matchTriggers({ type: 'service_mode_change', serviceMode }, macrosRef.current);
@@ -2259,7 +2259,7 @@ function App() {
     const saved = initialSavedState;
     return typeof saved?.seekAmount === 'number' ? saved.seekAmount : 0;
   });
-  // Absolute seek target (seconds) — used instead of relative seekAmount for YouTube sync
+  // Absolute seek target (seconds) � used instead of relative seekAmount for YouTube sync
   const [seekTarget, setSeekTarget] = useState<number | null>(null);
   // Wall-clock ms when video play started (reset on goLive + on play toggle)
   const videoPlayStartEpochRef = useRef<number | null>(null);
@@ -2455,7 +2455,7 @@ function App() {
     items.map(item => ({
       ...item,
       // Strip item-level data URL backgrounds (PPTX imports store each slide
-      // background as a base64 data URL here — a single image is 1–5 MB).
+      // background as a base64 data URL here � a single image is 1�5 MB).
       theme: item.theme
         ? {
             ...item.theme,
@@ -2505,7 +2505,7 @@ function App() {
   }, [user?.uid, user, workspaceId, liveSessionId, enqueueLiveState, applySyncBackoff, resetSyncBackoff, buildSyncPausedMessage, canUseFirebaseSync]);
 
   const refreshRunSheetFiles = useCallback(async () => {
-    // Wait for Firebase auth and workspace ID to resolve — workspaceId defaults to
+    // Wait for Firebase auth and workspace ID to resolve � workspaceId defaults to
     // 'default-workspace' before auth completes, which could hit a foreign workspace
     if (!workspaceId || !user?.uid) {
       setRunSheetFiles([]);
@@ -3130,7 +3130,7 @@ function App() {
 
 
 
-  // Sync the schedule snapshot only when the schedule itself changes — NOT on
+  // Sync the schedule snapshot only when the schedule itself changes � NOT on
   // every slide navigation. Slide navigation is synced separately via the live
   // state effect below. This prevents re-uploading the entire (potentially
   // large) schedule JSON every time the presenter taps the next slide.
@@ -3284,7 +3284,7 @@ function App() {
 
   // Auto-disable safe-area guides when an image background is applied so the
   // user sees the slide without line-margin rails. The user can re-enable it
-  // via the ribbon toggle — we only force OFF on a new image arrival, not on
+  // via the ribbon toggle � we only force OFF on a new image arrival, not on
   // every render.
   const lastBuilderBackgroundRef = useRef<string>('');
   useEffect(() => {
@@ -3387,6 +3387,7 @@ function App() {
     }
   }, [isPlaying, isActiveVideo]);
 
+  const responsiveCompactLayout = viewportWidth < 1480;
   const presenterSidebarCompact = isElectronShell && viewMode === 'PRESENTER' && viewportWidth < 1500;
   const presenterShellTight = viewMode === 'PRESENTER' && viewportWidth < 1720;
   const presenterShellVeryTight = viewMode === 'PRESENTER' && viewportWidth < 1540;
@@ -3453,7 +3454,7 @@ function App() {
     }
 
     // Data URIs (SVG split-panel, gradient backgrounds) are self-contained in memory.
-    // Never fetch, save, or replace them — doing so would swap the instant data URI for
+    // Never fetch, save, or replace them � doing so would swap the instant data URI for
     // a local:// URL that requires an async round-trip, causing "BACKGROUND UNAVAILABLE".
     if (isDataMediaUrl(backgroundUrl)) {
       return { ...snapshot };
@@ -4282,7 +4283,7 @@ function App() {
     return () => off?.();
   }, [isElectronShell]);
 
-  // ─── Tools → NDI submenu bridge ───────────────────────────────────────────
+  // --- Tools ? NDI submenu bridge -------------------------------------------
   // Push a compact view of (workspace NDI settings + runtime NDI state) to
   // main.cjs whenever it changes. Receive commands back when the operator
   // clicks an NDI menu item and dispatch the same restart-on-mid-flight
@@ -5135,8 +5136,8 @@ function App() {
   const handleArchiveRunSheet = async (startNewAfterArchive = false) => {
     if (viewMode === 'PRESENTER') {
       const msg = startNewAfterArchive
-        ? "⚠️ RUNNING LIVE: Archive current run sheet and start a fresh one? This cannot be undone easily."
-        : "⚠️ RUNNING LIVE: Archive current run sheet?";
+        ? "?? RUNNING LIVE: Archive current run sheet and start a fresh one? This cannot be undone easily."
+        : "?? RUNNING LIVE: Archive current run sheet?";
       if (!window.confirm(msg)) return;
     }
 
@@ -5170,13 +5171,13 @@ function App() {
     if (!item) return;
 
     const confirmMsg = viewMode === 'PRESENTER'
-      ? `⚠️ RUNNING LIVE: Move "${item.title}" to archives? It will be removed from the active run sheet.`
+      ? `?? RUNNING LIVE: Move "${item.title}" to archives? It will be removed from the active run sheet.`
       : `Move "${item.title}" to Run Sheet Files? It will be removed from the active run sheet.`;
 
     const confirmed = window.confirm(confirmMsg);
     if (!confirmed) return;
 
-    const title = `${item.title} • ${new Date().toLocaleString()}`;
+    const title = `${item.title} � ${new Date().toLocaleString()}`;
     const result = await archiveRunSheetPayload(title, {
       items: [item],
       selectedItemId: item.id,
@@ -5259,7 +5260,7 @@ function App() {
     const existing = runSheetFiles.find((entry) => entry.fileId === fileId);
 
     if (viewMode === 'PRESENTER') {
-      if (!window.confirm("⚠️ RUNNING LIVE: Rename this archived run sheet? Changes will sync to the cloud for all operators.")) return;
+      if (!window.confirm("?? RUNNING LIVE: Rename this archived run sheet? Changes will sync to the cloud for all operators.")) return;
     }
 
     const nextTitle = window.prompt('Rename run sheet', existing?.title || '');
@@ -5298,7 +5299,7 @@ function App() {
   };
   const handleDeleteRunSheet = async (fileId: string) => {
     const confirmMsg = viewMode === 'PRESENTER'
-      ? "⚠️ RUNNING LIVE: Permanently delete this archived run sheet? This will REMOVE it for all operators immediately."
+      ? "?? RUNNING LIVE: Permanently delete this archived run sheet? This will REMOVE it for all operators immediately."
       : 'Delete this archived run sheet?';
 
     if (!window.confirm(confirmMsg)) return;
@@ -5338,7 +5339,7 @@ function App() {
       `KEY POINTS:`,
       ...item.summary.keyPoints.map((p, i) => `${i + 1}. ${p}`),
       ``,
-      `SCRIPTURES: ${item.summary.scripturesReferenced.join(' · ') || 'None'}`,
+      `SCRIPTURES: ${item.summary.scripturesReferenced.join(' � ') || 'None'}`,
       ``,
       `CALL TO ACTION: ${item.summary.callToAction}`,
     ].join('\n');
@@ -5513,7 +5514,7 @@ function App() {
 
   const removeItem = (itemId: string) => {
     if (viewMode === 'PRESENTER') {
-      if (!window.confirm("⚠️ RUNNING LIVE: Remove this item from the schedule?")) return;
+      if (!window.confirm("?? RUNNING LIVE: Remove this item from the schedule?")) return;
     }
     pushHistory();
     const nextSchedule = schedule.filter((i) => i.id !== itemId);
@@ -5679,7 +5680,7 @@ function App() {
       }
     }
 
-    // Add to run sheet and go live — use user's default BG if set
+    // Add to run sheet and go live � use user's default BG if set
     const sermonBg = getDefaultBgTheme(DEFAULT_BACKGROUNDS[2]);
     const sermonItem = finalizeGeneratedItemBackground({
       id: `${stamp}-sermon`,
@@ -5700,7 +5701,7 @@ function App() {
     goLive(sermonItem, 0);
   }, [finalizeGeneratedItemBackground, addItem, goLive]);
 
-  // Build a sermon item (same as flash but without goLive — for inserting into runsheet)
+  // Build a sermon item (same as flash but without goLive � for inserting into runsheet)
   const buildSermonItem = useCallback((summary: SermonSummary) => {
     const stamp = Date.now().toString(36);
     const title = summary.title || 'Sermon';
@@ -6560,7 +6561,7 @@ function App() {
     const isVideo = youtubeId || looksLikeVideoUrl(url);
     if (!youtubeId && !isVideo) return;
     const now = Date.now();
-    const title = youtubeId ? `YouTube — ${youtubeId}` : (url.split('/').pop() || 'Video');
+    const title = youtubeId ? `YouTube � ${youtubeId}` : (url.split('/').pop() || 'Video');
     const mediaItem = finalizeGeneratedItemBackground({
       id: `${now}-video-url-item`,
       title,
@@ -6745,7 +6746,7 @@ function App() {
     if (!workspaceId) throw new Error('No workspace loaded.');
     setCcliActor(user?.uid ?? workspaceId, user?.email ?? null);
     await storeCcliCredentials(workspaceId, licenseNumber);
-    // Sentinel — actual secret lives only on the server.
+    // Sentinel � actual secret lives only on the server.
     initCcliProvider(
       { licenseNumber: '', clientId: '', clientSecret: '', connectedAt: Date.now() },
       workspaceId,
@@ -7435,7 +7436,7 @@ function App() {
     setActiveSidebarTab(tab);
   };
 
-  // ✅ Launch Output handler (opens window synchronously from user gesture — popup-safe)
+  // ? Launch Output handler (opens window synchronously from user gesture � popup-safe)
   const handleToggleOutput = () => {
     if (!activeItem && selectedItem && selectedItem.slides.length > 0) {
       goLive(selectedItem, 0);
@@ -7628,7 +7629,7 @@ function App() {
           var arc=document.getElementById('arc');
           var label=document.getElementById('label');
           el.textContent=d.display||'--:--';
-          label.textContent=(d.speaker||d.label||'Timer')+(d.overtime?' — OVERTIME':'');
+          label.textContent=(d.speaker||d.label||'Timer')+(d.overtime?' � OVERTIME':'');
           var cls=d.overtime?'overtime':d.zone==='red'?'red':d.zone==='amber'?'amber':'green';
           el.className=cls;
           var ratio=d.ratio!=null?d.ratio:1;
@@ -7782,7 +7783,7 @@ function App() {
     return <LowerThirdsNdiRoute />;
   }
 
-  // ROUTING: LOGIN (If not authenticated, force login for studio — both browser and Electron)
+  // ROUTING: LOGIN (If not authenticated, force login for studio � both browser and Electron)
   // Exception: when running under Playwright E2E (VITE_E2E=true) with the Electron shell flag
   // injected by addInitScript, skip the gate so tests can reach the studio without Firebase creds.
   // This env var is never set in production builds; it is only passed by run-e2e.mjs.
@@ -7887,7 +7888,7 @@ function App() {
                 activeItemId === item.id ? 'text-red-400/80' : 'text-zinc-500'
               }`}>
                 {activeItemId === item.id && (
-                  <span className="text-[9px] font-black tracking-[0.2em] text-red-400 mr-1">● LIVE</span>
+                  <span className="text-[9px] font-black tracking-[0.2em] text-red-400 mr-1">? LIVE</span>
                 )}
                 {item.type}
               </span>
@@ -8380,7 +8381,7 @@ function App() {
                   value={videoUrlDraft}
                   onChange={(e) => setVideoUrlDraft(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') insertVideoUrlAsItem(); }}
-                  placeholder="Paste YouTube or video URL…"
+                  placeholder="Paste YouTube or video URL�"
                   className="flex-1 min-w-0 bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-[11px] text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
                 />
                 <button
@@ -8480,7 +8481,7 @@ function App() {
                 <div key={file.fileId} className="border border-zinc-800 rounded-xl p-2.5 bg-zinc-900/50">
                   <div className="min-w-0">
                     <div className="truncate text-[13px] font-bold text-zinc-200">{file.title}</div>
-                    <div className="mt-1 text-[10px] text-zinc-500">{new Date(file.updatedAt).toLocaleString()} • {(file.payload?.items || []).length} items</div>
+                    <div className="mt-1 text-[10px] text-zinc-500">{new Date(file.updatedAt).toLocaleString()} � {(file.payload?.items || []).length} items</div>
                   </div>
                   <div className="mt-2.5 grid grid-cols-2 gap-2">
                     <button onClick={() => void handleReuseRunSheet(file.fileId, 'replace')} className="px-2 py-1.5 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-200">Reuse</button>
@@ -8504,9 +8505,9 @@ function App() {
       badge={<span className="rounded-full border border-cyan-800/50 bg-cyan-950/30 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300">Beta</span>}
       actions={
         <div className="flex items-center gap-1">
-          <button data-testid="runsheet-template-btn" title="Templates — start from a pre-built slide (announcements, scripture cards, sermon titles)" aria-label="Open template gallery" onClick={() => setIsTemplateOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">TPL</button>
-          <button data-testid="runsheet-lyrics-btn" title="Lyrics — paste song lyrics and Lumina splits verses, choruses, bridges into slides" aria-label="Import song lyrics" onClick={() => setIsLyricsImportOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">LYR</button>
-          <button data-testid="runsheet-add-slide-btn" title="Add a blank slide — opens the Smart Layout Slide Editor" aria-label="Add blank slide" onClick={addEmptyItem} className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-sm transition-colors"><PlusIcon className="w-3.5 h-3.5" /></button>
+          <button data-testid="runsheet-template-btn" title="Templates � start from a pre-built slide (announcements, scripture cards, sermon titles)" aria-label="Open template gallery" onClick={() => setIsTemplateOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">TPL</button>
+          <button data-testid="runsheet-lyrics-btn" title="Lyrics � paste song lyrics and Lumina splits verses, choruses, bridges into slides" aria-label="Import song lyrics" onClick={() => setIsLyricsImportOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">LYR</button>
+          <button data-testid="runsheet-add-slide-btn" title="Add a blank slide � opens the Smart Layout Slide Editor" aria-label="Add blank slide" onClick={addEmptyItem} className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-sm transition-colors"><PlusIcon className="w-3.5 h-3.5" /></button>
         </div>
       }
     >
@@ -8849,7 +8850,7 @@ function App() {
   const presenterBetaWorkspace = isPresenterBeta ? (
     <PresenterDesktopShell
       mode="presenter"
-      leftPane={renderPresenterBetaSchedulePane()}
+      isCompactLayout={responsiveCompactLayout}`r`n      leftPane={renderPresenterBetaSchedulePane()}
       centerPane={renderPresenterBetaPreviewPane()}
       rightPane={renderPresenterBetaLivePane()}
       bottomPane={
@@ -8921,7 +8922,7 @@ function App() {
                     onClick={() => setRunSheetFilter('')}
                     className="absolute right-1 top-1/2 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded text-zinc-500 hover:text-zinc-200"
                   >
-                    <span aria-hidden="true">×</span>
+                    <span aria-hidden="true">�</span>
                   </button>
                 )}
               </div>
@@ -8964,11 +8965,11 @@ function App() {
           <div className="mt-3 flex flex-wrap items-center gap-1.5 text-[9px] font-mono uppercase tracking-[0.12em] text-zinc-500">
             <span className="rounded border border-zinc-700 bg-[#15161b] px-1.5 py-0.5 text-zinc-300">Space</span>
             <span>Project</span>
-            <span className="text-zinc-700">•</span>
+            <span className="text-zinc-700">�</span>
             <span className="rounded border border-zinc-700 bg-[#15161b] px-1.5 py-0.5 text-zinc-300">N</span>
             <span>Next</span>
-            <span className="text-zinc-700">•</span>
-            <span className="rounded border border-zinc-700 bg-[#15161b] px-1.5 py-0.5 text-zinc-300">⌘E</span>
+            <span className="text-zinc-700">�</span>
+            <span className="rounded border border-zinc-700 bg-[#15161b] px-1.5 py-0.5 text-zinc-300">?E</span>
             <span>Edit</span>
           </div>
         </div>
@@ -9096,7 +9097,7 @@ function App() {
   const builderDesktopWorkspace = viewMode === 'BUILDER' ? (
     <PresenterDesktopShell
       mode="builder"
-      leftPane={renderBuilderRunSheetPane()}
+      isCompactLayout={responsiveCompactLayout}`r`n      leftPane={renderBuilderRunSheetPane()}
       centerPane={renderBuilderCenterPane()}
       rightPane={(
         <BuilderRightRail
@@ -9152,7 +9153,7 @@ function App() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-zinc-100">Slide saved</p>
               <p className="mt-1 text-xs text-zinc-300 leading-relaxed">
-                Find it at the bottom of your Run Sheet — tap to load, then press <span className="font-semibold text-emerald-300">NEXT</span> or <span className="font-semibold text-emerald-300">Spacebar</span> to project it.
+                Find it at the bottom of your Run Sheet � tap to load, then press <span className="font-semibold text-emerald-300">NEXT</span> or <span className="font-semibold text-emerald-300">Spacebar</span> to project it.
               </p>
               <div className="mt-3 flex items-center justify-end gap-2">
                 <button
@@ -9221,7 +9222,7 @@ function App() {
           </div>
         </div>
       )}
-      {saveError && <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-red-900/90 border border-red-500 text-white px-4 py-2 rounded-sm shadow-xl z-50 flex items-center gap-3 text-xs font-bold animate-pulse"><span>⚠ STORAGE FULL: Changes are NOT saving.</span><button onClick={() => setSaveError(false)} className="hover:text-zinc-300">✕</button></div>}
+      {saveError && <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-red-900/90 border border-red-500 text-white px-4 py-2 rounded-sm shadow-xl z-50 flex items-center gap-3 text-xs font-bold animate-pulse"><span>? STORAGE FULL: Changes are NOT saving.</span><button onClick={() => setSaveError(false)} className="hover:text-zinc-300">?</button></div>}
       
       {showSyncGuidance && syncIssueDisplay && (
         <div className="fixed top-14 left-0 right-0 z-40 flex items-center gap-3 px-4 py-2 bg-amber-950/95 border-b border-amber-700/50 backdrop-blur-sm">
@@ -9264,13 +9265,13 @@ function App() {
             onClick={() => setSplitPanelConflictDismissed(true)}
             className="shrink-0 text-amber-500 hover:text-amber-200 transition-colors text-xs font-bold px-1.5 py-0.5 rounded hover:bg-amber-900/40"
             title="Dismiss"
-          >✕</button>
+          >?</button>
         </div>
       )}
 
       <AppHeader
         isElectronShell={isElectronShell}
-        viewMode={viewMode}
+        isCompactLayout={responsiveCompactLayout}`r`n        viewMode={viewMode}
         onViewModeChange={setViewMode}
         onHomeClick={() => setViewState(isElectronShell ? 'studio' : 'landing')}
         isPresenterBeta={isPresenterBeta}
@@ -9388,9 +9389,9 @@ function App() {
               <div className="p-3 border-b border-zinc-900 flex items-center justify-between shrink-0">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Run Sheet</h3>
                 <div className="flex gap-1">
-                  <button data-testid="runsheet-template-btn" title="Templates — start from a pre-built slide (announcements, scripture cards, sermon titles)" aria-label="Open template gallery" onClick={() => setIsTemplateOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">TPL</button>
-                  <button data-testid="runsheet-lyrics-btn" title="Lyrics — paste song lyrics and Lumina splits verses, choruses, bridges into slides" aria-label="Import song lyrics" onClick={() => setIsLyricsImportOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">LYR</button>
-                  <button data-testid="runsheet-add-slide-btn" title="Add a blank slide — opens the Smart Layout Slide Editor" aria-label="Add blank slide" onClick={addEmptyItem} className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-sm transition-colors"><PlusIcon className="w-3.5 h-3.5" /></button>
+                  <button data-testid="runsheet-template-btn" title="Templates � start from a pre-built slide (announcements, scripture cards, sermon titles)" aria-label="Open template gallery" onClick={() => setIsTemplateOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">TPL</button>
+                  <button data-testid="runsheet-lyrics-btn" title="Lyrics � paste song lyrics and Lumina splits verses, choruses, bridges into slides" aria-label="Import song lyrics" onClick={() => setIsLyricsImportOpen(true)} className="px-2 py-1 bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 rounded-sm text-[9px] font-bold transition-all">LYR</button>
+                  <button data-testid="runsheet-add-slide-btn" title="Add a blank slide � opens the Smart Layout Slide Editor" aria-label="Add blank slide" onClick={addEmptyItem} className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-sm transition-colors"><PlusIcon className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
               {renderScheduleList()}
@@ -9479,7 +9480,7 @@ function App() {
           {activeSidebarTab === 'MACROS' && (
             <div className="flex-1 overflow-hidden flex flex-col min-h-0">
               <div className="p-3 border-b border-zinc-900 shrink-0 flex items-center justify-between">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">⚡ Macros</h3>
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">? Macros</h3>
               </div>
               <div className="flex-1 flex items-center justify-center p-6 text-center">
                 <div className="text-zinc-600 text-xs font-semibold leading-relaxed">
@@ -9584,7 +9585,7 @@ function App() {
         onToggleMute={() => setOutputMuted(prev => !prev)}
         showSermonRecorder={showSermonRecorder}
         onToggleSermonRecorder={() => setShowSermonRecorder(v => !v)}
-      />
+        isCompactLayout={responsiveCompactLayout}`r`n      />
     ) : (
             <div className="flex-1 flex flex-col lg:flex-row bg-black min-w-0 overflow-hidden" data-testid="studio-canvas-root">
             <div className="flex-1 flex flex-col relative min-w-0">
@@ -9614,7 +9615,7 @@ function App() {
                   </div>
                 </div>
                 
-                {/* Presenter Ops Deck — 3-card production layout */}
+                {/* Presenter Ops Deck � 3-card production layout */}
                 <div className="border-t border-zinc-900 bg-[#0a0a0e] px-3 py-3 shrink-0">
                   <div className={`grid gap-2.5 max-w-[1400px] mx-auto ${presenterMainWorkspaceWidth < 1060 ? 'grid-cols-1' : 'grid-cols-2'}`}>
 
@@ -9661,7 +9662,7 @@ function App() {
                             setOutputMuted(next);
                             setIsPreviewMuted(next);
                           }}
-                          title={outputMuted ? 'Program muted — click to unmute' : 'Mute program (audience display + NDI + controller preview)'}
+                          title={outputMuted ? 'Program muted � click to unmute' : 'Mute program (audience display + NDI + controller preview)'}
                           className={`h-9 px-3 rounded-lg font-black text-[9px] tracking-wider border transition-all uppercase flex items-center gap-1.5 ${outputMuted ? 'bg-rose-950/60 text-rose-300 border-rose-700/50' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300 hover:border-zinc-700'}`}
                         >
                           {outputMuted ? <VolumeXIcon className="w-3.5 h-3.5" /> : <Volume2Icon className="w-3.5 h-3.5" />}
@@ -9730,13 +9731,13 @@ function App() {
                         <div className="rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 h-9 flex flex-col justify-center min-w-0">
                           <div className="text-[8px] uppercase tracking-widest text-zinc-600 font-black">Current Cue</div>
                           <div className="text-[10px] text-zinc-200 truncate font-bold leading-tight">
-                            {currentCue ? `${currentCueIndex + 1}/${enabledTimerCues.length} ${currentCue.itemTitle}` : '—'}
+                            {currentCue ? `${currentCueIndex + 1}/${enabledTimerCues.length} ${currentCue.itemTitle}` : '�'}
                           </div>
                         </div>
                       </div>
                     </CollapsiblePanel>
 
-                    {/* Card 3: RUNDOWN + OUTPUT — always full width */}
+                    {/* Card 3: RUNDOWN + OUTPUT � always full width */}
                     <CollapsiblePanel
                       id="rundown-output"
                       title="Rundown + Output"
@@ -9780,7 +9781,7 @@ function App() {
                           title="Open timer in a fullscreen pop-out window for confidence monitors"
                         >Timer Pop-out</button>
                         <button onClick={() => void copyShareUrl(obsOutputUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy OBS URL</button>
-                        <button onClick={() => void copyShareUrl(cleanFeedUrl, 'Clean feed URL copied!')} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-violet-300 hover:border-violet-600 transition-all uppercase tracking-wider" title="No branding or audience overlays — use for recording or streaming">Copy Clean Feed</button>
+                        <button onClick={() => void copyShareUrl(cleanFeedUrl, 'Clean feed URL copied!')} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-violet-300 hover:border-violet-600 transition-all uppercase tracking-wider" title="No branding or audience overlays � use for recording or streaming">Copy Clean Feed</button>
                         <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy Stage URL</button>
                         {isElectronShell && hasElectronDisplayControl && (
                           <button
@@ -9799,10 +9800,10 @@ function App() {
                         {ndiWarning && (
                           <span
                             className="h-9 flex items-center px-3 rounded-lg border border-amber-700/60 bg-amber-950/30 text-[9px] font-bold text-amber-300 cursor-pointer max-w-[32ch]"
-                            title={ndiWarning + ' — click to dismiss'}
+                            title={ndiWarning + ' � click to dismiss'}
                             onClick={() => setNdiWarning(null)}
                           >
-                            <span className="truncate">⚠ {ndiWarning}</span>
+                            <span className="truncate">? {ndiWarning}</span>
                           </span>
                         )}
                         {ndiError && (
@@ -10781,7 +10782,7 @@ function App() {
                   <div key={preset.id} className="p-2 border border-zinc-800 rounded bg-zinc-950/60">
                     <div className="text-xs font-bold text-zinc-200">{preset.name}</div>
                     <div className="text-[10px] text-zinc-500">
-                      {Math.max(1, Math.round(preset.durationSec / 60))}m • Amber {preset.amberPercent}% • Red {preset.redPercent}%
+                      {Math.max(1, Math.round(preset.durationSec / 60))}m � Amber {preset.amberPercent}% � Red {preset.redPercent}%
                     </div>
                     <div className="mt-2 flex items-center gap-1">
                       <button onClick={() => openEditPresetModal(preset)} className="px-2 py-1 text-[9px] font-bold border border-zinc-700 rounded bg-zinc-900 text-zinc-300">Edit</button>
@@ -11153,7 +11154,7 @@ function App() {
               const mediaType = asset.mediaType;
               const isMotion = mediaType === 'motion' || isMotionUrl(url);
               const resolvedMediaType = isMotion ? 'motion' as const : (mediaType === 'image' ? 'image' as const : 'video' as const);
-              // motion:// URLs are canvas-rendered locally — no need to download/persist
+              // motion:// URLs are canvas-rendered locally � no need to download/persist
               const resolvedUrl = isMotion ? url : await persistRemoteMotionLibraryAsset(url, resolvedMediaType as 'image' | 'video');
 
               // Persist as user's default background for all future slide creation
@@ -11230,7 +11231,7 @@ function App() {
         user={user}
       />
 
-      {/* Sermon recorder — persistent fixed overlay, survives tab switches */}
+      {/* Sermon recorder � persistent fixed overlay, survives tab switches */}
       {showSermonRecorder && (
         <div className="fixed top-16 right-4 z-[200] w-96 h-[85vh] overflow-hidden rounded-2xl shadow-2xl">
           <SermonRecorderPanel
@@ -11249,4 +11250,5 @@ function App() {
 }
 
 export default App;
+
 

@@ -1,6 +1,7 @@
 import React from 'react';
 
 export type WorkspaceMode = 'builder' | 'presenter' | 'stage';
+type ShellPaneId = 'left' | 'center' | 'right' | 'bottom';
 
 interface PresenterDesktopShellProps {
   mode: WorkspaceMode;
@@ -15,6 +16,7 @@ interface PresenterDesktopShellProps {
   onResizeRight?: (delta: number) => void;
   onResizeBottom?: (delta: number) => void;
   hideRightPane?: boolean;
+  isCompactLayout?: boolean;
   className?: string;
 }
 
@@ -59,6 +61,27 @@ const ResizeHandle: React.FC<ResizeHandleProps> = ({ orientation, onResize, clas
   );
 };
 
+const COMPACT_TAB_LABELS: Record<WorkspaceMode, Record<ShellPaneId, string>> = {
+  builder: {
+    left: 'Run Sheet',
+    center: 'Canvas',
+    right: 'Rail',
+    bottom: 'Dock',
+  },
+  presenter: {
+    left: 'Schedule',
+    center: 'Preview',
+    right: 'Live',
+    bottom: 'Library',
+  },
+  stage: {
+    left: 'Config',
+    center: 'Stage',
+    right: 'Ops',
+    bottom: 'Dock',
+  },
+};
+
 export const PresenterDesktopShell: React.FC<PresenterDesktopShellProps> = ({
   mode,
   leftPane,
@@ -72,8 +95,10 @@ export const PresenterDesktopShell: React.FC<PresenterDesktopShellProps> = ({
   onResizeRight,
   onResizeBottom,
   hideRightPane = false,
+  isCompactLayout = false,
   className = '',
 }) => {
+  const [activeCompactPane, setActiveCompactPane] = React.useState<ShellPaneId>('center');
   const bottomSpansShell = false;
   const columns = hideRightPane
     ? `${leftWidth}px minmax(0, 1fr)`
@@ -88,11 +113,95 @@ export const PresenterDesktopShell: React.FC<PresenterDesktopShellProps> = ({
       ? 'builder-desktop-shell'
       : 'stage-desktop-shell';
 
+  const compactPanes = React.useMemo(() => {
+    const panes: Array<{ id: ShellPaneId; label: string; node: React.ReactNode }> = [
+      { id: 'left', label: COMPACT_TAB_LABELS[mode].left, node: leftPane },
+      { id: 'center', label: COMPACT_TAB_LABELS[mode].center, node: centerPane },
+    ];
+
+    if (!hideRightPane && rightPane) {
+      panes.push({ id: 'right', label: COMPACT_TAB_LABELS[mode].right, node: rightPane });
+    }
+
+    if (bottomPane) {
+      panes.push({ id: 'bottom', label: COMPACT_TAB_LABELS[mode].bottom, node: bottomPane });
+    }
+
+    return panes;
+  }, [bottomPane, centerPane, hideRightPane, leftPane, mode, rightPane]);
+
+  React.useEffect(() => {
+    const hasActivePane = compactPanes.some((pane) => pane.id === activeCompactPane);
+    if (!hasActivePane) {
+      setActiveCompactPane('center');
+    }
+  }, [activeCompactPane, compactPanes]);
+
+  React.useEffect(() => {
+    if (!isCompactLayout) return;
+    setActiveCompactPane('center');
+  }, [isCompactLayout, mode]);
+
+  if (isCompactLayout) {
+    return (
+      <div
+        data-testid={`${shellTestId}-compact`}
+        data-workspace-mode={mode}
+        className={`flex flex-1 min-h-0 flex-col overflow-hidden bg-black ${className}`}
+      >
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+          {compactPanes.map((pane) => (
+            <div
+              key={pane.id}
+              id={`compact-shell-pane-${pane.id}`}
+              role="tabpanel"
+              aria-hidden={pane.id !== activeCompactPane}
+              data-testid={`compact-shell-pane-${pane.id}`}
+              className={pane.id === activeCompactPane ? 'h-full min-h-0 min-w-0 overflow-hidden' : 'hidden'}
+            >
+              {pane.node}
+            </div>
+          ))}
+        </div>
+        <div
+          data-testid="compact-shell-tabbar"
+          className="shrink-0 border-t border-zinc-800 bg-[linear-gradient(180deg,rgba(24,24,27,0.98)_0%,rgba(12,13,18,1)_100%)] px-2 py-2"
+        >
+          <div
+            role="tablist"
+            aria-label={`${mode} workspace panes`}
+            className="grid gap-2"
+            style={{ gridTemplateColumns: `repeat(${compactPanes.length}, minmax(0, 1fr))` }}
+          >
+            {compactPanes.map((pane) => (
+              <button
+                key={pane.id}
+                type="button"
+                role="tab"
+                aria-selected={pane.id === activeCompactPane}
+                aria-controls={`compact-shell-pane-${pane.id}`}
+                data-testid={`compact-shell-tab-${pane.id}`}
+                onClick={() => setActiveCompactPane(pane.id)}
+                className={`min-w-0 rounded-lg border px-2 py-2 text-[9px] font-black uppercase tracking-[0.16em] transition-colors ${
+                  pane.id === activeCompactPane
+                    ? 'border-cyan-500 bg-cyan-950/45 text-cyan-200'
+                    : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-500 hover:text-white'
+                }`}
+              >
+                <span className="block truncate">{pane.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       data-testid={shellTestId}
       data-workspace-mode={mode}
-      className={`flex-1 min-h-0 bg-black overflow-hidden ${className}`}
+      className={`flex-1 min-h-0 overflow-hidden bg-black ${className}`}
     >
       <div
         className="grid h-full min-h-0 w-full gap-0"
