@@ -45,7 +45,7 @@ export async function searchTavilyForLyrics(query: string): Promise<WebSearchRes
         const code = await readErrorCode(res);
         // eslint-disable-next-line no-console
         console.warn('[tavily] search request rejected', { status: res.status, error: code, base });
-        return [];
+        continue;
       }
       const json = (await res.json().catch(() => null)) as { ok?: boolean; data?: { results?: WebSearchResult[] } } | null;
       const raw = json?.data?.results ?? [];
@@ -67,7 +67,7 @@ export async function searchTavilyForLyrics(query: string): Promise<WebSearchRes
       const reason = err instanceof Error ? err.message : String(err);
       // eslint-disable-next-line no-console
       console.warn('[tavily] search request failed', { reason, base });
-      return [];
+      continue;
     }
   }
   return [];
