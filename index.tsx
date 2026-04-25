@@ -5,6 +5,7 @@ import { RemoteControl } from './components/RemoteControl';
 import { OutputRoute } from './components/OutputRoute';
 import { StageRoute } from './components/StageRoute';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { UATBadge } from './components/UATBadge';
 import './index.css';
 
 const rootElement = document.getElementById('root');
@@ -32,6 +33,7 @@ root.render(
   <React.StrictMode>
     <ErrorBoundary>
       {isOutputRoute ? <OutputRoute /> : isStageRoute ? <StageRoute /> : isRemoteRoute ? <RemoteControl /> : <App />}
+      <UATBadge />
     </ErrorBoundary>
   </React.StrictMode>
 );
