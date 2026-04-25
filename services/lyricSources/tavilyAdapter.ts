@@ -11,6 +11,19 @@ function clampSnippet(snippet: string): string {
   return `${words.slice(0, MAX_SNIPPET_WORDS).join(' ')}...`;
 }
 
+// Surface failure reasons so prod debugging is one DevTools-tab away. The
+// adapter still returns [] (don't break the orchestrator's chain to Brave),
+// but anyone inspecting the console will see exactly which knob is wrong:
+// FEATURE_DISABLED, TAVILY_API_KEY_MISSING, TAVILY_UPSTREAM_ERROR, etc.
+async function readErrorCode(res: Response): Promise<string> {
+  try {
+    const payload = await res.clone().json().catch(() => null) as { error?: string } | null;
+    return payload?.error || `HTTP_${res.status}`;
+  } catch {
+    return `HTTP_${res.status}`;
+  }
+}
+
 export async function searchTavilyForLyrics(query: string): Promise<WebSearchResult[]> {
   const q = query.trim();
   if (!q) return [];
@@ -28,12 +41,17 @@ export async function searchTavilyForLyrics(query: string): Promise<WebSearchRes
         signal: controller.signal,
       });
       clearTimeout(timer);
-      if (!res.ok) return [];
+      if (!res.ok) {
+        const code = await readErrorCode(res);
+        // eslint-disable-next-line no-console
+        console.warn('[tavily] search request rejected', { status: res.status, error: code, base });
+        return [];
+      }
       const json = (await res.json().catch(() => null)) as { ok?: boolean; data?: { results?: WebSearchResult[] } } | null;
       const raw = json?.data?.results ?? [];
       return raw
         .slice(0, MAX_RESULTS)
-        .map((r) => ({
+        .map((r): WebSearchResult => ({
           title: String(r.title || '').trim(),
           url: String(r.url || '').trim(),
           domain: String(r.domain || '').trim(),
@@ -44,8 +62,11 @@ export async function searchTavilyForLyrics(query: string): Promise<WebSearchRes
           detectedArtist: r.detectedArtist,
         }))
         .filter((r) => r.title && r.url);
-    } catch {
+    } catch (err) {
       clearTimeout(timer);
+      const reason = err instanceof Error ? err.message : String(err);
+      // eslint-disable-next-line no-console
+      console.warn('[tavily] search request failed', { reason, base });
       return [];
     }
   }
