@@ -103,9 +103,12 @@ export const PresenterDesktopShell: React.FC<PresenterDesktopShellProps> = ({
   const columns = hideRightPane
     ? `${leftWidth}px minmax(0, 1fr)`
     : `${leftWidth}px minmax(0, 1fr) ${rightWidth}px`;
+  // Right rail spans BOTH rows so the bottom dock doesn't clip LIVE NOW /
+  // STAGE PREVIEW cards. Bottom dock sits under the center column only —
+  // mirrors the industry-standard ProPresenter / ProVideoPlayer layout.
   const areas = bottomSpansShell
     ? (hideRightPane ? '"left center" "bottom bottom"' : '"left center right" "bottom bottom bottom"')
-    : (hideRightPane ? '"left center" "left bottom"' : '"left center right" "left bottom bottom"');
+    : (hideRightPane ? '"left center" "left bottom"' : '"left center right" "left bottom right"');
 
   const shellTestId = mode === 'presenter'
     ? 'presenter-beta-shell'
@@ -233,7 +236,10 @@ export const PresenterDesktopShell: React.FC<PresenterDesktopShellProps> = ({
                 className="col-start-3 row-start-1 -ml-1 z-20 w-2 cursor-col-resize bg-transparent hover:bg-cyan-500/15 active:bg-cyan-500/25"
               />
             )}
-            <div style={{ gridArea: 'right' }} className="min-h-0 min-w-0 overflow-hidden">
+            <div
+              style={{ gridArea: 'right' }}
+              className="min-h-0 min-w-0 overflow-hidden border-l border-zinc-900"
+            >
               {rightPane}
             </div>
           </>
@@ -247,7 +253,7 @@ export const PresenterDesktopShell: React.FC<PresenterDesktopShellProps> = ({
           <ResizeHandle
             orientation="horizontal"
             onResize={onResizeBottom}
-            className={`${bottomSpansShell ? (hideRightPane ? 'col-start-1 col-end-3' : 'col-start-1 col-end-4') : (hideRightPane ? 'col-start-2' : 'col-start-2 col-end-4')} row-start-2 -mt-1 z-20 h-2 cursor-row-resize bg-transparent hover:bg-cyan-500/15 active:bg-cyan-500/25`}
+            className={`${bottomSpansShell ? (hideRightPane ? 'col-start-1 col-end-3' : 'col-start-1 col-end-4') : 'col-start-2 col-end-3'} row-start-2 -mt-1 z-20 h-2 cursor-row-resize bg-transparent hover:bg-cyan-500/15 active:bg-cyan-500/25`}
           />
         )}
       </div>

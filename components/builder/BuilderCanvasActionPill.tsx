@@ -101,8 +101,8 @@ export const BuilderCanvasActionPill: React.FC<BuilderCanvasActionPillProps> = (
           />
           <PillDivider />
           <PillButton
-            testId="builder-pill-edit-layout"
-            label="Edit Layout"
+            testId="builder-pill-full-editor"
+            label="Full Editor"
             icon={<EditIcon className="h-3 w-3" />}
             disabled={!canEditLayout}
             onClick={onOpenFullEditor}

@@ -57,4 +57,36 @@ describe('PresenterDesktopShell', () => {
     expect(screen.queryByTestId('compact-shell-tab-right')).not.toBeInTheDocument();
     expect(screen.queryByTestId('compact-shell-tab-bottom')).not.toBeInTheDocument();
   });
+
+  it('in desktop mode, the right rail spans both rows so the bottom dock cannot clip it', () => {
+    const { container } = render(
+      <PresenterDesktopShell
+        mode="builder"
+        leftPane={<div>Run sheet</div>}
+        centerPane={<div>Canvas</div>}
+        rightPane={<div>Rail</div>}
+        bottomPane={<div>Dock</div>}
+      />,
+    );
+    const shell = container.querySelector('[data-testid="builder-desktop-shell"] > div') as HTMLElement;
+    expect(shell).not.toBeNull();
+    const areas = (shell.style.gridTemplateAreas || '').replace(/\s+/g, ' ').trim();
+    // Row 2 must keep the right column dedicated to the rail (not swallowed by bottom).
+    expect(areas).toBe('"left center right" "left bottom right"');
+  });
+
+  it('in desktop mode without a right pane, bottom dock correctly spans under center', () => {
+    const { container } = render(
+      <PresenterDesktopShell
+        mode="stage"
+        hideRightPane
+        leftPane={<div>Config</div>}
+        centerPane={<div>Stage</div>}
+        bottomPane={<div>Dock</div>}
+      />,
+    );
+    const shell = container.querySelector('[data-testid="stage-desktop-shell"] > div') as HTMLElement;
+    const areas = (shell.style.gridTemplateAreas || '').replace(/\s+/g, ' ').trim();
+    expect(areas).toBe('"left center" "left bottom"');
+  });
 });

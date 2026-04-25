@@ -92,7 +92,10 @@ export const BuilderRightRail: React.FC<BuilderRightRailProps> = ({
   ];
 
   return (
-    <aside data-testid="builder-right-rail" className="flex h-full min-h-0 flex-col border-l border-zinc-800 bg-[#101116]">
+    <aside
+      data-testid="builder-right-rail"
+      className="flex h-full min-h-0 flex-col border-l border-zinc-800 bg-[#101116] shadow-[inset_0_-1px_0_rgba(255,255,255,0.04)]"
+    >
       <div className="shrink-0 border-b border-zinc-800 bg-[linear-gradient(180deg,rgba(31,32,38,0.98)_0%,rgba(16,17,22,0.98)_100%)] px-3 py-3">
         <div className="flex items-center justify-between gap-2">
           <div className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500">Builder Rail</div>
@@ -155,11 +158,19 @@ export const BuilderRightRail: React.FC<BuilderRightRailProps> = ({
             </RailCard>
           </div>
 
-          {/* Scroll region: More In Queue. Its own overflow so it can absorb a long queue
-              without pushing the pinned previews off-screen. */}
-          <div className="flex min-h-0 flex-1 flex-col px-3 pb-3">
-            <RailCard title="More In Queue" className="flex min-h-0 flex-1 flex-col">
-              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 custom-scrollbar">
+          {/* Queue card — sized to display exactly 2 items cleanly. Anything
+              past 2 scrolls internally so there's never a clipped third card
+              peeking at the bottom of the rail. */}
+          <div className="shrink-0 px-3 pb-3">
+            <RailCard
+              title="More In Queue"
+              action={moreInQueue.length > 2 ? (
+                <span className="rounded border border-zinc-700 bg-zinc-900 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-zinc-400">
+                  {moreInQueue.length}
+                </span>
+              ) : null}
+            >
+              <div className="max-h-[112px] space-y-2 overflow-y-auto pr-1 custom-scrollbar">
                 {moreInQueue.map((item, index) => (
                   <button
                     key={item.id}

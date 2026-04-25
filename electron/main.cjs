@@ -7,6 +7,16 @@ const { NDI_RESOLUTION_PRESETS, resolveNdiResolution } = require('./ndiResolutio
 const { registerLyricClipboardIpc } = require('./ipc/lyricClipboard.cjs');
 const { createToolsSettingsStore } = require('./toolsSettingsStore.cjs');
 const { buildToolsMenu } = require('./toolsMenu.cjs');
+const {
+  DEFAULT_APP_MENU_STATE,
+  sanitizeAppMenuState,
+  buildFileMenu,
+  buildEditMenu,
+  buildViewMenu,
+  buildTransportMenu,
+  buildWindowMenu,
+  buildHelpMenu,
+} = require('./appMenu.cjs');
 const DIST_INDEX_PATH = path.join(__dirname, '../dist/index.html');
 const DEV_SERVER_URL = process.env.ELECTRON_RENDERER_URL || 'http://localhost:5173';
 const SHOULD_OPEN_DEVTOOLS = process.env.LUMINA_OPEN_DEVTOOLS === '1';
@@ -84,6 +94,13 @@ let toolsStore = null;
 // { type: 'ndi.*' } which the renderer handles in useToolsMenu.
 /** @type {{ active: boolean, broadcastMode: boolean, audioEnabled: boolean, resolution: '720p'|'1080p'|'4k' } | null} */
 let ndiMenuStateCache = null;
+
+// Cached view of renderer-owned state used to render the application menu's
+// File / View / Transport / Window check / radio / label states. Pushed via
+// `tools:set-app-menu-state` whenever the renderer side changes (session
+// start, blackout toggle, routing mode, etc.). Seeded with frozen defaults
+// so the menu can render before the renderer has mounted.
+let appMenuStateCache = { ...DEFAULT_APP_MENU_STATE };
 
 let machineServiceState = {
   controlDisplayId: null,
@@ -1292,27 +1309,42 @@ function installToolsIpcHandlers() {
     ndiMenuStateCache = next;
     if (changed) installApplicationMenu();
   });
+  ipcMain.on('tools:set-app-menu-state', (_event, payload) => {
+    const next = sanitizeAppMenuState(payload);
+    const changed = JSON.stringify(next) !== JSON.stringify(appMenuStateCache);
+    appMenuStateCache = next;
+    if (changed) installApplicationMenu();
+  });
 }
 
 function installApplicationMenu() {
   const isMac = process.platform === 'darwin';
   const isProd = app.isPackaged;
+
+  // Single dispatcher used by every non-role menu item. Tools menu settings
+  // (overlays/aspect/test-pattern) mutate the local tools store; everything
+  // else forwards to the renderer via tools:command.
+  const dispatch = (cmd) => {
+    if (!cmd || typeof cmd.type !== 'string') return;
+    if (cmd.type.startsWith('overlay.') || cmd.type.startsWith('aspect.') || cmd.type.startsWith('testpattern.')) {
+      const next = applyToolCommand(cmd);
+      if (next) broadcastToolsState(next);
+      installApplicationMenu();
+      return;
+    }
+    // All other commands (file.*, view.*, transport.*, ndi.*, tools.*,
+    // window.*, help.*) are renderer-handled. Deep-link to the main window.
+    sendToolCommandToRenderer(cmd);
+  };
+
   const toolsMenuItem = toolsStore
     ? buildToolsMenu({
         settings: toolsStore.load(),
         ndiMenuState: ndiMenuStateCache,
-        send: (cmd) => {
-          const isNdi = cmd && typeof cmd.type === 'string' && cmd.type.startsWith('ndi.');
-          if (isNdi) {
-            sendToolCommandToRenderer(cmd);
-            return;
-          }
-          const next = applyToolCommand(cmd);
-          if (next) broadcastToolsState(next);
-          installApplicationMenu();
-        },
+        send: dispatch,
       })
     : null;
+
   const template = [
     ...(isMac
       ? [
@@ -1332,54 +1364,13 @@ function installApplicationMenu() {
           },
         ]
       : []),
-    {
-      label: 'File',
-      submenu: [
-        { role: 'close' },
-        ...(isMac ? [] : [{ type: 'separator' }, { role: 'quit' }]),
-      ],
-    },
-    {
-      label: 'Edit',
-      submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
-        { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        { role: 'selectAll' },
-      ],
-    },
-    {
-      label: 'View',
-      submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'togglefullscreen' },
-        ...(isProd ? [] : [{ type: 'separator' }, { role: 'toggleDevTools' }]),
-      ],
-    },
-    {
-      label: 'Window',
-      submenu: [
-        { role: 'minimize' },
-        { role: 'zoom' },
-        ...(isMac ? [{ type: 'separator' }, { role: 'front' }] : []),
-      ],
-    },
+    buildFileMenu({ send: dispatch, isMac }),
+    buildEditMenu(),
+    buildViewMenu({ state: appMenuStateCache, send: dispatch, isProd }),
+    buildTransportMenu({ state: appMenuStateCache, send: dispatch }),
+    buildWindowMenu({ state: appMenuStateCache, send: dispatch, isMac }),
     ...(toolsMenuItem ? [toolsMenuItem] : []),
-    {
-      label: 'Help',
-      submenu: [
-        {
-          label: 'Lumina Releases',
-          click: () => {
-            void shell.openExternal(RELEASES_URL);
-          },
-        },
-      ],
-    },
+    buildHelpMenu({ send: dispatch }),
   ];
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);

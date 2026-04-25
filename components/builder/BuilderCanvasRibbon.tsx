@@ -19,7 +19,6 @@ interface BuilderCanvasRibbonProps {
   onZoomOut: () => void;
   onZoomReset: () => void;
   onOpenBackgroundDrawer: () => void;
-  onOpenFullEditor: () => void;
 }
 
 const RibbonButton = ({
@@ -139,7 +138,6 @@ export const BuilderCanvasRibbon: React.FC<BuilderCanvasRibbonProps> = ({
   onZoomOut,
   onZoomReset,
   onOpenBackgroundDrawer,
-  onOpenFullEditor,
 }) => (
   <div
     data-testid="builder-canvas-ribbon"
@@ -160,14 +158,7 @@ export const BuilderCanvasRibbon: React.FC<BuilderCanvasRibbonProps> = ({
         </div>
       </div>
 
-      <div className="order-3 min-w-0 self-center xl:order-2">
-        <div className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-500">
-          Tip
-        </div>
-        <div className="mt-0.5 text-[11px] font-semibold text-zinc-300">
-          Click any text on the canvas to edit it directly.
-        </div>
-      </div>
+      <div className="order-3 min-w-0 self-center xl:order-2" aria-hidden="true" />
 
       <div className="order-2 flex flex-wrap gap-1.5 xl:order-3 xl:max-w-[430px] xl:justify-end">
         <RibbonButton onClick={onAddTextBlock} disabled={!slide}>
@@ -188,12 +179,7 @@ export const BuilderCanvasRibbon: React.FC<BuilderCanvasRibbonProps> = ({
           <button type="button" onClick={onZoomReset} className="h-full border-x border-zinc-800 px-2 text-[9px] font-bold text-zinc-300">{Math.round(zoom * 100)}%</button>
           <button type="button" onClick={onZoomIn} className="h-full px-2 text-xs font-black text-zinc-400 hover:bg-zinc-800 hover:text-white">+</button>
         </div>
-        <RibbonButton onClick={onOpenFullEditor} disabled={!item} className="border-blue-700/60 bg-blue-950/30 text-blue-200 hover:border-blue-500">
-          <EditIcon className="h-3.5 w-3.5" />
-          Full Editor
-        </RibbonButton>
       </div>
     </div>
   </div>
 );
-
