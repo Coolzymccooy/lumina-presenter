@@ -4,6 +4,8 @@ interface ImportMetaEnv {
   readonly VITE_API_BASE_URL?: string;
   readonly VITE_PEXELS_API_KEY?: string;
   readonly VITE_PIXABAY_API_KEY?: string;
+  readonly VITE_AI_WEB_LYRICS_FETCH?: string;
+  readonly VITE_APP_STAGE?: 'uat' | 'prod' | string;
 }
 
 interface ImportMeta {
