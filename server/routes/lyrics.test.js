@@ -24,6 +24,43 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+async function callGet(app, path) {
+  const { default: request } = await import('supertest');
+  return request(app).get(path);
+}
+
+describe('GET /api/lyrics/health', () => {
+  it('reports flagOn=false and both keys absent on a bare env', async () => {
+    const app = makeApp({});
+    const res = await callGet(app, '/api/lyrics/health');
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    expect(res.body.data).toEqual({ flagOn: false, hasBraveKey: false, hasTavilyKey: false });
+  });
+
+  it('reports flagOn=true and hasTavilyKey=true when both are configured', async () => {
+    const app = makeApp({ AI_WEB_LYRICS_FETCH: 'true', TAVILY_API_KEY: 'tvly-XXX' });
+    const res = await callGet(app, '/api/lyrics/health');
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ flagOn: true, hasBraveKey: false, hasTavilyKey: true });
+  });
+
+  it('never echoes actual key values', async () => {
+    const app = makeApp({ AI_WEB_LYRICS_FETCH: '1', TAVILY_API_KEY: 'tvly-secret', BRAVE_SEARCH_API_KEY: 'brv-secret' });
+    const res = await callGet(app, '/api/lyrics/health');
+    expect(JSON.stringify(res.body)).not.toContain('tvly-secret');
+    expect(JSON.stringify(res.body)).not.toContain('brv-secret');
+    expect(res.body.data.hasBraveKey).toBe(true);
+    expect(res.body.data.hasTavilyKey).toBe(true);
+  });
+
+  it('treats whitespace-only key as absent', async () => {
+    const app = makeApp({ AI_WEB_LYRICS_FETCH: 'true', TAVILY_API_KEY: '   ' });
+    const res = await callGet(app, '/api/lyrics/health');
+    expect(res.body.data.hasTavilyKey).toBe(false);
+  });
+});
+
 describe('POST /api/lyrics/lrclib', () => {
   it('returns 503 when feature flag is off', async () => {
     const app = makeApp({ AI_WEB_LYRICS_FETCH: 'false' });

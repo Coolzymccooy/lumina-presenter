@@ -4,6 +4,18 @@ import type { Slide } from '../../types';
 interface BuilderNotesAffordanceProps {
   slide: Slide | null;
   onUpdateSlide: (updater: (slide: Slide) => Slide) => void;
+  /**
+   * 'floating' (default) renders absolute-positioned at the top-right of its
+   * relative ancestor (historical placement over the canvas).
+   * 'inline' renders as a plain inline element so the button can live inside
+   * a toolbar row — e.g. the slide timeline strip header.
+   */
+  variant?: 'floating' | 'inline';
+  /**
+   * Which side the popover opens on. Defaults to 'below'. Use 'above' when
+   * the trigger lives near the bottom of the viewport (e.g. slide strip).
+   */
+  popoverSide?: 'above' | 'below';
 }
 
 const NotesIcon = ({ className }: { className?: string }) => (
@@ -15,7 +27,12 @@ const NotesIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export const BuilderNotesAffordance: React.FC<BuilderNotesAffordanceProps> = ({ slide, onUpdateSlide }) => {
+export const BuilderNotesAffordance: React.FC<BuilderNotesAffordanceProps> = ({
+  slide,
+  onUpdateSlide,
+  variant = 'floating',
+  popoverSide = 'below',
+}) => {
   const [open, setOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -62,8 +79,32 @@ export const BuilderNotesAffordance: React.FC<BuilderNotesAffordanceProps> = ({ 
     }));
   };
 
+  const wrapperClass = variant === 'inline'
+    ? 'relative inline-flex'
+    : 'pointer-events-none absolute right-3 top-3 z-20 flex flex-col items-end gap-2';
+  const triggerButtonClass = variant === 'inline'
+    ? `inline-flex h-7 items-center gap-1 rounded-lg border px-2 text-[9px] font-black uppercase tracking-[0.14em] transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${
+        open
+          ? 'border-amber-500/70 bg-amber-500/20 text-amber-100'
+          : hasNotes
+            ? 'border-amber-700/70 bg-amber-950/50 text-amber-200 hover:border-amber-500 hover:text-amber-100'
+            : 'border-cyan-700/60 bg-cyan-950/30 text-cyan-200 hover:border-cyan-500 hover:text-cyan-100'
+      }`
+    : `pointer-events-auto inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[10px] font-black uppercase tracking-[0.14em] shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-xl transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${
+        open
+          ? 'border-amber-500/70 bg-amber-500/20 text-amber-100'
+          : hasNotes
+            ? 'border-amber-700/70 bg-amber-950/50 text-amber-200 hover:border-amber-500 hover:text-amber-100'
+            : 'border-white/15 bg-[rgba(14,15,20,0.82)] text-zinc-200 hover:border-white/30 hover:text-white'
+      }`;
+  const popoverClass = variant === 'inline'
+    ? `absolute right-0 z-30 w-[320px] rounded-xl border border-zinc-800 bg-[rgba(14,15,20,0.96)] p-3 shadow-[0_24px_48px_rgba(0,0,0,0.55)] backdrop-blur-xl ${
+        popoverSide === 'above' ? 'bottom-full mb-2' : 'top-full mt-2'
+      }`
+    : 'pointer-events-auto w-[320px] rounded-xl border border-zinc-800 bg-[rgba(14,15,20,0.96)] p-3 shadow-[0_24px_48px_rgba(0,0,0,0.55)] backdrop-blur-xl';
+
   return (
-    <div className="pointer-events-none absolute right-3 top-3 z-20 flex flex-col items-end gap-2">
+    <div className={wrapperClass}>
       <button
         ref={triggerRef}
         type="button"
@@ -73,15 +114,9 @@ export const BuilderNotesAffordance: React.FC<BuilderNotesAffordanceProps> = ({ 
         aria-expanded={open}
         aria-label={hasNotes ? 'Edit speaker notes' : 'Add speaker notes'}
         title={hasNotes ? 'Edit speaker notes' : 'Add speaker notes'}
-        className={`pointer-events-auto inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-[10px] font-black uppercase tracking-[0.14em] shadow-[0_8px_24px_rgba(0,0,0,0.35)] backdrop-blur-xl transition-colors disabled:cursor-not-allowed disabled:opacity-35 ${
-          open
-            ? 'border-amber-500/70 bg-amber-500/20 text-amber-100'
-            : hasNotes
-              ? 'border-amber-700/70 bg-amber-950/50 text-amber-200 hover:border-amber-500 hover:text-amber-100'
-              : 'border-white/15 bg-[rgba(14,15,20,0.82)] text-zinc-200 hover:border-white/30 hover:text-white'
-        }`}
+        className={triggerButtonClass}
       >
-        <NotesIcon className="h-3.5 w-3.5" />
+        <NotesIcon className={variant === 'inline' ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
         <span>{hasNotes ? 'Notes' : 'Add Notes'}</span>
         {hasNotes && !open && (
           <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-amber-300" />
@@ -91,7 +126,7 @@ export const BuilderNotesAffordance: React.FC<BuilderNotesAffordanceProps> = ({ 
         <div
           ref={popoverRef}
           data-testid="builder-notes-popover"
-          className="pointer-events-auto w-[320px] rounded-xl border border-zinc-800 bg-[rgba(14,15,20,0.96)] p-3 shadow-[0_24px_48px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+          className={popoverClass}
         >
           <div className="mb-2 flex items-center justify-between">
             <span className="text-[9px] font-black uppercase tracking-[0.22em] text-amber-300">Speaker Notes</span>

@@ -7,7 +7,7 @@ import { getDefaultBackgroundUrl, getDefaultBackgroundMediaType } from "../servi
 import { MotionCanvas } from "./MotionCanvas";
 import { ElementRenderer } from "./slide-layout/render/ElementRenderer";
 import { PROGRAM_MEDIA_PRESENTATION_FILTER, MOTION_CANVAS_PRESENTATION_FILTER, shouldShowScriptureReferenceLabel, shouldUseScriptureReadingPanel, TEXT_CONTRAST_BACKGROUND_OVERLAY } from "./slide-layout/render/backgroundTone";
-import { getRenderableElements } from "./slide-layout/utils/slideHydration";
+import { getRenderableElements, summarizeElementsToLegacyContent } from "./slide-layout/utils/slideHydration";
 import { SlideBrandingOverlay, type SlideBrandingConfig } from "./SlideBrandingOverlay";
 import { VideoBackground } from "./video/VideoBackground";
 import { AlphaOverlay } from "./video/AlphaOverlay";
@@ -44,6 +44,8 @@ interface SlideRendererProps {
   projectedAudienceQr?: AudienceQrProjectionState;
   /** Church branding strips shown on left/right edges. Only pass on full-size (non-thumbnail) renders. */
   branding?: SlideBrandingConfig;
+  /** NDI fill+key scenes: suppress floor/media/contrast layers so output is a transparent canvas with text only. */
+  hideBackground?: boolean;
 }
 
 function safeString(v: unknown) {
@@ -210,6 +212,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
   audienceOverlay,
   projectedAudienceQr,
   branding,
+  hideBackground = false,
 }) => {
   const youtubeIframeRef = useRef<HTMLIFrameElement>(null);
   const lastStableBackgroundRef = useRef<RetainedBackgroundAsset | null>(null);
@@ -796,7 +799,11 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
         loop: "1",
         playlist: youtubeId,
         enablejsapi: "1",
-        mute: isThumbnail || isMuted ? "1" : "0",
+        // Pin mute=1 in the URL so runtime mute toggles don't mutate the
+        // iframe src (which would reload the iframe and cause a black flicker
+        // across the Audience / NDI output mid-service). The postMessage
+        // useEffect below drives actual mute/unmute at runtime.
+        mute: "1",
       });
       if (origin) params.set("origin", origin);
       const src = `https://www.youtube-nocookie.com/embed/${youtubeId}?${params.toString()}`;
@@ -976,6 +983,7 @@ export const SlideRenderer: React.FC<SlideRendererProps> = ({
       projectedAudienceQr={projectedAudienceQr}
       branding={branding}
       alphaOverlayUrl={slide.alphaOverlayUrl}
+      hideBackground={hideBackground}
     />
   );
 };
@@ -1007,12 +1015,13 @@ interface ScaledCanvasProps {
   branding?: SlideBrandingConfig;
   alphaOverlayUrl?: string;
   isThumbnail?: boolean;
+  hideBackground?: boolean;
 }
 
 const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
   fitContainer, slide, item, contentText, hasReadableText, hasStructuredElements, structuredElements, hasTextOverlay, textPx, textLayerStyle, useReadingPanel,
   lowerThirds, showSlideLabel, renderMedia, renderFloor, mediaType, hasBackground, mediaError, isLoading,
-  audienceOverlay, projectedAudienceQr, branding, alphaOverlayUrl, isThumbnail = false,
+  audienceOverlay, projectedAudienceQr, branding, alphaOverlayUrl, isThumbnail = false, hideBackground = false,
 }) => {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [canvasFrame, setCanvasFrame] = useState<CanvasFrame>(EMPTY_CANVAS_FRAME);
@@ -1022,6 +1031,17 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
   const renderText = contentIsHtml
     ? <span dangerouslySetInnerHTML={{ __html: contentText }} />
     : contentText;
+
+  // Lower-thirds text source: fall back to summarizing structured elements when legacy content is empty.
+  const lowerThirdsContentText = contentText.trim().length > 0
+    ? contentText
+    : hasStructuredElements
+      ? summarizeElementsToLegacyContent(structuredElements)
+      : "";
+  const lowerThirdsIsHtml = /<[a-zA-Z][^>]*>/.test(lowerThirdsContentText);
+  const lowerThirdsRenderText = lowerThirdsIsHtml
+    ? <span dangerouslySetInnerHTML={{ __html: lowerThirdsContentText }} />
+    : lowerThirdsContentText;
 
   useEffect(() => {
     const el = wrapperRef.current;
@@ -1113,25 +1133,27 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
         }}
       >
         {/* Floor layer — always-on last-stable background; prevents black flash during load/error */}
-        {renderFloor && (
+        {!hideBackground && renderFloor && (
           <div style={{ position: "absolute", inset: 0 }}>{renderFloor()}</div>
         )}
 
         {/* Media layer — live background rendered on top of floor */}
-        <div style={{ position: "absolute", inset: 0 }}>{renderMedia()}</div>
+        {!hideBackground && (
+          <div style={{ position: "absolute", inset: 0 }}>{renderMedia()}</div>
+        )}
 
         {/* Alpha-channel video overlay — z-20 (above background, below text) */}
-        {alphaOverlayUrl && (
+        {!hideBackground && alphaOverlayUrl && (
           <AlphaOverlay src={alphaOverlayUrl} isThumbnail={isThumbnail} />
         )}
 
         {/* Slide-level logo — above background, below text */}
-        {slide.logoUrl ? (
+        {!hideBackground && slide.logoUrl ? (
           <LogoOverlay logoUrl={slide.logoUrl} position={slide.logoPosition} sizePercent={slide.logoSize} />
         ) : null}
 
         {/* Soft overlay — z-30 */}
-        {hasTextOverlay && hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
+        {!hideBackground && hasTextOverlay && hasBackground && mediaType !== "color" && !mediaError && !isLoading && (
           <div style={{ position: "absolute", inset: 0, background: TEXT_CONTRAST_BACKGROUND_OVERLAY }} />
         )}
 
@@ -1146,7 +1168,46 @@ const ScaledCanvas: React.FC<ScaledCanvasProps> = ({
             ...textLayerStyle,
           }}
         >
-          {hasStructuredElements ? (
+          {lowerThirds ? (
+            /* ── Lower-thirds overlay: bottom strip that short-circuits structured + legacy text paths ── */
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                padding: `0 ${CANVAS_W * 0.04}px ${CANVAS_H * 0.07}px`,
+                textAlign: "center",
+              }}
+            >
+              <div style={{ width: "100%", maxWidth: "92%", textAlign: "center" }}>
+                <div
+                  style={{
+                    display: "inline-block",
+                    maxWidth: "100%",
+                    padding: `${labelPadH * 2}px ${labelPadV * 4}px`,
+                    borderRadius: 20,
+                    background: "rgba(0,0,0,0.60)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    backdropFilter: "blur(8px)",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: Math.round(textPx * 0.58),
+                      lineHeight: 1.3,
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {lowerThirdsRenderText}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : hasStructuredElements ? (
             <ElementRenderer elements={structuredElements} layoutMode="absolute" />
           ) : slide.layoutType === 'ticker' ? (
             /* ── Ticker layout: centered text + scrolling ticker band at bottom ── */

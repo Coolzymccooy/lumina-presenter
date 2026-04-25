@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import type { ServiceItem, Slide } from '../../types';
 import { SlideRenderer } from '../SlideRenderer';
-import { ArrowLeftIcon, ArrowRightIcon, CopyIcon, PlusIcon, TrashIcon } from '../Icons';
+import { ArrowLeftIcon, ArrowRightIcon, CopyIcon, TrashIcon } from '../Icons';
+import { BuilderNotesAffordance } from './BuilderNotesAffordance';
 
 interface SlideTimelineStripProps {
   item: ServiceItem | null;
+  selectedSlide: Slide | null;
   selectedSlideId: string | null;
   activeItemId: string | null;
   activeSlideIndex: number;
@@ -17,10 +19,12 @@ interface SlideTimelineStripProps {
   onAddSlide: () => void;
   onDuplicateSlide: () => void;
   onDeleteSlide: () => void;
+  onUpdateSlide: (updater: (slide: Slide) => Slide) => void;
 }
 
 export const SlideTimelineStrip: React.FC<SlideTimelineStripProps> = ({
   item,
+  selectedSlide,
   selectedSlideId,
   activeItemId,
   activeSlideIndex,
@@ -33,6 +37,7 @@ export const SlideTimelineStrip: React.FC<SlideTimelineStripProps> = ({
   onAddSlide,
   onDuplicateSlide,
   onDeleteSlide,
+  onUpdateSlide,
 }) => {
   const slides = item?.slides || [];
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -75,7 +80,7 @@ export const SlideTimelineStrip: React.FC<SlideTimelineStripProps> = ({
         title={`${index + 1}. ${slideName}`}
         onClick={() => onSelectSlide(slide.id)}
         onDoubleClick={() => onGoLive(index)}
-        className={`group relative flex h-[108px] w-36 shrink-0 flex-col rounded-xl border bg-[linear-gradient(180deg,rgba(39,39,42,0.96)_0%,rgba(21,22,27,1)_100%)] p-1.5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_8px_20px_rgba(0,0,0,0.2)] transition-all ${
+        className={`group relative flex h-[88px] w-32 shrink-0 flex-col rounded-xl border bg-[linear-gradient(180deg,rgba(39,39,42,0.96)_0%,rgba(21,22,27,1)_100%)] p-1.5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_8px_20px_rgba(0,0,0,0.2)] transition-all ${
           live
             ? 'border-red-500 shadow-[0_0_0_1px_rgba(239,68,68,0.35)]'
             : selected
@@ -143,15 +148,12 @@ export const SlideTimelineStrip: React.FC<SlideTimelineStripProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onAddSlide}
-            disabled={!item}
-            className="inline-flex h-7 items-center gap-1 rounded-lg border border-cyan-700/60 bg-cyan-950/30 px-2 text-[9px] font-black uppercase tracking-[0.14em] text-cyan-200 hover:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-35"
-          >
-            <PlusIcon className="h-3 w-3" />
-            Add
-          </button>
+          <BuilderNotesAffordance
+            slide={selectedSlide}
+            onUpdateSlide={onUpdateSlide}
+            variant="inline"
+            popoverSide="above"
+          />
           <button
             type="button"
             onClick={onDuplicateSlide}
@@ -194,7 +196,7 @@ export const SlideTimelineStrip: React.FC<SlideTimelineStripProps> = ({
               type="button"
               onClick={onAddSlide}
               disabled={!item}
-              className="flex h-[108px] w-36 shrink-0 items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-[#15161b] text-[9px] font-black uppercase tracking-[0.16em] text-zinc-500 hover:border-cyan-700 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-35"
+              className="flex h-[88px] w-32 shrink-0 items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-[#15161b] text-[9px] font-black uppercase tracking-[0.16em] text-zinc-500 hover:border-cyan-700 hover:text-cyan-300 disabled:cursor-not-allowed disabled:opacity-35"
             >
               Add Slide
             </button>

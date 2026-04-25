@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { SlideRenderer } from '../SlideRenderer';
 import type { ServiceItem, Slide } from '../../types';
 
@@ -24,7 +24,6 @@ interface StageWorkspaceProps {
   onToggleBlackout: () => void;
   showSermonRecorder: boolean;
   onToggleSermonRecorder: () => void;
-  // Video transport
   isPlaying: boolean;
   isActiveVideo: boolean;
   seekTarget: number | null;
@@ -36,6 +35,7 @@ interface StageWorkspaceProps {
   onSeekForward: () => void;
   onSeekBackward: () => void;
   onToggleMute: () => void;
+  isCompactLayout?: boolean;
 }
 
 export function StageWorkspace({
@@ -45,7 +45,7 @@ export function StageWorkspace({
   nextSlide,
   nextItem,
   schedule,
-  workspaceId,
+  workspaceId: _workspaceId,
   isOutputLive,
   isStageDisplayLive,
   blackout,
@@ -66,144 +66,153 @@ export function StageWorkspace({
   onToggleMute,
   showSermonRecorder,
   onToggleSermonRecorder,
+  isCompactLayout = false,
 }: StageWorkspaceProps) {
-  const speakerNotes = activeSlide?.notes || activeItem?.slides?.find(s => s.notes)?.notes || '';
-  const currentItemIdx = schedule.findIndex(i => i.id === activeItem?.id);
+  const speakerNotes = activeSlide?.notes || activeItem?.slides?.find((s) => s.notes)?.notes || '';
+  const currentItemIdx = schedule.findIndex((i) => i.id === activeItem?.id);
   const upcomingItems = schedule.slice(currentItemIdx + 1, currentItemIdx + 4);
 
   return (
-    <div className="flex-1 flex bg-zinc-950 min-w-0 overflow-hidden relative">
-
-      {/* LEFT: Stage info panel */}
-      <div className="w-72 shrink-0 border-r border-zinc-800 flex flex-col">
-
-        {/* Status bar */}
-        <div className="px-3 py-2.5 border-b border-zinc-800 flex items-center justify-between">
+    <div
+      className={`flex-1 min-w-0 bg-zinc-950 relative ${
+        isCompactLayout
+          ? 'flex min-h-0 flex-col overflow-y-auto'
+          : 'flex overflow-hidden'
+      }`}
+    >
+      <div
+        className={`shrink-0 flex flex-col ${
+          isCompactLayout
+            ? 'w-full border-b border-zinc-800'
+            : 'w-72 border-r border-zinc-800'
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-zinc-800 px-3 py-2.5">
           <span className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-500">STAGE VIEW</span>
           <div className="flex items-center gap-2">
             <button
               onClick={onToggleSermonRecorder}
-              className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border transition-colors ${
+              className={`rounded border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider transition-colors ${
                 showSermonRecorder
-                  ? 'border-red-600 text-red-300 bg-red-950/40'
+                  ? 'border-red-600 bg-red-950/40 text-red-300'
                   : 'border-zinc-700 text-zinc-400 hover:border-red-600 hover:text-red-400'
               }`}
-              title="Sermon recorder — record, transcribe & flash to screen"
+              title="Sermon recorder - record, transcribe and flash to screen"
             >
-              {showSermonRecorder ? '● Rec' : 'Sermon'}
+              {showSermonRecorder ? 'REC' : 'Sermon'}
             </button>
-            <div className={`w-1.5 h-1.5 rounded-full ${isOutputLive ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`} />
+            <div className={`h-1.5 w-1.5 rounded-full ${isOutputLive ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`} />
             <span className={`text-[9px] font-black tracking-widest ${isOutputLive ? 'text-emerald-400' : 'text-zinc-600'}`}>
               {isOutputLive ? 'OUTPUT ON' : 'OUTPUT OFF'}
             </span>
           </div>
         </div>
 
-        {/* Now Playing */}
-        <div className="px-3 py-3 border-b border-zinc-800">
-          <div className="text-[8px] font-black uppercase tracking-widest text-zinc-600 mb-1.5">NOW PLAYING</div>
+        <div className="border-b border-zinc-800 px-3 py-3">
+          <div className="mb-1.5 text-[8px] font-black uppercase tracking-widest text-zinc-600">NOW PLAYING</div>
           {activeItem ? (
             <div>
-              <div className="text-sm font-bold text-zinc-100 truncate">{activeItem.title}</div>
-              <div className="text-[10px] text-zinc-500 uppercase tracking-wider mt-0.5">{activeItem.type}</div>
+              <div className="truncate text-sm font-bold text-zinc-100">{activeItem.title}</div>
+              <div className="mt-0.5 text-[10px] uppercase tracking-wider text-zinc-500">{activeItem.type}</div>
               <div className="mt-2 flex items-center gap-2">
                 <div className="text-[10px] font-mono text-zinc-400">
                   Slide {activeSlideIndex + 1} / {activeItem.slides.length}
                 </div>
                 {blackout && (
-                  <div className="px-1.5 py-0.5 bg-red-900/60 border border-red-700 rounded text-[9px] font-black text-red-300 tracking-widest">
+                  <div className="rounded border border-red-700 bg-red-900/60 px-1.5 py-0.5 text-[9px] font-black tracking-widest text-red-300">
                     BLACKOUT
                   </div>
                 )}
               </div>
             </div>
           ) : (
-            <div className="text-zinc-600 text-xs italic">No item active</div>
+            <div className="text-xs italic text-zinc-600">No item active</div>
           )}
         </div>
 
-        {/* Speaker Notes */}
-        <div className="flex-1 px-3 py-3 border-b border-zinc-800 overflow-y-auto custom-scrollbar">
-          <div className="text-[8px] font-black uppercase tracking-widest text-zinc-600 mb-2">SPEAKER NOTES</div>
+        <div
+          className={`border-b border-zinc-800 px-3 py-3 overflow-y-auto custom-scrollbar ${
+            isCompactLayout ? 'max-h-52' : 'flex-1'
+          }`}
+        >
+          <div className="mb-2 text-[8px] font-black uppercase tracking-widest text-zinc-600">SPEAKER NOTES</div>
           {speakerNotes ? (
-            <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">{speakerNotes}</p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">{speakerNotes}</p>
           ) : (
-            <p className="text-zinc-600 text-xs italic">No notes for this slide.</p>
+            <p className="text-xs italic text-zinc-600">No notes for this slide.</p>
           )}
         </div>
 
-        {/* Up Next queue */}
-        <div className="px-3 py-3 border-b border-zinc-800">
-          <div className="text-[8px] font-black uppercase tracking-widest text-zinc-600 mb-2">UP NEXT</div>
+        <div className="border-b border-zinc-800 px-3 py-3">
+          <div className="mb-2 text-[8px] font-black uppercase tracking-widest text-zinc-600">UP NEXT</div>
           <div className="flex flex-col gap-1">
             {upcomingItems.length > 0 ? upcomingItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => onGoLive(item, 0)}
-                className="flex items-center gap-2 px-2 py-1.5 rounded-sm border border-zinc-800 hover:border-zinc-600 text-left text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+                className="flex items-center gap-2 rounded-sm border border-zinc-800 px-2 py-1.5 text-left text-xs text-zinc-400 transition-colors hover:border-zinc-600 hover:text-zinc-200"
               >
-                <div className="w-1.5 h-1.5 rounded-full bg-zinc-700 shrink-0" />
+                <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-700" />
                 <span className="truncate">{item.title}</span>
               </button>
             )) : (
-              <div className="text-zinc-700 text-[10px] italic">Queue empty</div>
+              <div className="text-[10px] italic text-zinc-700">Queue empty</div>
             )}
           </div>
         </div>
 
-        {/* Transport controls */}
-        <div className="p-3 flex flex-col gap-2">
+        <div className="flex flex-col gap-2 p-3">
           <div className="flex gap-2">
             <button
               onClick={onPrevSlide}
-              className="flex-1 py-2 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-black tracking-widest transition-colors border border-zinc-700"
+              className="flex-1 rounded-sm border border-zinc-700 bg-zinc-800 py-2 text-[10px] font-black tracking-widest text-zinc-300 transition-colors hover:bg-zinc-700"
             >
-              ← PREV
+              &larr; PREV
             </button>
             <button
               onClick={onNextSlide}
-              className="flex-1 py-2 rounded-sm bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black tracking-widest transition-colors"
+              className="flex-1 rounded-sm bg-blue-600 py-2 text-[10px] font-black tracking-widest text-white transition-colors hover:bg-blue-500"
             >
-              NEXT →
+              NEXT &rarr;
             </button>
           </div>
           {isActiveVideo && (
-            <div className="flex items-center gap-1.5 rounded-sm border border-zinc-700 bg-zinc-900 p-1.5">
+            <div className="flex flex-wrap items-center gap-1.5 rounded-sm border border-zinc-700 bg-zinc-900 p-1.5">
               <button
                 onClick={onSeekBackward}
                 title="Rewind 10s"
-                className="flex-1 py-1.5 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-black tracking-widest transition-colors"
+                className="flex-1 rounded-sm bg-zinc-800 py-1.5 text-[10px] font-black tracking-widest text-zinc-300 transition-colors hover:bg-zinc-700"
               >
-                ⏮ -10s
+                -10s
               </button>
               <button
                 onClick={onTogglePlay}
                 title={isPlaying ? 'Pause' : 'Play'}
-                className={`flex-1 py-1.5 rounded-sm text-[10px] font-black tracking-widest transition-colors ${
+                className={`flex-1 rounded-sm py-1.5 text-[10px] font-black tracking-widest transition-colors ${
                   isPlaying
                     ? 'bg-zinc-700 text-white hover:bg-zinc-600'
                     : 'bg-emerald-700 text-white hover:bg-emerald-600'
                 }`}
               >
-                {isPlaying ? '⏸ PAUSE' : '▶ PLAY'}
+                {isPlaying ? 'PAUSE' : 'PLAY'}
               </button>
               <button
                 onClick={onSeekForward}
                 title="Forward 10s"
-                className="flex-1 py-1.5 rounded-sm bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-black tracking-widest transition-colors"
+                className="flex-1 rounded-sm bg-zinc-800 py-1.5 text-[10px] font-black tracking-widest text-zinc-300 transition-colors hover:bg-zinc-700"
               >
-                +10s ⏭
+                +10s
               </button>
               <button
                 onClick={onToggleMute}
                 title={outputMuted ? 'Unmute' : 'Mute'}
-                className={`px-2 py-1.5 rounded-sm text-[10px] font-black tracking-widest transition-colors border ${
+                className={`rounded-sm border px-2 py-1.5 text-[10px] font-black tracking-widest transition-colors ${
                   outputMuted
-                    ? 'bg-red-900/50 border-red-700 text-red-300'
-                    : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'
+                    ? 'border-red-700 bg-red-900/50 text-red-300'
+                    : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                 }`}
               >
-                {outputMuted ? '🔇' : '🔊'}
+                {outputMuted ? 'MUTED' : 'AUDIO'}
               </button>
             </div>
           )}
@@ -212,27 +221,26 @@ export function StageWorkspace({
         <div className="px-3 pb-3">
           <button
             onClick={onToggleBlackout}
-            className={`w-full py-2 rounded-sm text-[10px] font-black tracking-widest transition-colors border ${
+            className={`w-full rounded-sm border py-2 text-[10px] font-black tracking-widest transition-colors ${
               blackout
-                ? 'bg-red-900 border-red-700 text-red-200'
-                : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'
+                ? 'border-red-700 bg-red-900 text-red-200'
+                : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:border-zinc-600 hover:text-zinc-300'
             }`}
           >
-            {blackout ? '■ BLACKOUT ACTIVE' : 'BLACKOUT'}
+            {blackout ? 'BLACKOUT ACTIVE' : 'BLACKOUT'}
           </button>
         </div>
       </div>
 
-      {/* CENTRE: Current slide on stage (large) */}
-      <div className="flex-1 flex flex-col min-w-0 p-4 gap-3">
-        <div className="text-[8px] font-black uppercase tracking-widest text-zinc-600 mb-1">
-          CURRENT — WHAT AUDIENCE SEES
+      <div className={`flex min-w-0 flex-col gap-3 ${isCompactLayout ? 'w-full p-3' : 'flex-1 p-4'}`}>
+        <div className="mb-1 text-[8px] font-black uppercase tracking-widest text-zinc-600">
+          CURRENT - WHAT AUDIENCE SEES
         </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-full max-w-2xl aspect-video border border-zinc-700 rounded-sm overflow-hidden bg-black shadow-2xl relative">
+        <div className="flex flex-1 items-center justify-center">
+          <div className="relative aspect-video w-full max-w-2xl overflow-hidden rounded-sm border border-zinc-700 bg-black shadow-2xl">
             {blackout ? (
-              <div className="absolute inset-0 bg-black flex items-center justify-center">
-                <span className="text-red-500 font-black text-xl tracking-[0.5em] opacity-60">BLACKOUT</span>
+              <div className="absolute inset-0 flex items-center justify-center bg-black">
+                <span className="text-xl font-black tracking-[0.5em] text-red-500 opacity-60">BLACKOUT</span>
               </div>
             ) : activeSlide && activeItem ? (
               <SlideRenderer
@@ -247,26 +255,25 @@ export function StageWorkspace({
                 isMuted={true}
               />
             ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-zinc-700 font-black text-sm tracking-widest">
+              <div className="absolute inset-0 flex items-center justify-center text-sm font-black tracking-widest text-zinc-700">
                 NO ACTIVE SLIDE
               </div>
             )}
-            <div className="absolute top-0 left-0 bg-black/60 text-[8px] font-black tracking-widest px-2 py-1 text-emerald-400">
-              {isOutputLive ? '● LIVE' : '○ NOT LIVE'}
+            <div className="absolute left-0 top-0 bg-black/60 px-2 py-1 text-[8px] font-black tracking-widest text-emerald-400">
+              {isOutputLive ? 'LIVE' : 'NOT LIVE'}
             </div>
           </div>
         </div>
 
-        {/* Slide strip for current item */}
         {activeItem && (
           <div className="shrink-0">
-            <div className="text-[8px] font-black uppercase tracking-widest text-zinc-600 mb-2">SLIDES</div>
-            <div className="flex gap-2 overflow-x-auto custom-scrollbar pb-1">
+            <div className="mb-2 text-[8px] font-black uppercase tracking-widest text-zinc-600">SLIDES</div>
+            <div className="custom-scrollbar flex gap-2 overflow-x-auto pb-1">
               {activeItem.slides.map((slide, idx) => (
                 <button
                   key={slide.id}
                   onClick={() => onGoLive(activeItem, idx)}
-                  className={`shrink-0 w-28 aspect-video border rounded-sm overflow-hidden relative transition-all ${
+                  className={`relative aspect-video w-28 shrink-0 overflow-hidden rounded-sm border transition-all ${
                     idx === activeSlideIndex
                       ? 'border-blue-500 ring-1 ring-blue-500/40'
                       : 'border-zinc-800 hover:border-zinc-600'
@@ -285,64 +292,77 @@ export function StageWorkspace({
         )}
       </div>
 
-      {/* RIGHT: Next slide preview */}
-      <div className="w-64 xl:w-72 shrink-0 border-l border-zinc-800 flex flex-col p-4 gap-3">
-        <div className="text-[8px] font-black uppercase tracking-widest text-zinc-600">NEXT SLIDE</div>
-        <div className="aspect-video border border-zinc-800 rounded-sm overflow-hidden bg-black relative">
-          {nextSlide && activeItem ? (
-            <SlideRenderer slide={nextSlide} item={activeItem} fitContainer={true} isThumbnail={true} />
-          ) : nextItem ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-2">
-              <div className="text-[9px] font-black text-zinc-600 tracking-widest uppercase">NEXT ITEM</div>
-              <div className="text-xs font-bold text-zinc-400 text-center truncate w-full">{nextItem.title}</div>
-            </div>
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-zinc-700 text-[10px] font-black tracking-widest">
-              END OF QUEUE
-            </div>
-          )}
-        </div>
-
-        <div className="text-[8px] font-black uppercase tracking-widest text-zinc-600">STAGE DISPLAY</div>
-        <div className="aspect-video border border-zinc-800 rounded-sm overflow-hidden bg-zinc-900 relative">
-          {isStageDisplayLive ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              {activeSlide && activeItem ? (
-                <SlideRenderer slide={activeSlide} item={activeItem} fitContainer={true} isThumbnail={true} />
-              ) : null}
-              <div className="absolute top-0 left-0 bg-purple-900/80 text-[8px] font-black tracking-widest px-2 py-1 text-purple-200">
-                STAGE ON
+      <div
+        className={`shrink-0 gap-3 ${
+          isCompactLayout
+            ? 'grid w-full border-t border-zinc-800 p-3 md:grid-cols-2'
+            : 'flex w-64 flex-col border-l border-zinc-800 p-4 xl:w-72'
+        }`}
+      >
+        <div className="min-w-0">
+          <div className="mb-2 text-[8px] font-black uppercase tracking-widest text-zinc-600">NEXT SLIDE</div>
+          <div className="relative aspect-video overflow-hidden rounded-sm border border-zinc-800 bg-black">
+            {nextSlide && activeItem ? (
+              <SlideRenderer slide={nextSlide} item={activeItem} fitContainer={true} isThumbnail={true} />
+            ) : nextItem ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-2">
+                <div className="text-[9px] font-black uppercase tracking-widest text-zinc-600">NEXT ITEM</div>
+                <div className="w-full truncate text-center text-xs font-bold text-zinc-400">{nextItem.title}</div>
               </div>
-            </div>
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-zinc-700 text-[10px] font-black tracking-widest">
-              STAGE OFF
-            </div>
-          )}
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black tracking-widest text-zinc-700">
+                END OF QUEUE
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Full run order */}
-        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
-          <div className="text-[8px] font-black uppercase tracking-widest text-zinc-600 mb-2">RUN ORDER</div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col gap-0.5">
+        <div className="min-w-0">
+          <div className="mb-2 text-[8px] font-black uppercase tracking-widest text-zinc-600">STAGE DISPLAY</div>
+          <div className="relative aspect-video overflow-hidden rounded-sm border border-zinc-800 bg-zinc-900">
+            {isStageDisplayLive ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                {activeSlide && activeItem ? (
+                  <SlideRenderer slide={activeSlide} item={activeItem} fitContainer={true} isThumbnail={true} />
+                ) : null}
+                <div className="absolute left-0 top-0 bg-purple-900/80 px-2 py-1 text-[8px] font-black tracking-widest text-purple-200">
+                  STAGE ON
+                </div>
+              </div>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black tracking-widest text-zinc-700">
+                STAGE OFF
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className={`flex min-h-0 flex-col ${isCompactLayout ? 'md:col-span-2' : 'flex-1 overflow-hidden'}`}>
+          <div className="mb-2 text-[8px] font-black uppercase tracking-widest text-zinc-600">RUN ORDER</div>
+          <div
+            className={`custom-scrollbar flex flex-col gap-0.5 ${
+              isCompactLayout
+                ? 'max-h-56 overflow-y-auto rounded-sm border border-zinc-800 bg-zinc-950/60 p-1.5'
+                : 'flex-1 overflow-y-auto'
+            }`}
+          >
             {schedule.map((item, idx) => (
               <button
                 key={item.id}
                 onClick={() => onGoLive(item, 0)}
-                className={`flex items-center gap-2 px-2 py-1.5 rounded-sm text-left text-[10px] transition-colors border-l-2 ${
+                className={`flex items-center gap-2 rounded-sm border-l-2 px-2 py-1.5 text-left text-[10px] transition-colors ${
                   item.id === activeItem?.id
-                    ? 'text-white border-l-emerald-500 bg-emerald-950/20'
-                    : 'text-zinc-500 border-l-transparent hover:text-zinc-300 hover:bg-zinc-900/40'
+                    ? 'border-l-emerald-500 bg-emerald-950/20 text-white'
+                    : 'border-l-transparent text-zinc-500 hover:bg-zinc-900/40 hover:text-zinc-300'
                 }`}
               >
-                <span className="font-mono text-zinc-700 w-4 shrink-0">{idx + 1}</span>
+                <span className="w-4 shrink-0 font-mono text-zinc-700">{idx + 1}</span>
                 <span className="truncate font-medium">{item.title}</span>
               </button>
             ))}
           </div>
         </div>
       </div>
-
     </div>
   );
 }

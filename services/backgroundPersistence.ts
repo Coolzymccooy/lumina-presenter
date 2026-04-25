@@ -124,6 +124,21 @@ export const inheritPrevailingBackground = (
   };
 };
 
+export const applyGeneratedItemBackground = (
+  item: ServiceItem,
+  backgroundSource: ServiceItemBackgroundSource,
+  prevailing: BackgroundSnapshot | null | undefined,
+  options?: { inheritWhenSystem?: boolean },
+): ServiceItem => {
+  const normalizedItem = clearItemBackgroundFallback(stampItemBackgroundSource(item, backgroundSource));
+
+  if (backgroundSource === 'system' && options?.inheritWhenSystem !== false) {
+    return inheritPrevailingBackground(normalizedItem, prevailing);
+  }
+
+  return normalizedItem;
+};
+
 export const clearItemBackgroundFallback = (item: ServiceItem): ServiceItem => {
   const metadata = item.metadata;
   if (!metadata) return item;

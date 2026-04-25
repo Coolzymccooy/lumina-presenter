@@ -100,6 +100,20 @@ export function createLyricsRouter(options = {}) {
   const env = options.env || process.env;
   const router = express.Router();
 
+  // Diagnostic endpoint — returns booleans only, never the actual key values.
+  // Hit this from a browser to confirm production env config end-to-end:
+  //   GET /api/lyrics/health -> { ok: true, data: { flagOn, hasBraveKey, hasTavilyKey } }
+  router.get('/health', (_req, res) => {
+    res.status(200).json({
+      ok: true,
+      data: {
+        flagOn: isFlagOn(env),
+        hasBraveKey: Boolean(String(env?.BRAVE_SEARCH_API_KEY || '').trim()),
+        hasTavilyKey: Boolean(String(env?.TAVILY_API_KEY || '').trim()),
+      },
+    });
+  });
+
   router.post('/lrclib', async (req, res) => {
     if (!isFlagOn(env)) return res.status(503).json({ ok: false, error: 'FEATURE_DISABLED' });
     const query = String(req.body?.query || '').trim();

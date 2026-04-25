@@ -160,6 +160,17 @@ export const VideoBackground: React.FC<VideoBackgroundProps> = ({
     playWhenReady(primary);
   }, [isPlaying, active, muted, primarySlot, isThumbnail]);
 
+  // Track the latest mute state in a ref so the double-buffer swap effect
+  // below can read it inside its closure without depending on `muted`. If
+  // we included `muted` in that effect's deps, every mute toggle would tear
+  // down and re-register the timeupdate listener — a race window where the
+  // swap logic could fire with the wrong listener, producing the mid-service
+  // flicker the operator reported.
+  const mutedRef = useRef(muted);
+  useEffect(() => {
+    mutedRef.current = muted;
+  }, [muted]);
+
   useEffect(() => {
     if (isThumbnail || !active) return;
 
@@ -220,7 +231,7 @@ export const VideoBackground: React.FC<VideoBackgroundProps> = ({
 
       if (!nextVideo) return;
 
-      nextVideo.muted = muted;
+      nextVideo.muted = mutedRef.current;
       nextVideo.currentTime = 0;
 
       // Only begin the visual crossfade once the secondary slot has a decoded
@@ -231,7 +242,7 @@ export const VideoBackground: React.FC<VideoBackgroundProps> = ({
         canplayCleanupRef.current = null;
         setIsCrossfading(true);
 
-        playWhenReady(nextVideo, muted);
+        playWhenReady(nextVideo, mutedRef.current);
         signalReady(nextVideo);
 
         swapTimeoutRef.current = window.setTimeout(() => {
@@ -261,7 +272,9 @@ export const VideoBackground: React.FC<VideoBackgroundProps> = ({
     return () => {
       primaryVideo.removeEventListener('timeupdate', handleTimeUpdate);
     };
-  }, [primarySlot, isThumbnail, active, muted]);
+    // `muted` intentionally NOT in the dep list — it's read via mutedRef to
+    // avoid tearing down the timeupdate listener on every mute toggle.
+  }, [primarySlot, isThumbnail, active]);
 
   // ── Cleanup on unmount ───────────────────────────────────────────────────
   useEffect(() => {

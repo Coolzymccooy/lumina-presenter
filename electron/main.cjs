@@ -2,7 +2,21 @@ const { app, BrowserWindow, screen, session, Menu, shell, ipcMain, clipboard, di
 const path = require('path');
 const fs = require('fs');
 const ndiSender = require('./ndiSender.cjs');
+const { describePayloadType, extractConsoleMessageText, normalizeAudioPcmPayload } = require('./ndiIpcUtils.cjs');
+const { NDI_RESOLUTION_PRESETS, resolveNdiResolution } = require('./ndiResolution.cjs');
 const { registerLyricClipboardIpc } = require('./ipc/lyricClipboard.cjs');
+const { createToolsSettingsStore } = require('./toolsSettingsStore.cjs');
+const { buildToolsMenu } = require('./toolsMenu.cjs');
+const {
+  DEFAULT_APP_MENU_STATE,
+  sanitizeAppMenuState,
+  buildFileMenu,
+  buildEditMenu,
+  buildViewMenu,
+  buildTransportMenu,
+  buildWindowMenu,
+  buildHelpMenu,
+} = require('./appMenu.cjs');
 const DIST_INDEX_PATH = path.join(__dirname, '../dist/index.html');
 const DEV_SERVER_URL = process.env.ELECTRON_RENDERER_URL || 'http://localhost:5173';
 const SHOULD_OPEN_DEVTOOLS = process.env.LUMINA_OPEN_DEVTOOLS === '1';
@@ -29,14 +43,64 @@ let stageWindowRef = null;
 let displayTestTimers = new Map();
 let displayTestWindows = new Map();
 
-// ─── NDI outbound sender state ────────────────────────────────────────────────
+// ─── NDI outbound sender state (Phase 2: multi-source) ──────────────────────
+// Fixed scene list — all three are broadcast simultaneously when NDI is active.
+// Downstream switchers bind to these source names; do not rename casually.
+//
+// Resolution precedence (highest first):
+//   1. Per-scene `width`/`height` on NDI_SCENES (power-user scene tuning)
+//   2. Payload `resolution` from renderer (workspace setting: 720p/1080p/4k)
+//   3. Env vars LUMINA_NDI_WIDTH / LUMINA_NDI_HEIGHT (host override)
+//   4. Hardcoded 1920x1080 fallback
+const NDI_DEFAULT_WIDTH = Number.parseInt(process.env.LUMINA_NDI_WIDTH || '', 10) || 1920;
+const NDI_DEFAULT_HEIGHT = Number.parseInt(process.env.LUMINA_NDI_HEIGHT || '', 10) || 1080;
+const NDI_SCENES = [
+  { id: 'program',     sourceName: 'Lumina-Program',     fillKey: false, route: 'output' },
+  { id: 'lyrics',      sourceName: 'Lumina-Lyrics',      fillKey: true,  route: 'lyrics-ndi' },
+  { id: 'lowerThirds', sourceName: 'Lumina-LowerThirds', fillKey: true,  route: 'lower-thirds-ndi' },
+];
+/** @type {Record<string, { window: any, sender: any, active: boolean, lastError?: string, droppedFrames: number }>} */
+const ndiSources = {};
 let ndiActive = false;
-let ndiStatus = { active: false, sourceName: '' };
-let ndiDroppedFrames = 0;
+let ndiBroadcastMode = false;
+let ndiAudioEnabled = false;
+let ndiResolution = '1080p';
+let ndiSessionWidth = NDI_DEFAULT_WIDTH;
+let ndiSessionHeight = NDI_DEFAULT_HEIGHT;
+let ndiAudioDroppedFrames = 0;
+let ndiAudioFramesSent = 0;            // total successful sendAudioFrame calls this session
+let ndiAudioFramesLastSample = 0;       // frames sent at the last telemetry tick
+let ndiAudioFramesPerSecond = 0;        // derived rate for renderer display
+let ndiAudioFirstFrameLogged = false;
+let ndiAudioInvalidPayloadLogged = false;
+let ndiAudioStatsTimer = null;
+const NDI_AUDIO_STATS_INTERVAL_MS = 2000;
+let ndiStatus = { active: false, broadcastMode: false, resolution: '1080p', width: NDI_DEFAULT_WIDTH, height: NDI_DEFAULT_HEIGHT, audioEnabled: false, audio: null, sources: [] };
 let ndiDropLogTimer = null;
-let ndiWindowRef = null;  // dedicated offscreen capture window — separate from projector
 const NDI_TARGET_FPS = 30;
+const ndiCaptureLabels = new Map();
+let ndiProgramAudioSourceId = null;
 // ─────────────────────────────────────────────────────────────────────────────
+
+/** @type {ReturnType<typeof createToolsSettingsStore> | null} */
+let toolsStore = null;
+
+// Cached view of the renderer's workspace-synced NDI state, kept here so the
+// application menu can build its NDI submenu with correct check/radio state
+// without duplicating the workspace persistence path (which lives server-side).
+// The renderer pushes updates via `tools:set-ndi-menu-state` whenever its
+// own workspace settings change or when the NDI runtime state (active,
+// sources) changes. Menu clicks dispatch `tools:command` messages of shape
+// { type: 'ndi.*' } which the renderer handles in useToolsMenu.
+/** @type {{ active: boolean, broadcastMode: boolean, audioEnabled: boolean, resolution: '720p'|'1080p'|'4k' } | null} */
+let ndiMenuStateCache = null;
+
+// Cached view of renderer-owned state used to render the application menu's
+// File / View / Transport / Window check / radio / label states. Pushed via
+// `tools:set-app-menu-state` whenever the renderer side changes (session
+// start, blackout toggle, routing mode, etc.). Seeded with frozen defaults
+// so the menu can render before the renderer has mounted.
+let appMenuStateCache = { ...DEFAULT_APP_MENU_STATE };
 
 let machineServiceState = {
   controlDisplayId: null,
@@ -297,9 +361,217 @@ function emitMachineServiceState() {
 }
 
 function emitNdiState() {
-  ndiStatus = { active: ndiActive, sourceName: ndiSender.getSourceName() };
+  // In non-broadcast mode, hide fill+key sources from the renderer's status —
+  // they're intentionally not started, so listing them as OFF would mislead.
+  const visibleScenes = ndiBroadcastMode ? NDI_SCENES : NDI_SCENES.filter((s) => !s.fillKey);
+  const sources = visibleScenes.map((scene) => {
+    const entry = ndiSources[scene.id];
+    return {
+      id: scene.id,
+      sourceName: scene.sourceName,
+      fillKey: scene.fillKey,
+      active: !!entry?.active,
+      lastError: entry?.lastError,
+    };
+  });
+  ndiStatus = {
+    active: ndiActive,
+    broadcastMode: ndiBroadcastMode,
+    resolution: ndiResolution,
+    width: ndiSessionWidth,
+    height: ndiSessionHeight,
+    audioEnabled: ndiAudioEnabled,
+    // Null when audio is disabled; otherwise rolling stats so the renderer
+    // can show a "flowing / silent" indicator.
+    audio: ndiAudioEnabled ? {
+      framesSent: ndiAudioFramesSent,
+      framesPerSecond: ndiAudioFramesPerSecond,
+      droppedFrames: ndiAudioDroppedFrames,
+    } : null,
+    sources,
+  };
   if (!mainWindowRef || mainWindowRef.isDestroyed()) return;
   mainWindowRef.webContents.send('ndi:state', ndiStatus);
+}
+
+/** Tear down every NDI capture window + sender. Safe to call repeatedly. */
+async function teardownAllNdiSources() {
+  const ids = Object.keys(ndiSources);
+  await Promise.all(ids.map(async (id) => {
+    const entry = ndiSources[id];
+    if (!entry) return;
+    // Clear active flag first so the capture window's `closed` handler skips
+    // re-invoking sender.stop() — otherwise each teardown logs twice.
+    entry.active = false;
+    try {
+      if (entry.window && !entry.window.isDestroyed()) entry.window.destroy();
+    } catch (_) { /* ignore */ }
+    try {
+      if (entry.window?.webContents?.id) ndiCaptureLabels.delete(entry.window.webContents.id);
+    } catch (_) { /* ignore */ }
+    if (id === 'program') ndiProgramAudioSourceId = null;
+    try {
+      if (entry.sender) await entry.sender.stop();
+    } catch (_) { /* ignore */ }
+    delete ndiSources[id];
+  }));
+}
+
+/**
+ * Spawn one NDI scene: offscreen window + sender + paint pump.
+ * On success, populates ndiSources[scene.id]. On failure, returns { ok:false, error }.
+ */
+async function startNdiScene(scene, payload) {
+  const transparent = !!scene.fillKey;
+  const shouldInstallAudioTap = !scene.fillKey && !!payload?.audioEnabled;
+  // Per-scene override beats the session-wide resolution, which beats the env fallback.
+  const sessionWidth = Number.isFinite(payload?.sessionWidth) && payload.sessionWidth > 0 ? payload.sessionWidth : NDI_DEFAULT_WIDTH;
+  const sessionHeight = Number.isFinite(payload?.sessionHeight) && payload.sessionHeight > 0 ? payload.sessionHeight : NDI_DEFAULT_HEIGHT;
+  const sceneWidth = Number.isFinite(scene.width) && scene.width > 0 ? scene.width : sessionWidth;
+  const sceneHeight = Number.isFinite(scene.height) && scene.height > 0 ? scene.height : sessionHeight;
+  const captureWindow = new BrowserWindow({
+    width: sceneWidth,
+    height: sceneHeight,
+    show: false,
+    frame: false,
+    useContentSize: true,
+    transparent,
+    backgroundColor: transparent ? '#00000000' : undefined,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.cjs'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false,
+      offscreen: true,
+      backgroundThrottling: false,
+      additionalArguments: shouldInstallAudioTap ? ['--lumina-ndi-capture=1'] : [],
+    },
+  });
+  const captureWebContentsId = captureWindow.webContents.id;
+  ndiCaptureLabels.set(captureWebContentsId, scene.sourceName);
+  if (scene.id === 'program' && shouldInstallAudioTap) {
+    ndiProgramAudioSourceId = captureWebContentsId;
+  }
+
+  captureWindow.webContents.on('console-message', (details) => {
+    const text = extractConsoleMessageText(details);
+    if (text.indexOf('[OUTPUT') !== -1) {
+      console.log(`[NDI:${scene.sourceName}] ${text}`);
+    }
+    if (text.indexOf('[NDI-AUDIO] cross-origin iframe detected:') !== -1) {
+      const src = text.split('detected:').pop()?.trim() || '';
+      if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+        mainWindowRef.webContents.send('ndi:audio-warning', { code: 'iframe-media', src });
+        console.log('[NDI] iframe warning forwarded to renderer (via console side-channel)');
+      }
+    }
+  });
+  captureWindow.webContents.on('preload-error', (_event, preloadPath, error) => {
+    console.error(`[NDI:${scene.sourceName}] preload-error path=${preloadPath}: ${error?.message || String(error)}`);
+  });
+  if (!scene.fillKey) {
+    captureWindow.webContents.on('audio-state-changed', (details) => {
+      console.log(`[NDI:${scene.sourceName}] audio-state audible=${!!details?.audible}`);
+    });
+    captureWindow.webContents.on('media-started-playing', () => {
+      console.log(`[NDI:${scene.sourceName}] media-started-playing`);
+    });
+    captureWindow.webContents.on('media-paused', () => {
+      console.log(`[NDI:${scene.sourceName}] media-paused`);
+    });
+  }
+
+  await loadRendererRoute(captureWindow, scene.route, {
+    session: payload?.sessionId || 'live',
+    workspace: payload?.workspaceId || 'default-workspace',
+    ndi: '1',
+    fillKey: scene.fillKey ? '1' : undefined,
+  });
+
+  await new Promise((resolve) => {
+    captureWindow.webContents.once('did-finish-load', () => setTimeout(resolve, 2500));
+    setTimeout(resolve, 6000);
+  });
+
+  if (captureWindow.isDestroyed()) {
+    ndiCaptureLabels.delete(captureWebContentsId);
+    if (scene.id === 'program' && ndiProgramAudioSourceId === captureWebContentsId) ndiProgramAudioSourceId = null;
+    return { ok: false, error: `Capture window for "${scene.sourceName}" closed before start.` };
+  }
+
+  const sender = ndiSender.createSender(scene.sourceName);
+  // Program sender clocks audio when embedding is on so A/V stays in sync;
+  // graphics feeds never clock audio (no audio track to clock against).
+  const senderOptions = !scene.fillKey && payload?.audioEnabled ? { clockAudio: true } : undefined;
+  const result = await sender.start(sceneWidth, sceneHeight, senderOptions);
+  if (!result.ok) {
+    ndiCaptureLabels.delete(captureWebContentsId);
+    if (scene.id === 'program' && ndiProgramAudioSourceId === captureWebContentsId) ndiProgramAudioSourceId = null;
+    try { if (!captureWindow.isDestroyed()) captureWindow.destroy(); } catch (_) { /* ignore */ }
+    return result;
+  }
+
+  const entry = {
+    window: captureWindow,
+    sender,
+    active: true,
+    droppedFrames: 0,
+    lastError: undefined,
+  };
+  ndiSources[scene.id] = entry;
+
+  captureWindow.once('closed', () => {
+    if (!entry.active) return;
+    entry.active = false;
+    ndiCaptureLabels.delete(captureWebContentsId);
+    if (scene.id === 'program' && ndiProgramAudioSourceId === captureWebContentsId) ndiProgramAudioSourceId = null;
+    entry.window = null;
+    sender.stop().catch(() => {});
+    delete ndiSources[scene.id];
+    emitNdiState();
+  });
+
+  captureWindow.webContents.setFrameRate(NDI_TARGET_FPS);
+  let sending = false;
+  let pendingFrame = null;
+  const flush = async (initialFrame) => {
+    sending = true;
+    let frame = initialFrame;
+    while (entry.active && frame) {
+      try {
+        await sender.sendFrame(frame.buffer, frame.width, frame.height);
+      } catch (err) {
+        entry.droppedFrames++;
+        if (entry.droppedFrames <= 3) {
+          console.error(`[NDI] send error (${scene.sourceName}):`, err?.message || String(err));
+        }
+      }
+      frame = pendingFrame;
+      pendingFrame = null;
+    }
+    sending = false;
+  };
+
+  captureWindow.webContents.on('paint', async (_paintEvent, _dirty, image) => {
+    if (!entry.active) return;
+    const { width, height } = image.getSize();
+    if (width === 0 || height === 0) return;
+    const buffer = image.toBitmap();
+    if (process.platform === 'darwin') {
+      for (let i = 0; i < buffer.length; i += 4) {
+        const r = buffer[i]; buffer[i] = buffer[i + 2]; buffer[i + 2] = r;
+      }
+    }
+    const frame = { buffer, width, height };
+    if (sending) {
+      pendingFrame = frame;
+      return;
+    }
+    pendingFrame = null;
+    void flush(frame);
+  });
+
+  return { ok: true };
 }
 
 
@@ -378,7 +650,7 @@ async function createManagedRoleWindow(kind, displayId, payload = {}) {
       skipTaskbar: true,
       resizable: isWindowed,
       webPreferences: {
-        preload: path.join(__dirname, 'preload.js'),
+        preload: path.join(__dirname, 'preload.cjs'),
         nodeIntegration: false,
         contextIsolation: true,
         sandbox: !isWindowed,        // offscreen + sandbox conflicts in some Electron builds
@@ -568,141 +840,186 @@ function installMachineIpcHandlers() {
     const state = await createManagedRoleWindow(role, displayId || 0, payload);
     return { ok: true, state };
   });
-  // ── NDI outbound send ──────────────────────────────────────────────────────
+  // ── NDI outbound send (Phase 2: multi-source) ─────────────────────────────
   ipcMain.handle('ndi:start', async (_event, payload) => {
+    if (ndiActive) return { ok: true, state: ndiStatus };
+
+    // Fresh start — clear any leftover entries from a previous failed attempt.
+    await teardownAllNdiSources();
+    // Small settling pause so the NDI runtime fully releases the previous
+    // sender names before we recreate them with identical names. Without this,
+    // rapid stop→start cycles (e.g. toggling Broadcast Mode / Resolution
+    // mid-flight) hit "Failed to create NDI sender" on line 137 of
+    // grandiose_send.cc because the old name is still registered.
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    // Broadcast Mode: off = program only (single NDI source, for streaming).
+    // on = all three sources including transparent fill+key for switchers.
+    ndiBroadcastMode = !!payload?.broadcastMode;
+    // Audio embedding is program-only (fill+key graphics stay silent — audio
+    // belongs on a single program feed to avoid phasing in a switcher sum).
+    ndiAudioEnabled = !!payload?.audioEnabled;
+    ndiAudioDroppedFrames = 0;
+    ndiAudioFramesSent = 0;
+    ndiAudioFramesLastSample = 0;
+    ndiAudioFramesPerSecond = 0;
+    ndiAudioFirstFrameLogged = false;
+    ndiAudioInvalidPayloadLogged = false;
+    ndiProgramAudioSourceId = null;
+    const activeScenes = ndiBroadcastMode ? NDI_SCENES : NDI_SCENES.filter((s) => !s.fillKey);
+
+    // Resolve session resolution from the payload preset (falls back to env
+    // var defaults when the renderer doesn't specify — keeps CLI/test paths
+    // working without changes).
+    const resolved = resolveNdiResolution(payload?.resolution, NDI_DEFAULT_WIDTH, NDI_DEFAULT_HEIGHT);
+    ndiResolution = resolved.key;
+    ndiSessionWidth = resolved.width;
+    ndiSessionHeight = resolved.height;
+    const scenePayload = { ...payload, sessionWidth: ndiSessionWidth, sessionHeight: ndiSessionHeight };
+
     try {
-      // Destroy any previous NDI capture window.
-      if (ndiWindowRef && !ndiWindowRef.isDestroyed()) {
-        ndiWindowRef.destroy();
-        ndiWindowRef = null;
-      }
-
-      // Always create a dedicated offscreen window for NDI capture.
-      // This is completely separate from the projector window so the user
-      // can have PROJECTION ON at the same time. Offscreen rendering delivers
-      // frames via the 'paint' event — no GPU framebuffer needed.
-      ndiWindowRef = new BrowserWindow({
-        width: 1920,
-        height: 1080,
-        show: false,
-        webPreferences: {
-          preload: path.join(__dirname, 'preload.js'),
-          nodeIntegration: false,
-          contextIsolation: true,
-          sandbox: false,
-          offscreen: true,
-          backgroundThrottling: false,
-        },
-      });
-
-      await loadRendererRoute(ndiWindowRef, 'output', {
-        session: payload?.sessionId || 'live',
-        workspace: payload?.workspaceId || 'default-workspace',
-        ndi: '1',
-      });
-
-      // Wait for the page to load and receive live state before starting capture.
-      await new Promise((resolve) => {
-        ndiWindowRef.webContents.once('did-finish-load', () => setTimeout(resolve, 2500));
-        // Fallback: resolve after 6s if did-finish-load never fires.
-        setTimeout(resolve, 6000);
-      });
-
-      if (!ndiWindowRef || ndiWindowRef.isDestroyed()) {
-        return { ok: false, error: 'NDI capture window closed before capture started.' };
-      }
-
-      const result = await ndiSender.startNdiSend(
-        payload?.sourceName || 'Lumina Presenter',
-        1920,
-        1080,
+      // Spawn all scenes in parallel. Any failure → roll everything back.
+      const results = await Promise.all(
+        activeScenes.map((scene) => startNdiScene(scene, scenePayload).catch((err) => ({
+          ok: false,
+          error: err?.message || String(err),
+          sceneId: scene.id,
+        })))
       );
-      if (!result.ok) return result;
+
+      const firstFailure = results.find((r) => !r.ok);
+      if (firstFailure) {
+        await teardownAllNdiSources();
+        ndiBroadcastMode = false;
+        ndiAudioEnabled = false;
+        ndiResolution = '1080p';
+        ndiSessionWidth = NDI_DEFAULT_WIDTH;
+        ndiSessionHeight = NDI_DEFAULT_HEIGHT;
+        return { ok: false, error: firstFailure.error || 'Unknown NDI start failure.' };
+      }
 
       ndiActive = true;
 
-      // Stop NDI cleanly if the capture window is closed.
-      ndiWindowRef.once('closed', () => {
-        if (!ndiActive) return;
-        ndiActive = false;
-        ndiWindowRef = null;
-        if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
-        ndiSender.stopNdiSend().catch(() => {});
-        emitNdiState();
-      });
-
-      // Subscribe to paint events — the correct capture API for offscreen windows.
-      // capturePage() reads from the GPU framebuffer which doesn't exist for offscreen
-      // windows; paint events deliver rendered frames directly from the software renderer.
-      ndiWindowRef.webContents.setFrameRate(NDI_TARGET_FPS);
-      let ndiSending = false;
-      let pendingFrame = null;
-      const flushNdiFrame = async (initialFrame) => {
-        ndiSending = true;
-        let frame = initialFrame;
-        while (ndiActive && frame) {
-          try {
-            await ndiSender.sendFrame(frame.buffer, frame.width, frame.height);
-          } catch (err) {
-            ndiDroppedFrames++;
-            if (ndiDroppedFrames <= 3) console.error('[NDI] send error:', err?.message || String(err));
-          }
-          frame = pendingFrame;
-          pendingFrame = null;
-        }
-        ndiSending = false;
-      };
-      ndiWindowRef.webContents.on('paint', async (_paintEvent, _dirty, image) => {
-        if (!ndiActive) return;
-        const { width, height } = image.getSize();
-        if (width === 0 || height === 0) { return; }
-        // toBitmap() returns BGRA on Windows/Linux; RGBA on macOS.
-        const buffer = image.toBitmap();
-        if (process.platform === 'darwin') {
-          for (let i = 0; i < buffer.length; i += 4) {
-            const r = buffer[i]; buffer[i] = buffer[i + 2]; buffer[i + 2] = r;
-          }
-        }
-        const frame = { buffer, width, height };
-        if (ndiSending) {
-          pendingFrame = frame;
-          return;
-        }
-        pendingFrame = null;
-        void flushNdiFrame(frame);
-      });
-
-      // Log dropped frames every 10 seconds (non-blocking).
       if (!ndiDropLogTimer) {
         ndiDropLogTimer = setInterval(() => {
-          if (ndiDroppedFrames > 0) {
-            console.warn(`[NDI] Dropped ${ndiDroppedFrames} frames in last 10s`);
-            ndiDroppedFrames = 0;
+          for (const id of Object.keys(ndiSources)) {
+            const entry = ndiSources[id];
+            if (entry && entry.droppedFrames > 0) {
+              console.warn(`[NDI] "${id}" dropped ${entry.droppedFrames} frames in last 10s`);
+              entry.droppedFrames = 0;
+            }
           }
         }, 10000);
       }
 
+      // Audio telemetry — every 2s compute frames/sec and push state so the
+      // renderer can show a live "flowing" indicator. Cheap: just math + emit.
+      if (ndiAudioEnabled && !ndiAudioStatsTimer) {
+        ndiAudioStatsTimer = setInterval(() => {
+          const delta = ndiAudioFramesSent - ndiAudioFramesLastSample;
+          ndiAudioFramesPerSecond = Math.round((delta / NDI_AUDIO_STATS_INTERVAL_MS) * 1000);
+          ndiAudioFramesLastSample = ndiAudioFramesSent;
+          emitNdiState();
+        }, NDI_AUDIO_STATS_INTERVAL_MS);
+      }
+
       emitNdiState();
-      return { ok: true };
+      return { ok: true, state: ndiStatus };
     } catch (err) {
+      await teardownAllNdiSources();
+      ndiActive = false;
+      ndiBroadcastMode = false;
+      ndiAudioEnabled = false;
+      ndiResolution = '1080p';
+      ndiSessionWidth = NDI_DEFAULT_WIDTH;
+      ndiSessionHeight = NDI_DEFAULT_HEIGHT;
+      if (ndiAudioStatsTimer) { clearInterval(ndiAudioStatsTimer); ndiAudioStatsTimer = null; }
+      emitNdiState();
       return { ok: false, error: err?.message || String(err) };
     }
   });
 
   ipcMain.handle('ndi:stop', async () => {
     ndiActive = false;
+    ndiBroadcastMode = false;
+    ndiAudioEnabled = false;
+    ndiResolution = '1080p';
+    ndiSessionWidth = NDI_DEFAULT_WIDTH;
+    ndiSessionHeight = NDI_DEFAULT_HEIGHT;
+    ndiAudioDroppedFrames = 0;
+    ndiAudioFramesSent = 0;
+    ndiAudioFramesLastSample = 0;
+    ndiAudioFramesPerSecond = 0;
+    ndiAudioFirstFrameLogged = false;
+    ndiAudioInvalidPayloadLogged = false;
+    ndiProgramAudioSourceId = null;
     if (ndiDropLogTimer) { clearInterval(ndiDropLogTimer); ndiDropLogTimer = null; }
-    ndiDroppedFrames = 0;
-    if (ndiWindowRef && !ndiWindowRef.isDestroyed()) {
-      ndiWindowRef.destroy();
-      ndiWindowRef = null;
-    }
-    await ndiSender.stopNdiSend();
+    if (ndiAudioStatsTimer) { clearInterval(ndiAudioStatsTimer); ndiAudioStatsTimer = null; }
+    await teardownAllNdiSources();
     emitNdiState();
     return { ok: true };
   });
 
   ipcMain.handle('ndi:get-status', () => ndiStatus);
+
+  // Audio frames arrive every ~20ms from the Lumina-Program capture window's
+  // audio worklet. Route them to the program sender only. Use `ipcMain.on`
+  // (fire-and-forget) — `.handle` with awaited replies would flood the event
+  // loop.
+  ipcMain.on('ndi:audio-frame', (event, payload) => {
+    if (!ndiActive || !ndiAudioEnabled) return;
+    if (ndiProgramAudioSourceId !== null && event.sender.id !== ndiProgramAudioSourceId) return;
+    const entry = ndiSources['program'];
+    if (!entry || !entry.active || !entry.sender) return;
+    const pcm = normalizeAudioPcmPayload(payload?.pcm);
+    const sampleRate = Number(payload?.sampleRate);
+    const channels = Number(payload?.channels);
+    const samples = Number(payload?.samples);
+    if (!pcm) {
+      if (!ndiAudioInvalidPayloadLogged) {
+        ndiAudioInvalidPayloadLogged = true;
+        console.warn(`[NDI] audio frame dropped — invalid PCM payload (pcmType=${describePayloadType(payload?.pcm)})`);
+      }
+      return;
+    }
+    if (!ndiAudioFirstFrameLogged) {
+      ndiAudioFirstFrameLogged = true;
+      console.log(`[NDI] first audio frame received from capture window (sr=${sampleRate} ch=${channels} samples=${samples} bytes=${pcm.byteLength})`);
+    }
+    entry.sender.sendAudioFrame(pcm, sampleRate, channels, samples).then(() => {
+      ndiAudioFramesSent++;
+    }).catch((err) => {
+      ndiAudioDroppedFrames++;
+      if (ndiAudioDroppedFrames <= 3) {
+        console.error('[NDI] audio send error:', err?.message || String(err));
+      }
+    });
+  });
+
+  // Audio capability notices from the capture window relay to the main
+  // renderer so the operator sees why some media is video-only on NDI.
+  ipcMain.on('ndi:audio-warning', (_event, payload) => {
+    if (!payload || typeof payload !== 'object') return;
+    const code = String(payload.code || '').slice(0, 64);
+    const src = String(payload.src || '').slice(0, 200);
+    if (!code) return;
+    if (code === 'capturable-media') {
+      console.log(`[NDI] audio source capturable${src ? ' src=' + src : ''}`);
+    } else {
+      console.warn(`[NDI] audio warning: ${code}${src ? ' src=' + src : ''}`);
+    }
+    const mainAlive = !!(mainWindowRef && !mainWindowRef.isDestroyed());
+    console.log(`[NDI] forwarding audio warning to renderer (mainAlive=${mainAlive})`);
+    if (mainAlive) {
+      mainWindowRef.webContents.send('ndi:audio-warning', { code, src });
+    }
+  });
+  ipcMain.on('ndi:audio-debug', (event, payload) => {
+    const sourceName = ndiCaptureLabels.get(event.sender.id) || `wc:${event.sender.id}`;
+    const message = String(payload?.message || '').slice(0, 400);
+    if (!message) return;
+    console.log(`[NDI:${sourceName}] [NDI-AUDIO] ${message}`);
+  });
   // ──────────────────────────────────────────────────────────────────────────
 
   ipcMain.handle('machine:start-service', async (_event, payload) => {
@@ -812,7 +1129,7 @@ function createWindow() {
     width: Math.min(1440, width),
     height: Math.min(900, height),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
@@ -920,9 +1237,114 @@ function createWindow() {
   });
 }
 
+function applyToolCommand(cmd) {
+  // NDI commands are forwarded to the renderer rather than mutating any
+  // main-process store — workspace NDI settings live server-side.
+  if (cmd && typeof cmd === 'object' && typeof cmd.type === 'string' && cmd.type.startsWith('ndi.')) {
+    return null;
+  }
+  if (!toolsStore || !cmd || typeof cmd !== 'object') {
+    return toolsStore ? toolsStore.load() : null;
+  }
+  const current = toolsStore.load();
+  if (cmd.type === 'overlay.toggle' && (cmd.name === 'safeAreas' || cmd.name === 'centerCross')) {
+    return toolsStore.save({
+      overlays: { [cmd.name]: !current.overlays[cmd.name] },
+    });
+  }
+  if (cmd.type === 'aspect.set') {
+    return toolsStore.save({ aspect: cmd.value });
+  }
+  if (cmd.type === 'testpattern.set') {
+    return toolsStore.save({ testPattern: cmd.value });
+  }
+  return current;
+}
+
+function sanitizeNdiMenuState(input) {
+  if (!input || typeof input !== 'object') return null;
+  const resolution = ['720p', '1080p', '4k'].includes(input.resolution) ? input.resolution : '1080p';
+  return {
+    active: input.active === true,
+    broadcastMode: input.broadcastMode === true,
+    audioEnabled: input.audioEnabled === true,
+    resolution,
+  };
+}
+
+function sendToolCommandToRenderer(cmd) {
+  try {
+    if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+      mainWindowRef.webContents.send('tools:command', cmd);
+    }
+  } catch {
+    /* renderer may be mid-reload; renderer will re-sync on next state push */
+  }
+}
+
+function broadcastToolsState(nextSettings) {
+  try {
+    if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+      mainWindowRef.webContents.send('tools:state', nextSettings);
+    }
+  } catch {
+    /* renderer may be mid-reload; next poll will reconcile */
+  }
+}
+
+function installToolsIpcHandlers() {
+  toolsStore = createToolsSettingsStore({
+    filePath: path.join(app.getPath('userData'), 'tools-settings.json'),
+  });
+  ipcMain.handle('tools:get-settings', () => toolsStore.load());
+  ipcMain.handle('tools:set-settings', (_event, patch) => {
+    const next = toolsStore.save(patch);
+    installApplicationMenu();
+    return next;
+  });
+  ipcMain.on('tools:set-ndi-menu-state', (_event, payload) => {
+    const next = sanitizeNdiMenuState(payload);
+    if (!next) return;
+    const changed = JSON.stringify(next) !== JSON.stringify(ndiMenuStateCache);
+    ndiMenuStateCache = next;
+    if (changed) installApplicationMenu();
+  });
+  ipcMain.on('tools:set-app-menu-state', (_event, payload) => {
+    const next = sanitizeAppMenuState(payload);
+    const changed = JSON.stringify(next) !== JSON.stringify(appMenuStateCache);
+    appMenuStateCache = next;
+    if (changed) installApplicationMenu();
+  });
+}
+
 function installApplicationMenu() {
   const isMac = process.platform === 'darwin';
   const isProd = app.isPackaged;
+
+  // Single dispatcher used by every non-role menu item. Tools menu settings
+  // (overlays/aspect/test-pattern) mutate the local tools store; everything
+  // else forwards to the renderer via tools:command.
+  const dispatch = (cmd) => {
+    if (!cmd || typeof cmd.type !== 'string') return;
+    if (cmd.type.startsWith('overlay.') || cmd.type.startsWith('aspect.') || cmd.type.startsWith('testpattern.')) {
+      const next = applyToolCommand(cmd);
+      if (next) broadcastToolsState(next);
+      installApplicationMenu();
+      return;
+    }
+    // All other commands (file.*, view.*, transport.*, ndi.*, tools.*,
+    // window.*, help.*) are renderer-handled. Deep-link to the main window.
+    sendToolCommandToRenderer(cmd);
+  };
+
+  const toolsMenuItem = toolsStore
+    ? buildToolsMenu({
+        settings: toolsStore.load(),
+        ndiMenuState: ndiMenuStateCache,
+        send: dispatch,
+      })
+    : null;
+
   const template = [
     ...(isMac
       ? [
@@ -942,53 +1364,13 @@ function installApplicationMenu() {
           },
         ]
       : []),
-    {
-      label: 'File',
-      submenu: [
-        { role: 'close' },
-        ...(isMac ? [] : [{ type: 'separator' }, { role: 'quit' }]),
-      ],
-    },
-    {
-      label: 'Edit',
-      submenu: [
-        { role: 'undo' },
-        { role: 'redo' },
-        { type: 'separator' },
-        { role: 'cut' },
-        { role: 'copy' },
-        { role: 'paste' },
-        { role: 'selectAll' },
-      ],
-    },
-    {
-      label: 'View',
-      submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'togglefullscreen' },
-        ...(isProd ? [] : [{ type: 'separator' }, { role: 'toggleDevTools' }]),
-      ],
-    },
-    {
-      label: 'Window',
-      submenu: [
-        { role: 'minimize' },
-        { role: 'zoom' },
-        ...(isMac ? [{ type: 'separator' }, { role: 'front' }] : []),
-      ],
-    },
-    {
-      label: 'Help',
-      submenu: [
-        {
-          label: 'Lumina Releases',
-          click: () => {
-            void shell.openExternal(RELEASES_URL);
-          },
-        },
-      ],
-    },
+    buildFileMenu({ send: dispatch, isMac }),
+    buildEditMenu(),
+    buildViewMenu({ state: appMenuStateCache, send: dispatch, isProd }),
+    buildTransportMenu({ state: appMenuStateCache, send: dispatch }),
+    buildWindowMenu({ state: appMenuStateCache, send: dispatch, isMac }),
+    ...(toolsMenuItem ? [toolsMenuItem] : []),
+    buildHelpMenu({ send: dispatch }),
   ];
   const menu = Menu.buildFromTemplate(template);
   Menu.setApplicationMenu(menu);
@@ -1104,7 +1486,7 @@ async function checkForUpdatesSafely(isManual = false) {
 function verifyCriticalFiles() {
   if (!app.isPackaged) return true;
   const required = [
-    path.join(__dirname, 'preload.js'),
+    path.join(__dirname, 'preload.cjs'),
     DIST_INDEX_PATH,
   ];
   for (const p of required) {
@@ -1140,6 +1522,7 @@ app.whenReady().then(async () => {
       await systemPreferences.askForMediaAccess('microphone');
     }
   }
+  installToolsIpcHandlers();
   installApplicationMenu();
   installMediaPermissionHandlers();
   installClipboardHandlers();

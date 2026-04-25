@@ -40,6 +40,8 @@ import { ConnectModal } from './components/ConnectModal'; // NEW
 import { DisplaySetupModal, type DesktopDisplayCard } from './components/DisplaySetupModal';
 import { OutputRoute } from './components/OutputRoute';
 import { StageRoute } from './components/StageRoute';
+import { LyricsNdiRoute } from './components/LyricsNdiRoute';
+import { LowerThirdsNdiRoute } from './components/LowerThirdsNdiRoute';
 import { HymnLibrary } from './components/HymnLibrary';
 import { StageDisplay } from './components/StageDisplay';
 import { RemoteControl } from './components/RemoteControl';
@@ -96,7 +98,6 @@ import { BuilderPreviewPanel } from './components/builder/BuilderPreviewPanel';
 import { BuilderBottomDock } from './components/builder/BuilderBottomDock';
 import { BuilderCanvasRibbon } from './components/builder/BuilderCanvasRibbon';
 import { BuilderCanvasActionPill } from './components/builder/BuilderCanvasActionPill';
-import { BuilderNotesAffordance } from './components/builder/BuilderNotesAffordance';
 import { BuilderCueDrawer } from './components/builder/BuilderCueDrawer';
 import { BuilderRightRail } from './components/builder/BuilderRightRail';
 import { EditableSlideCanvas } from './components/builder/EditableSlideCanvas';
@@ -135,6 +136,10 @@ import { QuickActionsMenu } from './components/layout/QuickActionsMenu';
 import { StudioMenu } from './components/layout/StudioMenu';
 import { GuideProvider, GuideOverlay, GuidedToursPanel, AutoTriggerOnPresenter, registerAllJourneys, guideStorage } from './components/guide-engine';
 import { useRecordingLibrary } from './hooks/useRecordingLibrary';
+import { useToolsMenuNdi } from './hooks/useToolsMenuNdi';
+import { useAppMenuBridge } from './hooks/useAppMenuBridge';
+import { NdiStatusBadge } from './components/NdiStatusBadge';
+import { NdiInfoModal } from './components/NdiInfoModal';
 
 // Register all guided journeys at module load time
 registerAllJourneys();
@@ -305,6 +310,9 @@ type WorkspaceSettings = {
   slideBrandingStyle: 'minimal' | 'bold' | 'frosted';
   slideBrandingOpacity: number;
   ndiSources: NdiSourceConfig[];
+  ndiBroadcastMode: boolean;
+  ndiResolution: '720p' | '1080p' | '4k';
+  ndiAudioEnabled: boolean;
 };
 
 type NdiSourceConfig = {
@@ -914,6 +922,11 @@ const sanitizeWorkspaceSettings = (value: unknown): Partial<WorkspaceSettings> =
       .slice(0, 32)
       .map((s) => ({ id: s.id.trim().slice(0, 64), name: s.name.trim().slice(0, 120), sceneId: s.sceneId.trim().slice(0, 120) }));
   }
+  if (typeof raw.ndiBroadcastMode === 'boolean') safe.ndiBroadcastMode = raw.ndiBroadcastMode;
+  if (raw.ndiResolution === '720p' || raw.ndiResolution === '1080p' || raw.ndiResolution === '4k') {
+    safe.ndiResolution = raw.ndiResolution;
+  }
+  if (typeof raw.ndiAudioEnabled === 'boolean') safe.ndiAudioEnabled = raw.ndiAudioEnabled;
   return safe;
 };
 
@@ -946,6 +959,9 @@ const createDefaultWorkspaceSettings = (): WorkspaceSettings => ({
   slideBrandingStyle: 'minimal',
   slideBrandingOpacity: 0.82,
   ndiSources: [],
+  ndiBroadcastMode: false,
+  ndiResolution: '1080p',
+  ndiAudioEnabled: false,
 });
 
 const readInitialWorkspaceSettings = (): WorkspaceSettings => {
@@ -1251,8 +1267,10 @@ function App() {
       hasManagedStageRoute: !!(sessionId || workspaceId),
     };
   }, []);
-  const [viewState, setViewState] = useState<'landing' | 'studio' | 'audience' | 'output' | 'stage' | 'remote'>(() => {
+  const [viewState, setViewState] = useState<'landing' | 'studio' | 'audience' | 'output' | 'stage' | 'remote' | 'lyrics-ndi' | 'lower-thirds-ndi'>(() => {
     const hash = window.location.hash;
+    if (hash.startsWith('#/lyrics-ndi')) return 'lyrics-ndi';
+    if (hash.startsWith('#/lower-thirds-ndi')) return 'lower-thirds-ndi';
     if (hash.startsWith('#/audience')) return 'audience';
     if (hash.startsWith('#/output')) return 'output';
     if (hash.startsWith('#/stage')) return 'stage';
@@ -1573,6 +1591,7 @@ function App() {
   }, []);
   const handleWorkspaceSettingsSave = useCallback((patch: Partial<WorkspaceSettings>) => {
     const updatedAt = Date.now();
+    setLastSavedAt(updatedAt);
     const normalizedPatch: Partial<WorkspaceSettings> = {
       ...patch,
     };
@@ -1610,10 +1629,19 @@ function App() {
   const [inlineSlideRename, setInlineSlideRename] = useState<{ itemId: string; slideId: string; value: string; source: 'runsheet' | 'thumbnail' } | null>(null);
   const inlineSlideRenameInputRef = useRef<HTMLInputElement | null>(null);
   const presenterMediaUploadInputRef = useRef<HTMLInputElement | null>(null);
+  // File-menu "Import" submenu pickers — always-mounted hidden inputs so the
+  // native menu can trigger them regardless of which panel/modal is open.
+  const fileMenuMediaInputRef = useRef<HTMLInputElement | null>(null);
+  const fileMenuPptxVisualInputRef = useRef<HTMLInputElement | null>(null);
+  const fileMenuPptxTextInputRef = useRef<HTMLInputElement | null>(null);
   const [isOutputLive, setIsOutputLive] = useState(false);
   const [isStageDisplayLive, setIsStageDisplayLive] = useState(false);
-  const [ndiActive, setNdiActive] = useState(false);
+  const [ndiState, setNdiState] = useState<NdiStatus>({ active: false, broadcastMode: false, resolution: '1080p', width: 1920, height: 1080, audioEnabled: false, audio: null, sources: [] });
   const [ndiError, setNdiError] = useState<string | null>(null);
+  const [ndiWarning, setNdiWarning] = useState<string | null>(null);
+  const [ndiAudioConstraintCode, setNdiAudioConstraintCode] = useState<string | null>(null);
+  const [ndiInfoModalOpen, setNdiInfoModalOpen] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [lowerThirdsEnabled, setLowerThirdsEnabled] = useState(false);
   const [routingMode, setRoutingMode] = useState<'PROJECTOR' | 'STREAM' | 'LOBBY'>('PROJECTOR');
   const [teamPlaylists, setTeamPlaylists] = useState<CloudPlaylistRecord[]>([]);
@@ -2198,7 +2226,11 @@ function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const h = window.location.hash;
-      if (h.startsWith('#/audience')) {
+      if (h.startsWith('#/lyrics-ndi')) {
+        setViewState('lyrics-ndi');
+      } else if (h.startsWith('#/lower-thirds-ndi')) {
+        setViewState('lower-thirds-ndi');
+      } else if (h.startsWith('#/audience')) {
         setViewState('audience');
       } else if (h.startsWith('#/output')) {
         setViewState('output');
@@ -2555,16 +2587,19 @@ function App() {
         } else {
           setUserPlan(null);
         }
-        // Auto-enter workspace if authenticated, but stay in audience if scanning
+        // Auto-enter workspace if authenticated, but preserve any explicit
+        // deep-link route (audience, output, stage, remote, or the NDI scenes)
+        // so auth resolution doesn't yank a browser session back to landing.
+        const preservedRoutes = new Set(['audience', 'output', 'stage', 'remote', 'lyrics-ndi', 'lower-thirds-ndi']);
         if (u) {
-          setViewState(prev => prev === 'audience' ? 'audience' : 'studio');
+          setViewState(prev => preservedRoutes.has(prev) ? prev : 'studio');
         } else {
           // Skip landing page in Electron
           // @ts-ignore
           if (window.electron?.isElectron) {
-            setViewState(prev => prev === 'audience' ? 'audience' : 'studio');
+            setViewState(prev => preservedRoutes.has(prev) ? prev : 'studio');
           } else {
-            setViewState(prev => prev === 'audience' ? 'audience' : 'landing');
+            setViewState(prev => preservedRoutes.has(prev) ? prev : 'landing');
           }
         }
       });
@@ -3359,6 +3394,7 @@ function App() {
     }
   }, [isPlaying, isActiveVideo]);
 
+  const responsiveCompactLayout = viewportWidth < 1480;
   const presenterSidebarCompact = isElectronShell && viewMode === 'PRESENTER' && viewportWidth < 1500;
   const presenterShellTight = viewMode === 'PRESENTER' && viewportWidth < 1720;
   const presenterShellVeryTight = viewMode === 'PRESENTER' && viewportWidth < 1540;
@@ -3393,6 +3429,8 @@ function App() {
   const presenterStageOpsSingleColumn = viewMode === 'PRESENTER' && presenterMainWorkspaceWidth < 1180;
   const presenterStageOpsDense = viewMode === 'PRESENTER' && presenterMainWorkspaceWidth < 1380;
   const presenterTransportDense = viewMode === 'PRESENTER' && presenterMainWorkspaceWidth < 980;
+  const presenterOpsPartitioned = viewMode === 'PRESENTER' && presenterMainWorkspaceWidth >= 720;
+  const presenterOpsPartitionCompact = presenterOpsPartitioned && presenterMainWorkspaceWidth < 980;
   const presenterPreviewAlignClass = isElectronShell
     ? (presenterMainWorkspaceWidth < 920 ? 'justify-center px-3' : 'justify-start px-4')
     : 'justify-center';
@@ -4245,11 +4283,128 @@ function App() {
   // Subscribe to NDI sender state pushed from main process.
   useEffect(() => {
     if (!isElectronShell) return;
-    const off = window.electron?.ndi?.onState?.((state: { active: boolean; sourceName: string }) => {
-      setNdiActive(state.active);
+    const off = window.electron?.ndi?.onState?.((state) => {
+      setNdiState(state);
+    });
+    window.electron?.ndi?.getStatus?.().then((status) => {
+      if (status) setNdiState(status);
+    }).catch(() => {});
+    return () => off?.();
+  }, [isElectronShell]);
+
+  // ─── Tools → NDI submenu bridge ───────────────────────────────────────────
+  // Push a compact view of (workspace NDI settings + runtime NDI state) to
+  // main.cjs whenever it changes. Receive commands back when the operator
+  // clicks an NDI menu item and dispatch the same restart-on-mid-flight
+  // behavior the legacy dropdown uses.
+  const toolsNdiMenuState: ToolsNdiMenuState | null = useMemo(() => {
+    if (!isElectronShell) return null;
+    return {
+      active: !!ndiState.active,
+      broadcastMode: !!workspaceSettings.ndiBroadcastMode,
+      audioEnabled: !!workspaceSettings.ndiAudioEnabled,
+      resolution: (workspaceSettings.ndiResolution === '720p' || workspaceSettings.ndiResolution === '4k')
+        ? workspaceSettings.ndiResolution
+        : '1080p',
+    };
+  }, [
+    isElectronShell,
+    ndiState.active,
+    workspaceSettings.ndiBroadcastMode,
+    workspaceSettings.ndiAudioEnabled,
+    workspaceSettings.ndiResolution,
+  ]);
+
+  const handleToolsNdiCommand = useCallback(async (cmd: ToolsCommand) => {
+    if (!isElectronShell) return;
+    const cycleNdi = async (next: { broadcastMode?: boolean; resolution?: '720p' | '1080p' | '4k'; audioEnabled?: boolean }) => {
+      if (!ndiState.active) return;
+      setNdiError(null);
+      await window.electron?.ndi?.stop?.();
+      const result = await window.electron?.ndi?.start?.({
+        workspaceId,
+        sessionId: liveSessionId,
+        broadcastMode: next.broadcastMode ?? workspaceSettings.ndiBroadcastMode,
+        resolution: next.resolution ?? workspaceSettings.ndiResolution,
+        audioEnabled: next.audioEnabled ?? workspaceSettings.ndiAudioEnabled,
+      });
+      if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to restart.');
+    };
+    if (cmd.type === 'ndi.toggle-active') {
+      if (ndiState.active) {
+        await window.electron?.ndi?.stop?.();
+        return;
+      }
+      setNdiError(null);
+      const result = await window.electron?.ndi?.start?.({
+        workspaceId,
+        sessionId: liveSessionId,
+        broadcastMode: workspaceSettings.ndiBroadcastMode,
+        resolution: workspaceSettings.ndiResolution,
+        audioEnabled: workspaceSettings.ndiAudioEnabled,
+      });
+      if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to start.');
+      return;
+    }
+    if (cmd.type === 'ndi.toggle-broadcast') {
+      const next = !workspaceSettings.ndiBroadcastMode;
+      handleWorkspaceSettingsSave({ ndiBroadcastMode: next });
+      await cycleNdi({ broadcastMode: next });
+      return;
+    }
+    if (cmd.type === 'ndi.toggle-audio') {
+      const next = !workspaceSettings.ndiAudioEnabled;
+      handleWorkspaceSettingsSave({ ndiAudioEnabled: next });
+      await cycleNdi({ audioEnabled: next });
+      return;
+    }
+    if (cmd.type === 'ndi.set-resolution') {
+      const next = cmd.value;
+      handleWorkspaceSettingsSave({ ndiResolution: next });
+      await cycleNdi({ resolution: next });
+      return;
+    }
+    if (cmd.type === 'ndi.open-info') {
+      setNdiInfoModalOpen(true);
+    }
+  }, [
+    isElectronShell,
+    ndiState.active,
+    workspaceId,
+    liveSessionId,
+    workspaceSettings.ndiBroadcastMode,
+    workspaceSettings.ndiResolution,
+    workspaceSettings.ndiAudioEnabled,
+    handleWorkspaceSettingsSave,
+    setNdiError,
+  ]);
+
+  useToolsMenuNdi(toolsNdiMenuState, handleToolsNdiCommand);
+
+  // Subscribe to NDI audio warnings (e.g. cross-origin iframe detected) and
+  // surface them as a one-shot amber pill so the operator knows a media
+  // source is silently excluded from the NDI feed.
+  useEffect(() => {
+    if (!isElectronShell) return;
+    const off = window.electron?.ndi?.onAudioWarning?.((payload) => {
+      if (payload?.code === 'iframe-media') {
+        setNdiAudioConstraintCode('iframe-media');
+        setNdiWarning('NDI audio is unavailable for YouTube / Vimeo / SoundCloud embeds. Program video still broadcasts. Download an MP4 for embedded audio, or route mixer audio separately.');
+      } else if (payload?.code === 'capturable-media') {
+        setNdiAudioConstraintCode(null);
+        setNdiWarning(null);
+      }
     });
     return () => off?.();
   }, [isElectronShell]);
+
+  // Reset the warning pill whenever NDI stops so it doesn't linger.
+  useEffect(() => {
+    if (!ndiState.active || !ndiState.audioEnabled) {
+      setNdiWarning(null);
+      setNdiAudioConstraintCode(null);
+    }
+  }, [ndiState.active, ndiState.audioEnabled]);
 
   useEffect(() => {
     if (!hasElectronDisplayControl) return;
@@ -7527,7 +7682,45 @@ function App() {
   const shouldBypassAppAuthGate = (
     (viewState === 'output' && managedRouteParams.hasManagedOutputRoute)
     || (viewState === 'stage' && managedRouteParams.hasManagedStageRoute)
+    || viewState === 'lyrics-ndi'
+    || viewState === 'lower-thirds-ndi'
   );
+
+  // ─── Native application menu bridge (File / View / Transport / Window / Help) ──
+  // Hooks must register BEFORE the routing early-returns below or hook order becomes
+  // unstable across route transitions. The actual command switch has deps declared
+  // later in the render body (nextSlide, copyShareUrl, handleWorkspaceSettingsSave, …),
+  // so we register a stable callback up here and defer to a ref reassigned further down.
+  const appMenuState: AppMenuState | null = useMemo(() => {
+    if (!isElectronShell) return null;
+    return {
+      sessionActive: !!liveSessionId,
+      viewMode,
+      blackout: !!blackout,
+      outputMuted: !!outputMuted,
+      lowerThirdsEnabled: !!lowerThirdsEnabled,
+      routingMode,
+      audienceWindowOpen: !!desktopServiceState.outputOpen,
+      stageWindowOpen: !!desktopServiceState.stageOpen,
+      lastSavedAt,
+    };
+  }, [
+    isElectronShell,
+    liveSessionId,
+    viewMode,
+    blackout,
+    outputMuted,
+    lowerThirdsEnabled,
+    routingMode,
+    desktopServiceState.outputOpen,
+    desktopServiceState.stageOpen,
+    lastSavedAt,
+  ]);
+  const appMenuCommandHandlerRef = useRef<((cmd: ToolsCommand) => void) | null>(null);
+  const stableAppMenuCommand = useCallback((cmd: ToolsCommand) => {
+    appMenuCommandHandlerRef.current?.(cmd);
+  }, []);
+  useAppMenuBridge(appMenuState, stableAppMenuCommand);
 
   if (authLoading && !shouldBypassAppAuthGate) return <div className="h-screen w-screen bg-black flex items-center justify-center text-zinc-500 font-mono text-xs animate-pulse">LOADING NEURAL HUB...</div>;
 
@@ -7623,6 +7816,16 @@ function App() {
   // ROUTING: REMOTE CONTROL
   if (viewState === 'remote') {
     return <RemoteControl />;
+  }
+
+  // ROUTING: NDI LYRICS SCENE (transparent fill+key output for vMix/TriCaster/ATEM)
+  if (viewState === 'lyrics-ndi') {
+    return <LyricsNdiRoute />;
+  }
+
+  // ROUTING: NDI LOWER-THIRDS SCENE (transparent fill+key output)
+  if (viewState === 'lower-thirds-ndi') {
+    return <LowerThirdsNdiRoute />;
   }
 
   // ROUTING: LOGIN (If not authenticated, force login for studio — both browser and Electron)
@@ -7990,6 +8193,162 @@ function App() {
     if (ok) {
        // Best effort notification
        console.log(message);
+    }
+  };
+
+  // App menu command handler — reassigned each render. Hooks were registered near the
+  // top of the component (above the routing early-returns). This is a plain ref
+  // assignment (not a hook call), safe to run after the early-returns.
+  appMenuCommandHandlerRef.current = async (cmd: ToolsCommand) => {
+    if (!cmd || typeof cmd.type !== 'string') return;
+    // NDI commands are handled by handleToolsNdiCommand (other subscriber).
+    if (cmd.type.startsWith('ndi.')) return;
+
+    switch (cmd.type) {
+      case 'file.open-preferences':
+      case 'file.open-profile':
+        setIsProfileOpen(true);
+        return;
+      case 'file.open-connect':
+        setIsConnectOpen(true);
+        return;
+      case 'file.copy-share-url': {
+        const urlMap: Record<AppShareTarget, string> = {
+          audience: audienceUrl,
+          obs: obsOutputUrl,
+          clean: cleanFeedUrl,
+          stage: stageDisplayUrl,
+          remote: remoteControlUrl,
+        };
+        const target = urlMap[cmd.which];
+        if (target) {
+          const labelMap: Record<AppShareTarget, string> = {
+            audience: 'Audience URL copied!',
+            obs: 'OBS URL copied!',
+            clean: 'Clean feed URL copied!',
+            stage: 'Stage URL copied!',
+            remote: 'Remote control URL copied!',
+          };
+          void copyShareUrl(target, labelMap[cmd.which]);
+        }
+        return;
+      }
+      case 'file.save':
+        handleWorkspaceSettingsSave({});
+        return;
+      case 'file.import-media':
+        fileMenuMediaInputRef.current?.click();
+        return;
+      case 'file.import-pptx-visual':
+        fileMenuPptxVisualInputRef.current?.click();
+        return;
+      case 'file.import-pptx-text':
+        fileMenuPptxTextInputRef.current?.click();
+        return;
+
+      case 'view.set-mode':
+        setViewMode(cmd.mode);
+        return;
+      case 'view.open-sidebar-tab':
+        setActiveSidebarTab(cmd.tab);
+        return;
+      case 'view.open-motion-library':
+        setIsMotionLibOpen(true);
+        return;
+      case 'view.open-timer-popout':
+        handleToggleTimerPopout();
+        return;
+
+      case 'transport.next-slide':
+        nextSlide();
+        return;
+      case 'transport.prev-slide':
+        prevSlide();
+        return;
+      case 'transport.go-live':
+        goLiveSelectedPreview();
+        return;
+      case 'transport.next-item':
+        goLiveNextItem();
+        return;
+      case 'transport.prev-item':
+        goLivePrevItem();
+        return;
+      case 'transport.toggle-play':
+        setIsPlaying((v) => !v);
+        return;
+      case 'transport.stop':
+        stopProgramVideo();
+        return;
+      case 'transport.toggle-blackout':
+        setBlackout((v) => !v);
+        return;
+      case 'transport.toggle-mute':
+        setOutputMuted((v) => !v);
+        return;
+      case 'transport.toggle-lower-thirds':
+        setLowerThirdsEnabled((v) => !v);
+        return;
+      case 'transport.set-routing':
+        setRoutingMode(cmd.mode);
+        return;
+
+      case 'tools.open-display-setup':
+        setIsDisplaySetupOpen(true);
+        return;
+      case 'tools.toggle-sermon-recorder':
+        setShowSermonRecorder((v) => !v);
+        return;
+
+      case 'window.open-audience':
+        if (electronMachineApi?.openRoleWindow && desktopServiceState.audienceDisplayId != null) {
+          await electronMachineApi.openRoleWindow({
+            role: 'audience',
+            displayId: desktopServiceState.audienceDisplayId,
+            workspaceId,
+            sessionId: liveSessionId,
+          });
+        }
+        return;
+      case 'window.close-audience':
+        if (electronMachineApi?.closeRoleWindow) {
+          await electronMachineApi.closeRoleWindow('audience');
+        }
+        return;
+      case 'window.open-stage':
+        if (electronMachineApi?.openRoleWindow && desktopServiceState.stageDisplayId != null) {
+          await electronMachineApi.openRoleWindow({
+            role: 'stage',
+            displayId: desktopServiceState.stageDisplayId,
+            workspaceId,
+            sessionId: liveSessionId,
+          });
+        }
+        return;
+      case 'window.close-stage':
+        if (electronMachineApi?.closeRoleWindow) {
+          await electronMachineApi.closeRoleWindow('stage');
+        }
+        return;
+
+      case 'help.open-tours':
+        setIsGuidedToursOpen(true);
+        return;
+      case 'help.open-help':
+      case 'help.open-shortcuts':
+      case 'help.open-about':
+        setIsHelpOpen(true);
+        return;
+      case 'help.open-releases':
+        if (typeof window !== 'undefined') {
+          void window.electron?.updates?.openReleases?.();
+        }
+        return;
+      case 'help.report-issue':
+        if (typeof window !== 'undefined') {
+          window.open('https://github.com/Coolzymccooy/lumina-presenter/issues/new', '_blank');
+        }
+        return;
     }
   };
 
@@ -8384,7 +8743,7 @@ function App() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className={`truncate text-[13px] font-bold ${live ? 'text-red-300' : 'text-zinc-100'}`}>{item.title}</div>
+                  <div className={`truncate text-[13px] font-bold ${live ? 'text-red-300' : 'text-zinc-300'}`}>{item.title}</div>
                   <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[9px] uppercase tracking-[0.14em] text-zinc-500">
                     <span>{item.type}</span>
                     <span>{slideCount} slide{slideCount === 1 ? '' : 's'}</span>
@@ -8692,6 +9051,7 @@ function App() {
   const presenterBetaWorkspace = isPresenterBeta ? (
     <PresenterDesktopShell
       mode="presenter"
+      isCompactLayout={responsiveCompactLayout}
       leftPane={renderPresenterBetaSchedulePane()}
       centerPane={renderPresenterBetaPreviewPane()}
       rightPane={renderPresenterBetaLivePane()}
@@ -8721,7 +9081,7 @@ function App() {
   const builderShellCompact = viewportWidth < 1580;
   const builderLeftWidth = builderShellTight ? 288 : builderShellCompact ? 304 : 320;
   const builderRightWidth = builderShellTight ? 304 : builderShellCompact ? 318 : 330;
-  const builderTimelineHeight = builderShellTight ? 156 : 164;
+  const builderTimelineHeight = builderShellTight ? 132 : 140;
   const builderBottomHeight = builderShellTight ? 166 : 172;
 
   const renderBuilderRunSheetPane = () => {
@@ -8854,44 +9214,54 @@ function App() {
             setBuilderCueDrawerOpen(false);
             setBuilderBackgroundDrawerOpen(true);
           }}
-          onOpenFullEditor={openBuilderFullEditor}
         />
         <div
           data-testid="studio-canvas-root"
           className="grid min-h-0 min-w-0 flex-1 overflow-hidden bg-[#101116]"
           style={{ gridTemplateRows: centerRows, gridTemplateColumns: 'minmax(0, 1fr)' }}
         >
-          <div className="relative min-h-0 min-w-0 overflow-hidden">
-            <EditableSlideCanvas
-              item={selectedItem}
-              slide={builderSelectedSlide}
-              selectedElementId={builderSelectedElement?.id || null}
-              showGrid={builderShowGrid}
-              showSafeArea={builderShowSafeArea}
-              zoom={builderZoom}
-              onSelectElement={setBuilderSelectedElementId}
-              onUpdateSlide={handleBuilderUpdateSlide}
-              onAddSlide={handleBuilderAddSlide}
-            />
-            {!drawerOpen && (
-              <BuilderCanvasActionPill
-                canAddSlide={Boolean(selectedItem)}
-                canDuplicate={Boolean(builderSelectedSlide)}
-                canEditLayout={Boolean(selectedItem)}
-                canGoLive={Boolean(selectedItem && builderSelectedSlide)}
-                outputLive={isOutputLive}
+          {/*
+            Canvas + drawers stack as flex siblings (NOT absolute overlays).
+            When a drawer opens, the canvas area shrinks above it instead of
+            getting covered. This avoids three issues:
+              1. Stage chrome / text content escaping a z-30 overlay (hooks
+                 into a higher stacking context via transforms / box-shadows).
+              2. Pointer events from the absolute overlay intercepting clicks
+                 on the toolbar above.
+              3. The user not being able to see the BG actually apply because
+                 the drawer was sitting on top of the live canvas.
+            `isolate` on the wrapper still scopes any descendant z-indexes
+            to this column so other panes (right rail, bottom dock) are safe.
+          */}
+          <div className="relative isolate flex min-h-0 min-w-0 flex-col overflow-hidden">
+            <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
+              <EditableSlideCanvas
+                item={selectedItem}
+                slide={builderSelectedSlide}
+                selectedElementId={builderSelectedElement?.id || null}
+                showGrid={builderShowGrid}
+                showSafeArea={builderShowSafeArea}
+                zoom={builderZoom}
+                onSelectElement={setBuilderSelectedElementId}
+                onUpdateSlide={handleBuilderUpdateSlide}
                 onAddSlide={handleBuilderAddSlide}
-                onDuplicateSlide={handleBuilderDuplicateSlide}
-                onOpenFullEditor={openBuilderFullEditor}
-                onGoLive={handleBuilderGoLive}
               />
-            )}
-            <BuilderNotesAffordance
-              slide={builderSelectedSlide}
-              onUpdateSlide={handleBuilderUpdateSlide}
-            />
+              {!drawerOpen && (
+                <BuilderCanvasActionPill
+                  canAddSlide={Boolean(selectedItem)}
+                  canDuplicate={Boolean(builderSelectedSlide)}
+                  canEditLayout={Boolean(selectedItem)}
+                  canGoLive={Boolean(selectedItem && builderSelectedSlide)}
+                  outputLive={isOutputLive}
+                  onAddSlide={handleBuilderAddSlide}
+                  onDuplicateSlide={handleBuilderDuplicateSlide}
+                  onOpenFullEditor={openBuilderFullEditor}
+                  onGoLive={handleBuilderGoLive}
+                />
+              )}
+            </div>
             {builderBackgroundDrawerOpen && (
-              <div className="absolute inset-x-0 bottom-0 z-30 h-[260px] shadow-[0_-18px_40px_rgba(0,0,0,0.55)]">
+              <div className="relative z-10 h-[260px] shrink-0 border-t border-zinc-900 shadow-[0_-18px_40px_rgba(0,0,0,0.55)]">
                 <BuilderBackgroundDrawer
                   item={selectedItem}
                   slide={builderSelectedSlide}
@@ -8903,7 +9273,7 @@ function App() {
               </div>
             )}
             {builderCueDrawerOpen && (
-              <div className="absolute inset-x-0 bottom-0 z-30 h-[104px] shadow-[0_-18px_40px_rgba(0,0,0,0.55)]">
+              <div className="relative z-10 h-[104px] shrink-0 border-t border-zinc-900 shadow-[0_-18px_40px_rgba(0,0,0,0.55)]">
                 <BuilderCueDrawer
                   item={selectedItem}
                   speakerPresets={workspaceSettings.speakerTimerPresets}
@@ -8915,6 +9285,7 @@ function App() {
           </div>
           <SlideTimelineStrip
             item={selectedItem}
+            selectedSlide={builderSelectedSlide}
             selectedSlideId={builderSelectedSlide?.id || null}
             activeItemId={activeItemId}
             activeSlideIndex={activeSlideIndex}
@@ -8930,6 +9301,7 @@ function App() {
             onAddSlide={handleBuilderAddSlide}
             onDuplicateSlide={handleBuilderDuplicateSlide}
             onDeleteSlide={handleBuilderDeleteSelectedSlide}
+            onUpdateSlide={handleBuilderUpdateSlide}
           />
         </div>
       </div>
@@ -8939,6 +9311,7 @@ function App() {
   const builderDesktopWorkspace = viewMode === 'BUILDER' ? (
     <PresenterDesktopShell
       mode="builder"
+      isCompactLayout={responsiveCompactLayout}
       leftPane={renderBuilderRunSheetPane()}
       centerPane={renderBuilderCenterPane()}
       rightPane={(
@@ -8982,6 +9355,30 @@ function App() {
     <GuideProvider>
     <div className={`theme-${workspaceSettings.theme} flex flex-col h-screen supports-[height:100dvh]:h-[100dvh] bg-zinc-950 text-zinc-200 font-sans selection:bg-blue-900 selection:text-white relative overflow-x-hidden`}>
       <audio ref={antiSleepAudioRef} src={SILENT_AUDIO_B64} loop muted />
+      <input
+        ref={fileMenuMediaInputRef}
+        type="file"
+        accept="image/*,video/*"
+        className="hidden"
+        onChange={insertMediaFileAsItem}
+        data-testid="file-menu-media-input"
+      />
+      <input
+        ref={fileMenuPptxVisualInputRef}
+        type="file"
+        accept=".pptx,.ppt,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint"
+        className="hidden"
+        onChange={importPowerPointVisualAsItem}
+        data-testid="file-menu-pptx-visual-input"
+      />
+      <input
+        ref={fileMenuPptxTextInputRef}
+        type="file"
+        accept=".pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint"
+        className="hidden"
+        onChange={importPowerPointTextAsItem}
+        data-testid="file-menu-pptx-text-input"
+      />
       <GuideOverlay />
       <AutoTriggerOnPresenter isPresenterActive={viewMode === 'PRESENTER'} />
       {showSaveProjectionHint && (
@@ -9113,6 +9510,7 @@ function App() {
 
       <AppHeader
         isElectronShell={isElectronShell}
+        isCompactLayout={responsiveCompactLayout}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
         onHomeClick={() => setViewState(isElectronShell ? 'studio' : 'landing')}
@@ -9427,12 +9825,13 @@ function App() {
         onToggleMute={() => setOutputMuted(prev => !prev)}
         showSermonRecorder={showSermonRecorder}
         onToggleSermonRecorder={() => setShowSermonRecorder(v => !v)}
+        isCompactLayout={responsiveCompactLayout}
       />
     ) : (
             <div className="flex-1 flex flex-col lg:flex-row bg-black min-w-0 overflow-hidden" data-testid="studio-canvas-root">
-            <div className="flex-1 flex flex-col relative min-w-0">
-                <div className={`flex-1 relative flex items-center bg-zinc-950 overflow-hidden border-r border-zinc-900 p-3 ${presenterPreviewAlignClass}`}>
-                  <div data-testid="presenter-live-preview" className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group shadow-2xl overflow-hidden rounded-sm">
+            <div className="flex-1 flex min-h-0 flex-col relative min-w-0 overflow-hidden">
+                <div className={`shrink-0 relative flex items-center bg-zinc-950 overflow-hidden border-r border-zinc-900 pt-3 pb-3 ${presenterPreviewAlignClass}`}>
+                    <div data-testid="presenter-live-preview" className="aspect-video w-full max-w-4xl border border-zinc-800 bg-black relative group shadow-2xl overflow-hidden rounded-sm">
                     {renderPresenterHoldState() || (
                       <SlideRenderer
                         slide={activeSlide}
@@ -9448,18 +9847,18 @@ function App() {
                         branding={{ enabled: workspaceSettings.slideBrandingEnabled, churchName: workspaceSettings.churchName, seriesLabel: workspaceSettings.slideBrandingSeriesLabel, style: workspaceSettings.slideBrandingStyle, textOpacity: workspaceSettings.slideBrandingOpacity }}
                       />
                     )}
-                    <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-400 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">
-                      PREVIEW
-                      <button onClick={() => setIsPreviewMuted(!isPreviewMuted)} className={`ml-1 hover:text-white transition-colors ${isPreviewMuted ? 'text-red-400' : 'text-emerald-400'}`}>
-                        {isPreviewMuted ? <VolumeXIcon className="w-3 h-3" /> : <Volume2Icon className="w-3 h-3" />}
-                      </button>
+                      <div className="absolute top-0 left-0 bg-zinc-900 text-zinc-400 text-[9px] font-bold px-2 py-0.5 border-r border-b border-zinc-800 flex items-center gap-2 z-50 shadow-md">
+                        PREVIEW
+                        <button onClick={() => setIsPreviewMuted(!isPreviewMuted)} className={`ml-1 hover:text-white transition-colors ${isPreviewMuted ? 'text-red-400' : 'text-emerald-400'}`}>
+                          {isPreviewMuted ? <VolumeXIcon className="w-3 h-3" /> : <Volume2Icon className="w-3 h-3" />}
+                        </button>
+                      </div>
                     </div>
-                  </div>
                 </div>
                 
                 {/* Presenter Ops Deck — 3-card production layout */}
-                <div className="border-t border-zinc-900 bg-[#0a0a0e] px-3 py-3 shrink-0">
-                  <div className={`grid gap-2.5 max-w-[1400px] mx-auto ${presenterMainWorkspaceWidth < 1060 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                <div className="min-h-0 flex-1 overflow-y-auto custom-scrollbar border-t border-zinc-900 bg-[#0a0a0e] px-3 py-3">
+                  <div className="grid gap-2.5 max-w-[1400px] mx-auto">
 
                     {/* Card 1: TRANSPORT */}
                     <CollapsiblePanel
@@ -9493,6 +9892,23 @@ function App() {
                           title="Toggle lower thirds overlay"
                           className={`h-9 px-3 rounded-lg font-black text-[9px] tracking-wider border transition-all uppercase ${lowerThirdsEnabled ? 'bg-blue-950/60 text-blue-300 border-blue-700/50' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300 hover:border-zinc-700'}`}
                         >Lower Thirds</button>
+                        <button
+                          onClick={() => {
+                            // Program mute silences every audio path the operator
+                            // thinks of as "the sound": audience display, NDI feed,
+                            // and the controller's own preview pane. Each is a
+                            // separate state internally but a single gesture here
+                            // is what broadcast operators expect.
+                            const next = !outputMuted;
+                            setOutputMuted(next);
+                            setIsPreviewMuted(next);
+                          }}
+                          title={outputMuted ? 'Program muted — click to unmute' : 'Mute program (audience display + NDI + controller preview)'}
+                          className={`h-9 px-3 rounded-lg font-black text-[9px] tracking-wider border transition-all uppercase flex items-center gap-1.5 ${outputMuted ? 'bg-rose-950/60 text-rose-300 border-rose-700/50' : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300 hover:border-zinc-700'}`}
+                        >
+                          {outputMuted ? <VolumeXIcon className="w-3.5 h-3.5" /> : <Volume2Icon className="w-3.5 h-3.5" />}
+                          {outputMuted ? 'Muted' : 'Mute'}
+                        </button>
                         <label className="flex h-9 items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 cursor-pointer hover:border-zinc-700 transition-colors">
                           <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-black shrink-0">Route</span>
                           <select value={routingMode} onChange={(e) => setRoutingMode(e.target.value as any)} style={{ colorScheme: 'dark' }} className="bg-zinc-900 text-zinc-200 text-[10px] font-bold outline-none cursor-pointer">
@@ -9504,6 +9920,7 @@ function App() {
                       </div>
                     </CollapsiblePanel>
 
+                    <div className={`grid items-start gap-2.5 ${presenterOpsPartitioned ? (presenterOpsPartitionCompact ? 'grid-cols-[minmax(255px,0.9fr)_minmax(310px,1.1fr)]' : 'grid-cols-[minmax(300px,0.82fr)_minmax(420px,1.18fr)]') : 'grid-cols-1'}`}>
                     {/* Card 2: TIMER + CUE */}
                     <CollapsiblePanel
                       id="timer-cue"
@@ -9515,7 +9932,54 @@ function App() {
                         <span className="rounded-full border border-cyan-800/50 bg-cyan-950/30 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] text-cyan-300">Cue Engine</span>
                       }
                     >
-                      <div className={`grid gap-1.5 ${presenterMainWorkspaceWidth < 760 ? 'grid-cols-1' : 'grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,1fr)]'}`}>
+                      {presenterCueEngineStacked ? (
+                        <div className="grid gap-1.5">
+                          <div className="flex min-w-0 flex-wrap items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1.5">
+                            <select value={timerMode} onChange={(e) => {
+                              const mode = e.target.value as 'COUNTDOWN' | 'ELAPSED';
+                              setTimerMode(mode);
+                              setTimerRunning(false);
+                              setCueZeroHold(false);
+                              setTimerSeconds(mode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0);
+                            }} style={{ colorScheme: 'dark' }} className="h-7 shrink-0 cursor-pointer rounded border border-zinc-700 bg-zinc-900 px-1.5 text-[9px] font-bold text-zinc-200 outline-none">
+                              <option value="COUNTDOWN">Countdown</option>
+                              <option value="ELAPSED">Elapsed</option>
+                            </select>
+                            {timerMode === 'COUNTDOWN' && (
+                              <input type="number" min={1} max={180} value={timerDurationMin} onChange={(e) => applyManualCountdownMinutes(Number(e.target.value))} className="h-7 w-12 shrink-0 rounded border border-zinc-700 bg-zinc-900 px-1 py-0.5 text-[9px] text-zinc-200 text-center" />
+                            )}
+                            <div className={`shrink-0 text-[12px] font-mono font-black tabular-nums ${isTimerOvertime ? 'text-red-400 animate-pulse' : 'text-cyan-300'}`}>{formatTimer(timerSeconds)}</div>
+                            <button onClick={() => { setCueZeroHold(false); setTimerRunning((p) => !p); }} className="h-7 shrink-0 rounded bg-zinc-800 px-2.5 text-[9px] font-bold text-zinc-200 transition-colors hover:bg-zinc-700">{timerRunning ? 'Pause' : 'Start'}</button>
+                            <button onClick={() => { setTimerRunning(false); setCueZeroHold(false); setTimerSeconds(timerMode === 'COUNTDOWN' ? effectiveTimerDurationSec : 0); }} className="h-7 shrink-0 rounded bg-zinc-800 px-2.5 text-[9px] font-bold text-zinc-200 transition-colors hover:bg-zinc-700">Reset</button>
+                            <button
+                              onClick={() => {
+                                const next = !workspaceSettings.timerChimesEnabled;
+                                setWorkspaceSettings((prev) => ({ ...prev, timerChimesEnabled: next }));
+                                timerChimeService.muted = !next;
+                              }}
+                              title={workspaceSettings.timerChimesEnabled ? 'Mute timer chimes' : 'Unmute timer chimes'}
+                              className={`h-7 shrink-0 rounded px-2.5 text-[9px] font-bold transition-colors ${workspaceSettings.timerChimesEnabled ? 'border border-emerald-700/40 bg-emerald-900/50 text-emerald-300' : 'bg-zinc-800 text-zinc-500 hover:bg-zinc-700'}`}
+                            >{workspaceSettings.timerChimesEnabled ? 'Chime' : 'Muted'}</button>
+                          </div>
+                          <div className="grid min-w-0 gap-1.5 rounded-lg border border-zinc-800 bg-zinc-950 px-2 py-1.5 md:grid-cols-[auto_auto_auto_minmax(0,1fr)] md:items-center">
+                            <span className="shrink-0 text-[9px] font-black uppercase tracking-wider text-zinc-500">Cue</span>
+                            <input type="number" min={2} max={120} value={autoCueSeconds}
+                              onChange={(e) => { const v = Math.max(2, Math.min(120, Number(e.target.value) || 2)); setAutoCueSeconds(v); setAutoCueRemaining(v); }}
+                              className="h-7 w-12 shrink-0 rounded border border-zinc-700 bg-zinc-900 px-1 py-0.5 text-[9px] text-zinc-200 text-center"
+                            />
+                            <button onClick={() => setAutoCueEnabled((p) => !p)}
+                              className={`h-7 shrink-0 rounded px-2.5 text-[9px] font-bold transition-colors ${autoCueEnabled ? 'border border-cyan-700/40 bg-cyan-900/50 text-cyan-200' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'}`}
+                            >{autoCueEnabled ? `On ${autoCueRemaining}s` : 'Off'}</button>
+                            <div className="min-w-0 border-t border-zinc-800/80 pt-1.5 md:border-l md:border-t-0 md:border-zinc-800/80 md:pl-2.5 md:pt-0">
+                              <div className="text-[8px] font-black uppercase tracking-widest text-zinc-600">Current Cue</div>
+                              <div className="truncate text-[10px] font-bold leading-tight text-zinc-200">
+                                {currentCue ? `${currentCueIndex + 1}/${enabledTimerCues.length} ${currentCue.itemTitle}` : '—'}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className={`grid gap-1.5 ${presenterMainWorkspaceWidth < 760 ? 'grid-cols-1' : 'grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,1fr)]'}`}>
                         <div className="flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 rounded-lg px-2 h-9 min-w-0">
                           <select value={timerMode} onChange={(e) => {
                             const mode = e.target.value as 'COUNTDOWN' | 'ELAPSED';
@@ -9560,14 +10024,15 @@ function App() {
                           </div>
                         </div>
                       </div>
+                      )}
                     </CollapsiblePanel>
 
-                    {/* Card 3: RUNDOWN + OUTPUT — always full width */}
+                    {/* Card 3: RUNDOWN + OUTPUT */}
                     <CollapsiblePanel
                       id="rundown-output"
                       title="Rundown + Output"
                       defaultCollapsed={true}
-                      className={`rounded-xl border border-zinc-800/80 bg-[linear-gradient(160deg,rgba(28,28,34,0.95),rgba(10,10,14,1))] p-3 shadow-[0_4px_16px_rgba(0,0,0,0.4)] ${presenterMainWorkspaceWidth < 1060 ? '' : 'col-span-2'}`}
+                      className="rounded-xl border border-zinc-800/80 bg-[linear-gradient(160deg,rgba(28,28,34,0.95),rgba(10,10,14,1))] p-3 shadow-[0_4px_16px_rgba(0,0,0,0.4)]"
                       data-testid="presenter-panel-rundown-output"
                       badge={
                         <span className="rounded-full border border-emerald-800/50 bg-emerald-950/30 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] text-emerald-300">Stage Ops</span>
@@ -9610,24 +10075,26 @@ function App() {
                         <button onClick={() => void copyShareUrl(stageDisplayUrl)} className="h-9 px-3 rounded-lg border border-zinc-700 bg-zinc-900 text-[9px] font-black text-zinc-400 hover:text-white hover:border-zinc-500 transition-all uppercase tracking-wider">Copy Stage URL</button>
                         {isElectronShell && hasElectronDisplayControl && (
                           <button
-                            onClick={async () => {
-                              setNdiError(null);
-                              if (ndiActive) {
-                                await window.electron?.ndi?.stop?.();
-                              } else {
-                                const result = await window.electron?.ndi?.start?.({
-                                  sourceName: `Lumina \u2013 ${workspaceSettings.churchName || 'Presenter'}`,
-                                  workspaceId,
-                                  sessionId: liveSessionId,
-                                });
-                                if (result && !result.ok) setNdiError(result.error ?? 'NDI failed to start.');
-                              }
-                            }}
-                            title={ndiActive ? 'Stop NDI broadcast' : 'Broadcast slide output as an NDI source on the local network'}
-                            className={`h-9 px-3 rounded-lg border font-black text-[9px] tracking-wider uppercase transition-all ${ndiActive ? 'border-violet-500/70 bg-violet-950/50 text-violet-300 animate-pulse' : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:text-violet-300 hover:border-violet-600'}`}
+                            type="button"
+                            onClick={() => setNdiInfoModalOpen(true)}
+                            title="Open NDI settings & info"
+                            className="p-0 border-0 bg-transparent cursor-pointer"
                           >
-                            {ndiActive ? '● NDI LIVE' : 'Send NDI'}
+                            <NdiStatusBadge
+                              ndiState={ndiState}
+                              audioEnabled={!!workspaceSettings.ndiAudioEnabled}
+                              audioWarningCode={ndiAudioConstraintCode}
+                            />
                           </button>
+                        )}
+                        {ndiWarning && (
+                          <span
+                            className="h-9 flex items-center px-3 rounded-lg border border-amber-700/60 bg-amber-950/30 text-[9px] font-bold text-amber-300 cursor-pointer max-w-[32ch]"
+                            title={ndiWarning + ' — click to dismiss'}
+                            onClick={() => setNdiWarning(null)}
+                          >
+                            <span className="truncate">⚠ {ndiWarning}</span>
+                          </span>
                         )}
                         {ndiError && (
                           <span
@@ -9643,6 +10110,7 @@ function App() {
                         </button>
                       </div>
                     </CollapsiblePanel>
+                    </div>
 
                   </div>
                 </div>
@@ -10840,6 +11308,17 @@ function App() {
 
       <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
       <GuidedToursPanel isOpen={isGuidedToursOpen} onClose={() => setIsGuidedToursOpen(false)} />
+      <NdiInfoModal
+        open={ndiInfoModalOpen}
+        onClose={() => setNdiInfoModalOpen(false)}
+        ndiState={ndiState}
+        menuState={toolsNdiMenuState}
+        audioWarningCode={ndiAudioConstraintCode}
+        onToggleActive={() => { void handleToolsNdiCommand({ type: 'ndi.toggle-active' }); }}
+        onToggleBroadcast={() => { void handleToolsNdiCommand({ type: 'ndi.toggle-broadcast' }); }}
+        onToggleAudio={() => { void handleToolsNdiCommand({ type: 'ndi.toggle-audio' }); }}
+        onSetResolution={(value) => { void handleToolsNdiCommand({ type: 'ndi.set-resolution', value }); }}
+      />
       <ConnectModal
         isOpen={isConnectOpen}
         onClose={() => setIsConnectOpen(false)}

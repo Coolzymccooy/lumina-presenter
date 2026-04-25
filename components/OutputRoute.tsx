@@ -7,6 +7,9 @@ import { HoldScreen } from './presenter/HoldScreen';
 import { LoginScreen } from './LoginScreen';
 import { SlideRenderer } from './SlideRenderer';
 import type { SlideBrandingConfig } from './SlideBrandingOverlay';
+import { ToolsOverlay } from './overlays/ToolsOverlay';
+import { TestPatterns } from './overlays/TestPatterns';
+import { useToolsMenu } from '../hooks/useToolsMenu';
 
 const STORAGE_KEY = 'lumina_session_v1';
 
@@ -119,6 +122,7 @@ const sanitizeHoldScreenMode = (value: unknown): 'none' | 'clear' | 'logo' => (
 );
 
 export const OutputRoute: React.FC = () => {
+  const { settings: toolsSettings } = useToolsMenu();
   const getRouteParams = () => {
     const searchParams = new URLSearchParams(window.location.search);
     const fromSearch = (searchParams.get('session') || '').trim();
@@ -381,7 +385,7 @@ export const OutputRoute: React.FC = () => {
   }
 
   return (
-    <div className="h-screen w-screen bg-black">
+    <div className="relative h-screen w-screen bg-black">
       {display.blackout ? (
         <HoldScreen view="blackout" />
       ) : display.holdScreenMode === 'clear' ? (
@@ -412,6 +416,8 @@ export const OutputRoute: React.FC = () => {
           branding={display.branding}
         />
       )}
+      <TestPatterns pattern={toolsSettings.testPattern} />
+      <ToolsOverlay settings={toolsSettings} />
     </div>
   );
 };
