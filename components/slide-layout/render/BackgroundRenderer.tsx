@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { MediaType } from '../../../types.ts';
 import { getCachedMediaAsset, getMediaAsset } from '../../../services/localMedia.ts';
+import { isMotionUrl } from '../../../services/motionEngine';
+import { MotionCanvas } from '../../MotionCanvas';
 
 interface BackgroundRendererProps {
   backgroundUrl?: string;
   mediaType?: MediaType;
   mediaFit?: 'cover' | 'contain';
+  isPlaying?: boolean;
 }
 
 const isVideoUrl = (value: string) => {
@@ -17,6 +20,7 @@ export const BackgroundRenderer: React.FC<BackgroundRendererProps> = ({
   backgroundUrl,
   mediaType,
   mediaFit = 'cover',
+  isPlaying = true,
 }) => {
   const rawUrl = String(backgroundUrl || '').trim();
   const [resolvedUrl, setResolvedUrl] = useState<string>(() => {
@@ -68,6 +72,21 @@ export const BackgroundRenderer: React.FC<BackgroundRendererProps> = ({
   }, [mediaType, resolvedKind, resolvedUrl]);
 
   if (!rawUrl) return <div className="absolute inset-0 bg-black" />;
+
+  // Motion backgrounds (motion://<scene-id>) are canvas-rendered by MotionCanvas.
+  // Bypass the resolvedUrl/<img> path entirely — feeding motion:// to <img src>
+  // produces ERR_UNKNOWN_URL_SCHEME and a black flicker.
+  if (isMotionUrl(rawUrl)) {
+    return (
+      <MotionCanvas
+        motionUrl={rawUrl}
+        isPlaying={isPlaying}
+        className="absolute inset-0 h-full w-full"
+        pauseWhenOffscreen
+      />
+    );
+  }
+
   if (effectiveType === 'color') return <div className="absolute inset-0" style={{ backgroundColor: resolvedUrl || rawUrl }} />;
 
   if (effectiveType === 'video' && resolvedUrl) {
