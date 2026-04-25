@@ -1,4 +1,4 @@
-import { lookupBibleVerseLocal } from './bibleLocalData';
+import { isTranslationBundled, lookupBibleVerseLocal } from './bibleLocalData';
 
 export interface BibleVerse {
   book_id: string;
@@ -290,6 +290,13 @@ export const lookupBibleReference = async (query: string, version: string): Prom
   if (localVerses?.length) {
     setCachedBibleVerses(normalized, version, localVerses);
     return localVerses;
+  }
+
+  // For bundled translations, the local source is authoritative.
+  // Don't fall through to the network — return empty so the UI surfaces
+  // a "passage not found" message instead of a misleading "Network error".
+  if (isTranslationBundled(version)) {
+    return [];
   }
 
   // 3. API.Bible — for copyrighted translations (niv, nkjv, esv, nlt, amp, msg)
