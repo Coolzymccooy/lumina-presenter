@@ -35,6 +35,7 @@ jobs:
       - name: Build web app
         env:
           VITE_AI_WEB_LYRICS_FETCH: 'true'
+          VITE_API_BASE_URL: 'https://api.luminalive.co.uk'
         run: npm run build
 
       - name: Run smoke tests
@@ -61,6 +62,7 @@ jobs:
       - name: Build Windows artifacts
         env:
           VITE_AI_WEB_LYRICS_FETCH: 'true'
+          VITE_API_BASE_URL: 'https://api.luminalive.co.uk'
         run: npm run dist:win:ci
 
       - name: Publish GitHub release (non-draft)
@@ -103,6 +105,7 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           VITE_AI_WEB_LYRICS_FETCH: 'true'
+          VITE_API_BASE_URL: 'https://api.luminalive.co.uk'
         run: |
           echo "Building unsigned universal macOS artifacts (no Apple signing credentials configured)."
           npm run dist:mac:ci

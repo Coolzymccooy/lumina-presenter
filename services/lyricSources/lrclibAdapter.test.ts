@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../serverApi', () => ({
-  getServerApiBaseCandidates: () => ['http://localhost:3001'],
-  getServerApiBaseUrl: () => 'http://localhost:3001',
+  getServerApiBaseCandidates: () => ['http://localhost:8787', 'https://api.example.test'],
+  getServerApiBaseUrl: () => 'http://localhost:8787',
 }));
 
 import { searchLrclib } from './lrclibAdapter';
@@ -50,5 +50,54 @@ describe('searchLrclib', () => {
     globalThis.fetch = vi.fn(async () => { throw new Error('boom'); }) as unknown as typeof fetch;
     const hit = await searchLrclib('anything');
     expect(hit).toBeNull();
+  });
+
+  it('falls through to next candidate when first base returns 503', async () => {
+    let calls = 0;
+    globalThis.fetch = vi.fn(async (url) => {
+      calls += 1;
+      const isLocal = String(url).startsWith('http://localhost:8787');
+      if (isLocal) {
+        return {
+          ok: false,
+          status: 503,
+          headers: { get: () => 'application/json' },
+          json: async () => ({ ok: false, error: 'FEATURE_DISABLED' }),
+        } as unknown as Response;
+      }
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        json: async () => ({
+          ok: true,
+          data: { hit: { id: 42, trackName: 'Way Maker', artistName: 'Sinach', plainLyrics: 'Way maker...' } },
+        }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    const hit = await searchLrclib('Way Maker Sinach');
+    expect(calls).toBe(2);
+    expect(hit?.trackName).toBe('Way Maker');
+  });
+
+  it('falls through on network error to next candidate', async () => {
+    let calls = 0;
+    globalThis.fetch = vi.fn(async (url) => {
+      calls += 1;
+      if (String(url).startsWith('http://localhost:8787')) {
+        throw new Error('ECONNREFUSED');
+      }
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ ok: true, data: { hit: { id: 7, trackName: 'X', artistName: 'Y', plainLyrics: 'lyrics' } } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    const hit = await searchLrclib('q');
+    expect(calls).toBe(2);
+    expect(hit?.trackName).toBe('X');
   });
 });

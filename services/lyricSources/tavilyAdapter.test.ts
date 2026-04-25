@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../serverApi', () => ({
-  getServerApiBaseCandidates: () => ['http://localhost:3001'],
+  getServerApiBaseCandidates: () => ['http://localhost:8787', 'https://api.example.test'],
 }));
 
 import { searchTavilyForLyrics } from './tavilyAdapter';
@@ -13,6 +13,7 @@ function mockFetchJson(status: number, body: unknown) {
   globalThis.fetch = vi.fn(async () => ({
     ok: status >= 200 && status < 300,
     status,
+    clone() { return this; },
     json: async () => body,
   }) as unknown as Response) as unknown as typeof fetch;
 }
@@ -53,5 +54,65 @@ describe('searchTavilyForLyrics', () => {
     });
     const [result] = await searchTavilyForLyrics('q');
     expect(result.snippet.split(/\s+/).length).toBeLessThanOrEqual(40);
+  });
+
+  it('falls through to next candidate when first base returns 503', async () => {
+    // Desktop installer scenario: localhost:8787 has no API key, prod URL does.
+    let calls = 0;
+    globalThis.fetch = vi.fn(async (url) => {
+      calls += 1;
+      const isLocal = String(url).startsWith('http://localhost:8787');
+      if (isLocal) {
+        return {
+          ok: false,
+          status: 503,
+          clone() { return this; },
+          json: async () => ({ ok: false, error: 'TAVILY_API_KEY_MISSING' }),
+        } as unknown as Response;
+      }
+      return {
+        ok: true,
+        status: 200,
+        clone() { return this; },
+        json: async () => ({
+          ok: true,
+          data: {
+            results: [{
+              title: 'Way Maker — Sinach',
+              url: 'https://prod.example.test/way-maker',
+              domain: 'prod.example.test',
+              snippet: 'Way maker miracle worker',
+              score: 0.95,
+            }],
+          },
+        }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    const results = await searchTavilyForLyrics('Way Maker Sinach');
+    expect(calls).toBe(2);
+    expect(results).toHaveLength(1);
+    expect(results[0].domain).toBe('prod.example.test');
+    expect(results[0].provider).toBe('tavily');
+  });
+
+  it('falls through on network error then succeeds on next candidate', async () => {
+    let calls = 0;
+    globalThis.fetch = vi.fn(async (url) => {
+      calls += 1;
+      if (String(url).startsWith('http://localhost:8787')) {
+        throw new Error('ECONNREFUSED');
+      }
+      return {
+        ok: true,
+        status: 200,
+        clone() { return this; },
+        json: async () => ({ ok: true, data: { results: [{ title: 'a', url: 'https://b.test/c', domain: 'b.test', snippet: 's' }] } }),
+      } as unknown as Response;
+    }) as unknown as typeof fetch;
+
+    const results = await searchTavilyForLyrics('q');
+    expect(calls).toBe(2);
+    expect(results).toHaveLength(1);
   });
 });

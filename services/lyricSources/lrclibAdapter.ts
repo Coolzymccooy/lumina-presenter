@@ -20,12 +20,12 @@ export async function searchLrclib(query: string): Promise<LrclibHit | null> {
         signal: controller.signal,
       });
       clearTimeout(timer);
-      if (!res.ok) return null;
+      if (!res.ok) continue;
       const json = (await res.json().catch(() => null)) as { ok?: boolean; data?: { hit?: LrclibHit | null } } | null;
       return json?.data?.hit ?? null;
     } catch {
       clearTimeout(timer);
-      return null;
+      continue;
     }
   }
   return null;
