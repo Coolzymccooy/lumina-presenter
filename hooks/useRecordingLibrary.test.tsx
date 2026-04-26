@@ -89,4 +89,41 @@ describe('useRecordingLibrary', () => {
     await waitFor(() => expect(result.current.tracks.length).toBe(1));
     expect(result.current.tracks[0].syncState).toBe('cloud_only');
   });
+
+  // Regression: production reported "Could not save recording: Cannot read
+  // properties of undefined (reading 'find')" with the saved-recording pill
+  // flickering. Root cause: cloudSync.list could resolve with `undefined`
+  // (cold-start `{recordings:null}` body), which made `cloudList.find()`
+  // throw inside refresh(), which made addLocal's awaited refresh reject,
+  // which surfaced the error even though the local save had succeeded.
+  it('addLocal still resolves and saves locally when cloudSync.list resolves with undefined', async () => {
+    (cloudSync.list as any).mockResolvedValue(undefined);
+    const { result } = renderHook(() => useRecordingLibrary({ auth, signedIn: true }));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    const blob = new Blob([new Uint8Array([1,2,3])], { type: 'audio/webm' });
+
+    let savedId = '';
+    await act(async () => {
+      savedId = await result.current.addLocal(blob, { title: 'Sermon', durationSec: 4, mime: 'audio/webm' });
+    });
+
+    expect(savedId).toBeTruthy();
+    expect(result.current.tracks).toHaveLength(1);
+    expect(result.current.tracks[0].id).toBe(savedId);
+    expect(result.current.tracks[0].syncState).toBe('local_only');
+  });
+
+  it('addLocal still resolves when cloudSync.list resolves with null', async () => {
+    (cloudSync.list as any).mockResolvedValue(null);
+    const { result } = renderHook(() => useRecordingLibrary({ auth, signedIn: true }));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+
+    let savedId = '';
+    await act(async () => {
+      savedId = await result.current.addLocal(new Blob([]), { title: 'Sermon', durationSec: 1, mime: 'audio/webm' });
+    });
+
+    expect(savedId).toBeTruthy();
+    expect(result.current.tracks).toHaveLength(1);
+  });
 });
