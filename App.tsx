@@ -6326,8 +6326,24 @@ function App() {
     pushHistory();
     setSchedule((prev) => prev.map((item) => {
       if (item.id !== targetItemId) return item;
+      // If the item has no theme BG yet, also seed item.theme with this
+      // selection so sibling slides (which have no slide-level BG) inherit
+      // it via the SlideRenderer cascade. Without this, slide-scope apply
+      // produces an item where slide N is decorated but slides 1..N-1 stay
+      // black — most visible in LIVE NOW / Stage Preview thumbnails.
+      // When the item already has a theme BG, leave the theme alone so
+      // per-slide overrides keep working as expected.
+      const themeHasBackground = String(item.theme?.backgroundUrl || '').trim().length > 0;
+      const nextTheme = themeHasBackground
+        ? item.theme
+        : {
+            ...item.theme,
+            backgroundUrl: resolvedUrl,
+            mediaType: resolvedMediaType,
+          };
       return {
         ...item,
+        theme: nextTheme,
         slides: item.slides.map((slide) => (
           slide.id === targetSlideId
             ? buildStructuredSlide({
