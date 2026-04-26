@@ -40,7 +40,10 @@ export const cloudSync = {
   async list(auth: AuthBridge): Promise<RecordedTrack[]> {
     const res = await fetch('/api/recordings', { headers: await authHeader(auth) });
     const body = await parseOrThrow(res);
-    return body.recordings as RecordedTrack[];
+    // Defensive: contract is `{ recordings: [...] }` but cold-start / migration
+    // states can return `{}` or `{ recordings: null }`. Always hand callers a
+    // real array so they can call `.find()` / `.filter()` without throwing.
+    return Array.isArray(body?.recordings) ? (body.recordings as RecordedTrack[]) : [];
   },
 
   async rename(id: string, title: string, auth: AuthBridge): Promise<void> {

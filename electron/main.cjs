@@ -7,6 +7,7 @@ const { NDI_RESOLUTION_PRESETS, resolveNdiResolution } = require('./ndiResolutio
 const { registerLyricClipboardIpc } = require('./ipc/lyricClipboard.cjs');
 const { createToolsSettingsStore } = require('./toolsSettingsStore.cjs');
 const { buildToolsMenu } = require('./toolsMenu.cjs');
+const { decideWindowOpen } = require('./windowOpenPolicy.cjs');
 const {
   DEFAULT_APP_MENU_STATE,
   sanitizeAppMenuState,
@@ -1176,15 +1177,16 @@ function createWindow() {
         event.preventDefault();
       }
     });
-    // Refuse new windows except via setWindowOpenHandler below.
+    // Refuse new windows except via the policy below. See windowOpenPolicy.cjs.
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-      try {
-        const parsed = new URL(url);
-        // Allow only https external links — they open in the default browser.
-        if (parsed.protocol === 'https:') {
-          shell.openExternal(url).catch(() => {});
-        }
-      } catch { /* noop */ }
+      const decision = decideWindowOpen(url);
+      if (decision.kind === 'deny-open-external') {
+        shell.openExternal(url).catch(() => {});
+        return { action: 'deny' };
+      }
+      if (decision.kind === 'allow') {
+        return { action: 'allow' };
+      }
       return { action: 'deny' };
     });
   }

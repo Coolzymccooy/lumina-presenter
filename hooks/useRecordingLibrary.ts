@@ -44,7 +44,13 @@ export function useRecordingLibrary(opts: UseRecordingLibraryOptions): Recording
     let cloudList: RecordedTrack[] = [];
     if (signedIn) {
       try {
-        cloudList = await cloudSync.list(auth);
+        const result = await cloudSync.list(auth);
+        // Defensive: the server can return { recordings: null } or an empty
+        // body during cold-start, which would otherwise make cloudList
+        // undefined and cause `.find()` to throw downstream — surfacing as
+        // "Could not save recording: Cannot read properties of undefined
+        // (reading 'find')" even when the local save succeeded.
+        cloudList = Array.isArray(result) ? result : [];
       } catch { /* offline — keep local only */ }
     }
     const merged: RecordedTrack[] = [];
