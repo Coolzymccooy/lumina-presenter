@@ -192,7 +192,12 @@ export const MotionCanvas: React.FC<MotionCanvasProps> = memo(({
           display: 'block',
           width: '100%',
           height: '100%',
-          opacity: shouldAnimate && hasRenderedFrame ? 1 : 0,
+          // Keep the canvas visible whenever a frame has been drawn, even when
+          // the engine isn't running. This lets thumbnails (isPlaying=false)
+          // show the static first-frame instead of going black behind the
+          // poster, which is critical for LIVE NOW / Stage Preview tiles where
+          // motion BGs were rendering as black squares despite the poster.
+          opacity: hasRenderedFrame ? 1 : 0,
         }}
       />
     </div>

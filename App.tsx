@@ -6326,41 +6326,40 @@ function App() {
     pushHistory();
     setSchedule((prev) => prev.map((item) => {
       if (item.id !== targetItemId) return item;
-      // If the item has no theme BG yet, also seed item.theme with this
-      // selection so sibling slides (which have no slide-level BG) inherit
-      // it via the SlideRenderer cascade. Without this, slide-scope apply
-      // produces an item where slide N is decorated but slides 1..N-1 stay
-      // black — most visible in LIVE NOW / Stage Preview thumbnails.
-      // When the item already has a theme BG, leave the theme alone so
-      // per-slide overrides keep working as expected.
-      const themeHasBackground = String(item.theme?.backgroundUrl || '').trim().length > 0;
-      const nextTheme = themeHasBackground
-        ? item.theme
-        : {
-            ...item.theme,
-            backgroundUrl: resolvedUrl,
-            mediaType: resolvedMediaType,
-          };
+      // Slide-strip apply is treated as "fill the whole strip" — the user
+      // asked for a single visual identity per item at this stage, not
+      // per-slide overrides. Propagate to every slide AND to item.theme so
+      // LIVE NOW / Stage Preview thumbnails show the same BG regardless of
+      // whether they read slide.backgroundUrl or fall through to the theme.
+      const nextTheme = {
+        ...item.theme,
+        backgroundUrl: resolvedUrl,
+        mediaType: resolvedMediaType,
+      };
+      const sharedMetadata = {
+        backgroundProvider: selection.provider,
+        backgroundCategory: selection.category,
+        backgroundTitle: selection.title,
+        backgroundSourceUrl: selection.sourceUrl || selection.url,
+      };
       return {
         ...item,
         theme: nextTheme,
-        slides: item.slides.map((slide) => (
-          slide.id === targetSlideId
-            ? buildStructuredSlide({
-                ...slide,
-                backgroundUrl: resolvedUrl,
-                mediaType: resolvedMediaType,
-                mediaFit: 'cover',
-                metadata: {
-                  ...(slide.metadata || {}),
-                  backgroundProvider: selection.provider,
-                  backgroundCategory: selection.category,
-                  backgroundTitle: selection.title,
-                  backgroundSourceUrl: selection.sourceUrl || selection.url,
-                },
-              }, item)
-            : slide
-        )),
+        metadata: {
+          ...(item.metadata || {}),
+          ...sharedMetadata,
+          backgroundThumbnailUrl: selection.thumb || item.metadata?.backgroundThumbnailUrl,
+        },
+        slides: item.slides.map((slide) => buildStructuredSlide({
+          ...slide,
+          backgroundUrl: resolvedUrl,
+          mediaType: resolvedMediaType,
+          mediaFit: 'cover',
+          metadata: {
+            ...(slide.metadata || {}),
+            ...sharedMetadata,
+          },
+        }, item)),
       };
     }));
     logActivity(user?.uid, 'UPDATE_THEME', {
